@@ -1,0 +1,54 @@
+#IFDEF GLOBAL
+#ELSE
+function ZeppelinFollowJob takes nothing returns nothing
+  local real dist = 0
+  local location l = null
+  local group g = CreateGroup()
+  local location heroloc = null
+
+  call DisplayToAllJobDebug("ZEPPELIN_FOLLOW Start")
+  //call GroupEnumUnitsOfType(g, "goblinzeppelin", null)
+  // ---------- NO CUSTOMIZEABLE SECTION DETECTED
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  //set g = SelectByPlayer(g, ai_player, true)
+  set g = SelectById(g, old_id[neutral_zeppelin], true)
+  //-----------------------------------------------
+  //set g = SelectByOrderOr(g, 0, order_attack, true)
+  set g = SelectByUnitStandard(g, true)
+  call GroupRemoveGuardPositionInstant(g)
+  call GroupPointOrderLoc(g, "attack", home_location)
+  if major_hero != null and UnitAlive(major_hero) then
+    set heroloc = GetUnitLoc(major_hero)
+    set follow_zeppelin = GetNearestOfGroup(g, heroloc)
+	call RemoveLocation(heroloc)
+	set heroloc = null	
+  else
+	set follow_zeppelin = null
+  endif	
+  call DestroyGroup(g)
+  set g = null
+
+  if follow_zeppelin == null then
+    call TQAddJob(10, ZEPPELIN_FOLLOW, 0)
+    set zeppelin_following = false
+    return
+  endif
+  set zeppelin_following = true
+  set dist = DistanceBetweenUnits(major_hero, follow_zeppelin)
+  if dist > max_follow_dist then
+	call CreateDebugTag("Zepplin follow hero", 10, follow_zeppelin, 3.00, 1.50)
+    set l = GetLocationBetweenUnits(follow_zeppelin, major_hero, (dist - 0.5 * max_follow_dist)/dist)
+	//set l = GetLocationBetweenUnits(follow_zeppelin, major_hero, (dist - 0.33 * max_follow_dist))
+    //call IssuePointOrderLoc(follow_zeppelin, "attack", l)
+	call IssuePointOrder(follow_zeppelin, "unloadall", GetLocationX(l), GetLocationY(l))  // Extra aid to help prevent units getting stuck in zepplin
+	call IssueTargetOrder(follow_zeppelin, "move", major_hero)
+    call RemoveLocation(l)
+    set l = null
+    call TQAddJob(RMax((dist - max_follow_dist) / RMax(GetUnitMoveSpeed(follow_zeppelin) + GetUnitMoveSpeed(major_hero), 50), 1) * sleep_multiplier,ZEPPELIN_FOLLOW,0)
+  else
+    call IssueImmediateOrder(follow_zeppelin, "stop")
+	call IssuePointOrder(follow_zeppelin, "unloadall", GetUnitX(follow_zeppelin), GetUnitY(follow_zeppelin))
+    call TQAddJob(10 * sleep_multiplier,ZEPPELIN_FOLLOW,0)
+  endif
+endfunction
+#ENDIF

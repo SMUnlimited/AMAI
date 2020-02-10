@@ -1,0 +1,830 @@
+#DEFINE $ONE$ 1
+#DEFINE $ZERO$ 0
+
+#DEFINE $HEROLEVELNUM$ 0
+#INCLUDETABLE <$VER$\HeroLevels.txt>
+#DEFINE $HEROLEVELNUM$ %row
+#ENDINCLUDE
+
+#DEFINE $STRENGTHNUM$ 0
+#INCLUDETABLE <$VER$\Strengths.txt>
+#DEFINE $STRENGTHNUM$ %row
+#ENDINCLUDE
+
+#DEFINE $NEUTRALHEROLNUM$ 0
+#INCLUDETABLE <$VER$\NeutralHeroSkills.txt> #EFR
+#DEFINE $NEUTRALHEROLNUM$ %row
+#ENDINCLUDE
+
+#DEFINE $RACENUM$ 0
+#INCLUDETABLE <$VER$\Races.txt>
+#DEFINE $RACENUM$ %row
+#ENDINCLUDE
+
+#DEFINE $TIERNUM$ 0
+#INCLUDETABLE <$VER$\$RACE$\Tiers.txt>
+#DEFINE $TIERNUM$ %row
+#ENDINCLUDE
+
+//============================================================================
+//  AMAI (Advanced Melee AI) by AIAndy and Zalamander
+//  http://amai.wc3campaigns.com
+//============================================================================
+globals
+#SEARCHTREE Strats <$VER$\$RACE$\Strategy.txt> %1 %13 build_sequence_%1() #EFR
+#SEARCHTREE InitStrats <$VER$\$RACE$\Strategy.txt> %1 %13 init_strategy_%1() #EFR
+
+#SEARCHLIST Strats
+    constant integer STRAT_%1 = %row
+#ENDSEARCHLIST
+
+    boolean startup     = true
+
+
+    boolean keep_res    = true
+
+    integer wave        = 1
+    boolean peons_assigned = false
+    boolean take_all_ghouls_along = false
+	
+	
+endglobals
+
+//===========================================================================
+// Initialize variables for Strategies
+//===========================================================================
+function InitStratData takes nothing returns nothing
+#INCLUDETABLE <$VER$\$RACE$\Strategy.txt> #EFR
+set strategy_name[STRAT_%1] = "%1"
+set strategy_default_name[STRAT_%1] = "%2"
+set strategy_default_report[STRAT_%1] = "%3"
+set key_building1[STRAT_%1] = %4
+set key_building2[STRAT_%1] = %5
+set key_upgrade1[STRAT_%1] = %6
+set key_upgrade2[STRAT_%1] = %7
+set key_unit[STRAT_%1] = %8
+set beginning_strat[STRAT_%1] = %9
+set strat_minimum_time[STRAT_%1] = %10
+set strategy_type[STRAT_%1] = %11
+set strategy_tier[STRAT_%1] = %12
+set strategy_first_exp_time[STRAT_%1] = %#OEVAL{18 + $STRENGTHNUM$ + 2*$RACENUM$}
+set strategy_second_exp_time[STRAT_%1] = %#OEVAL{19 + $STRENGTHNUM$ + 2*$RACENUM$}
+set strategy_first_hero[STRAT_%1] = %#OEVAL{20 + $STRENGTHNUM$ + 2*$RACENUM$}
+set strategy_first_hero_bonus[STRAT_%1] = %#OEVAL{21 + $STRENGTHNUM$ + 2*$RACENUM$}
+set strategy_second_hero[STRAT_%1] = %#OEVAL{22 + $STRENGTHNUM$ + 2*$RACENUM$}
+set strategy_second_hero_bonus[STRAT_%1] = %#OEVAL{23 + $STRENGTHNUM$ + 2*$RACENUM$}
+set strategy_third_hero[STRAT_%1] = %#OEVAL{24 + $STRENGTHNUM$ + 2*$RACENUM$}
+set strategy_third_hero_bonus[STRAT_%1] = %#OEVAL{25 + $STRENGTHNUM$ + 2*$RACENUM$}
+#FOR $Y$ FROM $ONE$ TO $RACENUM$
+#FOR $X$ FROM $ONE$ TO $TIERNUM$
+set strategy_race_aggression[STRAT_%1 * #EVAL{$RACENUM$*$TIERNUM$} + #EVAL{($Y$-1)*$TIERNUM$ + $X$-1}] = %#OEVAL{25 + $STRENGTHNUM$ + 2*$RACENUM$ + $X$ + ($Y$ - 1)*$TIERNUM$}
+#ENDFOR
+#ENDFOR
+#AFTERINCLUDE
+set rp_strat_length = %row
+#ENDINCLUDE
+endfunction
+
+function InitStrats takes nothing returns nothing
+  call InitStratData()
+  call CommonStratsDefault()
+endfunction
+
+//===========================================================================
+// Initialization of skill variables for hero usage
+//===========================================================================
+function InitAllSkills takes nothing returns nothing
+#INCLUDETABLE <$VER$\$RACE$\HeroSkills.txt> #EFR
+#FOR $X$ FROM $ONE$ TO $HEROLEVELNUM$
+  set allskills[#EVAL{($NEUTRALHEROLNUM$ -1 + %row) * $HEROLEVELNUM$ + $X$}] = %$X$
+#ENDFOR
+
+#ENDINCLUDE
+endfunction
+
+//===========================================================================
+// Initialization of all the building variables
+//===========================================================================
+function InitBuildings takes nothing returns nothing
+#INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%3" eq "$RACE$" and "%5" eq "BUILDING"
+  set building[#EVAL{%row-1}] = %1
+#AFTERINCLUDE
+  set building_length = %row
+#ENDINCLUDE
+endfunction
+
+//============================================================================
+//	Initialization of racial units
+//============================================================================
+function initRacialUnits takes nothing returns nothing
+
+#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bpeon\b/
+    set racial_peon = %1
+#ENDINCLUDE
+#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bghoul\b/
+    set racial_ghoul = %1
+#ENDINCLUDE
+#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bexpansion\b/
+    set racial_expansion = %1
+	if race_uses_mine_expansion then	// To get undead type mine systems
+		set racial_goldmine[minearray] = old_id[racial_expansion]
+		set minearray = minearray + 1
+	endif	
+#ENDINCLUDE
+#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\baltar\b/
+    set racial_altar = %1
+#ENDINCLUDE
+#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\blumber\b/
+    set racial_lumber = %1
+#ENDINCLUDE
+
+#INCLUDETABLE <$VER$\$RACE$\Tiers.txt>
+#DEFINE $TIER$ %1
+#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bhall$TIER$\b/
+    set racial_hall[$TIER$] = %1
+#ENDINCLUDE
+#ENDINCLUDE
+	// Basically if its not a undead type expansion method just make variable the first hall
+	if racial_expansion == 0	then
+		set racial_expansion = racial_hall[1]
+	endif
+
+#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bmine\b/
+    set racial_goldmine[minearray] = '%2'
+	set minearray = minearray + 1
+#ENDINCLUDE
+#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "NEUTRAL" and "%4" =~ /\bmine\b/
+    set racial_goldmine[minearray] = '%2'
+	set minearray = minearray + 1
+#ENDINCLUDE
+
+#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bzigg\b/
+	set racial_zigg[ziggarray] = '%2'
+	set ziggarray = ziggarray + 1
+#ENDINCLUDE
+#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bfarm\b/
+    set racial_farm = %1
+	if race_sell_ziggurats then
+		set racial_zigg[ziggarray] = old_id[racial_farm]
+		set ziggarray = ziggarray + 1
+	endif
+#ENDINCLUDE
+
+#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bshop\b/
+    set racial_shop = %1
+#ENDINCLUDE
+#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bmilitia\b/
+    set racial_militia = %1
+#ENDINCLUDE
+#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bmilitiahero\b/
+    set racial_militiahero = %1
+#ENDINCLUDE
+
+endfunction
+
+//============================================================================
+//	Initialization of special trait variables e.g. ancient expansions
+// 	and tower rushs etc
+//============================================================================
+function initRacialTraits takes nothing returns nothing
+   local integer i = 0
+
+   set i = GetRandomInt(1,100)
+   set militia = race_militia_expansion_available and i <= 60
+   if militia then
+	call Trace("Militia expansion is true")
+   endif
+   set i = GetRandomInt(1, 100)
+   set race_ancient_expansion_available = (race_ancient_expansion_available and i <= race_ancient_expansion_probability)
+   set i = GetRandomInt(1, 100)
+   if race_ancient_expansion_available then
+	call Trace("Ancient Expansion is true")
+   endif
+   set race_towerrush_available = (race_towerrush_available and i <= race_towerrush_probability)
+   if race_towerrush_available then
+	call Trace("Towerrush variable is true")
+   endif   
+
+endfunction
+
+function CanTowerRush takes nothing returns nothing
+	local real distance = GetNearestEnemyDistance()
+	local integer i = GetRandomInt(1,100)
+	
+	if game_is_ffa then
+		set i = i + 40       // in ffa reduce likly hood of tower rush extremly
+	endif
+	
+	 if hero_rush_bonus[hero[1]] >= race_towerrush_hero_rush_level then
+		if distance < 8000 then   // Total percentage to be choosen is 33%
+			call StartTowerRush(180)
+		elseif i <= 75 and distance < 11000 then // Total percentage to be choosen is 25%
+			call StartTowerRush(160)
+		elseif i <= 50 and distance < 14000 then // Total percentage to be choosen is 16%
+			call StartTowerRush(140)
+		elseif i <= 20 and distance < 16000 then // Total percentage to be choosen is 7%
+		endif
+	  endif
+endfunction
+
+//===========================================================================
+// chooses the strategy relative probabilities
+//===========================================================================
+function chooseStrategyRP takes nothing returns nothing
+#INCLUDETABLE <$VER$\$RACE$\Strategy.txt> #EFR
+  set rp_strat[#EVAL{%row-1}] = %13
+#ENDINCLUDE
+
+  call AddFavoriteUnitRP()
+  if ai_time > 2 then
+    call mult_rp_strat(3)
+  endif
+
+  if c_ally_total > 0 then
+#INCLUDETABLE <$VER$\$RACE$\Strategy.txt> #EFR
+      set rp_strat[STRAT_%1] = rp_strat[STRAT_%1] + %14
+#ENDINCLUDE
+  endif
+  
+  if game_is_1on1 then
+#INCLUDETABLE <$VER$\$RACE$\Strategy.txt> #EFR
+      set rp_strat[STRAT_%1] = rp_strat[STRAT_%1] + %15
+#ENDINCLUDE
+  endif
+  
+  if game_is_ffa then
+#INCLUDETABLE <$VER$\$RACE$\Strategy.txt> #EFR
+      set rp_strat[STRAT_%1] = rp_strat[STRAT_%1] + %16
+#ENDINCLUDE
+  endif
+
+  if c_enemy[R_RANDOM] > 0 then
+#INCLUDETABLE <$VER$\$RACE$\Strategy.txt> #EFR
+      set rp_strat[STRAT_%1] = rp_strat[STRAT_%1] + %17
+#ENDINCLUDE
+  endif
+
+#INCLUDETABLE <$VER$\Races.txt>
+  if c_enemy[R_%1] > 0 then
+#DEFINE $X$ %row
+#INCLUDETABLE <$VER$\$RACE$\Strategy.txt> #EFR
+      set rp_strat[STRAT_%1] = rp_strat[STRAT_%1] + %#OEVAL{17 + $X$}
+#ENDINCLUDE
+  endif
+
+#ENDINCLUDE
+
+#INCLUDETABLE <$VER$\Races.txt>
+  if c_ally[R_%1] > 0 then
+#DEFINE $X$ %row
+#INCLUDETABLE <$VER$\$RACE$\Strategy.txt> #EFR
+      set rp_strat[STRAT_%1] = rp_strat[STRAT_%1] + %#OEVAL{17 + $RACENUM$ + $X$}
+#ENDINCLUDE
+  endif
+
+#ENDINCLUDE
+
+  if ai_time > 2 then
+    call div_rp_strat(3)
+  endif
+  call make_rp_strat_positive()
+
+endfunction
+
+//===========================================================================
+// changes the strategy if necessary
+//===========================================================================
+function StrategyChanger takes nothing returns nothing
+  local real array rp
+  
+  if not strat_change_allowed or strategy != chosen_strategy or debug_strategy > -1 or FoodUsed() >= 85 or GetMaximumEnemyStrength() < ver_strat_change_enemy_strength_min then
+    return
+  endif
+  call chooseStrategyRP()
+  call normalize_rp_strat()  // Makes priority much larger so the extra bonuses do not make as much of a difference
+//  set rp_strat[strategy] = rp_strat[strategy] + strat_persistence + strat_food_persistence * FoodUsed()
+
+//#INCLUDETABLE <$VER$\$RACE$\Strategy.txt> #EFR
+//  set rp_strat[STRAT_%1] = 0   // huh why
+//#ENDINCLUDE
+
+#INCLUDETABLE <$VER$\Strengths.txt>
+#DEFINE $CSTRENGTH$ %1
+#DEFINE $CSTRENGTHNUM$ %row
+#INCLUDETABLE <$VER$\$RACE$\Strategy.txt> #EFR
+  set rp[STRAT_%1] = rp[STRAT_%1] + %#OEVAL{17 + 2*$RACENUM$ + $CSTRENGTHNUM$} * enemy_$CSTRENGTH$
+#ENDINCLUDE
+#ENDINCLUDE
+
+#INCLUDETABLE <$VER$\$RACE$\Strategy.txt> #EFR
+  set rp_strat[STRAT_%1] = rp_strat[STRAT_%1] + R2I(rp[STRAT_%1])
+#ENDINCLUDE
+
+  call finish_strategy_change()
+endfunction
+
+//===========================================================================
+function SetRaceAggression takes nothing returns nothing
+#INCLUDETABLE <$VER$\$RACE$\RaceAggression.txt> #EFR
+#FOR $X$ FROM $ONE$ TO $TIERNUM$
+  set b_race_aggression[#EVAL{(%row-1)*$TIERNUM$ + $X$ - 1}] = %#OEVAL{$X$ + 1}
+#ENDFOR
+#ENDINCLUDE
+endfunction
+
+//===========================================================================
+// chooses the heroes
+//===========================================================================
+function AMAI_PickMeleeHero takes nothing returns nothing
+  local integer i = 0
+  //local location l = GetUnitLoc(nearest_neutral[NEUTRAL_TAVERN])
+
+  set hero_number = race_hero_number + ver_neutral_hero_number
+  // recalculate_heros occurs only if hero is a tavern hero but tavern is not pathable
+  if not recalculate_heros and ver_neutral_heroes_available and neutral_available[NEUTRAL_TAVERN] then //and CanPathToLoc(home_location, l, PATHING_TYPE_WALKABILITY) > 0 then
+    call InitNeutralSkills()
+	//call Trace("PickMeleeHero: Neutral Hero possible")
+  else
+    set first_choosable_hero = ver_neutral_hero_number
+  endif
+  //call RemoveLocation(l)
+  //set l = null
+
+#INCLUDETABLE <$VER$\$RACE$\Heroes.txt> #EFR
+  set all_heroes[#EVAL{%row-1}] = %1
+  set hero_rp[#EVAL{%row-1}] = %2
+#ENDINCLUDE
+  
+  
+  loop
+	exitwhen i > hero_number
+    set all_heroes_copy[i] = all_heroes[i]
+	set i = i + 1
+  endloop
+
+  call AddFavoriteHeroRP()
+  call AddStrategyHeroRP(strategy_first_hero[strategy], strategy_first_hero_bonus[strategy])
+
+  // increase the rp for those that are good for certain matchups
+
+  if c_ally_total > 0 then
+#INCLUDETABLE <$VER$\$RACE$\Heroes.txt> #EFR
+    set hero_rp[#EVAL{%row-1}] = hero_rp[#EVAL{%row-1}] + %3
+#ENDINCLUDE
+  endif
+  
+  if c_enemy[R_RANDOM] > 0 then
+#INCLUDETABLE <$VER$\$RACE$\Heroes.txt> #EFR
+    set hero_rp[#EVAL{%row-1}] = hero_rp[#EVAL{%row-1}] + %4
+#ENDINCLUDE
+  endif
+
+#INCLUDETABLE <$VER$\Races.txt>
+#DEFINE $X$ %row
+  if c_enemy[R_%1] > 0 then
+#INCLUDETABLE <$VER$\$RACE$\Heroes.txt> #EFR
+    set hero_rp[#EVAL{%row-1}] = hero_rp[#EVAL{%row-1}] + %#OEVAL{$X$ + 4}
+#ENDINCLUDE
+  endif
+
+  if c_ally[R_%1] > 0 then
+#INCLUDETABLE <$VER$\$RACE$\Heroes.txt> #EFR
+    set hero_rp[#EVAL{%row-1}] = hero_rp[#EVAL{%row-1}] + %#OEVAL{$X$ + $RACENUM$ + 4}
+#ENDINCLUDE
+  endif
+  
+#ENDINCLUDE
+
+// --------------modify rp for first hero choice-----------------------------------
+#INCLUDETABLE <$VER$\$RACE$\Heroes.txt> #EFR
+  set hero_rp[#EVAL{%row-1}] = hero_rp[#EVAL{%row-1}] + %#OEVAL{5 + 2 * $RACENUM$}
+#ENDINCLUDE
+
+  set picked_hero = ChooseFirstHero()
+  
+#INCLUDETABLE <$VER$\$RACE$\Heroes.txt> #EFR
+  set hero_rp[#EVAL{%row-1}] = hero_rp[#EVAL{%row-1}] - %#OEVAL{5 + 2 * $RACENUM$}
+#ENDINCLUDE
+// --------------------------------------------------------------------------------
+  
+  
+  // increase the rp for those that are better as second or third hero
+#INCLUDETABLE <$VER$\$RACE$\Heroes.txt> #EFR
+  set hero_rp[#EVAL{%row-1}] = hero_rp[#EVAL{%row-1}] + %#OEVAL{6 + 2 * $RACENUM$}
+#ENDINCLUDE
+
+  call AddStrategyHeroRP(strategy_second_hero[strategy], strategy_second_hero_bonus[strategy])  
+  call ChooseSecondHero()
+#INCLUDETABLE <$VER$\$RACE$\Heroes.txt> #EFR
+  set hero_rp[#EVAL{%row-1}] = hero_rp[#EVAL{%row-1}] - %#OEVAL{6 + 2 * $RACENUM$}
+#ENDINCLUDE  
+  // ------------------------------------------------------------------------------
+  
+#INCLUDETABLE <$VER$\$RACE$\Heroes.txt> #EFR
+  set hero_rp[#EVAL{%row-1}] = hero_rp[#EVAL{%row-1}] + %#OEVAL{7 + 2 * $RACENUM$}
+#ENDINCLUDE  
+
+  call AddStrategyHeroRP(strategy_third_hero[strategy], strategy_third_hero_bonus[strategy])
+  call ChooseRestHeroes()
+endfunction
+
+//============================================================================
+
+
+
+
+//===========================================================================
+// build forces if commanded
+//===========================================================================
+
+#INCLUDETABLE <$VER$\$RACE$\CommandBuilds.txt> #EFR
+function %1Build takes nothing returns nothing
+  local integer cc_%1 = 0
+
+	set cc_%1 = TownCount(%2)
+	if cc_%1 >= bn_%1 then
+	  set strategy = chosen_strategy
+	else
+	  call BuildUnit( bn_%1, %2, 90  )
+	endif
+endfunction
+#ENDINCLUDE
+
+function cmdBuild takes nothing returns nothing
+  if false then
+#INCLUDETABLE <$VER$\$RACE$\CommandBuilds.txt> #EFR
+  elseif strategy == #EVAL{49+%row} then
+    call %1Build()
+#ENDINCLUDE
+  endif
+endfunction
+
+//============================================================================
+//  set_skills
+//============================================================================
+function set_skills takes nothing returns nothing
+#INCLUDETABLE <$VER$\$RACE$\Heroes.txt> #EFR
+    if hero[1]== %1 then
+        call LoadSkills(1,%row,1)
+    elseif hero[2]== %1 then
+        call LoadSkills(2,%row,2)
+    elseif hero[3]== %1 then
+        call LoadSkills(3,%row,3)
+    endif
+#ENDINCLUDE
+endfunction
+
+//============================================================================
+//  setup_force
+//============================================================================
+function setup_force takes boolean inj returns nothing
+
+    set wave = wave + 1
+
+    call InitAssaultGroup()
+
+    if inj then
+      call RemoveInjuries()
+    endif
+
+    call SetMeleeGroupAM( hero[1]    )
+    call SetMeleeGroupAM( hero[2]   )
+    call SetMeleeGroupAM( hero[3]   )
+//	if race_has_ghouls and race_ghouls_attack then
+//		call SetAssaultGroupAM(attacking_ghouls, attacking_ghouls, racial_ghoul)
+//	endif
+#INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%3" =~ /\b$RACE$\b/ and "%11" eq "true"
+    call SetMeleeGroupAM( %1      )
+#ENDINCLUDE
+    
+    call AttackGroupAddNeutrals()
+
+endfunction
+
+//============================================================================
+//	Militia_Fast_Built_Town_Hall
+//============================================================================
+
+// ( REMOVED AND NOW A JOB)
+
+//============================================================================
+//  basic_melee
+//============================================================================
+function basic_melee takes integer food, integer prio returns nothing
+    call FoodPoolAM(food, true, race_simple_melee, GetFoodUsed(old_id[race_simple_melee]), CanBuildUnit(race_advanced_melee), race_advanced_melee, GetFoodUsed(old_id[race_advanced_melee]), prio)
+endfunction
+
+//============================================================================
+//  setup_ghouls
+//============================================================================
+function setup_ghouls takes nothing returns nothing
+  local integer gn = TownCountDone(racial_ghoul)
+  local integer wood = GetWood()
+  if wood > minimum_peon_wood then
+    set take_all_ghouls_along = true
+  elseif wood < minimum_peon_wood then
+    set take_all_ghouls_along = false
+  endif
+  if take_all_ghouls_along then
+    set attacking_ghouls = gn - Max(1 - (R2I(shredder_peon_count/2) * TownCountDone(neutral_shredder)), 0)
+	set harvesting_ghouls = 0
+  elseif wave <= 4 then
+    set attacking_ghouls = Max(6, gn - 2)
+	set harvesting_ghouls = 0
+  //elseif wave==2 then
+  //  set attacking_ghouls = Max(6, gn - 2)
+ // elseif wood < maximum_peon_wood then
+    //set attacking_ghouls = gn - Max((gn - 4) - (4 * TownCountDone(neutral_shredder)), 0)
+//	  set harvesting_ghouls = Max(0,Min(10 - wood / minimum_peon_wood,c_ghoul_done))
+//	  set attacking_ghouls = gn - (havesting_ghouls - (4 * TownCountDone(neutral_shredder))
+  //elseif wood > maximum_peon_wood and wood < minimum_peon_wood / 2 then
+  //  set attacking_ghouls = gn - Max(2 - (4 * TownCountDone(neutral_shredder)), 0)
+  else
+	  set harvesting_ghouls = Max(0,Min(5 - wood / R2I(maximum_peon_wood*1),gn) - (R2I(shredder_peon_count/2) * TownCountDone(neutral_shredder)))
+	  set attacking_ghouls = gn - harvesting_ghouls 
+  endif
+  set attacking_ghouls = Min(Max(attacking_ghouls, 0), gn)
+endfunction
+
+#INCLUDE <$VER$\$RACE$\BuildSequence.ai>
+
+//============================================================================
+//  build_sequence call
+//============================================================================
+function init_strategy takes nothing returns nothing
+  call InitBlockList()
+  call InitRBlockList()
+  call InitHarass()
+  call global_init_strategy()
+  set exp_first_time = p_exp_first_time[profile] + strategy_first_exp_time[strategy]
+  set exp_second_time = p_exp_second_time[profile] + strategy_second_exp_time[strategy]
+  call ApplyStrategyRaceAggression()
+
+#SEARCHCODE InitStrats strategy
+
+endfunction
+
+function build_sequence takes nothing returns nothing
+  call global_build_sequence()
+  
+    if towerrush then
+	   call AddBlock(2, GRUNT, true, 0, STRONGHOLD, 1000)
+	   call BuildUnit(1, hero[1], 100)
+       call BuildUnit(1, race_towerrush_requirement, 98)
+    endif
+	
+  if strategy >= rp_strat_length then
+    call cmdBuild()
+  else
+#SEARCHCODE Strats strategy
+  endif
+endfunction
+
+//============================================================================
+//  attack_sequence_all
+//============================================================================
+function attack_sequence_all takes nothing returns nothing
+
+     call Trace("Starting Attack Thread Loop") 
+
+  if ver_heroes then
+  loop
+      exitwhen TownCountDone(hero[1])>0
+      call Sleep(2 * sleep_multiplier)
+  //    call Trace("Attack Loop1")
+  endloop
+  endif
+
+  call StaggerSleep(0,2)
+  loop
+
+    call Trace("RACIAL ATTACK: Retreating")
+    loop
+      exitwhen not (CaptainRetreating() and isfleeing)
+      exitwhen player_defeated
+      call CaptainGoHome()	  // Seems to prevent the fight and flee behaviour. Still occasions where captain seems to be home instantanously when it retreated
+      call Sleep(2 * sleep_multiplier)
+
+	  //if break_attack then
+		//call DisplayToAll("break_attack is true")
+	  //endif
+    endloop
+	call Trace("RACIAL ATTACK: exit Retreating")
+
+    call HealArmy()
+    //call Trace("RACIAL ATTACK: Army Healed") 
+	
+    //call HeroHealingBugFix()     // To hopefully fix bugs with attack system as will keep them running
+	
+    if ver_heroes then
+      set creeping_only = AwaitMeleeHeroesAM()
+    endif
+
+    exitwhen player_defeated
+
+    if no_attack_allowed then
+		call Trace("RACIAL ATTACK: NO ATTACK SETTING IS ON")
+    else
+
+      if race_has_ghouls and race_ghouls_attack then
+        call setup_ghouls()
+        
+        set peons_assigned = false
+		call Trace("RACIAL ATTACK: Assigning Peons")
+        loop
+          exitwhen peons_assigned
+          call Sleep(sleep_multiplier)
+        endloop
+		call Trace("RACIAL ATTACK: exit Assigning Peons")
+		call Sleep(2) // Seems this helps make sure we do get the ghouls instead of them going back to wood
+		//call FormGroupAM(2)
+      endif	
+
+    call Trace("RACIAL ATTACK: waiting for troops")	  
+	loop
+	  exitwhen GetOwnStrength() >= minimum_attack_strength
+      call Sleep(5 * sleep_multiplier)
+    endloop
+	call Trace("RACIAL ATTACK: exit waiting troops")
+      
+//      call Trace("About to Attack")
+      call setup_force(false)
+      call universal_attack_sequence() 
+
+      set attacking_ghouls = 0
+    endif
+    
+    call Sleep(sleep_multiplier)
+  endloop
+endfunction
+
+//============================================================================
+//  harvest_gold
+//============================================================================
+function harvest_gold takes integer townid returns nothing
+    if TownHasMine(townid) then
+        call HarvestGold(townid,ver_optimal_gold)
+    endif
+endfunction
+
+//============================================================================
+//  peon_asignment
+//============================================================================
+function peon_assignment takes nothing returns nothing
+
+  call ClearHarvestAI()
+
+  call harvest_gold(0)
+  if not race_manual_loading then
+    call harvest_gold(1)
+    call harvest_gold(2)
+    call harvest_gold(3)
+  endif
+
+  if race_has_ghouls then
+		call HarvestWood(0,Max(TownCountDone(racial_ghoul) - attacking_ghouls, harvesting_ghouls) + TownCountDone(neutral_shredder))
+	set peons_assigned = true
+  elseif race_manual_loading then
+    call HarvestWood(0, 20)
+  endif
+endfunction
+
+//============================================================================
+//  peon_assignment_all
+//============================================================================
+function peon_assignment_all takes nothing returns nothing
+
+  //if race_has_power_build then
+    //call TownHallCheck()
+  //endif
+  
+  if (race_has_ghouls and race_ghouls_attack) or race_no_wood_harvest or race_manual_loading then
+    call peon_assignment()
+  else
+    call universal_peon_assignment()
+  endif
+
+endfunction
+
+//============================================================================
+//  build_sequence_all
+//============================================================================
+function build_sequence_all takes nothing returns nothing
+  local integer x = R2I(I2R(-strat_minimum_time[strategy] * (4 - Min(3, tier)))/(3*sleep_multiplier*Max(difficulty - 1, 1)))
+  local integer new_tier = 0
+
+  call Trace("Starting Build Sequence Loop")
+    loop
+      exitwhen player_defeated
+	  
+	  if recalculate_heros then
+	      call AMAI_PickMeleeHero()
+		  call set_skills()
+		  set recalculate_heros = false
+	  endif
+	  
+	  //call Trace("BUILD SEQUENCE: Running Loop")
+      call peon_assignment_all()
+	  //call Trace("BUILD SEQUENCE: peon_assignment")
+      if x > 2 then
+        set x = 0
+		//call Trace("BUILD SEQUENCE: StrategyChanger")
+        call StrategyChanger()
+      endif
+
+      if last_strategy != strategy then
+        set last_strategy = strategy
+        call SetRaceAggression()
+        if strategy <= 49 then
+          set x = R2I(I2R(-strat_minimum_time[strategy] * (4 - Min(3, tier)))/(3*sleep_multiplier*Max(difficulty - 1, 1)))
+        endif
+		//call Trace("BUILD SEQUENCE: InitBuildarray")
+        call InitBuildArrayAM()
+		//call Trace("BUILD SEQUENCE: init_strategy")
+        call init_strategy()
+        call DisplayToAlliesImportant( GetCurrentStrategyReport() )
+        call DisplayToObserversImportant( GetCurrentStrategyReport() )
+      endif
+    
+      set new_tier = GetTier()
+      if tier != new_tier then
+        set tier = new_tier
+		//call Trace("BUILD SEQUENCE: initbuildarray2")		
+        call InitBuildArrayAM()
+      endif
+
+	  	//call Trace("BUILD SEQUENCE: build_sequence")
+	  call Sleep(0.05)
+      call build_sequence()
+      call Sleep(3 * sleep_multiplier)
+	  	//call Trace("BUILD SEQUENCE: peon_assignment 2")	  
+      call peon_assignment_all()
+      call Sleep(3 * sleep_multiplier)
+      set x = x + 1
+    endloop
+endfunction
+
+
+
+//============================================================================
+//	main
+//============================================================================
+function main takes nothing returns nothing
+
+	set IsAMAI = true
+	set ai_player = Player(GetAiPlayer())
+	set home_location = GetPlayerStartLocationLoc(ai_player) // Moved from initAMAI	
+	//call InitAiUnits()   // Not actually needed on amai scripts as of course its going to be AMAI
+	
+	// start
+    set tiernum = $TIERNUM$
+	
+	call Trace("Initing racial units")
+    call initRacialUnits()
+
+    set own_race = R_$RACE$
+    
+	call Trace("initing global settings")
+    call InitGlobalSettings()
+    
+#INCLUDETABLE <$VER$\$RACE$\Settings.txt> #EFR
+    set %1 = %2
+#ENDINCLUDE
+    call Trace("About to init things")
+    call initRacialTraits()
+	call Trace("racial traits init done")
+    call InitStrats()
+	call Trace("init strats")
+    call InitAllSkills()
+	call Trace("init all skills")
+    call InitBuildings()
+	call Trace("init buildings")
+    call InitAMAI()
+	call Trace("init AMAI")
+    call InitProfile()
+	call Trace("About to choose strategy")	
+    call chooseStrategyRP()
+    call SmallMapsAdd()
+	call removeNonBeginningStrats()
+    call display_rp_strat()
+	set chosen_strategy = choose_strategy()
+
+    set strategy = chosen_strategy
+    call SetChatVar("Strategy", GetCurrentStrategyName())
+	call Trace("Strategy chosen")	
+    call AMAI_PickMeleeHero()
+	if race_towerrush_available then
+		call CanTowerRush()
+	endif
+	call Trace("Hero picked")	
+	call set_skills()
+	call Trace("hero skills set")	
+    call SetRaceAggression()
+    call init_strategy()
+	call Trace("Strategy init")	
+    call AMAI(function SkillArraysAM, function build_sequence_all, function attack_sequence_all)
+    call Trace("Playing Game")	
+	call PlayGameAM()
+
+
+endfunction

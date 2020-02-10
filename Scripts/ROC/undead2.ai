@@ -1,0 +1,479 @@
+//============================================================================
+//  Undead Melee Strategic AI
+//============================================================================
+globals
+    integer AG          = 0 // attacking ghouls
+    integer wave        = 1
+
+    boolean halls       = false
+    boolean citadel     = false
+    boolean grave       = false
+    boolean melee       = false
+    boolean ranged      = false
+    boolean C_aboms     = false // count > 0
+    boolean M_aboms     = false // may make them
+    boolean banshees    = false
+    boolean sac_pit     = false
+    boolean boneyard    = false
+    boolean fiends      = false
+    boolean slaught     = false
+    boolean temple      = false
+    boolean wagons      = false
+endglobals
+
+//============================================================================
+//  set_skills
+//============================================================================
+function set_skills takes nothing returns nothing
+    //------------------------------------------------------------------------
+    if hero_id == LICH then
+    //------------------------------------------------------------------------
+        set skills1[ 1] = FROST_NOVA
+        set skills1[ 2] = FROST_ARMOR
+        set skills1[ 3] = FROST_NOVA
+        set skills1[ 4] = DARK_RITUAL
+        set skills1[ 5] = FROST_NOVA
+        set skills1[ 6] = DEATH_DECAY
+        set skills1[ 7] = DARK_RITUAL
+        set skills1[ 8] = DARK_RITUAL
+        set skills1[ 9] = FROST_ARMOR
+        set skills1[10] = FROST_ARMOR
+    endif
+    //------------------------------------------------------------------------
+    if hero_id2 == LICH then
+    //------------------------------------------------------------------------
+        set skills2[ 1] = FROST_NOVA
+        set skills2[ 2] = FROST_ARMOR
+        set skills2[ 3] = FROST_NOVA
+        set skills2[ 4] = DARK_RITUAL
+        set skills2[ 5] = FROST_NOVA
+        set skills2[ 6] = DEATH_DECAY
+        set skills2[ 7] = DARK_RITUAL
+        set skills2[ 8] = DARK_RITUAL
+        set skills2[ 9] = FROST_ARMOR
+        set skills2[10] = FROST_ARMOR
+    endif
+
+    //------------------------------------------------------------------------
+    if hero_id == DREAD_LORD then
+    //------------------------------------------------------------------------
+        set skills1[ 1] = SLEEP
+        set skills1[ 2] = VAMP_AURA
+        set skills1[ 3] = SLEEP
+        set skills1[ 4] = CARRION_SWARM
+        set skills1[ 5] = SLEEP
+        set skills1[ 6] = INFERNO
+        set skills1[ 7] = CARRION_SWARM
+        set skills1[ 8] = CARRION_SWARM
+        set skills1[ 9] = VAMP_AURA
+        set skills1[10] = VAMP_AURA
+    endif
+    //------------------------------------------------------------------------
+    if hero_id2 == DREAD_LORD then
+    //------------------------------------------------------------------------
+        set skills2[ 1] = CARRION_SWARM
+        set skills2[ 2] = SLEEP
+        set skills2[ 3] = CARRION_SWARM
+        set skills2[ 4] = VAMP_AURA
+        set skills2[ 5] = CARRION_SWARM
+        set skills2[ 6] = INFERNO
+        set skills2[ 7] = VAMP_AURA
+        set skills2[ 8] = VAMP_AURA
+        set skills2[ 9] = SLEEP
+        set skills2[10] = SLEEP
+    endif
+
+    //------------------------------------------------------------------------
+    if hero_id == DEATH_KNIGHT then
+    //------------------------------------------------------------------------
+        set skills1[ 1] = DEATH_COIL
+        set skills1[ 2] = UNHOLY_AURA
+        set skills1[ 3] = DEATH_COIL
+        set skills1[ 4] = UNHOLY_AURA
+        set skills1[ 5] = DEATH_COIL
+        set skills1[ 6] = ANIM_DEAD
+        set skills1[ 7] = UNHOLY_AURA
+        set skills1[ 8] = DEATH_PACT
+        set skills1[ 9] = DEATH_PACT
+        set skills1[10] = DEATH_PACT
+    endif
+    //------------------------------------------------------------------------
+    if hero_id2 == DEATH_KNIGHT then
+    //------------------------------------------------------------------------
+        set skills2[ 1] = DEATH_COIL
+        set skills2[ 2] = UNHOLY_AURA
+        set skills2[ 3] = DEATH_COIL
+        set skills2[ 4] = UNHOLY_AURA
+        set skills2[ 5] = DEATH_COIL
+        set skills2[ 6] = ANIM_DEAD
+        set skills2[ 7] = UNHOLY_AURA
+        set skills2[ 8] = DEATH_PACT
+        set skills2[ 9] = DEATH_PACT
+        set skills2[10] = DEATH_PACT
+    endif
+endfunction
+
+//============================================================================
+//  setup_force
+//============================================================================
+function setup_force takes nothing returns nothing
+    call AwaitMeleeHeroes()
+
+    // enforce a minimum level of melee troops
+    //
+    if wave==1 then
+        set AG = 4
+        set wave = 2
+    elseif wave==2 then
+        set AG = 5
+        set wave = 3
+    else
+        loop
+            if GetWood() < 200 then
+                set AG = GetUnitCountDone(GHOUL)-5
+            else
+                set AG = GetUnitCountDone(GHOUL)-3
+            endif
+            if AG < 0 then
+                set AG = 0
+            endif
+            exitwhen AG + 2*GetUnitCountDone(ABOMINATION) >= 4
+            call Sleep(1)
+        endloop
+    endif
+
+    call InitAssaultGroup()
+    call RemoveInjuries()
+
+    call SetAssaultGroup( 1, 9, hero_id         )
+    call SetAssaultGroup( 0, 9, hero_id2        )
+    call SetAssaultGroup(AG,AG, GHOUL           )
+    call SetAssaultGroup( 0, 9, CRYPT_FIEND     )
+    call SetAssaultGroup( 0, 9, ABOMINATION     )
+    call SetAssaultGroup( 0, 9, NECRO           )
+    call SetAssaultGroup( 0, 9, BANSHEE         )
+    call SetAssaultGroup( 0, 9, GARGOYLE        )
+    call SetAssaultGroup( 0, 9, FROST_WYRM      )
+
+    call SetInitialWave(10)
+endfunction
+
+//============================================================================
+//  attack_sequence
+//============================================================================
+function attack_sequence takes nothing returns nothing
+    local boolean needs_exp
+    local boolean has_siege
+    local boolean major_ok
+    local boolean air_units
+    local boolean wyrms
+
+    loop
+        exitwhen GetUnitCountDone(hero_id)>0
+        call Sleep(2)
+    endloop
+
+    call StaggerSleep(0,2)
+    loop
+        loop
+            exitwhen not CaptainRetreating()
+            call Sleep(2)
+        endloop
+
+        call setup_force()
+
+        set wyrms            = GetUnitCountDone(FROST_WYRM)>0
+        set air_units        = wyrms or TownCountDone(GARGOYLE)>0
+        set major_ok         = air_units or GetUnitCountDone(CRYPT_FIEND)>0
+        set needs_exp        = take_exp and major_ok
+        set has_siege        = wyrms or GetUnitCountDone(MEAT_WAGON)>0
+        set allow_air_creeps = air_units or (major_ok and GetUpgradeLevel(UPG_FIEND_WEB)>0)
+
+        call SingleMeleeAttack(needs_exp,has_siege,major_ok,air_units)
+    endloop
+endfunction
+
+//============================================================================
+//  undead_mine
+//============================================================================
+function undead_mine takes integer townid returns nothing
+    if GetGold() < 1000 and TownHasMine(townid) then
+        call SecondaryTown( townid, 1, UNDEAD_MINE )
+    endif
+endfunction
+
+//============================================================================
+//  init_booleans
+//============================================================================
+function init_booleans takes nothing returns nothing
+    set fiends   = GetUnitCountDone(CRYPT_FIEND)>=2 
+    set halls    = TownCountDone(NECROPOLIS_2)>0
+    set citadel  = TownCountDone(NECROPOLIS_3)>0
+    set grave    = GetUnitCountDone(GRAVEYARD)>0
+    set C_aboms  = GetUnitCountDone(ABOMINATION)>0
+    set M_aboms  = citadel and slaught and GetWood()>100
+    set melee    = C_aboms or GetUnitCountDone(GHOUL)>0
+    set ranged   = fiends or TownCountDone(GARGOYLE)>0
+    set slaught  = GetUnitCountDone(SLAUGHTERHOUSE)>0
+    set temple   = GetUnitCountDone(DAMNED_TEMPLE)>0
+    set banshees = citadel and temple
+    set sac_pit  = GetUnitCountDone(SAC_PIT)>0
+    set boneyard = GetUnitCountDone(BONEYARD)>0
+    set wagons   = GetUnitCountDone(MEAT_WAGON)>0
+endfunction
+
+//============================================================================
+//  upgrade_sequence
+//============================================================================
+function upgrade_sequence takes nothing returns nothing
+
+    //*** CRYPT UPGRADES ***
+    //
+    if grave and halls and GetUnitCount(CRYPT_FIEND)>0 then
+        call SetBuildUpgr( 1, UPG_FIEND_WEB )
+
+        if citadel then
+            call SetBuildUpgr( 1, UPG_GHOUL_FRENZY )
+
+            if TownCountDone(GARGOYLE)>0 then
+                call SetBuildUpgr( 1, UPG_STONE_FORM )
+            endif
+        endif
+    endif
+
+    //*** GRAVEYARD UPGRADES ***
+    //
+    if grave then
+        if melee then
+            call SetBuildUpgr( 1, UPG_UNHOLY_ARMOR )
+            call SetBuildUpgr( 1, UPG_UNHOLY_STR   )
+        endif
+
+        if ranged then
+            call SetBuildUpgr( 1, UPG_CR_ATTACK )
+            call SetBuildUpgr( 1, UPG_CR_ARMOR  )
+        endif
+
+        if halls then
+            if melee then
+                call SetBuildUpgr( 2, UPG_UNHOLY_ARMOR )
+                call SetBuildUpgr( 2, UPG_UNHOLY_STR   )
+            endif
+
+            if ranged then
+                call SetBuildUpgr( 2, UPG_CR_ATTACK )
+                call SetBuildUpgr( 2, UPG_CR_ARMOR  )
+            endif
+
+            if citadel then
+                if melee then
+                    call SetBuildUpgr( 3, UPG_UNHOLY_ARMOR )
+                    call SetBuildUpgr( 3, UPG_UNHOLY_STR   )
+                endif
+
+                if ranged then
+                    call SetBuildUpgr( 3, UPG_CR_ATTACK )
+                    call SetBuildUpgr( 3, UPG_CR_ARMOR  )
+                endif
+            endif
+        endif
+    endif
+    
+    //*** TEMPLE OF THE DAMNED UPGRADES ***
+    //
+    if temple then
+        if GetUnitCount(NECRO)>=3 then
+            call SetBuildUpgr( 1, UPG_NECROS )
+
+            if citadel then
+                call SetBuildUpgr( 2, UPG_NECROS )
+            endif
+
+            call SetBuildUpgr( 1, UPG_SKEL_LIFE )
+        endif
+
+        if GetUnitCount(BANSHEE)>0 then
+            call SetBuildUpgr( 1, UPG_BANSHEE )
+
+            if citadel then
+                call SetBuildUpgr( 2, UPG_BANSHEE )
+            endif
+        endif
+    endif
+
+    //*** SLAUGHTERHOUSE UPGRADES ***
+    //
+    if citadel and slaught and (C_aboms or wagons) then
+        call SetBuildUpgr( 1, UPG_PLAGUE )
+    endif
+
+    //*** BONEYARD UPGRADES ***
+    //
+    if boneyard and GetUnitCount(FROST_WYRM)>0 then
+        call SetBuildUpgr( 1, UPG_WYRM_BREATH )
+    endif
+endfunction
+
+//============================================================================
+//  forces_sequence
+//============================================================================
+function forces_sequence takes nothing returns nothing
+    local integer farms = TownCountDone(ZIGGURAT_1) + TownCountDone(NECROPOLIS_1)
+    local integer count
+
+    //*** RANGED FORCES ***
+    //
+    if farms < 4 then
+        return
+    endif
+    call FoodPool( 12,  grave,CRYPT_FIEND,3,  grave and citadel,GARGOYLE,2 )
+
+    //*** SIEGE FORCES ***
+    //
+    if farms < 6 then
+        return
+    endif
+    if sac_pit then
+        // call SetBuildUnit( 1, SHADE )
+    endif
+    call FoodPool( 8,  slaught,MEAT_WAGON,4,  boneyard,FROST_WYRM,7 )
+
+    //*** CASTERS ***
+    //
+    if farms < 7 then
+        return
+    endif
+    if banshees then
+        call SetBuildUnit( 3, NECRO     )
+        call SetBuildUnit( 2, BANSHEE   )
+    endif
+endfunction
+
+//============================================================================
+//  build_melee
+//============================================================================
+function build_melee takes integer pool returns nothing
+    call FoodPool( pool,  true,GHOUL,2,  M_aboms,ABOMINATION,4 )
+endfunction
+
+//============================================================================
+//  build_sequence
+//============================================================================
+function build_sequence takes nothing returns nothing
+    local integer mines = GetMinesOwned()
+
+    call InitBuildArray()
+    call init_booleans()
+
+    call MeleeTownHall( 0, NECROPOLIS_1 )
+
+    call SetBuildUnit( 1, ACOLYTE           )
+
+    call undead_mine(0)
+
+    call SetBuildUnit( 4, ACOLYTE           )
+    call BuildFactory(    CRYPT             )
+    call SetBuildUnit( 5, ACOLYTE           )
+    call SetBuildUnit( 1, GHOUL             )
+    call SetBuildUnit( 1, ZIGGURAT_1        )
+    call SetBuildUnit( 2, GHOUL             )
+    call SetBuildUnit( 1, UNDEAD_ALTAR      )
+    call SetBuildUnit( 2, ZIGGURAT_1        )
+
+    call build_melee( 8 )
+    call SetBuildUnit( 1, hero_id           )
+
+    call build_melee( 12 )
+    call SetBuildUpgr( 1, UPG_CANNIBALIZE   )
+    call SetBuildUnit( 1, GRAVEYARD         )
+
+    call build_melee( 14 )
+    call SetBuildUnit( 3, ZIGGURAT_1        )
+    call build_melee( 18 )
+    call SetBuildUpgr( 1, UPG_UNHOLY_ARMOR  )
+
+    if not citadel then
+        call SetBuildUnit( 2, CRYPT_FIEND   )
+    endif
+
+    call SetBuildUpgr( 1, UPG_UNHOLY_STR    )
+
+    call UpgradeAll( NECROPOLIS_1, NECROPOLIS_2 )
+
+    call forces_sequence()
+    call upgrade_sequence()
+
+    call SetBuildUnit( 4, ZIGGURAT_1        )
+
+    if MeleeDifficulty() != MELEE_NEWBIE then
+        call SetBuildUnit(  1, hero_id2     )
+    endif
+
+    call undead_mine(1)
+    call BasicExpansion( mines < 2, UNDEAD_MINE )
+    call MeleeTownHall( 1, NECROPOLIS_1     )
+
+    if GetUnitCountDone(UNDEAD_MINE) > 1 then
+        call SetBuildUnit( 11, ACOLYTE      )
+    endif
+
+    call UpgradeAll( ZIGGURAT_1, ZIGGURAT_2 )
+
+    call GuardSecondary( 1, 2, ZIGGURAT_1   )
+
+    call BuildFactory(    SLAUGHTERHOUSE    )
+    call BuildFactory(    DAMNED_TEMPLE     )
+    call SetBuildUnit( 1, NECROPOLIS_3      )
+
+    call undead_mine(2)
+    call BasicExpansion( mines < 3, UNDEAD_MINE )
+    call MeleeTownHall( 2, NECROPOLIS_1     )
+    call GuardSecondary( 2, 2, ZIGGURAT_1   )
+
+    call SetBuildUnit( 1, SAC_PIT           )
+    call SetBuildUnit( 1, BONEYARD          )
+
+    if GetUnitCount(BONEYARD)>0 and GetUnitCount(ZEPPELIN)<3 then
+        call GetZeppelin()
+    endif
+endfunction
+
+//============================================================================
+//  harvest_gold
+//============================================================================
+function harvest_gold takes integer townid returns nothing
+    if TownHasMine(townid) then
+        call HarvestGold(townid,5)
+    endif
+endfunction
+
+//============================================================================
+//  peon_asignment
+//============================================================================
+function peon_assignment takes nothing returns nothing
+    loop
+        call ClearHarvestAI()
+
+        call harvest_gold(0)
+        call harvest_gold(1)
+        call harvest_gold(2)
+        call harvest_gold(3)
+
+        call HarvestWood(0,GetUnitCountDone(GHOUL)-AG)
+
+        call build_sequence()
+        call Sleep(3)
+    endloop
+endfunction
+
+//============================================================================
+//	main
+//============================================================================
+function main takes nothing returns nothing
+    set do_debug_cheats = GetAiPlayer()==1
+
+    call PickMeleeHero(RACE_UNDEAD)
+    call set_skills()
+    call StandardAI(function SkillArrays, function peon_assignment, function attack_sequence)
+    call PlayGame()
+endfunction

@@ -1,0 +1,77 @@
+#IFDEF GLOBAL
+    unit double_expansion_target = null
+//    unit nearby_enemy_building = null
+#ELSE
+//============================================================================
+// Detect double expansion
+//============================================================================
+function GetOtherExpansionNearby takes real tx, real ty returns unit
+  local group g = CreateGroup()
+  local unit u = null
+  local unit nearby_enemy_building = null
+  local unit nearby_enemy = null
+  local integer id = 0
+  local boolean exitloop = false
+  call GroupEnumUnitsInRange(g, tx, ty, expansion_taken_radius, null)
+  set g = SelectByPlayer(g, ai_player, false)
+  set g = SelectByAlive(g, true)
+  set g = SelectByAlive2(g, true)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null or exitloop == true
+    set id = GetUnitTypeId(u)
+      if IsUnitType(u, UNIT_TYPE_TOWNHALL) == true then //or id == oUNDEAD_MINE then//id == oTOWN_HALL or id == oKEEP or id == oCASTLE or id == oUNDEAD_MINE or id == oGREAT_HALL or id == oSTRONGHOLD or id == oFORTRESS or id == oTREE_LIFE or id == oTREE_AGES or id == oTREE_ETERNITY then
+        //call DestroyGroup(g)
+        //set g = null
+		set exitloop = true
+		set nearby_enemy = u
+        //return u
+      elseif IsPlayerEnemy(GetOwningPlayer(u), ai_player) and IsUnitType(u, UNIT_TYPE_STRUCTURE) == true then
+        set nearby_enemy_building = u
+      endif
+    call GroupRemoveUnit(g,u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  if nearby_enemy == null then
+	set nearby_enemy = nearby_enemy_building
+  endif
+  return nearby_enemy
+endfunction
+
+function CheckDoubleExpansion takes nothing returns nothing
+  local group g = CreateGroup()
+  local unit v = null
+  local unit u = null
+  local player p = null
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectNumberOfId(g, 100, old_id[racial_expansion])
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    set v = GetOtherExpansionNearby(GetUnitX(u), GetUnitY(u))
+    if v != null then
+      set p = GetOwningPlayer(v)
+      if IsPlayerEnemy(ai_player, p) then
+        call Trace("Enemy double expansion detected")
+        set double_expansion_target = v
+      elseif IsPlayerAlly(ai_player, p) then
+        call Trace("Ally double expansion detected")
+        call IssueImmediateOrderById(u, order_cancel)
+      endif
+    endif
+//    if nearby_enemy_building != null and UnitAlive(nearby_enemy_building) then
+//      set double_expansion_target = nearby_enemy_building
+//    endif
+    call GroupRemoveUnit(g,u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+endfunction
+
+function DetectDoubleExpJob takes nothing returns nothing
+  call DisplayToAllJobDebug("DETECT_DOUBLE JOB START")
+  call CheckDoubleExpansion()
+  call TQAddJob(10 * sleep_multiplier, DETECT_DOUBLE_EXP, 0)
+endfunction
+#ENDIF

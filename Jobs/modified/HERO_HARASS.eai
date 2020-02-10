@@ -1,0 +1,143 @@
+#IFDEF GLOBAL
+    constant integer HARASS_TARGET_PEONS = 0
+    constant integer HARASS_TARGET_EXPANSION = 1
+    constant integer HARASS_TARGET_LOCATION = 2
+    constant integer HARASS_TARGET_MAIN_HALL = 3
+    
+
+    integer array harass_time
+    integer array harass_size
+    integer distraction_group = 0
+#ELSE
+function HarassJob takes integer ht, unit targ, unit harasser returns nothing
+  local unit target = targ
+  local string key = Int2Str(GetHandleId(harasser))
+  local real strength_limit = GetStoredReal(additional_info, key, "Strength_Limit")
+  local boolean state_attacking = GetStoredBoolean(additional_info, key, "State_Attacking")
+  local real flee_percent = GetStoredReal(additional_info, key, "Flee_Percent")
+  local boolean avoiding_towers = GetStoredBoolean(additional_info, key, "Avoid_Towers")
+  local boolean state_retreat = GetStoredBoolean(additional_info, key, "State_Retreat")
+  local real start_strength = GetStoredReal(additional_info, key, "Start_Strength")
+  local group g = null
+  local unit u = null
+  local real strength_sum = 0
+  local real player_sum = 0
+  local integer harass_num = 0
+  local boolean towersdetected = false
+  local location l = null
+
+  call DisplayToAllJobDebug("HARASS HERO JOB START")
+  if not UnitAlive(harasser) then
+    return
+  endif
+  
+  if town_threatened and not state_attacking then
+    call TQAddGroupJob(5 * sleep_multiplier, HERO_HARASS, ht, target, harasser)
+	return
+  endif
+  
+  set l = GetUnitLoc(harasser)
+  if state_retreat and DistanceBetweenPoints(l, home_location) > 1000 then
+	call IssuePointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
+	call TQAddGroupJob(3 * sleep_multiplier, HERO_HARASS, ht, target, harasser)
+	call RemoveLocation(l)
+	set l = null
+	return
+  elseif state_retreat then
+    call StoreBoolean(additional_info, key, "State_Retreat", false)
+	call RecycleGuardPosition(harasser)
+	call RemoveLocation(l)
+	set l = null
+	return
+  endif
+  	call RemoveLocation(l)
+	set l = null
+  
+  if target == null or not UnitAlive(target) then
+    if ht == HARASS_TARGET_PEONS then
+      set target = GetHarassPeonTarget(harasser)
+    elseif ht == HARASS_TARGET_EXPANSION then
+      set target = GetHarassExpansionTarget(harasser)
+    elseif ht == HARASS_TARGET_LOCATION then
+      set target = GetHarassLocationTarget(GetStoredReal(additional_info, key, "LocationX"), GetStoredReal(additional_info, key, "LocationY"))
+    else
+      set target = GetHarassMainHallTarget(harasser)
+    endif
+  endif
+  
+	    if avoiding_towers and GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_harass_tower_check_radius) > 0 then
+			set target = null
+	    else
+		endif
+  
+  if target != null and UnitAlive(target) then
+  
+    set g = CreateGroup()
+    if state_attacking then
+      call GroupEnumUnitsInRange(g,GetUnitX(harasser),GetUnitY(harasser),harass_radius_attack_ranged,null)
+    else
+      call GroupEnumUnitsInRange(g,GetUnitX(harasser),GetUnitY(harasser),harass_radius_flee_ranged,null)
+    endif
+	set g = SelectByAlive(g, true)
+	call GroupRemoveUnit(g, harasser)
+	if ht == HARASS_TARGET_LOCATION then
+		 call CreateDebugTag("Distraction: Harrasing Opponent Location", 10, harasser, 3.00, 1.50)
+	else
+		call CreateDebugTag("Harassing Opponent", 10, harasser, 3.00, 1.50)
+	endif 
+	if GetUnitState(harasser, UNIT_STATE_LIFE) <= RMax(flee_health_percentage * GetUnitState(harasser, UNIT_STATE_MAX_LIFE), flee_minimum_health) then
+			call IssuePointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
+			call TQAddUnitJob(0.5, SEND_HOME, 50, harasser)
+	else
+			set player_sum = GetUnitStrength(harasser)
+	endif
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+	  if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitTower(u) and avoiding_towers then
+		set towersdetected = true
+	  endif	  
+      if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsUnitType(u, UNIT_TYPE_PEON) == false then
+        set strength_sum = strength_sum + GetUnitStrength(u)
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+
+    call DestroyGroup(g)
+    set g = null
+    set u = null
+    if towersdetected or player_sum <= start_strength * flee_percent then
+	  call StoreBoolean(additional_info, key, "State_Retreat", true)
+      call IssuePointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
+    elseif strength_sum < strength_limit then
+      call StoreBoolean(additional_info, key, "State_Attacking", true)
+      if DistanceBetweenUnits(harasser, target) > 650 then
+	    //if GetUnitCurrentOrder(u) != OrderId("windwalk")
+		if not IsUnitInvisible(harasser, GetOwningPlayer(target)) then
+			call IssueImmediateOrder("windwalk")
+		endif
+	    call CreateDebugTag("HARASS: Move to Target unit", 10, target, 3.00, 1.50)
+        call IssuePointOrder(harasser, "move", GetUnitX(target), GetUnitY(target))
+      else
+        call IssueTargetOrder(harasser, "attack", target)
+		call CreateDebugTag("HARASS: Attack Target", 10, target, 3.00, 1.50)
+      endif
+    elseif strength_sum >= strength_limit*2 then
+	  call StoreBoolean(additional_info, key, "State_Retreat", true)
+      call IssuePointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
+      call StoreBoolean(additional_info, key, "State_Attacking", false)		  
+	else
+	  call StoreBoolean(additional_info, key, "State_Retreat", true)
+      call IssuePointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
+      call StoreBoolean(additional_info, key, "State_Attacking", false)
+    endif
+  else
+//    call DisplayToAll("Target dead")
+    call CreateDebugTag("HARASS: Target Dead", 10, target, 3.00, 1.50)
+    call IssuePointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
+	call StoreBoolean(additional_info, key, "State_Retreat", true)
+	call StoreBoolean(additional_info, key, "State_Attacking", false)
+  endif
+  call TQAddGroupJob(2, HARASS, ht, target, harasser)
+endfunction
+#ENDIF
