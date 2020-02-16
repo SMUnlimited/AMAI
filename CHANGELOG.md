@@ -1,29 +1,23 @@
-ERRORS
-============================================================================================
-AMAI blizzard bug where in the period where no attack is going on amai will just randomly decide to still attack an enemy kinda following them after they are attacked and acted to defend
-IS possible that hero to buy healing items gets stuck with his units. Need to disperse units somehow so unit can get there.
-Received workaround email for some hardcoded problems with towers (may just use our town system to take over)
-Slow re-build phase when expansion is attacked. Likely linked to saving money for expansions.
-There are cases where if the town hall is built too far from the mine the nearby mine is never harvested.
-Strange bug occured where peasants where sent to town hall area and just stand there doing nothing. Militia expansion may be playing up here.
-Some times the double expansion detection can't pick up the other town hall.
-Need to remove the repair ability from most peasants(if possible) to prevent the human mass repair bug.
-Chinese language dosn't work due to character set issues with the scripts. May require it to be using roman language sets.
+# Changelog
+All notable changes to this project will be documented in this file.
 
-IDEAS
-============================================================================================
-Micro system to be able to deny experience gains to enemies while in battle
-Micro improvements so fast ranged attackers avoid melee attackers.
-Major overhaul of the resoruce collection systems for supporting low resource problems and making sure it realises to expand in critical gold situations
-The bonus strength added to heroes should be added only based on abilities chosen. (So summon spells give heros more strength)
-Need to create my own captain system and force units to follow to prevent fight and flee behavior.
-Need to complete the automation of unit counters when you customize your own AMAI. Based on the strengths.txt and the units race can build it will automatically set base values for them without having to write all the unit counters yourself. The strategies will just override/modify the base values.
-Ability to turn off or modify the healing system and when it runs.
-Ability to support any number of heros instead of just 3.
-Ability to choose the strength that militia have for the militia check controls
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-CHANGELOG
-============================================================================================
+## [Unreleased]
+
+### Added
+
+### Changed
+- Reworked the changelog for keepachangelog format.
+
+### Deprecated
+
+### Removed
+- Removed grimoire and war3 exe hack support as it no longer works for versions post 1.24+. Only player edition "AMAI.exe" works.
+
+### Security
+
+## [Legacy Versions]
 14/09/09
 --------------------------------------------------------------------------------------------
 The inbuilt grimoire provided with developer edition war3err updated for 1.24b support.
