@@ -21,37 +21,37 @@ Tested with strawbery perl 5.30 and Tk 804.034
 # Credits
 
 ## Helpers
-Hrothgaar
+Hrothgaar,
 WargH
 
 ## Translations
-English - Chad Nicholas
-Swedish - Zalamander
-German - AIAndy, Sagan
-French - JUJU, WILL THE ALMIGHTY
-Spanish - Vexorian, Moyack
-Romanian - Andas_007
-Chinese - Dr Fan
-Russian - RaZ and Darkloke
-Portuguese - imba curisco ghouleh
+English - Chad Nicholas,
+Swedish - Zalamander,
+German - AIAndy, Sagan,
+French - JUJU, WILL THE ALMIGHTY,
+Spanish - Vexorian, Moyack,
+Romanian - Andas_007,
+Chinese - Dr Fan,
+Russian - RaZ and Darkloke,
+Portuguese - imba curisco ghouleh,
 Norwegian - Aray
 
 ## The Commander
-AIAndy
+AIAndy,
 DK Slayer
 
 ## Quality Assurance - Reign of Chaos
 WargH
 
 ## Quality Assurance - The Frozen Throne
-Hrothgaar
-WargH
-ster
-Tommi
-xWOLF
-Feannor
-Jum-Jum
+Hrothgaar,
+WargH,
+ster,
+Tommi,
+xWOLF,
+Feannor,
+Jum-Jum,
 and everyone else I might have forgotten to mention here.
 
-#JASS Precompiler
+## JASS Precompiler
 Vidstige
