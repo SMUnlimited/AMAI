@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Added
 - Latest version of pjass.
 - Missing licence text for sfmpq.
+- Official Commander Support for 1.30+.
 
 ### Changed
 - Reworked the changelog for keepachangelog format.
