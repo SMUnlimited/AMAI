@@ -13,12 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Changed
 - Reworked the changelog for keepachangelog format.
 
-### Deprecated
-
 ### Removed
 - Removed grimoire and war3 exe hack support as it no longer works for versions post 1.24+. Only player edition "AMAI.exe" works.
-
-### Security
+- Removed MPQDraft executable as no longer useful post 1.30.
+- Removed various files that are not of use.
 
 ## [Legacy Versions]
 14/09/09
