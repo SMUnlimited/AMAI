@@ -1,4 +1,4 @@
-pjass 09.10.2007 (v 1.0j)
+pjass 07.11.2007 (v 1.0k)
 A lightweight and fast Jass2 parser for bison/yacc
 by Rudi Cilibrasi
 Sun Jun  8 00:51:53 CEST 2003
