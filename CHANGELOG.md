@@ -8,7 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Added
 - Latest version of pjass.
 - Missing licence text for sfmpq.
-- Official Commander Support for 1.30+.
+- Official Support for 1.30+.
+- New `installToMap` scripts provided to install AMAI and VSAI editions to maps. 
+  - MPQEditor by Ladislav Zezula is now included to support this.
+  - These will increase the MPQ file limit on maps to 64 automatically as on official maps the limit is too low and prevents AMAI being installed.
 
 ### Changed
 - Reworked the changelog for keepachangelog format.
