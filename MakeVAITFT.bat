@@ -49,7 +49,6 @@ AddToMPQ Scripts\TFT\AMAI.mpq Scripts\TFT\elf2.ai Scripts\elf2.ai
 AddToMPQ Scripts\TFT\AMAI.mpq Scripts\TFT\human2.ai Scripts\human2.ai
 AddToMPQ Scripts\TFT\AMAI.mpq Scripts\TFT\orc2.ai Scripts\orc2.ai
 AddToMPQ Scripts\TFT\AMAI.mpq Scripts\TFT\undead2.ai Scripts\undead2.ai
-copy Scripts\TFT\AMAI.mpq Scripts\AMAI.mpq
 ECHO \Scripts\TFT\AMAI.mpq created
 ECHO =============================
 ECHO Making AMAI finished
