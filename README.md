@@ -1,15 +1,16 @@
 # AMAI
  Advanced Melee Artifical Intelligence Mod For Warcraft 3
  
- Created by AIAndy, Zalamander with continued development by the Strategy Master.
+ Created by **AIAndy**, **Zalamander** with continued development by the **Strategy Master**.
 
 Official Release Links available from: https://www.hiveworkshop.com/threads/advanced-melee-ai.62879/
 
 As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601 (Site is now down)
 
 # Requirements
-You must install perl (via strawberry or activestate).
-Additionally you need to install the *Tk* module if you want to use the Strategy Manager UI Client.
+You must install perl (via `strawberry` or `activestate`).
+Additionally you need to install the *Tk* module if you want to run the Strategy Manager UI Client.
+`Activestate` uses the package manager, while `strawberry` you need to use the CPAN client to install a module.
 
 Tested with strawbery perl 5.30 and Tk 804.034
 
@@ -39,7 +40,7 @@ After installing AMAI on your map just start Warcraft3: RoC or TFT and play the 
 - This special version will make *odd* teams run with AMAI and *even* teams run with the standard blizzard AI.
 
 ## Commander
-To *disable* the commander delete the blizzard.j file within `Scripts/` before running the install script.
+To *disable* the commander rename/delete the blizzard.j file within `Scripts/` before running the install script.
 
 If you installed The Commander to the map there will be language selection dialogs to select a language. Another dialog may also appear with options
 

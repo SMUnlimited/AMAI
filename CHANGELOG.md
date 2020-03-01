@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 - Reworked the changelog for keepachangelog format.
+- Tweaked english ally chat messages so its more noticeable who the AI is attacking.
 
 ### Removed
 - Removed grimoire and war3 exe hack support as it no longer works for versions post 1.24+. Only player edition "AMAI.exe" works.
