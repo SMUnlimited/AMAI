@@ -8449,34 +8449,35 @@ function DetermineCounterForce takes nothing returns integer
    local integer strength = 0
    local integer total_strength = 0
    local integer array tstrength
-   local integer i
+   local string array strengthtext
+   local integer num_strengths
    local integer j
    local integer random
    local integer maxstr
    local integer array temps
    local real ally_null = 0    // Blank point
    
-   set i = 0
+   set num_strengths = 0
    set j = 0
    set maxstr = 0
 #INCLUDETABLE <$VER$\Strengths.txt>
-	set tstrength[i] = R2I(RMax(enemy_%1 - ally_%2 - ally_%3,0)*100)
-	set strength = strength + tstrength[i]
-	set i=i+1
+	set tstrength[num_strengths] = R2I(RMax(enemy_%1 - ally_%2 - ally_%3,0)*100)
+	set strength = strength + tstrength[num_strengths]
+	set strengthtext[num_strengths] = "%1"
+	set num_strengths = num_strengths + 1
 #ENDINCLUDE
-	//
-	//
+
 	set tstrength[4] = tstrength[4] + 3	// Favour to normal enemies
 	set strength = strength + 3
 	// Normalise strength
 	//loop
-	//	exitwhen j >= i
+	//	exitwhen j >= num_strengths
 	//	set tstrength[j] = R2I((tstrength[j]*100)/strength)
 	//	set total_strength = total_strength + tstrength[j]
 	//	set j = j + 1
 	//endloop
 	loop
-		exitwhen j >= i
+		exitwhen j >= num_strengths
 		if tstrength[j] > maxstr then
 			set maxstr = j
 		endif
@@ -8486,10 +8487,11 @@ function DetermineCounterForce takes nothing returns integer
 		set tstrength[maxstr] = tstrength[maxstr] + R2I(strat_persistence/200) // Bonus to top counter
 		set strength = strength + R2I(strat_persistence/200)
 	endif
+	call Trace("Highest Enemy Unit Strength is:" + strengthtext[maxstr] + " with total:" + Int2Str(tstrength[maxstr]))
 	set j = 0
 	// Remove bad strats to not affect calculations with really low amounts of strength
 	loop
-		exitwhen j >= i
+		exitwhen j >= num_strengths
 		if tstrength[j] < 3 then
 			set tstrength[j] = 0
 		endif
@@ -8501,11 +8503,12 @@ function DetermineCounterForce takes nothing returns integer
 	set strength = 0
 	loop
 		set strength = strength + tstrength[j]
-		exitwhen random <= strength or j >= i
+		exitwhen random <= strength or j >= num_strengths
 		set j = j + 1	// Will be the the chosen strength to build units against
 	endloop
-	if j >= i then // Default to normal if nothing has strength
-		set j = 4
+	if j >= num_strengths then 
+		// TODO should we default to normal if nothing has strength?
+		set j = GetRandomInt(1, num_strengths)
 	endif
     return j
 endfunction
@@ -8552,6 +8555,7 @@ function BuildAnti%1Strength takes integer number, integer prio returns nothing
 		//endif
 		if u > 0 and i <= totalanti_%1 then
 		//set food1 = food/GetFoodUsed(old_id[units[choice]])
+		call Trace("Dynamic building Unit:" + Int2Str(u))
 		if IsUnitIdType(old_id[u], UNIT_TYPE_STRUCTURE) == false and not (buy_type[u] > BT_RACIAL_ITEM and buy_type[u] < BT_MERCHANT_ITEM) then 
 			set num = R2I((number - FoodUsed())/GetFoodUsed(old_id[u]))
 			if num > 0 and GetUnitCount(old_id[u]) < num then
