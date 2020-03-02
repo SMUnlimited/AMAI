@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [2.6.0] - 2020-03-02
+
 ### Added
 - Latest version of pjass.
 - Missing licence text for sfmpq.
@@ -12,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - New `installToMap` scripts provided to install AMAI and VSAI editions to maps. 
   - MPQEditor by Ladislav Zezula is now included to support this.
   - These will increase the MPQ file limit on maps to 64 automatically as on official maps the limit is too low and prevents AMAI being installed.
+- Alpha 3.0 dynamic strategy scripts have been harvested. Can be enabled by using the strategy manager to lock race strategies to the dynamic forms.
 
 ### Changed
 - Reworked the changelog for keepachangelog format.

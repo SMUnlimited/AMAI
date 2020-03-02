@@ -27,6 +27,8 @@ Use *InstallTFTtoMap*, or *InstallROCtoMap*, or *InstallVAITFTtoMap* to install 
 
 Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on towerdefence or such, it will make no difference on such custom maps.
 
+Note: You can use `AMAI.exe` to install AMAI to maps but you must have run `MPQEditor htsize "C:\mymap.w3m" 64` to garuantee the AI will be installed correctly. The above mechanisms do this for you.
+
 After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
 
 ## ROC Build And Install
