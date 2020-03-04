@@ -7,10 +7,24 @@ Official Release Links available from: https://www.hiveworkshop.com/threads/adva
 
 As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601 (Site is now down)
 
-# Requirements
-You must install perl (via `strawberry` or `activestate`).
-Additionally you need to install the *Tk* module if you want to run the Strategy Manager UI Client.
-`Activestate` uses the package manager, while `strawberry` you need to use the CPAN client to install a module.
+# How to Play
+AMAI release comes with the standard AI scripts pre-built for you.
+
+It is suggested to create a subfolder in your "maps" folder like "maps\AMAI" and copy the maps you intend to use AMAI with there.
+For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.html to extract a copy of official maps.
+
+Use *InstallTFTtoMap*, or *InstallROCtoMap*, or *InstallVAITFTtoMap* to install AMAI to maps e.g `InstallTFTToMap.bat "C:\mymap.w3m"`
+
+Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on towerdefence or such, it will make no difference on such custom maps.
+
+Note: You can use `AMAI.exe` to install AMAI to maps but you must have run `MPQEditor htsize "C:\mymap.w3m" 64` to garuantee the AI will be installed correctly. The above mechanisms do this for you.
+
+After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
+
+# Build Requirements
+To build scripts yourselves or make custom changes you must install perl (via `strawberry` or `activestate`).
+Additionally you need to install the *Tk* module if you want to run the **Strategy Manager UI Client** as described in the manual.
+`Activestate` uses the package manager to install modules, while `strawberry` you need to use the CPAN client to install a module.
 
 Tested with strawbery perl 5.30 and Tk 804.034
 
@@ -19,29 +33,17 @@ Tested with strawbery perl 5.30 and Tk 804.034
 - Run *InstallTFTToMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps. 
 - Run up a custom game and select the map to play.
 
-# Playing AMAI
-First my suggestion is to create a subfolder in your "maps" folder like "maps\AMAI" and copy the maps you intend to use AMAI with there.
-For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.html to extract a copy of official maps.
-
-Use *InstallTFTtoMap*, or *InstallROCtoMap*, or *InstallVAITFTtoMap* to install AMAI to maps.
-
-Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on towerdefence or such, it will make no difference on such custom maps.
-
-Note: You can use `AMAI.exe` to install AMAI to maps but you must have run `MPQEditor htsize "C:\mymap.w3m" 64` to garuantee the AI will be installed correctly. The above mechanisms do this for you.
-
-After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
-
 ## ROC Build And Install
-- Use *makeROC.bat* to create the scripts.
+- Use *makeROC.bat* to create the ROC scripts. This is currently not supported in 1.32+
 - Run *InstallROCtoMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps.
-- This version is intended to be played in the ROC version of the game. This is currently not supported in 1.30+.
+- This version is intended to be played in the ROC version of the game. 
 
 ## VS AI Build And Install
-- Use *makeVAITFT.bat* to create the scripts.
+- Use *makeVAITFT.bat* to create the AMAI vs AI scripts.
 - Run *InstallVAITFTtoMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps.
 - This special version will make *odd* teams run with AMAI and *even* teams run with the standard blizzard AI.
 
-## Commander
+# Commander
 To *disable* the commander rename/delete the blizzard.j file within `Scripts/` before running the install script.
 
 If you installed The Commander to the map there will be language selection dialogs to select a language. Another dialog may also appear with options
@@ -50,7 +52,7 @@ If you installed The Commander to the map there will be language selection dialo
 2) With Commander - The Commander allows you to give orders to your ally friends. Press 'ESC' to bring up the commander menu. 
 3) Computers Only - Same as commander except you dont play at all and instead can only issue orders to try and make your ally ai win
 
-### Commander Advanced Settings
+## Commander Advanced Settings
 
 It's now possible to set a default language and gametype so the dialog will not appear when game starts, instead the setting you made will apply at once.
 To find the settings edit and search for "game_mode" in the Blizzard.j file located directly in the same folder as this readme file. You should directly end up viewing the two rows below.
@@ -103,3 +105,6 @@ and everyone else I might have forgotten to mention here.
 
 ## JASS Precompiler
 Vidstige
+
+## MPQEditor
+Ladislav Zezula 
