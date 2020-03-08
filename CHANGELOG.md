@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Changed
+- Dynamic strategies no longer change every 6 seconds and instead use similar systems as any old style strategy selection.
+
+### Fixed
+- All the new player colours are now supported by AMAI.
+
 ## [2.6.0] - 2020-03-02
 
 ### Added

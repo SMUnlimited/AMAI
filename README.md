@@ -22,7 +22,7 @@ Note: You can use `AMAI.exe` to install AMAI to maps but you must have run `MPQE
 After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
 
 # Build Requirements
-To build scripts yourselves or make custom changes you must install perl (via `strawberry` or `activestate`).
+To build scripts from source or to make custom changes you must install perl (via `strawberry` or `activestate`).
 Additionally you need to install the *Tk* module if you want to run the **Strategy Manager UI Client** as described in the manual.
 `Activestate` uses the package manager to install modules, while `strawberry` you need to use the CPAN client to install a module.
 
