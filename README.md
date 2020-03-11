@@ -1,7 +1,7 @@
 # AMAI
- Advanced Melee Artifical Intelligence Mod For Warcraft 3
+Advanced Melee Artifical Intelligence Mod For Warcraft 3
  
- Created by **AIAndy**, **Zalamander** with continued development by the **Strategy Master**.
+Created by **AIAndy**, **Zalamander** and the **Strategy Master**.
 
 Official Release Links available from: https://www.hiveworkshop.com/threads/advanced-melee-ai.62879/
 
@@ -15,7 +15,7 @@ For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.htm
 
 Use *InstallTFTtoMap*, or *InstallROCtoMap*, or *InstallVAITFTtoMap* to install AMAI to maps e.g `InstallTFTToMap.bat "C:\mymap.w3m"`
 
-Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on towerdefence or such, it will make no difference on such custom maps.
+Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on custom maps (e.g towerdefence), it will make no difference on such maps.
 
 Note: You can use `AMAI.exe` to install AMAI to maps but you must have run `MPQEditor htsize "C:\mymap.w3m" 64` to garuantee the AI will be installed correctly. The above mechanisms do this for you.
 
