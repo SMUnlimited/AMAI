@@ -993,6 +993,7 @@ globals
 // (AMAI)  Dynamic Strategy variables
 //==============================================================
     integer chosen_counter = -1
+	integer chosen_counter_unit = 0
 	#INCLUDETABLE <$VER$\Strengths.txt>
 		integer array dyanti_%1
 		integer totalanti_%1 = 0
@@ -8595,8 +8596,8 @@ function DetermineCounterForce takes nothing returns integer
 			set j = j + 1	// Will be the the chosen strength to build units against
 		endloop
 	endif
-	//call DisplayToAlliesImportant( "Also countering the enemies:" + strengthtext[j] )
-	//call DisplayToObserversImportant( "Also countering the enemies:" + strengthtext[j] )
+	call DisplayToAlliesImportant( "I am additionally countering the enemies:" + strengthtext[j] )
+	call DisplayToObserversImportant( "I am additionally countering the enemies:" + strengthtext[j] )
     return j
 endfunction
 
@@ -8618,11 +8619,10 @@ endfunction
 #ENDINCLUDE
 
 #INCLUDETABLE <$VER$\Strengths.txt>
-function BuildAnti%1Strength takes integer number, integer prio returns nothing
+function BuildAnti%1Strength takes nothing returns nothing
 	local integer u = 0
 	local integer i = 0
 	local integer choice
-	local integer num
 	local integer chance = 0
 		
 	if totalchance_%1 > 0 then
@@ -8641,35 +8641,41 @@ function BuildAnti%1Strength takes integer number, integer prio returns nothing
 		//	call Trace("Divide By Zero:" + Int2Str(u) + ":" + Int2Str(old_id[u]))
 		//endif
 		if u > 0 and i <= totalanti_%1 then
-		//set food1 = food/GetFoodUsed(old_id[units[choice]])
-		call Trace("Dynamic building Unit:" + Int2Str(u))
-		if IsUnitIdType(old_id[u], UNIT_TYPE_STRUCTURE) == false and not (buy_type[u] > BT_RACIAL_ITEM and buy_type[u] < BT_MERCHANT_ITEM) then // Normal units/upgrades
-			set num = R2I((number - FoodUsed())/GetFoodUsed(old_id[u]))
-			if num > 0 and GetUnitCount(old_id[u]) < num then
-				call BuildUnit(Min(num, GetUnitCountDone(old_id[u]) + 10), u, prio)  
-			endif
-		elseif buy_type[u] > BT_RACIAL_ITEM and buy_type[u] < BT_MERCHANT_ITEM then // A neutral mercenary
-			set num = R2I((number - FoodUsed())/GetFoodUsed(old_id[u]))
-			if num > 0 then
-				call BuildUnit(GetUnitCountDone(old_id[u] + 1), u, prio)
-			endif
-		else // structure
-			call BuildUnit(1, u, prio*2) 
-		endif
-
+			//set food1 = food/GetFoodUsed(old_id[units[choice]])
+			call Trace("Dynamic building Unit:" + Int2Str(u))
+			set chosen_counter_unit = u
 		endif
 	endif
 	
 endfunction
 #ENDINCLUDE
 
-function DynamicBuildSequence takes integer count, integer prio returns nothing
+function DynamicBuildUnit takes integer count, integer prio returns nothing
+	local integer num
+	if chosen_counter_unit > 0 then
+		if IsUnitIdType(old_id[chosen_counter_unit], UNIT_TYPE_STRUCTURE) == false and not (buy_type[chosen_counter_unit] > BT_RACIAL_ITEM and buy_type[chosen_counter_unit] < BT_MERCHANT_ITEM) then // Normal units/upgrades
+			set num = R2I((count - FoodUsed())/GetFoodUsed(old_id[chosen_counter_unit]))
+			if num > 0 and GetUnitCount(old_id[chosen_counter_unit]) < num then
+				call BuildUnit(Min(num, GetUnitCountDone(old_id[chosen_counter_unit]) + 10), chosen_counter_unit, prio)  
+			endif
+		elseif buy_type[chosen_counter_unit] > BT_RACIAL_ITEM and buy_type[chosen_counter_unit] < BT_MERCHANT_ITEM then // A neutral mercenary
+			set num = R2I((count - FoodUsed())/GetFoodUsed(old_id[chosen_counter_unit]))
+			if num > 0 then
+				call BuildUnit(GetUnitCountDone(old_id[chosen_counter_unit] + 1), chosen_counter_unit, prio)
+			endif
+		else // structure
+			call BuildUnit(1, chosen_counter_unit, prio*2) 
+		endif
+	endif
+endfunction
+
+function DynamicStrategySelector takes nothing returns nothing
 	local integer strength_count = 0
 	
 	#INCLUDETABLE <$VER$\Strengths.txt>
 	if chosen_counter == strength_count then
-		call Trace("I'm building anti %1 units")
-		call BuildAnti%1Strength(count,prio)
+		//call Trace("I'm building anti %1 units")
+		call BuildAnti%1Strength()
 	endif
 	set strength_count = strength_count + 1
 	#ENDINCLUDE
