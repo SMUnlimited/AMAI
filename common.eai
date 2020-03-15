@@ -275,7 +275,7 @@ globals
     integer wood_exchange_level = 350  // computers give extra lumber above this value to other computers on the same team in need of lumber
     integer max_towns = 5  // how many towns is a computer allowed to have?   
     boolean add_tag = true // Add the [AMAI] tag in front of name
-    boolean add_skill = false // Add the current skill after the name    
+    boolean add_skill = true // Add the current skill after the name    
     integer fav_hero_add = 20  // priority added to heroes to be picked if they are favorites of the used profile       
     integer max_harass_groups = 10  // how many different harass groups you can use    
     integer attacking_aggression = -12  // the base agression value for all computers, higher value and they will play more agressive. Recomended -5 to 5   
@@ -1571,15 +1571,25 @@ function DisplayToAllFromPlayer takes string s, integer playernum, boolean impor
 	endif
 endfunction
 
-//============================================================================
-function Trace takes string s returns nothing
-	if debugging then
+function UpdateDebugPlayer takes nothing returns nothing
 		if IsPlayerObserver(Player(debug_player)) == true then
 			set debug_player = debug_player + 1
 		endif
 		if GetPlayerUnitCount(Player(debug_player), true) == 0 then
 			set debug_player = debug_player + 1
 		endif
+		//if GetChar(GetPlayerName(Player(debug_player)), 1) != "A" then
+		//	set debug_player = debug_player + 1 // If not containing AMAI in player name increment until it is
+		//endif
+		if debug_player > 24 then
+			set debug_player = 24 // Do not go above 24
+		endif
+endfunction
+
+//============================================================================
+function Trace takes string s returns nothing
+	if debugging then
+		call UpdateDebugPlayer()
 		call DisplayToAllFromPlayer(s, debug_player, false)
 	endif	
 	// Blizzard ai part
@@ -1591,12 +1601,7 @@ endfunction
 //============================================================================
 function TraceI takes string s, integer val returns nothing	
 	if debugging then
-		if IsPlayerObserver(Player(debug_player)) == true then
-			set debug_player = debug_player + 1
-		endif
-		if GetPlayerUnitCount(Player(debug_player), true) == 0 then
-			set debug_player = debug_player + 1
-		endif
+		call UpdateDebugPlayer()
 		call DisplayToAllFromPlayer(s+":"+Int2Str(val), debug_player, false)
 	endif
     if trace_on then
@@ -1607,12 +1612,7 @@ endfunction
 //============================================================================
 function TraceII takes string message, integer v1, integer v2 returns nothing
 	if debugging then
-		if IsPlayerObserver(Player(debug_player)) == true then
-			set debug_player = debug_player + 1
-		endif
-		if GetPlayerUnitCount(Player(debug_player), true) == 0 then
-			set debug_player = debug_player + 1
-		endif
+		call UpdateDebugPlayer()
 		call DisplayToAllFromPlayer(message+":"+Int2Str(v1)+":"+Int2Str(v2), debug_player, false)
 	endif
     if trace_on then
@@ -1623,12 +1623,7 @@ endfunction
 //============================================================================
 function TraceIII takes string message, integer v1, integer v2, integer v3 returns nothing
 	if debugging then
-		if IsPlayerObserver(Player(debug_player)) == true then
-			set debug_player = debug_player + 1
-		endif
-		if GetPlayerUnitCount(Player(debug_player), true) == 0 then
-			set debug_player = debug_player + 1
-		endif
+		call UpdateDebugPlayer()
 		call DisplayToAllFromPlayer(message+":"+Int2Str(v1)+":"+Int2Str(v2)+":"+Int2Str(v3), debug_player, false)
 	endif
     if trace_on then
@@ -2599,11 +2594,17 @@ function InitProfile takes nothing returns nothing
 
   call SetChatVar("Name", ai_name)
 
-  if add_tag == true and not fixedcomputername then
+  if add_tag == true and not fixedcomputername and not add_skill then
      set ai_name = "[AMAI]"+ai_name
-  endif
-
-  if add_skill == true then
+  elseif add_tag == true and not fixedcomputername and add_skill then
+     if MeleeDifficulty() == EASY then
+        set ai_name = "[AMAI (Easy)]"+ai_name
+     elseif MeleeDifficulty() == HARD then
+        set ai_name = "[AMAI (Insane)]"+ai_name
+     else
+        set ai_name = "[AMAI (Normal)]"+ai_name
+     endif
+  elseif add_skill == true then
      if MeleeDifficulty() == EASY then
         set ai_name = ai_name+" (Easy)"
      elseif MeleeDifficulty() == HARD then
@@ -7202,7 +7203,7 @@ endfunction
 function GetBuildLock takes nothing returns nothing
     loop
       exitwhen build_lock
-      call Trace("Build Lock not received")
+      //call Trace("Build Lock not received")
       call Sleep(0.5)
     endloop
     set build_lock = false
