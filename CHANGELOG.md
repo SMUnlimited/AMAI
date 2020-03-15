@@ -5,11 +5,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+- Dynamic strategies are now enabled and a fallback for all strategies. This means AMAI always has an element of being able to counter enemies based on what they are building.
+  - Hardcoded strategies still set the theme and initial build orders.
+
 ### Changed
 - Dynamic strategies no longer change every 6 seconds and instead use similar systems as any old style strategy selection.
+- Dynamic strategies also keep building the same unit and don't switch unit every 6 seconds.
+- The normal racial strategies all heavily use the dynamic system.
+- Computer skill level is now shown by default on AMAI players.
+- Reduced impact of summons on total caster strength as they are temporary units.
 
 ### Fixed
-- All the new player colours are now supported by AMAI.
+- All 24 player colours are now supported by AMAI.
+- When the debug player is killed we will now switch to a new player to debug.
 
 ## [2.6.0] - 2020-03-02
 
