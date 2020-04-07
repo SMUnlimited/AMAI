@@ -13,11 +13,13 @@ AMAI release comes with the standard AI scripts pre-built for you.
 It is suggested to create a subfolder in your "maps" folder like "maps\AMAI" and copy the maps you intend to use AMAI with there.
 For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.html to extract a copy of official maps.
 
-Use *InstallTFTtoMap*, or *InstallROCtoMap*, or *InstallVAITFTtoMap* to install AMAI to maps e.g `InstallTFTToMap.bat "C:\mymap.w3m"`
+Run *InstallTFTtoMap*, or *InstallROCtoMap*, or *InstallVAITFTtoMap* from a commandline, to install AMAI to maps e.g `InstallTFTToMap.bat "C:\mymap.w3m"`
 
 Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on custom maps (e.g towerdefence), it will make no difference on such maps.
 
-Note: You can use `AMAI.exe` to install AMAI to maps but you must have run `MPQEditor htsize "C:\mymap.w3m" 64` to garuantee the AI will be installed correctly. The above mechanisms do this for you.
+Note: If you want to use the old `AMAI.exe` to install AMAI to maps you must have run `MPQEditor htsize "C:\mymap.w3m" 64` from a commandline to garuantee the AI will be installed correctly.
+
+If you have `perl` installed you can use `InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` to install AMAI (any edition) to all maps in a directory and subdirectories.
 
 After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
 

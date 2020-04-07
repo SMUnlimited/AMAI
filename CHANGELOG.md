@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Added
 - Dynamic strategies are now enabled and a fallback for all strategies. This means AMAI always has an element of being able to counter enemies based on what they are building.
   - Hardcoded strategies still set the theme and initial build orders.
+- New `InstallTFTToDir` perl script which can be used to install AMAI to an entire directory of maps e.g `InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"`
 
 ### Changed
 - Dynamic strategies no longer change every 6 seconds and instead use similar systems as any old style strategy selection.
@@ -15,10 +16,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - The normal racial strategies all heavily use the dynamic system.
 - Computer skill level is now shown by default on AMAI players.
 - Reduced impact of summons on total caster strength as they are temporary units.
+- Moved template files to `Templates` folder.
 
 ### Fixed
 - All 24 player colours are now supported by AMAI.
 - When the debug player is killed we will now switch to a new player to debug.
+- The StrategyManager compile buttons now work again.
 
 ## [2.6.0] - 2020-03-02
 
