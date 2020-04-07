@@ -9,7 +9,7 @@ use Tk::NoteBook;
 BEGIN{
   if($^O eq 'MSWin32'){
       require Win32::Console;
-      Win32::Console::Free();
+      #Win32::Console::Free();
   }
 }
 
@@ -19,7 +19,7 @@ if($] >= 5.008004) {
   $fdialogbug = 1;
 }
 
-my $main = MainWindow->new(-title => 'AMAI Strategy Manager V2.54');
+my $main = MainWindow->new(-title => 'AMAI Strategy Manager');
 my $lframe = $main->Frame->pack(-side => 'left');
 my $race;
 my $ver;
