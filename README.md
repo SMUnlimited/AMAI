@@ -7,6 +7,10 @@ Official Release Links available from: https://www.hiveworkshop.com/threads/adva
 
 As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601 (Site is now down)
 
+# Warcraft Requirements
+- With Commander: 1.32+
+- Without the Commander: 1.24+
+
 # How to Play
 AMAI release comes with the standard AI scripts pre-built for you.
 
@@ -46,12 +50,15 @@ Tested with strawbery perl 5.30 and Tk 804.034
 - This special version will make *odd* teams run with AMAI and *even* teams run with the standard blizzard AI.
 
 # Commander
+The Commander allows you to give orders to your ally AI's.
+
 To *disable* the commander rename/delete the blizzard.j file within `Scripts/` before running the install script.
+You must disable the commander if you want to play on an older version of warcraft 3.
 
 If you installed The Commander to the map there will be language selection dialogs to select a language. Another dialog may also appear with options
 
 1) No Commander
-2) With Commander - The Commander allows you to give orders to your ally friends. Press 'ESC' to bring up the commander menu. 
+2) With Commander - Press 'ESC' to bring up the commander menu. 
 3) Computers Only - Same as commander except you dont play at all and instead can only issue orders to try and make your ally ai win
 
 ## Commander Advanced Settings
