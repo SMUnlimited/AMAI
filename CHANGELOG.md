@@ -13,10 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Changed
 - Dynamic strategies no longer change every 6 seconds and instead use similar systems as any old style strategy selection.
 - Dynamic strategies also keep building the same unit and don't switch unit every 6 seconds.
-- The normal racial strategies all heavily use the dynamic system.
 - Computer skill level is now shown by default on AMAI players.
 - Reduced impact of summons on total caster strength as they are temporary units.
 - Moved template files to `Templates` folder.
+
+### Removed
+- No longer a seperate AMAI vs AI installer batch script, installers now support both versions.
 
 ### Fixed
 - All 24 player colours are now supported by AMAI.

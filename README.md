@@ -17,13 +17,13 @@ AMAI release comes with the standard AI scripts pre-built for you.
 It is suggested to create a subfolder in your "maps" folder like "maps\AMAI" and copy the maps you intend to use AMAI with there.
 For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.html to extract a copy of official maps.
 
-Run *InstallTFTtoMap*, or *InstallROCtoMap*, or *InstallVAITFTtoMap* from a commandline, to install AMAI to maps e.g `InstallTFTToMap.bat "C:\mymap.w3m"`
+Run *InstallTFTtoMap* from a commandline, to install AMAI to maps e.g `InstallTFTToMap.bat "C:\mymap.w3m"`
 
 Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on custom maps (e.g towerdefence), it will make no difference on such maps.
 
 Note: If you want to use the old `AMAI.exe` to install AMAI to maps you must have run `MPQEditor htsize "C:\mymap.w3m" 64` from a commandline to garuantee the AI will be installed correctly.
 
-If you have `perl` installed you can use `InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` to install AMAI (any edition) to all maps in a directory and subdirectories.
+If you have `perl` installed you can use `InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` to install AMAI to all maps in a directory and subdirectories.
 
 After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
 
@@ -40,13 +40,13 @@ Tested with strawbery perl 5.30 and Tk 804.034
 - Run up a custom game and select the map to play.
 
 ## ROC Build And Install
-- Use *makeROC.bat* to create the ROC scripts. This is currently not supported in 1.32+
+- Use *makeROC.bat* to create the ROC scripts. 
 - Run *InstallROCtoMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps.
-- This version is intended to be played in the ROC version of the game. 
+- This version is intended to be played in the ROC version of the game. This version is currently not supported in 1.32+.
 
 ## VS AI Build And Install
 - Use *makeVAITFT.bat* to create the AMAI vs AI scripts.
-- Run *InstallVAITFTtoMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps.
+- Run *InstallTFTToMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps.
 - This special version will make *odd* teams run with AMAI and *even* teams run with the standard blizzard AI.
 
 # Commander
