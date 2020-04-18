@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - All 24 player colours are now supported by AMAI.
 - When the debug player is killed we will now switch to a new player to debug.
 - The StrategyManager compile buttons now work again.
+- Fixed warning message during script compilation.
 
 ## [2.6.0] - 2020-03-02
 
