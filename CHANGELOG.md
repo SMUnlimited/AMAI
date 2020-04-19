@@ -25,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - When the debug player is killed we will now switch to a new player to debug.
 - The StrategyManager compile buttons now work again.
 - Fixed warning message during script compilation.
+- Ranged ground attackers will now try to avoid melee attackers that get too close.
+- Focus fire micro will no longer accidentily wake sleeping creeps.
 
 ## [2.6.0] - 2020-03-02
 
