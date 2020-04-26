@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed warning message during script compilation.
 - Ranged ground attackers will now try to avoid melee attackers that get too close.
 - Focus fire micro will no longer accidentily wake sleeping creeps.
+- Fixed an issue where AMAI would get stuck trying to attack its own base.
 
 ## [2.6.0] - 2020-03-02
 

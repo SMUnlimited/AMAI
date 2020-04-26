@@ -10360,35 +10360,33 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
   local location unitloc = null
   
   if race_has_ghouls and race_ghouls_attack then
-	set attack_length_counter = 5000  // Force army to regroup to try and get ghouls to go along
+    set attack_length_counter = 5000  // Force army to regroup to try and get ghouls to go along
   endif
   
-    loop
-        exitwhen town_threat_break and town_threatened and town_threat[most_threatened_town] >= teleport_low_threat
-        exitwhen break_attack
-        //exitwhen captain_flee and CaptainRetreating()
-		exitwhen isfleeing and CaptainRetreating()
-		exitwhen CaptainIsEmpty()
-        //exitwhen not UnitAlive(target) and CaptainIsHome()  // A fail safe mechanism if getlocationnoncreepstrength malfunctions: not needed as issue now fixed
-		
-		if not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player)) then
-			set g = CreateGroup()
-			call GroupEnumUnitsInRange(g,GetUnitX(target), GetUnitY(target),battle_radius,null)
-			set g = SelectByAlive(g,true)
-			set g = SelectByEnemy(g,ai_player, true)
-			if not UnitAlive(target) then
-				set g = SelectByVisible(g,ai_player,true)	// to find enemies that ai has noticed
-			elseif iscreeping then
-				set g = SelectByPlayer(g,GetOwningPlayer(target), true)	// if creeping and unit invisible see if any other creeps targetable
-			endif
-			set target = FirstOfGroup(g)
-			call DestroyGroup(g)
-			set g = null
-			exitwhen target == null
-		//elseif iscreeping then
-		//	exitwhen not UnitAlive(target)
-		//	exitwhen UnitInvis(target) and not IsUnitDetected(target,ai_player)
-		endif
+  loop
+    exitwhen town_threat_break and town_threatened and town_threat[most_threatened_town] >= teleport_low_threat
+    exitwhen break_attack
+    //exitwhen captain_flee and CaptainRetreating()
+    exitwhen isfleeing and CaptainRetreating()
+    exitwhen CaptainIsEmpty()
+    //exitwhen not UnitAlive(target) and CaptainIsHome()  // A fail safe mechanism if getlocationnoncreepstrength malfunctions: not needed as issue now fixed
+
+    if GetOwningPlayer(target) == ai_player or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player)) then
+      set g = CreateGroup()
+      call GroupEnumUnitsInRange(g,GetUnitX(target), GetUnitY(target),battle_radius,null)
+      set g = SelectByAlive(g,true)
+      set g = SelectByEnemy(g,ai_player, true)
+      if not UnitAlive(target) or UnitInvis(target) then
+        set g = SelectByVisible(g,ai_player,true)
+      endif
+      if iscreeping then
+        set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)	// if creeping and unit invisible see if any other creeps targetable
+      endif
+      set target = FirstOfGroup(g)
+      call DestroyGroup(g)
+      set g = null
+      exitwhen target == null
+    endif
 		
 		//if not iscreeping then
 		//	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationEnemyStructures(unitx, unity, battle_radius) <= 0 // enemies are dead and target dead
