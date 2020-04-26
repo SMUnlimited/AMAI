@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Reduced impact of summons on total caster strength as they are temporary units.
 - Moved template files to `Templates` folder.
 - All war fronts are now taken into consideration for focus fire which should improve behaviour no matter where battles are happening.
+- Halved front location distance from town center as towers were often non-defensible.
 
 ### Removed
 - No longer a seperate AMAI vs AI installer batch script, installers now support both versions.
