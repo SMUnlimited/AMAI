@@ -11,11 +11,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - New `InstallTFTToDir` perl script which can be used to install AMAI to an entire directory of maps e.g `InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"`
 
 ### Changed
+- Now requires a minimum of 1.31 warcraft 3.
 - Dynamic strategies no longer change every 6 seconds and instead use similar systems as any old style strategy selection.
 - Dynamic strategies also keep building the same unit and don't switch unit every 6 seconds.
 - Computer skill level is now shown by default on AMAI players.
 - Reduced impact of summons on total caster strength as they are temporary units.
 - Moved template files to `Templates` folder.
+- All war fronts are now taken into consideration for focus fire which should improve behaviour no matter where battles are happening.
 
 ### Removed
 - No longer a seperate AMAI vs AI installer batch script, installers now support both versions.

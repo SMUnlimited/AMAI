@@ -8,8 +8,7 @@ Official Release Links available from: https://www.hiveworkshop.com/threads/adva
 As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601 (Site is now down)
 
 # Warcraft Requirements
-- With Commander: 1.32+
-- Without the Commander: 1.24+
+- 1.31+
 
 # How to Play
 AMAI release comes with the standard AI scripts pre-built for you.
