@@ -11519,9 +11519,14 @@ function GetArmyHealthState takes nothing returns real
     if GetUnitTypeId(u) == 'ohwd' then
       set ward_cast = true
     endif
-    if UnitAlive(u) and not (IsUnitHidden(u) or IsUnitType(u, UNIT_TYPE_PEON) or IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitType(u, UNIT_TYPE_SUMMONED) or IsUnitType(u, UNIT_TYPE_MECHANICAL) or IsUnitIllusion(u)) then
+    if UnitAlive(u) and not (IsUnitHidden(u) or IsUnitType(u, UNIT_TYPE_PEON) or IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitIllusion(u)) then
       set uhs = GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)
-      set health_sum = health_sum + uhs
+      if IsUnitType(u, UNIT_TYPE_MECHANICAL) or IsUnitType(u, UNIT_TYPE_SUMMONED) then
+        set health_sum = health_sum + 1 // Because is not currently handled by healing and we don't want army to run away if only 1 human unit is hurt
+        set uhs = 1
+      else 
+        set health_sum = health_sum + uhs
+      endif
       set count = count + 1
       set hid = GetHealerId(GetUnitTypeId(u))
       if hid != -1 and GetUnitState(u, UNIT_STATE_MANA) >= (healer_mana_cost[hid] * 2) / 3 and ((healer_upg_id[hid] == 0) or (GetUpgradeLevel(healer_upg_id[hid]) >= healer_upg_level[hid])) then
@@ -11546,7 +11551,7 @@ function GetArmyHealthState takes nothing returns real
   if count == 0 then
     return 1.0
   endif
-  return health_sum / count
+  return ((health_sum / count) + (1-(urgent_healing_count + medium_healing_count) / count)) / 2
 endfunction
 
 //============================================================================
@@ -11626,90 +11631,63 @@ function HealArmy takes nothing returns nothing
   local integer mh_item = 0
   local item mh_i = null
   local boolean mass_healed = false
+  local boolean global_heal = false
+  local integer sleepLength = 10
+  local real healthTrigger = 0.75
   loop
-    //if not (town_threatened or CaptainRetreating()) then
-      set hs = GetArmyHealthState()
-      set mass_healed = false
-	  exitwhen (urgent_healing_count + medium_healing_count <= 3 and hs > 0.75) // and not shop_ordered	
-      exitwhen player_defeated or town_threatened or ver_heroes == false	  
-	  call Trace("function HealArmy: Army is badly damaged and needs healing")	  
-      if urgent_healing_count + medium_healing_count > 3 then
-        set mh_item = GetMassHealingItem()
-        if mh_item > 0 then
-          set mass_healed = true
-          set mh_i = GetItemOfType(mh_item)
-          if mh_i != null then
-            set u = GetItemHero(mh_i)
-            if u != null then
-              call ApplyMassHealingItem(u, mh_i)
-            endif
-			if hs <= 0.75 then
-				call Sleep(10 * sleep_multiplier)
-			endif
-          else
-            call StartEmergencyItem(1, mh_item)
-			if hs <= 0.75 then
-				call Sleep(8 * sleep_multiplier)
-			endif
-          endif
-        else  
-		  // -----------Merchant Mass Healing Items -----------
-		  set mh_item = GetMerchantMassHealingItem()
-		  if mh_item > 0 then
-			set mass_healed = true
-			set mh_i = GetItemOfType(mh_item)
-			if mh_i != null then
-				set u = GetItemHero(mh_i)
-				if u != null then
-					call ApplyMassHealingItem(u, mh_i)
-				endif
-			else
-				set mh_item = GetGlobalHealingItem()
-				if mh_item > 0 then
-					set mh_i = GetItemOfType(mh_item)
-					if mh_i != null then
-						set u = GetItemHero(mh_i)
-						if u != null then
-							call ApplyGlobalItem(u, mh_i)
-						endif
-						if hs <= 0.75 then
-							call Sleep(25 * sleep_multiplier)
-						endif
-					else
-						call StartEmergencyItem(1, mh_item)
-						if hs <= 0.75 then
-							call Sleep(8*sleep_multiplier)
-						endif
-					endif
-				else  
-					// ----------- Single Healing Item -----------
-						set mh_item = GetHealingItem()
-						if mh_item > 0 then
-							//set mass_healed = true
-							set mh_i = GetItemOfType(mh_item)
-							if mh_i != null then	
-								set u = GetItemHero(mh_i)	
-								if u != null then
-									call ApplyHealingItem(u, mh_i)
-								endif
-								if hs <= 0.75 then
-									call Sleep(10 * sleep_multiplier)	
-								endif
-							else
-								call StartEmergencyItem(1, mh_item)
-								if hs <= 0.75 then
-									call Sleep(8 * sleep_multiplier)
-								endif
-							endif
-						endif	
-				endif
-			endif
-		  endif
-		endif
+    set hs = GetArmyHealthState()
+    set mass_healed = false
+    exitwhen (urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger) // and not shop_ordered	
+    exitwhen player_defeated or town_threatened or ver_heroes == false
+    call Trace("function HealArmy: Army is badly damaged and needs healing " + R2S(hs))
+    set mh_item = GetMassHealingItem()
+    if mh_item > 0 then
+      set mass_healed = true
+    endif
+    if mh_item == 0 then
+      set mh_item = GetMerchantMassHealingItem()
+      if mh_item > 0 then
+        set mass_healed = true
       endif
-
+    endif
+    if mh_item == 0 then
+      set mh_item = GetGlobalHealingItem()
+      if mh_item > 0 then
+        set global_heal = true
+      endif
+    endif
+    if mh_item == 0 then
+      set mh_item = GetHealingItem()
+    endif
+    if mh_item > 0 then
+      set mh_i = GetItemOfType(mh_item)
+      if mh_i != null then
+        set u = GetItemHero(mh_i)
+        if u != null then
+          if mass_healed then
+            set sleepLength = 10
+            call ApplyMassHealingItem(u, mh_i)
+          elseif global_heal then
+            set sleepLength = 25
+            call ApplyGlobalItem(u, mh_i)
+          else
+            set sleepLength = 10
+            call ApplyHealingItem(u, mh_i)
+          endif
+          if hs <= healthTrigger then
+            call Sleep(sleepLength * sleep_multiplier) // Wait some time for item effects to work
+          endif
+        endif
+      else
+        call StartEmergencyItem(1, mh_item)
+        if hs <= healthTrigger then
+          call Sleep(8*sleep_multiplier) // Wait some time for item to be bought
+        endif
+      endif  
+    endif
+    
     call Sleep(2 * sleep_multiplier)
-	exitwhen hs > 0.75	// Still a large proportion of army is strong so exit loop
+    exitwhen hs > healthTrigger // Still a large proportion of army is strong so exit loop
   endloop
 endfunction
 

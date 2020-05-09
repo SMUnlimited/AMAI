@@ -76,6 +76,9 @@ If you make the first row look like this:
 The language selection dialog will not show up again when the game starts, instead the specified language "English" will always be used by the computers.
 The game_mode setting works exactly the same way but that setting will only apply if you play a game where different game modes are available like if you got an allied computer in the game, else the normal melee game type will always be used.
 
+## Custom AI
+To write your own strategies, profiles or even support custom made units the "Manual" will provide the information you need.
+
 # Credits
 
 ## Helpers

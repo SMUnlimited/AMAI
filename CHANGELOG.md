@@ -31,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Ranged ground attackers will now try to avoid slower melee attackers that get too close.
 - Focus fire micro will no longer accidentily wake sleeping creeps.
 - Fixed an issue where AMAI would get stuck trying to attack its own base.
+- Mechanical armies will not enter emergency healing state because the only non-mechnical unit/hero is damaged.
 
 ## [2.6.0] - 2020-03-02
 
