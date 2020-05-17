@@ -8,7 +8,11 @@ Official Release Links available from: https://www.hiveworkshop.com/threads/adva
 As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601 (Site is now down)
 
 # Warcraft Requirements
-- 1.31+
+| Version    | War3 Support                   |
+| -----------|--------------------------------|
+| 2.5.4      | Min 1.24+, 1.29+ basic support |
+| 2.6.0      | Min 1.24+, 1.29+ supported     |
+| 3.0        | 1.31+                          |
 
 # How to Play
 AMAI release comes with the standard AI scripts pre-built for you.
@@ -76,8 +80,23 @@ If you make the first row look like this:
 The language selection dialog will not show up again when the game starts, instead the specified language "English" will always be used by the computers.
 The game_mode setting works exactly the same way but that setting will only apply if you play a game where different game modes are available like if you got an allied computer in the game, else the normal melee game type will always be used.
 
+## Custom Maps
+AMAI is designed to work with melee maps. 
+
+If you make a custom map you need to make sure in the world editor it is also set to Latest Patch dataset and still using the melee AI.
+If you don't do this the AI will get stuck upgrading past tier 2 as it will use the vanilla patch.
+
+To change the patch data set use the following menus from the world editor.
+> scenario
+> map properties
+> options
+> game data set
+> Change from Default (based on map melee status) to Latest Patch
+
+If your custom map has custom units you will need to make custom changes to AMAI which can be followed in the `Manual`.
+
 ## Custom AI
-To write your own strategies, profiles or even support custom made units the "Manual" will provide the information you need.
+AMAI has built in support to be able to write new strategies and profiles. The `Manual` folder contains more details.
 
 # Credits
 
