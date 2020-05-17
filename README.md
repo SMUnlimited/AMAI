@@ -11,8 +11,8 @@ As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601 (
 | Version    | War3 Support                   |
 | -----------|--------------------------------|
 | 2.5.4      | Min 1.24+, 1.29+ basic support |
-| 2.6.0      | Min 1.24+, 1.29+ supported     |
-| 3.0        | 1.31+                          |
+| 2.6.0      | Min 1.24+, 1.29+ enhanced support |
+| 3.0        | Min 1.31+                      |
 
 # How to Play
 AMAI release comes with the standard AI scripts pre-built for you.
@@ -87,10 +87,10 @@ If you make a custom map you need to make sure in the world editor it is also se
 If you don't do this the AI will get stuck upgrading past tier 2 as it will use the vanilla patch.
 
 To change the patch data set use the following menus from the world editor.
-> scenario
-> map properties
-> options
-> game data set
+> scenario -
+> map properties -
+> options -
+> game data set -
 > Change from Default (based on map melee status) to Latest Patch
 
 If your custom map has custom units you will need to make custom changes to AMAI which can be followed in the `Manual`.
