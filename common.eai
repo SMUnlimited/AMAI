@@ -812,7 +812,7 @@ globals
     string chat_confirm_attack_unit = ""
     string chat_towerrush = ""
     string chat_no_orc = ""
-	string chat_dynamic_counter = "and countering the enemies:"
+	string chat_dynamic_counter = "and countering "
     string militia_expansion_chat = ""
     
     //gamecache translation_map = InitGameCache("AMAI_TM.w3v")
@@ -1353,6 +1353,20 @@ function Int2Str takes integer ic returns string
       return "-"+s
     endif
     return s
+endfunction
+
+function Real2Str takes real num returns string
+  local string s = ""
+  local real r = num
+
+  set s = Int2Str(R2I(r))
+  set r = r - R2I(r) // Remove the integer bit to leave the decimal
+  if r > 0 then
+    set s = s + "." // The decimal point
+    set r = r * 1000 // 3 decimal places
+    set s = s + Int2Str(R2I(r))
+  endif
+  return s
 endfunction
 
 //============================================================================
@@ -10006,6 +10020,8 @@ function OneBuildLoopAM takes nothing returns nothing
     local integer town = 0
     local integer array max_order
     local integer mo = 0
+    local boolean traced = false
+    local string logtype = "unit "
     
     call InitLastUpkeep()
 
@@ -10027,7 +10043,7 @@ function OneBuildLoopAM takes nothing returns nothing
 
     set blocked_gold = 0
     set blocked_wood = 0
-	set blocked_food = 0
+    set blocked_food = 0
     set t_build_length = 0
 
     call GetBuildLock()
@@ -10050,19 +10066,26 @@ function OneBuildLoopAM takes nothing returns nothing
           if tp == BUILD_UNIT then
               set ret = StartUnitAM(qty,id,build_town[index], build_loc[index], build_prio[index], mo)
           elseif tp == BUILD_UPGRADE then
+              set logtype = "upgrade "
               set ret = StartUpgradeAM(qty,id)
           elseif tp == BUILD_EXPAND then
+              set logtype = "expand "
               set ret = StartExpansionAM(qty,id)
           else
+              set logtype = "item "
               set ret = StartItem(qty,id)
           endif
 
           if qty > mo then
             set max_order[id + town*OBJECT_NUM] = qty
           endif
-
-  //        exitwhen ret == NOT_ENOUGH_RES
+          
+//        exitwhen ret == NOT_ENOUGH_RES
           if ret == CANNOT_BUILD then
+            if (traced == false) then
+              call Trace("CANNOT BUILD " + logtype + Int2Str(id))
+              set traced = true
+            endif
             call AddRefresh(tp, qty, id, build_town[index], build_loc[index], build_prio[index])
           endif
           if ret == CANNOT_BUILD or ret == BUILT_SOME or ret == NOT_ENOUGH_RES or (ret == BUILT_ALL and qty < build_qty[index]) then
@@ -10081,10 +10104,10 @@ function OneBuildLoopAM takes nothing returns nothing
         set index = index + 1
         set total_gold = total_gold - blocked_gold
         set total_wood = total_wood - blocked_wood
-		//set total_food = total_food - blocked_food
+        //set total_food = total_food - blocked_food
         set blocked_gold = 0
         set blocked_wood = 0
-		set blocked_food = 0
+        set blocked_food = 0
         call UpdateLastUpkeep()
     endloop
     
@@ -11639,7 +11662,7 @@ function HealArmy takes nothing returns nothing
     set mass_healed = false
     exitwhen (urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger) // and not shop_ordered	
     exitwhen player_defeated or town_threatened or ver_heroes == false
-    call Trace("function HealArmy: Army is badly damaged and needs healing " + R2S(hs))
+    call Trace("function HealArmy: Army is badly damaged and needs healing " + Real2Str(hs))
     set mh_item = GetMassHealingItem()
     if mh_item > 0 then
       set mass_healed = true
