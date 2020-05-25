@@ -2441,6 +2441,17 @@ endfunction
 //==============================================================
 // (AMAI) Vector utility functions
 //==============================================================
+
+//===========================================================================
+// Returns a location which is (distance) away from (src) in the direction of (targ).
+//
+function AIGetProjectedLoc takes location src, location targ, real distance, real deltaAngle returns location
+    local real srcX = GetLocationX(src)
+    local real srcY = GetLocationY(src)
+    local real direction = Atan2(GetLocationY(targ) - srcY, GetLocationX(targ) - srcX) + deltaAngle
+    return Location(srcX + distance * Cos(direction), srcY + distance * Sin(direction))
+endfunction
+
 function GetSumLoc takes location l1, location l2 returns location
   return Location(GetLocationX(l1) + GetLocationX(l2), GetLocationY(l1) + GetLocationY(l2))
 endfunction
@@ -6089,19 +6100,18 @@ endfunction
 
 //============================================================================
 function AddFrontPoint takes location l returns nothing
-  set front_loc[front_loc_num] = l
-  set front_loc_num = front_loc_num + 1
-endfunction
-
-//============================================================================
-function ComputeFrontPointPlayer takes player p returns nothing
-  local location loc = GetPlayerStartLocationLoc(p)
-  local location front = GetLocationInDistanceFromBaseToLoc(loc, front_base_distance)
-  call CreateDebugTagLoc("Front Point Found", 10, GetLocationX(front), GetLocationY(front), 10.00, 8.00)
-  call AddFrontPoint(front)
-  set front = null
-  call RemoveLocation(loc)
-  set loc = null
+  local unit pathable = null
+  
+  set pathable = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), 'ewsp', GetLocationX(l), GetLocationY(l), 270.00)
+  if GetUnitX(pathable) == GetLocationX(l) and GetUnitY(pathable) == GetLocationY(l) then
+    call CreateDebugTagLoc("Front Point Added", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
+    set front_loc[front_loc_num] = l
+    set front_loc_num = front_loc_num + 1
+  //else
+    //call CreateDebugTagLoc("Front Point : Not Buildable", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
+  endif
+  call RemoveUnit(pathable)
+  set pathable = null
 endfunction
 
 //============================================================================
@@ -6120,68 +6130,63 @@ function ComputeFrontPoints takes nothing returns nothing
   local real distance = 0
   
   loop
-    exitwhen i >= 12
+    exitwhen i >= GetBJMaxPlayers()
     set p = Player(i)
     if IsPlayerEnemy(mainplayer, p) and GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
-		set loc = GetPlayerStartLocationLoc(p)
-		set u[n] = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(home_location), GetLocationY(home_location), 270.00)
-		call ShowUnit(u[n], false)
-		call SetUnitUseFood(u[n], false)
-		call SetUnitMoveSpeed(u[n], 500)
-		call RemoveGuardPosition(u[n])
-		call IssuePointOrder(u[n], "move", GetLocationX(loc), GetLocationY(loc))
-		call RemoveLocation(loc)
-		set n = n + 1
-		set totalplayers = n
+    set loc = GetPlayerStartLocationLoc(p)
+    set u[n] = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(home_location), GetLocationY(home_location), 270.00)
+    call ShowUnit(u[n], false)
+    call SetUnitUseFood(u[n], false)
+    call SetUnitMoveSpeed(u[n], 500)
+    call RemoveGuardPosition(u[n])
+    call IssuePointOrder(u[n], "move", GetLocationX(loc), GetLocationY(loc))
+    call RemoveLocation(loc)
+    set n = n + 1
+    set totalplayers = n
     endif
-	set i = i + 1
-	set loc = null
+    set i = i + 1
+    set loc = null
 
   endloop
 
-	loop
-		set pathingdone = true
-		set i = 0
-		loop
-			exitwhen i >= totalplayers
-			if patherdone[i] == false then
-				set l = GetUnitLoc(u[i])
-				set distance = DistanceBetweenPoints(l, home_location)
-				if distance >= front_base_distance then
-					call CreateDebugTag("Front Point Found", 10, u[i], 10.00, 8.00)
-					call RemoveUnit(u[i])
-					set u[i] = null
-					set patherdone[i] = true
-			        call AddFrontPoint(l)
-				elseif GetUnitState(u[i], UNIT_STATE_LIFE) <= 0 then
-					set patherdone[i] = true
-					call RemoveUnit(u[i])
-					set u[i] = null
-		            call RemoveLocation(l)
-				else
-					call RemoveLocation(l)
-				endif
-				set pathingdone = false
-			endif
-			set i = i + 1
-		endloop
-		exitwhen pathingdone
-		call Sleep(0.1)
-	endloop
-	
+  loop
+    set pathingdone = true
+    set i = 0
+    loop
+      exitwhen i >= totalplayers
+      if patherdone[i] == false then
+        set l = GetUnitLoc(u[i])
+        set distance = DistanceBetweenPoints(l, home_location)
+        if distance >= front_base_distance then
+          call CreateDebugTag("Front Point Found", 10, u[i], 10.00, 8.00)
+          call RemoveUnit(u[i])
+          set u[i] = null
+          set patherdone[i] = true
+          call AddFrontPoint(l)
+          call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, 90))
+          call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, -90))
+          call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, 80))
+          call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, -80))
+        elseif GetUnitState(u[i], UNIT_STATE_LIFE) <= 0 then
+          set patherdone[i] = true
+          call RemoveUnit(u[i])
+          set u[i] = null
+          call RemoveLocation(l)
+        else
+          call RemoveLocation(l)
+        endif
+        set pathingdone = false
+      endif
+      set i = i + 1
+    endloop
+    exitwhen pathingdone
+    call Sleep(0.1)
+  endloop
+  
   set front_locs_computed = true
   set l = null
   set p = null
   set mainplayer = null
-	
-//  loop
-//    exitwhen i >= 12
-//    set p = Player(i)
-//    if IsPlayerEnemy(ai_player, p) and GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
-//      call ComputeFrontPointPlayer(p)
-//    endif
-//    set i = i + 1
-//  endloop
 
 endfunction
 

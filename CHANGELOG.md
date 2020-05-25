@@ -18,12 +18,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Reduced impact of summons on total caster strength as they are temporary units.
 - Moved template files to `Templates` folder.
 - All war fronts are now taken into consideration for focus fire which should improve behaviour no matter where battles are happening.
-- Halved front location distance from town center as towers were often non-defensible.
+- Halved front location distance from town center but now calculates an arc of locations to use. 
 
 ### Removed
 - No longer a seperate AMAI vs AI installer batch script, installers now support both versions.
 
 ### Fixed
+- Corrected tech tree to properly handle all changes since 1.24.
 - All 24 player colours are now supported by AMAI.
 - When the debug player is killed we will now switch to a new player to debug.
 - The StrategyManager compile buttons now work again.
