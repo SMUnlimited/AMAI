@@ -27,7 +27,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 - Corrected tech tree to properly handle all changes since 1.24.
-- All 24 player colours are now supported by AMAI.
+- Improved support for 24 players. 
+  - All 24 player colours are now supported by AMAI.
+  - Various messaging and attack targeting will now work with more than 12 players.
+  - Profiles can now be reused by AI players. This is useful for > 12 players in a game as there is not always enough profiles to set unique profiles.
 - When the debug player is killed we will now switch to a new player to debug.
 - The StrategyManager compile buttons now work again.
 - Fixed warning message during script compilation.
