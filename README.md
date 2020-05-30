@@ -5,10 +5,10 @@ Created by **AIAndy**, **Zalamander** and the **Strategy Master**.
 
 Official Release Links available from: https://www.hiveworkshop.com/threads/advanced-melee-ai.62879/
 
-As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601 (Site is now down)
+As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601
 
 # Warcraft Requirements
-| Version    | War3 Support                   |
+| AMAI Version    | War3 Support                   |
 | -----------|--------------------------------|
 | 2.5.4      | Min 1.24+, 1.29+ basic support |
 | 2.6.0      | Min 1.24+, 1.29+ enhanced support |
@@ -31,7 +31,7 @@ If you have `perl` installed you can use `InstallTFTtoDir.pl "C:\Documents\Warcr
 After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
 
 # Build Requirements
-To build scripts from source or to make custom changes you must install perl (via `strawberry` or `activestate`).
+To build scripts from source code or to make custom changes you must install perl (via `strawberry` or `activestate`).
 Additionally you need to install the *Tk* module if you want to run the **Strategy Manager UI Client** as described in the manual.
 `Activestate` uses the package manager to install modules, while `strawberry` you need to use the CPAN client to install a module.
 
@@ -51,6 +51,30 @@ Tested with strawbery perl 5.30 and Tk 804.034
 - Use *makeVAITFT.bat* to create the AMAI vs AI scripts.
 - Run *InstallTFTToMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps.
 - This special version will make *odd* teams run with AMAI and *even* teams run with the standard blizzard AI.
+
+# Features
+- **Personality Profiles**: Each AI opponent has a set profile which modifies how it reacts or plays the game. Some can be real chickens and never dare to attack you while others will rush you down.
+- **Dynamic Strategies**: Constantly monitors the current situation of the game and always try to pick the best suited strategy to counter the enemy forces.
+  - The computers will pick from all strategies depending on what kind of units the enemy has, how long the game has been going and what favorite units the current profile has.
+- **Enhanced Micromanagement Control** 
+  - To help keep as many units as possible alive by fleeing by town portal, zeppelin or foot. 
+  - This includes better use of items and healing items.
+  - Makes the enemy force suffer as much as possible by focusing fire on the most vulnerable enemy units first if they are in range.
+  - Will buy neutral heroes and units.
+  - Can occasionally attempt tower rushes and militia/ancient expansions.
+- **Enhanced Team Play**
+  - Coordinates with allies what it will be attacking or will join allies in attacking a target.
+  - Human players have access to the Commander, letting you give commands.
+  - Asks for aid if running out resources.
+- **Surrenders** : Based on profiles some AI's will give up when it detects its losing, while others will fight to the death.
+- **Chat Support**
+  - AMAI will taunt enemy players, and share its build strategy with team players.
+  - Includes Support for **10 different languages**.
+- Easy to use **Strategy and Profile editor**.
+  - Supports an unlimited amount of your own profiles.
+  - Supports an unlimited amount of your own strategies.
+  - Auto Building feature for example: a AMAI computer only needs to know that it shall build a hero and 15 footmen. It will automatically build all needed buildings, workers and farms in order to get this as fast as possible.
+
 
 # Commander
 The Commander allows you to give orders to your ally AI's.
@@ -96,45 +120,37 @@ To change the patch data set use the following menus from the world editor.
 If your custom map has custom units you will need to make custom changes to AMAI which can be followed in the `Manual`.
 
 ## Custom AI
-AMAI has built in support to be able to write new strategies and profiles. The `Manual` folder contains more details.
+AMAI has built in support to be able to write new strategies and profiles using the **Strategy Manager UI Client** . The `Manual` folder contains more details.
 
 # Credits
 
-## Helpers
-Hrothgaar,
-WargH
+### Helpers
+- Hrothgaar
+- WargH
+- DK Slayer (For the Commander)
 
-## Translations
-English - Chad Nicholas,
-Swedish - Zalamander,
-German - AIAndy, Sagan,
-French - JUJU, WILL THE ALMIGHTY,
-Spanish - Vexorian, Moyack,
-Romanian - Andas_007,
-Chinese - Dr Fan,
-Russian - RaZ and Darkloke,
-Portuguese - imba curisco ghouleh,
-Norwegian - Aray
+### Translations
+- English - Chad Nicholas,
+- Swedish - Zalamander,
+- German - AIAndy, Sagan,
+- French - JUJU, WILL THE ALMIGHTY,
+- Spanish - Vexorian, Moyack,
+- Romanian - Andas_007,
+- Chinese - Dr Fan,
+- Russian - RaZ and Darkloke,
+- Portuguese - imba curisco ghouleh,
+- Norwegian - Aray
 
-## The Commander
-AIAndy,
-DK Slayer
+### Quality Assurance
+- Hrothgaar,
+- WargH,
+- ster,
+- Tommi,
+- xWOLF,
+- Feannor,
+- Jum-Jum,
+- and anyone else missing a mention here.
 
-## Quality Assurance - Reign of Chaos
-WargH
-
-## Quality Assurance - The Frozen Throne
-Hrothgaar,
-WargH,
-ster,
-Tommi,
-xWOLF,
-Feannor,
-Jum-Jum,
-and everyone else I might have forgotten to mention here.
-
-## JASS Precompiler
-Vidstige
-
-## MPQEditor
-Ladislav Zezula 
+### Tooling
+- JASS Precompiler - Vidstige
+- MPQEditor - Ladislav Zezula 
