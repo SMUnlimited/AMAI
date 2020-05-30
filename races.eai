@@ -589,7 +589,7 @@ function attack_sequence_all takes nothing returns nothing
 
   if ver_heroes then
   loop
-      exitwhen TownCountDone(hero[1])>0
+      exitwhen TownCountDone(hero[1])>0 or desperation_assault
       call Sleep(2 * sleep_multiplier)
   //    call Trace("Attack Loop1")
   endloop
@@ -600,22 +600,22 @@ function attack_sequence_all takes nothing returns nothing
 
     call Trace("RACIAL ATTACK: Retreating")
     loop
-      exitwhen not (CaptainRetreating() and isfleeing)
+      exitwhen not (CaptainRetreating() and isfleeing) or desperation_assault
       exitwhen player_defeated
       call CaptainGoHome()	  // Seems to prevent the fight and flee behaviour. Still occasions where captain seems to be home instantanously when it retreated
       call Sleep(2 * sleep_multiplier)
 
-	  //if break_attack then
-		//call DisplayToAll("break_attack is true")
-	  //endif
+    //if break_attack then
+    //call DisplayToAll("break_attack is true")
+    //endif
     endloop
-	call Trace("RACIAL ATTACK: exit Retreating")
+    call Trace("RACIAL ATTACK: exit Retreating")
 
     call HealArmy()
     //call Trace("RACIAL ATTACK: Army Healed") 
-	
+  
     //call HeroHealingBugFix()     // To hopefully fix bugs with attack system as will keep them running
-	
+  
     if ver_heroes then
       set creeping_only = AwaitMeleeHeroesAM()
     endif
@@ -623,29 +623,29 @@ function attack_sequence_all takes nothing returns nothing
     exitwhen player_defeated
 
     if no_attack_allowed then
-		call Trace("RACIAL ATTACK: NO ATTACK SETTING IS ON")
+      call Trace("RACIAL ATTACK: NO ATTACK SETTING IS ON")
     else
 
       if race_has_ghouls and race_ghouls_attack then
         call setup_ghouls()
         
         set peons_assigned = false
-		call Trace("RACIAL ATTACK: Assigning Peons")
+        call Trace("RACIAL ATTACK: Assigning Peons")
         loop
-          exitwhen peons_assigned
+          exitwhen peons_assigned or desperation_assault
           call Sleep(sleep_multiplier)
         endloop
-		call Trace("RACIAL ATTACK: exit Assigning Peons")
-		call Sleep(2) // Seems this helps make sure we do get the ghouls instead of them going back to wood
-		//call FormGroupAM(2)
+        call Trace("RACIAL ATTACK: exit Assigning Peons")
+        call Sleep(2) // Seems this helps make sure we do get the ghouls instead of them going back to wood
+    //call FormGroupAM(2)
       endif	
 
-    call Trace("RACIAL ATTACK: waiting for troops")	  
-	loop
-	  exitwhen GetOwnStrength() >= minimum_attack_strength
-      call Sleep(5 * sleep_multiplier)
-    endloop
-	call Trace("RACIAL ATTACK: exit waiting troops")
+      call Trace("RACIAL ATTACK: waiting for troops")	  
+      loop
+        exitwhen GetOwnStrength() >= minimum_attack_strength or desperation_assault
+        call Sleep(5 * sleep_multiplier)
+      endloop
+      call Trace("RACIAL ATTACK: exit waiting troops")
       
 //      call Trace("About to Attack")
       call setup_force(false)
@@ -673,6 +673,10 @@ endfunction
 function peon_assignment takes nothing returns nothing
 
   call ClearHarvestAI()
+
+  if desperation_assault then
+    return
+  endif  
 
   call harvest_gold(0)
   if not race_manual_loading then
