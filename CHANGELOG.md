@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Focus fire micro will no longer accidentily wake sleeping creeps.
 - Fixed an issue where AMAI would get stuck trying to attack its own base.
 - Mechanical armies will not enter emergency healing state because the only non-mechnical unit/hero is damaged.
+- Fixed some issues with the build logic where it would build the wrong priority units.
 
 ## [2.6.0] - 2020-03-02
 

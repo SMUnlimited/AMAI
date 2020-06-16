@@ -8284,10 +8284,10 @@ endfunction
 //============================================================================
 //AMAI Build Code
 //============================================================================
-function SetBuildAllAM takes integer t, integer mqty, integer unitid, integer town, integer bloc, integer prio returns nothing
+
+function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns nothing
     local integer i = 0
     local integer j = 0
-    local integer qty = BlockListCheck(mqty, unitid)
     
     if unitid == 0 then
       return
@@ -8334,118 +8334,72 @@ function SetBuildAllAM takes integer t, integer mqty, integer unitid, integer to
     set build_length = build_length + 1
     call ReleaseBuildLock()
 
-	call Sleep(0.05)
-    call SetBuildAllAM(t, qty - 1, unitid, town, bloc, prio + prio_q_inc )
-
-    if buy_type[unitid] == BT_ML_UPGRADE then
-      if qty == 1 then
-        if needed1[unitid] != 0 then
-          call SetBuildAllAM(BUILD_UNIT, Get_f_qty(qty, unitid, town), needed1[unitid], -1, BLOC_STD, prio + prio_n_inc)
-        endif
-      elseif qty == 2 then
-        call SetBuildAllAM(BUILD_UPGRADE, 1, unitid, town, BLOC_STD, prio + prio_n_inc)
-        if needed2[unitid] != 0 then
-          call SetBuildAllAM(BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc)
-        endif
-      else
-        call SetBuildAllAM(BUILD_UPGRADE, 2, unitid, town, BLOC_STD, prio + prio_n_inc)
-        if needed3[unitid] != 0 then
-          call SetBuildAllAM(BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc)
-        endif
-      endif
-    elseif buy_type[unitid] == BT_HERO or buy_type[unitid] == BT_NEUTRAL_HERO then
-      if unitid == hero[1] or unitid == hero[2] or unitid == hero[3] then
-        if needed1[unitid] != 0 then
-          call SetBuildAllAM(BUILD_UNIT, 1, needed1[unitid], -1, BLOC_STD, prio + prio_n_inc)
-        endif
-      endif
-      if (unitid == hero[2] and not hero_built[2]) or (unitid == hero[3] and not hero_built[3]) then
-        if needed2[unitid] != 0 then
-          call SetBuildAllAM(BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc)
-        endif
-      endif
-      if unitid == hero[3] and not hero_built[3] then
-        if needed3[unitid] != 0 then
-          call SetBuildAllAM(BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc)
-        endif
-      endif
-    else
-      if needed1[unitid] != 0 then
-        if needed3[unitid] == UPGRADED then
-          call SetBuildAllAM(BUILD_UNIT, qty + TownCountExForUpgrade(needed1[unitid],unitid,false,town), needed1[unitid], town, bloc, prio + prio_n_inc)
-        else
-          call SetBuildAllAM(BUILD_UNIT, Get_f_qty(qty, unitid, town), needed1[unitid], -1, BLOC_STD, prio + prio_n_inc)
-        endif
-      endif
-      if needed2[unitid] != 0 then
-        call SetBuildAllAM(BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc)
-      endif
-      if needed3[unitid] != 0 and needed3[unitid] != UPGRADED then
-        call SetBuildAllAM(BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc)
-      endif
-    endif
-  #INCLUDETABLE <$VER$\NeededExtra.txt> #EFR
-    if unitid == %1 then
-      call SetBuildAllAM(BUILD_%2, %3, %4, -1, BLOC_STD, prio + prio_n_inc)
-    endif
-  #ENDINCLUDE
+  if qty > 1 then
+    call SetBuildAllAMCore(t, qty - 1, unitid, town, bloc, prio + prio_q_inc )
+  endif
 
 endfunction
 
-//============================================================================
 function RefreshNeeded takes integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns nothing
     if buy_type[unitid] == BT_ML_UPGRADE then
       if qty == 1 then
         if needed1[unitid] != 0 then
-          call SetBuildAllAM(BUILD_UNIT, Get_f_qty(qty, unitid, town), needed1[unitid], -1, BLOC_STD, prio + prio_n_inc)
+          call SetBuildAllAMCore(BUILD_UNIT, Get_f_qty(qty, unitid, town), needed1[unitid], -1, BLOC_STD, prio + prio_n_inc)
         endif
       elseif qty == 2 then
-        call SetBuildAllAM(BUILD_UPGRADE, 1, unitid, town, BLOC_STD, prio + prio_n_inc)
+        call SetBuildAllAMCore(BUILD_UPGRADE, 1, unitid, town, BLOC_STD, prio + prio_n_inc)
         if needed2[unitid] != 0 then
-          call SetBuildAllAM(BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc)
+          call SetBuildAllAMCore(BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc)
         endif
       else
-        call SetBuildAllAM(BUILD_UPGRADE, 2, unitid, BLOC_STD, town, prio + prio_n_inc)
+        call SetBuildAllAMCore(BUILD_UPGRADE, 1, unitid, town, BLOC_STD, prio + prio_n_inc + prio_n_inc)
+        call SetBuildAllAMCore(BUILD_UPGRADE, 2, unitid, town, BLOC_STD, prio + prio_n_inc)
         if needed3[unitid] != 0 then
-          call SetBuildAllAM(BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc)
+          call SetBuildAllAMCore(BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc)
         endif
       endif
     elseif buy_type[unitid] == BT_HERO or buy_type[unitid] == BT_NEUTRAL_HERO then
       if unitid == hero[1] or unitid == hero[2] or unitid == hero[3] then
         if needed1[unitid] != 0 then
-          call SetBuildAllAM(BUILD_UNIT, 1, needed1[unitid], -1, BLOC_STD, prio + prio_n_inc)
+          call SetBuildAllAMCore(BUILD_UNIT, 1, needed1[unitid], -1, BLOC_STD, prio + prio_n_inc)
         endif
       endif
       if (unitid == hero[2] and not hero_built[2]) or (unitid == hero[3] and not hero_built[3]) then
         if needed2[unitid] != 0 then
-          call SetBuildAllAM(BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc)
+          call SetBuildAllAMCore(BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc)
         endif
       endif
       if unitid == hero[3] and not hero_built[3] then
         if needed3[unitid] != 0 then
-          call SetBuildAllAM(BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc)
+          call SetBuildAllAMCore(BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc)
         endif
       endif    
     else
       if needed1[unitid] != 0 then
         if needed3[unitid] == UPGRADED then
-          call SetBuildAllAM(BUILD_UNIT, qty + TownCountExForUpgrade(needed1[unitid],unitid,false,town), needed1[unitid], town, bloc, prio + prio_n_inc)
+          call SetBuildAllAMCore(BUILD_UNIT, qty + TownCountExForUpgrade(needed1[unitid],unitid,false,town), needed1[unitid], town, bloc, prio + prio_n_inc)
         else
-          call SetBuildAllAM(BUILD_UNIT, Get_f_qty(qty, unitid, town), needed1[unitid], -1, BLOC_STD, prio + prio_n_inc)
+          call SetBuildAllAMCore(BUILD_UNIT, Get_f_qty(qty, unitid, town), needed1[unitid], -1, BLOC_STD, prio + prio_n_inc)
         endif
       endif
       if needed2[unitid] != 0 then
-        call SetBuildAllAM(BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc)
+        call SetBuildAllAMCore(BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc)
       endif
       if needed3[unitid] != 0 and needed3[unitid] != UPGRADED then
-        call SetBuildAllAM(BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc)
+        call SetBuildAllAMCore(BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc)
       endif
     endif
   #INCLUDETABLE <$VER$\NeededExtra.txt> #EFR
     if unitid == %1 then
-      call SetBuildAllAM(BUILD_%2, %3, %4, -1, BLOC_STD, prio + prio_n_inc)
+      call SetBuildAllAMCore(BUILD_%2, %3, %4, -1, BLOC_STD, prio + prio_n_inc)
     endif
   #ENDINCLUDE
+endfunction
+
+function SetBuildAllAM takes integer t, integer mqty, integer unitid, integer town, integer bloc, integer prio returns nothing
+  local integer qty = BlockListCheck(mqty, unitid)
+  call SetBuildAllAMCore(t, qty, unitid, town, bloc, prio)
+  call RefreshNeeded(t, qty, unitid, town, bloc, prio)
 endfunction
 
 //============================================================================
@@ -8863,7 +8817,7 @@ function StartUpgradeAM takes integer level, integer upgid returns integer
     endif
     
     if town_threatened then
-      return BUILT_SOME
+      return BUILT_SOME // ignore upgrades and build units instead
     endif
 
     set gold_cost = GetUpgradeGoldCost(old_id[upgid])
@@ -8881,17 +8835,19 @@ function StartUpgradeAM takes integer level, integer upgid returns integer
       endif
     endif
 
-    if total_gold <= 0 and total_wood <= 0 and (not (total_gold > 0 and wood_cost == 0)) and not (gold_cost == 0 and wood_cost == 0) then
+    if total_gold <= 0 and not (gold_cost == 0) then
       return NOT_ENOUGH_RES
     endif
 
-    if (total_gold > 0 or gold_cost == 0) and (total_wood > 0 or wood_cost == 0) then
-      if SetUpgrade(old_id[upgid]) then
-        set upgrade_time[upgid] = ai_time + 10
-        return BUILT_ALL
-      else
-        return CANNOT_BUILD
-      endif
+    if total_wood <= 0 and not (wood_cost == 0) then
+      return NOT_ENOUGH_RES
+    endif
+
+    if SetUpgrade(old_id[upgid]) then
+      set upgrade_time[upgid] = ai_time + 10
+      return BUILT_ALL
+    else
+      return CANNOT_BUILD
     endif
     return BUILT_SOME
 endfunction
@@ -9333,9 +9289,11 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     endif
 
     // if we're waiting on gold and wood; pause build orders
-    if total_gold <= 0 and total_wood <= 0 and (not (total_gold > 0 and wood_cost == 0)) and not (gold_cost == 0 and wood_cost == 0) then
-        return NOT_ENOUGH_RES
-    elseif afford_qty < 1 then
+    if total_gold <= 0 and not (gold_cost == 0) then
+      return NOT_ENOUGH_RES
+    elseif total_wood <= 0 and not (wood_cost == 0) then
+      return NOT_ENOUGH_RES
+    elseif afford_qty <= 0 then
         return BUILT_SOME
     endif
 
@@ -9556,7 +9514,11 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     set total_wood = 0
   endif
 
-  if total_gold <= 0 and total_wood <= 0 then
+  if total_gold <= 0 and not (gold_cost == 0) then
+    return NOT_ENOUGH_RES
+  endif
+
+  if total_wood <= 0 and not (wood_cost == 0) then
     return NOT_ENOUGH_RES
   endif
 
@@ -9659,20 +9621,21 @@ function StartEmergencyItem takes integer ask_qty, integer itemid returns intege
     set wood = 0
   endif
 
-  if gold <= 0 and wood <= 0 and (not (gold > 0 and wood_cost == 0)) and not (gold_cost == 0 and wood_cost == 0) then
-  call Trace("Need more rescources to buy emergency item")
+  if gold <= 0 and not (gold_cost == 0) then
     return NOT_ENOUGH_RES
   endif
 
-  if (gold > 0 or gold_cost == 0) and (wood > 0 or wood_cost == 0) then
-    if BuyItem(have_qty + 1, itemid) then
-	  call Trace("Buying emergency item")
-      return BUILT_SOME
-    else
-      return CANNOT_BUILD
-    endif
+  if wood <= 0 and not (wood_cost == 0) then
+    return NOT_ENOUGH_RES
   endif
+
+  if BuyItem(have_qty + 1, itemid) then
+    call Trace("Buying emergency item")
     return BUILT_SOME
+  else
+    return CANNOT_BUILD
+  endif
+  return BUILT_SOME
 endfunction
 
 //============================================================================
@@ -9711,16 +9674,18 @@ function StartItem takes integer ask_qty, integer itemid returns integer
     set total_wood = 0
   endif
 
-  if total_gold <= 0 and total_wood <= 0 and (not (total_gold > 0 and wood_cost == 0)) and not (gold_cost == 0 and wood_cost == 0) then
+  if total_gold <= 0 and not (gold_cost == 0) then
     return NOT_ENOUGH_RES
   endif
 
-  if (total_gold > 0 or gold_cost == 0) and (total_wood > 0 or wood_cost == 0) then
-    if BuyItem(have_qty + 1, itemid) then
-      return BUILT_SOME
-    else
-      return CANNOT_BUILD
-    endif
+  if total_wood <= 0 and not (wood_cost == 0) then
+    return NOT_ENOUGH_RES
+  endif
+
+  if BuyItem(have_qty + 1, itemid) then
+    return BUILT_SOME
+  else
+    return CANNOT_BUILD
   endif
   return BUILT_SOME
 endfunction
@@ -10031,8 +9996,11 @@ function OneBuildLoopAM takes nothing returns nothing
     local integer town = 0
     local integer array max_order
     local integer mo = 0
-    local boolean traced = false
-    local string logtype = "unit "
+    local integer traced = 0
+    local integer tracedsome = 0
+    local integer tracednoresources = 0
+    local integer tracedall = 0
+    local string logtype = ""
     
     call InitLastUpkeep()
 
@@ -10075,6 +10043,7 @@ function OneBuildLoopAM takes nothing returns nothing
         if build_qty[index] > mo then
           
           if tp == BUILD_UNIT then
+              set logtype = "unit "
               set ret = StartUnitAM(qty,id,build_town[index], build_loc[index], build_prio[index], mo)
           elseif tp == BUILD_UPGRADE then
               set logtype = "upgrade "
@@ -10082,23 +10051,34 @@ function OneBuildLoopAM takes nothing returns nothing
           elseif tp == BUILD_EXPAND then
               set logtype = "expand "
               set ret = StartExpansionAM(qty,id)
-          else
+          elseif tp == BUILD_ITEM then
               set logtype = "item "
               set ret = StartItem(qty,id)
+          else
+            set logtype = "unknown:" + Int2Str(tp)
           endif
 
           if qty > mo then
             set max_order[id + town*OBJECT_NUM] = qty
           endif
           
-//        exitwhen ret == NOT_ENOUGH_RES
           if ret == CANNOT_BUILD then
-            if (traced == false) then
+            if (traced == 0) then
               call Trace("CANNOT BUILD " + logtype + unitNames[id] + " " + Int2Str(id))
-              set traced = true
+              set traced = id
             endif
             call AddRefresh(tp, qty, id, build_town[index], build_loc[index], build_prio[index])
+          elseif ret == BUILT_SOME and tracedsome == 0 then
+            //call Trace("BUILT SOME " + logtype + unitNames[id] + " " + Int2Str(id))
+            set tracedsome = id
+          elseif ret == BUILT_ALL and tracedall == 0 then
+            //call Trace("BUILT ALL " + logtype + unitNames[id] + " " + Int2Str(id))
+            set tracedall = id
+          elseif ret == NOT_ENOUGH_RES and tracednoresources == 0 then
+            call Trace("NO RESOURCES " + logtype + unitNames[id] + " " + Int2Str(id))
+            set tracednoresources = id
           endif
+          exitwhen ret == NOT_ENOUGH_RES // Don't try and build anything else as thing we trying to buy is too expensive
           if ret == CANNOT_BUILD or ret == BUILT_SOME or ret == NOT_ENOUGH_RES or (ret == BUILT_ALL and qty < build_qty[index]) then
             set build_qty[index_free] = build_qty[index]
             set build_type[index_free] = build_type[index]
@@ -10141,6 +10121,7 @@ function OneBuildLoopAM takes nothing returns nothing
     call ReleaseBuildLock()
     call RefreshAllNeeded()
     call FactoryNumberUpdate()
+    
     
 endfunction
 
