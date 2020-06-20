@@ -12,7 +12,7 @@ As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601
 | -----------|--------------------------------|
 | 2.5.4      | Min 1.24+, 1.29+ basic support |
 | 2.6.0      | Min 1.24+, 1.29+ enhanced support |
-| 3.0        | Min 1.31+                      |
+| 3.0        | Min 1.32+                      |
 
 # How to Play
 AMAI release comes with the standard AI scripts pre-built for you.
