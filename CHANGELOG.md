@@ -11,7 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - But AMAI will now have an element of countering what the enemies have built and what it has already built.
   - Dynamic strategies change more frequently than the chosen fixed strategy theme.
   - Dynamic strategies pick the attack type they are countering and a unit to focus on building until its next check.
-- When AMAI is out of resources profiles with low surrender values, it will now do an all out attack with all units including workers.
+- When AMAI is out of resources profiles with low surrender values, it will now do a last effort attack with all units including workers.
 - New `InstallTFTToDir` perl script which can be used to install AMAI to an entire directory of maps e.g `InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"`
 
 ### Changed
@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - All war fronts are now taken into consideration for focus fire which should improve behaviour no matter where battles are happening.
 - Halved front location distance from town center but now calculates an arc of locations to use. 
 - Tweaked english gramatical errors for various strategy messages.
+- Stock availability/regen times are no longer divided by 5 in `StandardUnits.txt`.
 
 ### Removed
 - No longer a seperate AMAI vs AI installer batch script, installers now support both versions.
