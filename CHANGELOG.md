@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [Unreleased]
+
+### Changed
+- Moved the `AMAI.exe` to make it clearer which bat file to use to install the AI. This will avoid installing without the correct pre-requsites in place on the map.
+
 ## [3.0.0] - 2020-06-21
 
 ### Added
