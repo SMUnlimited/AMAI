@@ -24,8 +24,8 @@ Run *InstallTFTtoMap* from a commandline, to install AMAI to maps e.g `InstallTF
 
 Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on custom maps (e.g towerdefence), it will make no difference on such maps.
 
-**Note:** *For those coming from older versions do not use the old `AMAI.exe` unless you run `MPQEditor htsize "C:\mymap.w3m" 64` from a commandline to garuantee the AI will be installed correctly.*
-*If you do not do this the AI will not work as the maps prevent the ai scripts being added.*
+**Note:** *For those coming from older versions do not use the old `AMAI.exe` unless you run `MPQEditor htsize "C:\mymap.w3m" 64` from a commandline.*
+*If you do not do this the AI will not work or work oddly as the maps prevent the AMAI scripts being added.*
 
 To make your live easier if you have `perl` installed you can use `InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` to install AMAI to all maps in a directory and subdirectories.
 
