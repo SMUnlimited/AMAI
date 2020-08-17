@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Changed
 - Moved the `AMAI.exe` to make it clearer which bat file to use to install the AI. This will avoid installing without the correct pre-requsites in place on the map.
 
+### Fixed
+- Fix the chinese language translation/encoding issues (Thanks keamspring)
+
 ## [3.0.0] - 2020-06-21
 
 ### Added
