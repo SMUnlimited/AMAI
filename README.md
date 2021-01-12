@@ -20,16 +20,17 @@ AMAI release comes with the standard AI scripts pre-built for you.
 It is suggested to create a subfolder in your "maps" folder like "maps\AMAI" and copy the maps you intend to use AMAI with there.
 For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.html to extract a copy of official maps.
 
-Run *InstallTFTtoMap* from a commandline, to install AMAI to maps e.g `InstallTFTToMap.bat "C:\mymap.w3m"`
+Run *InstallTFTtoMap* from a windows commandline or powershell, to install AMAI to maps e.g `InstallTFTToMap.bat "C:\mymap.w3m"`
 
 Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on custom maps (e.g towerdefence), it will make no difference on such maps.
 
-**Note:** *For those coming from older versions do not use the old `AMAI.exe` unless you run `MPQEditor htsize "C:\mymap.w3m" 64` from a commandline.*
-*If you do not do this the AI will not work or work oddly as the maps prevent the AMAI scripts being added.*
-
-To make your live easier if you have `perl` installed you can use `InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` to install AMAI to all maps in a directory and subdirectories.
+Alternatively for complex installs if you have `perl` installed you can run `InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` to install AMAI to all maps in a directory and subdirectories.
 
 After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
+
+**Note:** *For those coming from older versions do not use the old `AMAI.exe` unless you run `MPQEditor htsize "C:\mymap.w3m" 64` from a commandline.*
+*If you do not do this the AI will not work or work oddly as the maps prevent the AMAI scripts being added.*
+*You may need to run as an administrator if you have issues with maps not displaying any teams.
 
 # Build Requirements
 To build scripts from source code or to make custom changes you must install perl (via `strawberry` or `activestate`).
@@ -38,20 +39,22 @@ Additionally you need to install the *Tk* module if you want to run the **Strate
 
 Tested with strawbery perl 5.30 and Tk 804.034
 
-# Quick Build And Install
+*You may need to run as an administrator if you have issues with maps not displaying any teams.
+
+## Build
 - Use *makeTFT.bat* to create the scripts for the AI. 
 - Run *InstallTFTToMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps. 
 - Run up a custom game and select the map to play.
 
-## ROC Build And Install
-- Use *makeROC.bat* to create the ROC scripts. 
-- Run *InstallROCtoMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps.
-- This version is intended to be played in the ROC version of the game. This version is currently not supported in 1.32+.
-
-## VS AI Build And Install
+## VS AI Build
+- This special version will make *odd* teams run with AMAI and *even* teams run with the standard blizzard AI.
 - Use *makeVAITFT.bat* to create the AMAI vs AI scripts.
 - Run *InstallTFTToMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps.
-- This special version will make *odd* teams run with AMAI and *even* teams run with the standard blizzard AI.
+
+## ROC Build
+- This version is intended to be played in the original ROC (Reigns of Chaos) version of the game. This version is currently not supported in 1.32+.
+- Use *makeROC.bat* to create the ROC scripts. 
+- Run *InstallROCtoMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps.
 
 # Features
 - **Personality Profiles**: Each AI opponent has a set profile which modifies how it reacts or plays the game. Some can be real chickens and never dare to attack you while others will rush you down.
