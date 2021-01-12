@@ -1,6 +1,6 @@
 //===========================================================================
 // Blizzard.j ( define Jass2 functions that need to be in every map script )
-// Version 1.32
+// Version 1.24
 //===========================================================================
 
 
@@ -34,28 +34,21 @@ globals
     constant real      bj_QUEUE_DELAY_HINT              =  5.00
     constant real      bj_QUEUE_DELAY_SECRET            =  3.00
     constant real      bj_HANDICAP_EASY                 = 60.00
-    constant real      bj_HANDICAP_NORMAL               = 90.00
-    constant real      bj_HANDICAPDAMAGE_EASY           = 50.00
-    constant real      bj_HANDICAPDAMAGE_NORMAL         = 90.00
-	constant real      bj_HANDICAPREVIVE_NOTHARD        = 50.00
     constant real      bj_GAME_STARTED_THRESHOLD        =  0.01
     constant real      bj_WAIT_FOR_COND_MIN_INTERVAL    =  0.10
     constant real      bj_POLLED_WAIT_INTERVAL          =  0.10
     constant real      bj_POLLED_WAIT_SKIP_THRESHOLD    =  2.00
 
     // Game constants
-    constant integer   bj_MAX_INVENTORY                 =  6
-    constant integer   bj_MAX_PLAYERS                   =  GetBJMaxPlayers()
-    constant integer   bj_PLAYER_NEUTRAL_VICTIM         =  GetBJPlayerNeutralVictim()
-    constant integer   bj_PLAYER_NEUTRAL_EXTRA          =  GetBJPlayerNeutralExtra()
-    constant integer   bj_MAX_PLAYER_SLOTS              =  GetBJMaxPlayerSlots()
+    constant integer   bj_MAX_INVENTORY                 =   6
+    constant integer   bj_MAX_PLAYERS                   =  12
+    constant integer   bj_PLAYER_NEUTRAL_VICTIM         =  13
+    constant integer   bj_PLAYER_NEUTRAL_EXTRA          =  14
+    constant integer   bj_MAX_PLAYER_SLOTS              =  16
     constant integer   bj_MAX_SKELETONS                 =  25
     constant integer   bj_MAX_STOCK_ITEM_SLOTS          =  11
     constant integer   bj_MAX_STOCK_UNIT_SLOTS          =  11
     constant integer   bj_MAX_ITEM_LEVEL                =  10
-    
-    // Auto Save constants
-    constant integer   bj_MAX_CHECKPOINTS               =  5
 
     // Ideally these would be looked up from Units/MiscData.txt,
     // but there is currently no script functionality exposed to do that
@@ -167,18 +160,15 @@ globals
     constant integer   bj_CAMPAIGN_OFFSET_U       = 2
     constant integer   bj_CAMPAIGN_OFFSET_O       = 3
     constant integer   bj_CAMPAIGN_OFFSET_N       = 4
-    constant integer   bj_CAMPAIGN_OFFSET_XN      = 5
-    constant integer   bj_CAMPAIGN_OFFSET_XH      = 6
-    constant integer   bj_CAMPAIGN_OFFSET_XU      = 7
-    constant integer   bj_CAMPAIGN_OFFSET_XO      = 8
+    constant integer   bj_CAMPAIGN_OFFSET_XN      = 0
+    constant integer   bj_CAMPAIGN_OFFSET_XH      = 1
+    constant integer   bj_CAMPAIGN_OFFSET_XU      = 2
+    constant integer   bj_CAMPAIGN_OFFSET_XO      = 3
 
     // Mission indexing constants
     // Tutorial
     constant integer   bj_MISSION_INDEX_T00       = bj_CAMPAIGN_OFFSET_T * 1000 + 0
     constant integer   bj_MISSION_INDEX_T01       = bj_CAMPAIGN_OFFSET_T * 1000 + 1
-    constant integer   bj_MISSION_INDEX_T02       = bj_CAMPAIGN_OFFSET_T * 1000 + 2
-    constant integer   bj_MISSION_INDEX_T03       = bj_CAMPAIGN_OFFSET_T * 1000 + 3
-    constant integer   bj_MISSION_INDEX_T04       = bj_CAMPAIGN_OFFSET_T * 1000 + 4
     // Human
     constant integer   bj_MISSION_INDEX_H00       = bj_CAMPAIGN_OFFSET_H * 1000 + 0
     constant integer   bj_MISSION_INDEX_H01       = bj_CAMPAIGN_OFFSET_H * 1000 + 1
@@ -267,9 +257,6 @@ globals
 
     // Expansion Orc
     constant integer   bj_MISSION_INDEX_XO00       = bj_CAMPAIGN_OFFSET_XO * 1000 + 0
-    constant integer   bj_MISSION_INDEX_XO01       = bj_CAMPAIGN_OFFSET_XO * 1000 + 1
-    constant integer   bj_MISSION_INDEX_XO02       = bj_CAMPAIGN_OFFSET_XO * 1000 + 2
-    constant integer   bj_MISSION_INDEX_XO03       = bj_CAMPAIGN_OFFSET_XO * 1000 + 3
 
     // Cinematic indexing constants
     constant integer   bj_CINEMATICINDEX_TOP      = 0
@@ -303,11 +290,6 @@ globals
     constant integer   bj_KEYEVENTKEY_RIGHT        = 1
     constant integer   bj_KEYEVENTKEY_DOWN         = 2
     constant integer   bj_KEYEVENTKEY_UP           = 3
-
-    // Mouse Event Types
-    constant integer   bj_MOUSEEVENTTYPE_DOWN     = 0
-    constant integer   bj_MOUSEEVENTTYPE_UP       = 1
-    constant integer   bj_MOUSEEVENTTYPE_MOVE     = 2
 
     // Transmission timing methods
     constant integer   bj_TIMETYPE_ADD             = 0
@@ -418,17 +400,6 @@ globals
     constant integer   bj_MINIMAPPINGSTYLE_SIMPLE  = 0
     constant integer   bj_MINIMAPPINGSTYLE_FLASHY  = 1
     constant integer   bj_MINIMAPPINGSTYLE_ATTACK  = 2
-	
-    // Campaign Minimap icon styles
-    constant integer   bj_CAMPPINGSTYLE_PRIMARY			= 0
-    constant integer   bj_CAMPPINGSTYLE_PRIMARY_GREEN   = 1
-    constant integer   bj_CAMPPINGSTYLE_PRIMARY_RED     = 2
-    constant integer   bj_CAMPPINGSTYLE_BONUS			= 3
-    constant integer   bj_CAMPPINGSTYLE_TURNIN			= 4
-	constant integer   bj_CAMPPINGSTYLE_BOSS			= 5
-	constant integer   bj_CAMPPINGSTYLE_CONTROL_ALLY	= 6
-	constant integer   bj_CAMPPINGSTYLE_CONTROL_NEUTRAL	= 7
-	constant integer   bj_CAMPPINGSTYLE_CONTROL_ENEMY	= 8
 
     // Corpse creation settings
     constant real      bj_CORPSE_MAX_DEATH_TIME    = 8.00
@@ -648,8 +619,6 @@ globals
     lightning          bj_lastCreatedLightning     = null
     image              bj_lastCreatedImage         = null
     ubersplat          bj_lastCreatedUbersplat     = null
-    minimapicon        bj_lastCreatedMinimapIcon   = null
-	commandbuttoneffect bj_lastCreatedCommandButtonEffect = null
 
     // Filter function vars
     boolexpr           filterIssueHauntOrderAtLocBJ      = null
@@ -662,6 +631,3 @@ globals
 
     // Memory cleanup vars
     boolean            bj_wantDestroyGroup         = false
-
-    // Instanced Operation Results
-    boolean            bj_lastInstObjFuncSuccessful = true
