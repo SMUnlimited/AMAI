@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [2.6.1] - 2020-01-13
+- Fixed support for pre-1.32 versions.
+
 ## [2.6.0] - 2020-03-02
 
 ### Added
