@@ -12,7 +12,7 @@ As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601
 | -----------|--------------------------------|---------------|
 | 2.5.4      | Min 1.24+ | Classic edition from 2008 |
 | 2.6.1      | Min 1.24+ | Better Support for 1.30+ |
-| 3.0        | Min 1.32+                      |     |
+| 3.0        | Min 1.32+ | Full Support for the 1.30+ era |
 
 * There are reports that v1.29 of Warcraft 3 prevents AMAI from chatting. This is just an issue with this version and you can downgrade or upgrade.
 
