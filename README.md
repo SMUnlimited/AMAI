@@ -1,6 +1,6 @@
 # AMAI
 Advanced Melee Artifical Intelligence Mod For Warcraft 3
- 
+
 Created by **AIAndy**, **Zalamander** and the **Strategy Master**.
 
 Official Release Links available from: https://www.hiveworkshop.com/threads/advanced-melee-ai.62879/
@@ -8,11 +8,13 @@ Official Release Links available from: https://www.hiveworkshop.com/threads/adva
 As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601
 
 # Warcraft Requirements
-| AMAI Version    | War3 Support                   |
-| -----------|--------------------------------|
-| 2.5.4      | Min 1.24+, 1.29+ basic support |
-| 2.6.0      | Min 1.24+, 1.29+ enhanced support |
-| 3.0        | Min 1.32+                      |
+| AMAI Version    | War3 Support                   | Comments |
+| -----------|--------------------------------|---------------|
+| 2.5.4      | Min 1.24+ | Classic edition from 2008 |
+| 2.6.1      | Min 1.24+ | Better Support for 1.30+ |
+| 3.0        | Min 1.32+                      |     |
+
+* There are reports that v1.29 of Warcraft 3 prevents AMAI from chatting. This is just an issue with this version and you can downgrade or upgrade.
 
 # How to Play
 AMAI release comes with the standard AI scripts pre-built for you.
@@ -20,17 +22,14 @@ AMAI release comes with the standard AI scripts pre-built for you.
 It is suggested to create a subfolder in your "maps" folder like "maps\AMAI" and copy the maps you intend to use AMAI with there.
 For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.html to extract a copy of official maps.
 
-Run *InstallTFTtoMap* from a windows commandline or powershell, to install AMAI to maps e.g `InstallTFTToMap.bat "C:\mymap.w3m"`
+- Run *InstallTFTtoMap* from a windows commandline or powershell, to install AMAI to maps e.g `InstallTFTToMap.bat "C:\mymap.w3m"`
+- Alternatively for complex installs if you have `perl` installed you can run `InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` to install AMAI to all maps in a directory and subdirectories.
+- After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
 
-Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on custom maps (e.g towerdefence), it will make no difference on such maps.
-
-Alternatively for complex installs if you have `perl` installed you can run `InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` to install AMAI to all maps in a directory and subdirectories.
-
-After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
-
-**Note:** *For those coming from older versions do not use the old `AMAI.exe` unless you run `MPQEditor htsize "C:\mymap.w3m" 64` from a commandline.*
-*If you do not do this the AI will not work or work oddly as the maps prevent the AMAI scripts being added.*
-*You may need to run as an administrator if you have issues with maps not displaying any teams.
+## Notes
+- Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on custom maps (e.g towerdefence), it will make no difference on such maps.
+- The old `AMAI.exe` installer from classic AMAI has been moved into the `Templates` folder and will not work unless you run `MPQEditor htsize "C:\mymap.w3m" 64` from a commandline first.
+- You may need to run as an administrator if you have issues with maps not displaying any teams.
 
 # Build Requirements
 To build scripts from source code or to make custom changes you must install perl (via `strawberry` or `activestate`).
@@ -41,9 +40,9 @@ Tested with strawbery perl 5.30 and Tk 804.034
 
 *You may need to run as an administrator if you have issues with maps not displaying any teams.
 
-## Build
-- Use *makeTFT.bat* to create the scripts for the AI. 
-- Run *InstallTFTToMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps. 
+## TFT Build
+- Use *makeTFT.bat* to create the stabdard scripts for the AI.
+- Run *InstallTFTToMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps.
 - Run up a custom game and select the map to play.
 
 ## VS AI Build
@@ -53,15 +52,15 @@ Tested with strawbery perl 5.30 and Tk 804.034
 
 ## ROC Build
 - This version is intended to be played in the original ROC (Reigns of Chaos) version of the game. This version is currently not supported in 1.32+.
-- Use *makeROC.bat* to create the ROC scripts. 
+- Use *makeROC.bat* to create the ROC scripts.
 - Run *InstallROCtoMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps.
 
 # Features
 - **Personality Profiles**: Each AI opponent has a set profile which modifies how it reacts or plays the game. Some can be real chickens and never dare to attack you while others will rush you down.
 - **Dynamic Strategies**: Constantly monitors the current situation of the game and always try to pick the best suited strategy to counter the enemy forces.
   - The computers will pick from all strategies depending on what kind of units the enemy has, how long the game has been going and what favorite units the current profile has.
-- **Enhanced Micromanagement Control** 
-  - To help keep as many units as possible alive by fleeing by town portal, zeppelin or foot. 
+- **Enhanced Micromanagement Control**
+  - To help keep as many units as possible alive by fleeing by town portal, zeppelin or foot.
   - This includes better use of items and healing items.
   - Makes the enemy force suffer as much as possible by focusing fire on the most vulnerable enemy units first if they are in range.
   - Will buy neutral heroes and units.
@@ -89,7 +88,7 @@ You must disable the commander if you want to play on an older version of warcra
 If you installed The Commander to the map there will be language selection dialogs to select a language. Another dialog may also appear with options
 
 1) No Commander
-2) With Commander - Press 'ESC' to bring up the commander menu. 
+2) With Commander - Press 'ESC' to bring up the commander menu.
 3) Computers Only - Same as commander except you dont play at all and instead can only issue orders to try and make your ally ai win
 
 ## Commander Advanced Settings
@@ -109,7 +108,7 @@ The language selection dialog will not show up again when the game starts, inste
 The game_mode setting works exactly the same way but that setting will only apply if you play a game where different game modes are available like if you got an allied computer in the game, else the normal melee game type will always be used.
 
 ## Custom Maps
-AMAI is designed to work with melee maps. 
+AMAI is designed to work with melee maps.
 
 If you make a custom map you need to make sure in the world editor it is also set to Latest Patch dataset and still using the melee AI.
 If you don't do this the AI will get stuck upgrading past tier 2 as it will use the vanilla patch.
@@ -140,7 +139,7 @@ AMAI has built in support to be able to write new strategies and profiles using 
 - French - JUJU, WILL THE ALMIGHTY,
 - Spanish - Vexorian, Moyack,
 - Romanian - Andas_007,
-- Chinese - Dr Fan,
+- Chinese - Dr Fan, Sheeryiro, KeamSpring
 - Russian - RaZ and Darkloke,
 - Portuguese - imba curisco ghouleh,
 - Norwegian - Aray
@@ -157,4 +156,4 @@ AMAI has built in support to be able to write new strategies and profiles using 
 
 ### Tooling
 - JASS Precompiler - Vidstige
-- MPQEditor - Ladislav Zezula 
+- MPQEditor - Ladislav Zezula
