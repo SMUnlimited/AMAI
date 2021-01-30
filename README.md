@@ -41,7 +41,7 @@ Tested with strawbery perl 5.30 and Tk 804.034
 *You may need to run as an administrator if you have issues with maps not displaying any teams.
 
 ## TFT Build
-- Use *makeTFT.bat* to create the stabdard scripts for the AI.
+- Use *makeTFT.bat* to create the standard scripts for the AI.
 - Run *InstallTFTToMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps.
 - Run up a custom game and select the map to play.
 
