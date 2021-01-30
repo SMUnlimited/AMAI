@@ -51,7 +51,7 @@ Tested with strawbery perl 5.30 and Tk 804.034
 - Run *InstallTFTToMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps.
 
 ## ROC Build
-- This version is intended to be played in the original ROC (Reigns of Chaos) version of the game. This version is currently not supported in 1.32+.
+- This version is intended to be played in the original ROC (Reigns of Chaos) version of the game. This version is currently not supported in 1.30+.
 - Use *makeROC.bat* to create the ROC scripts.
 - Run *InstallROCtoMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps.
 
