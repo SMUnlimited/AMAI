@@ -15,10 +15,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Creep building detection range slightly increased. (Pixyy)
 - Tweaks to brewmaster and alchemist skill picks. (Pixyy)
 - More resources (just over double) are now needed before the multi peasant fast builds can be used to avoid resource starvation (Pixyy)
+- Balance pass to all racial hero selection, skill selection and strategy selection. Mostly minor but most noticeable changes below(Pixyy)
+   - Elf increased use of warden and keeper.
+   - Reduced use of mirror image skill.
+   - Reduced the appearance rate of Goblin Tinker.
 
 ### Fixed
 - Tweaked ranged units to only avoid melee units only if damaged to 70% instead of 90% and reduced distance to trigger slightly to improve AI performance. (Pixyy)
-- Fixed an issue where healing totems are not be cast correctly. (Pixyy)
+- Fixed an issue where healing totems are not cast correctly. (Pixyy)
 - Reduced number of mines needed before heading into high upkeep to help prevent dead time where AMAI doesn't appear to build anything. (Pixyy)
 - Front base distance range slightly increased again to help fix night elf troops getting stuck in base. (Pixyy)
 - Improved handling of the bug that the AI ​​hero card does not operate at home. (Pixyy)
@@ -26,6 +30,7 @@ This bug still occasionally occurs, but has reduced the freezing time. Heroes wi
 - Heroes a little more likely to teleport to rescue a town regardless of the profiles aggression and smaller threat levels. (Pixyy)
 - Militia max expansion range has been reduced as militia did not always last long enough to be useful. (Pixyy)
 - Ambush no longer used for hero units as its too easy to pick them off. (Pixyy)
+- Fixed an issue where no tier bonus was applying to the fail safe upgrade system.
 
 
 ## [3.0.1] - 2021-01-30
