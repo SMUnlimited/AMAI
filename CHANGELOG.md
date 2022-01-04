@@ -6,15 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## [Unreleased]
 
 ### Added
-- Support for warcraft 3 1.32.10 patch changes (Pixyy)
+- Support for warcraft 3 1.32.10 patch changes. (Pixyy)
 
 ### Changed
-- Improved Chinese language translations and various issues fixed (Pixyy)
+- Improved Chinese language translations and various issues fixed. (Pixyy)
 - Removed some explicit Chinese chat translations.
+- Goblin Shredders now count as more wood cutting workers. (Pixyy)
+- Creep building detection range slightly increased. (Pixyy)
+- Tweaks to brewmaster and alchemist skill picks. (Pixyy)
+- More resources (just over double) are now needed before the multi peasant fast builds can be used to avoid resource starvation (Pixyy)
 
 ### Fixed
-- Tweaked ranged units to only avoid melee units only if damaged to 70% instead of 90% and reduced distance to trigger slightly to improve AI performance (Pixyy)
-- Fixed an issue where healing totems are not be cast correctly (Pixyy)
+- Tweaked ranged units to only avoid melee units only if damaged to 70% instead of 90% and reduced distance to trigger slightly to improve AI performance. (Pixyy)
+- Fixed an issue where healing totems are not be cast correctly. (Pixyy)
+- Reduced number of mines needed before heading into high upkeep to help prevent dead time where AMAI doesn't appear to build anything. (Pixyy)
+- Front base distance range slightly increased again to help fix night elf troops getting stuck in base. (Pixyy)
+- Improved handling of the bug that the AI ​​hero card does not operate at home. (Pixyy)
+This bug still occasionally occurs, but has reduced the freezing time. Heroes will rejoin the battle when their health is mostly healthy.
+- Heroes a little more likely to teleport to rescue a town regardless of the profiles aggression and smaller threat levels. (Pixyy)
+- Militia max expansion range has been reduced as militia did not always last long enough to be useful. (Pixyy)
+- Ambush no longer used for hero units as its too easy to pick them off. (Pixyy)
 
 
 ## [3.0.1] - 2021-01-30
