@@ -5,6 +5,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+- Support for warcraft 3 1.32.10 patch changes (Pixyy)
+
+### Changed
+- Improved Chinese language translations and various issues fixed (Pixyy)
+- Removed some explicit Chinese chat translations.
+
+### Fixed
+- Tweaked ranged units to only avoid melee units only if damaged to 70% instead of 90% and reduced distance to trigger slightly to improve AI performance (Pixyy)
+- Fixed an issue where healing totems are not be cast correctly (Pixyy)
+
+
 ## [3.0.1] - 2021-01-30
 
 ### Changed
