@@ -8449,39 +8449,49 @@ endfunction
 //============================================================================
 // Makes upgrades have a dynamic priority that changes based on the number of
 // units that have been built. 
-// Param : quantity-num to build, unitid-the upgrade, unitcount- number of units (NOTE must calculate yourself and then pass)
-//              maxunits - number of units needed to make priority 100% the value given, prio - Base priority
+// Param : quantity-num to build, unitid-the upgrade, start tier- must be at this tier to research, unitcount- number of units (NOTE must calculate yourself and then pass)
+//              maxunits - number of units needed to make priority 100% the value given, 
+//              prio - Base priority, this actually starts at priority of 1 and steadily increases as number of units goes up
 //              tierbonus - adds or subtracts a bonus when you reach later tiers
 //============================================================================
 
 function BuildAdvUpgr takes integer qty, integer unitid, integer starttier, integer unitcount, integer maxunits, integer tierprio, integer prio returns nothing
-	if tier >= starttier then
-	if unitcount > 0 then
-	    if qty >= tier-starttier+1 then
-			call BuildUpgr(tier-starttier + 1, unitid, R2I(LinearInterpolation(0, maxunits, 1, prio + ((tier-starttier)* tierprio) , unitcount)))
-		else
-			// If tier greater than the start tier and qty is less than the difference between the two
-			call BuildUpgr(qty, unitid, R2I(LinearInterpolation(0, maxunits, 1, prio + ((tier-starttier)* tierprio), unitcount)))
-		endif
-	endif
-	endif
+  if tier >= starttier then
+    if unitcount > 0 then
+        if qty >= tier-starttier+1 then
+        call BuildUpgr(tier-starttier + 1, unitid, R2I(LinearInterpolation(0, maxunits, 1, prio + ((tier-starttier)* tierprio) , unitcount)))
+      else
+        // If tier greater than the start tier and qty is less than the difference between the two
+        call BuildUpgr(qty, unitid, R2I(LinearInterpolation(0, maxunits, 1, prio + ((tier-starttier)* tierprio), unitcount)))
+      endif
+    endif
+  endif
 endfunction
 
-// unitper - Number of units to give a 1% chance of building upgrade
+//============================================================================
+// Makes upgrades be built by chance based on number of relevant units. Unlike BuildAdvUpgr the priority of the upgrade stays at the value specified if the random element succeeds.
+// Note the random element is re-run very often.
+// Note tier bonus priority is a fixed bonus.
+// Param : quantity-num to build, unitid-the upgrade,  start tier- must be at this tier to research, unitcount- number of units (NOTE must calculate yourself and then pass)
+//              unitper - Number of units to give a 1% chance of building upgrade,
+//              max - Maximum chance to research
+//              prio - Base priority
+//============================================================================
+
 function BuildAdvUpgr2 takes integer qty, integer upgid, integer starttier, integer unitcount, real unitper, integer max, integer prio returns nothing
 //set num = (R2I((100 - FoodUsed())/GetFoodUsed(old_id[])) - 1) * prio_q_inc   // build upgrade priority at priority of unit
-	if tier >= starttier then
-	if unitcount > 0 then
-		if GetRandomInt(1, 100) <= Min(R2I(unitcount/unitper), max) then
-	    if qty >= tier-starttier+1 then
-			call BuildUpgr(tier-starttier + 1, upgid, prio)
-		else
-			// If tier greater than the start tier and qty is less than the difference between the two
-			call BuildUpgr(qty, upgid, prio)
-		endif
-		endif
-	endif
-	endif
+  if tier >= starttier then
+    if unitcount > 0 then
+      if GetRandomInt(1, 100) <= Min(R2I(unitcount/unitper), max) then
+        if qty >= tier-starttier+1 then
+        call BuildUpgr(tier-starttier + 1, upgid, prio + ((tier-starttier)*4))
+      else
+        // If tier greater than the start tier and qty is less than the difference between the two
+        call BuildUpgr(qty, upgid, prio + ((tier-starttier)*4))
+      endif
+      endif
+    endif
+  endif
 endfunction
 //============================================================================
 function SetBuildUpgrExAM takes integer easy, integer med, integer hard, integer unitid, integer prio returns nothing
