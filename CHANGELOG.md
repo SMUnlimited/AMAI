@@ -14,9 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Goblin Shredders now count as more wood cutting workers. (Pixyy)
 - Creep building detection range slightly increased. (Pixyy)
 - Tweaks to brewmaster and alchemist skill picks. (Pixyy)
-- More resources (just over double) are now needed before the multi peasant fast builds can be used to avoid resource starvation (Pixyy)
-- Balance pass to all racial hero selection, skill selection and strategy selection. Mostly minor but most noticeable changes below(Pixyy)
-   - Elf increased use of warden and keeper.
+- More resources (just over double) are now needed before the multi peasant fast builds can be used to avoid resource starvation. (Pixyy)
+- Balance pass to all racial hero selection, skill selection and strategy selection. Mostly minor but most noticeable changes include (Pixyy)
+   - Night Elf increased use of warden and keeper.
    - Reduced use of mirror image skill.
    - Reduced the appearance rate of Goblin Tinker
 - Strategy tweaks and optimizations (Pixyy)
@@ -38,6 +38,7 @@ This bug still occasionally occurs, but has reduced the freezing time. Heroes wi
 - Militia max expansion range has been reduced as militia did not always last long enough to be useful. (Pixyy)
 - Ambush no longer used for hero units as its too easy to pick them off. (Pixyy)
 - Fixed an issue where no tier bonus was applying to the fail safe upgrade system.
+- Fixed an issue where human upgrades magic sentry and flare could not be researched. (Pixyy)
 
 
 ## [3.0.1] - 2021-01-30
