@@ -3,42 +3,43 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [Unreleased]
+## [3.1.0] - 2022-01-05
 
 ### Added
 - Support for warcraft 3 1.32.10 patch changes. (Pixyy)
 
 ### Changed
+- To reduce spam from your allied AIs they now only sometimes report what they are countering instead of every single time its re-evaluated, unless debug mode is on.
+- At game start as there is nothing to counter yet the message to allies about what to counter will not be included.
 - Improved Chinese language translations and various issues fixed. (Pixyy)
 - Removed some explicit Chinese chat translations.
 - Goblin Shredders now count as more wood cutting workers. (Pixyy)
 - Creep building detection range slightly increased. (Pixyy)
-- Tweaks to brewmaster and alchemist skill picks. (Pixyy)
+- Tweaks to Brewmaster and Alchemist skill picks. (Pixyy)
 - More resources (just over double) are now needed before the multi peasant fast builds can be used to avoid resource starvation. (Pixyy)
 - Balance pass to all racial hero selection, skill selection and strategy selection. Mostly minor but most noticeable changes include (Pixyy)
    - Night Elf increased use of warden and keeper.
    - Reduced use of mirror image skill.
    - Reduced the appearance rate of Goblin Tinker
 - Strategy tweaks and optimizations (Pixyy)
-   - Improvements to human, orc, undead and night elf strategy compositions.
-   - Fixed undead harassment group numbering.
-   - Hero priorities for building and resurrecting increased.
+   - Improvements to human, orc, undead and night elf strategy compositions to make the pre-built strategies more effective when used.
+   - Removed non-useful units from harass attacks and fixed undead harassment group numbering.
+   - Hero priorities for building and resurrecting increased to ensure there are being built first.
    - Tweaks to item buying priorities, town portals are more important, other items less so or no longer built.
-   - Improvements to base defense logic.
+   - Improvements to base defense logic with more towers being built when spare funds available.
    - Tweaks to the dynamic strategies to balance the counter units and correct some cases of invalid counter units being built.
 
 ### Fixed
-- Tweaked ranged units to only avoid melee units only if damaged to 70% instead of 90% and reduced distance to trigger slightly to improve AI performance. (Pixyy)
+- Tweaked ranged units to avoid melee units only if damaged to 70% instead of 90% and reduced distance to trigger slightly. (Pixyy)
 - Fixed an issue where healing totems are not cast correctly. (Pixyy)
 - Reduced number of mines needed before heading into high upkeep to help prevent dead time where AMAI doesn't appear to build anything. (Pixyy)
 - Front base distance range slightly increased again to help fix night elf troops getting stuck in base. (Pixyy)
-- Improved handling of the bug that the AI ​​hero card does not operate at home. (Pixyy)
-This bug still occasionally occurs, but has reduced the freezing time. Heroes will rejoin the battle when their health is mostly healthy.
+- Improved handling of the bug that the AI ​​hero will get stuck healing at home. They will now return to the battle when mostly healthy. (Pixyy)
 - Heroes a little more likely to teleport to rescue a town regardless of the profiles aggression and smaller threat levels. (Pixyy)
 - Militia max expansion range has been reduced as militia did not always last long enough to be useful. (Pixyy)
-- Ambush no longer used for hero units as its too easy to pick them off. (Pixyy)
-- Fixed an issue where no tier bonus was applying to the fail safe upgrade system.
-- Fixed an issue where human upgrades magic sentry and flare could not be researched. (Pixyy)
+- Ambush no longer used for hero units as its too easy to abuse and pick them off. (Pixyy)
+- Fixed an issue where no tier bonus was applying to the dynamic upgrade system.
+- Fixed an issue where human upgrades magic sentry and flare could not be researched by the AI. (Pixyy)
 
 
 ## [3.0.1] - 2021-01-30

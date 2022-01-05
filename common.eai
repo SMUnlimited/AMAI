@@ -988,22 +988,23 @@ globals
     gamecache udg_debug_cache = null
     string udg_current_category = null
     timer udg_debug_timer = CreateTimer()
-	boolean job_debug = false	// Job system reports will be displayed (used for finding thread crashes)
-	integer debug_player = 0
+    boolean job_debug = false	// Job system reports will be displayed (used for finding thread crashes)
+    integer debug_player = 0
 
 //==============================================================
 // (AMAI)  Dynamic Strategy variables
 //==============================================================
     integer chosen_counter = -1
-	integer chosen_counter_unit = 0
-	string array strengthtext
-	#INCLUDETABLE <$VER$\Strengths.txt>
-		integer array dyanti_%1
-		integer totalanti_%1 = 0
-		integer array dychance_%1
-		integer totalchance_%1 = 0
-	#ENDINCLUDE	
-	
+    integer chosen_counter_unit = 0
+    boolean no_counter = true
+    string array strengthtext
+    #INCLUDETABLE <$VER$\Strengths.txt>
+      integer array dyanti_%1
+      integer totalanti_%1 = 0
+      integer array dychance_%1
+      integer totalchance_%1 = 0
+    #ENDINCLUDE	
+
 endglobals
 
 
@@ -2893,8 +2894,8 @@ function GetCurrentStrategyReport takes nothing returns string
 endfunction
 
 function GetCurrentDynamicReport takes nothing returns string
-  if strengthtext[chosen_counter] != null then 
-	return " " + chat_dynamic_counter + strengthtext[chosen_counter]
+  if strengthtext[chosen_counter] != null and no_counter == false then 
+    return " " + chat_dynamic_counter + strengthtext[chosen_counter]
   endif
   return ""
 endfunction
@@ -8584,64 +8585,66 @@ function DetermineCounterForce takes nothing returns integer
    set num_strengths = 0
    set j = 0
 #INCLUDETABLE <$VER$\Strengths.txt>
-	set tstrength[num_strengths] = R2I(RMax(enemy_%1 - ally_%2 - ally_%3,0)*100)
-	set strength = strength + tstrength[num_strengths]
-	set strengthtext[num_strengths] = "%1"
-	set num_strengths = num_strengths + 1
+  set tstrength[num_strengths] = R2I(RMax(enemy_%1 - ally_%2 - ally_%3,0)*100)
+  set strength = strength + tstrength[num_strengths]
+  set strengthtext[num_strengths] = "%1"
+  set num_strengths = num_strengths + 1
 #ENDINCLUDE
 
-	// Normalise strength
-	//loop
-	//	exitwhen j >= num_strengths
-	//	set tstrength[j] = R2I((tstrength[j]*100)/strength)
-	//	set total_strength = total_strength + tstrength[j]
-	//	set j = j + 1
-	//endloop
-	loop
-		exitwhen j >= num_strengths
-		if tstrength[j] > tstrength[maxstr] then
-			set thirdstr = secondstr
-			set secondstr = maxstr
-			set maxstr = j
-		elseif secondstr == -1 or tstrength[j] > tstrength[secondstr] then
-			set thirdstr = secondstr
-			set secondstr = j
-		elseif thirdstr == -1 or tstrength[j] > tstrength[thirdstr] then
-			set thirdstr = j
-		endif
-		set j = j + 1
-	endloop
-	if chosen_counter >= 0 then
-		if tstrength[chosen_counter] > 0 then
-			set tstrength[chosen_counter] = tstrength[chosen_counter] + R2I(strat_persistence/200) // Bonus to current counter
-			set strength = strength + R2I(strat_persistence/200)
-		endif
-	endif
-	call Trace("Highest Enemy Unit Strength is:" + strengthtext[maxstr] + " with total:" + Int2Str(tstrength[maxstr]))
-	set j = 0
-	// Remove bad strats to not affect calculations with really low amounts of strength
-	loop
-		exitwhen j >= num_strengths
-		if tstrength[j] < 3 then
-			set tstrength[j] = 0
-		endif
-		set total_strength = total_strength + tstrength[j]
-		set j = j+1
-	endloop
-	
-	// No strength so just use a random option
-	if total_strength == 0 then
-		set j = GetRandomInt(0, num_strengths)
-	else
-		set j = 0
-		set random =GetRandomInt(1, total_strength)
-		set strength = 0
-		loop
-			set strength = strength + tstrength[j]
-			exitwhen random <= strength or j >= num_strengths
-			set j = j + 1	// Will be the the chosen strength to build units against
-		endloop
-	endif
+    // Normalise strength
+    //loop
+    //	exitwhen j >= num_strengths
+    //	set tstrength[j] = R2I((tstrength[j]*100)/strength)
+    //	set total_strength = total_strength + tstrength[j]
+    //	set j = j + 1
+    //endloop
+    loop
+      exitwhen j >= num_strengths
+      if tstrength[j] > tstrength[maxstr] then
+        set thirdstr = secondstr
+        set secondstr = maxstr
+        set maxstr = j
+      elseif secondstr == -1 or tstrength[j] > tstrength[secondstr] then
+        set thirdstr = secondstr
+        set secondstr = j
+      elseif thirdstr == -1 or tstrength[j] > tstrength[thirdstr] then
+        set thirdstr = j
+      endif
+      set j = j + 1
+    endloop
+    if chosen_counter >= 0 then
+      if tstrength[chosen_counter] > 0 then
+        set tstrength[chosen_counter] = tstrength[chosen_counter] + R2I(strat_persistence/200) // Bonus to current counter
+        set strength = strength + R2I(strat_persistence/200)
+      endif
+    endif
+    call Trace("Highest Enemy Unit Strength is:" + strengthtext[maxstr] + " with total:" + Int2Str(tstrength[maxstr]))
+    set j = 0
+    // Remove bad strats to not affect calculations with really low amounts of strength
+    loop
+      exitwhen j >= num_strengths
+      if tstrength[j] < 3 then
+        set tstrength[j] = 0
+      endif
+      set total_strength = total_strength + tstrength[j]
+      set j = j+1
+    endloop
+    
+    // No strength so just use a random option
+    if total_strength == 0 then
+      set no_counter = true
+      set j = GetRandomInt(0, num_strengths)
+    else
+      set no_counter = false
+      set j = 0
+      set random =GetRandomInt(1, total_strength)
+      set strength = 0
+      loop
+        set strength = strength + tstrength[j]
+        exitwhen random <= strength or j >= num_strengths
+        set j = j + 1	// Will be the the chosen strength to build units against
+      endloop
+    endif
     return j
 endfunction
 
