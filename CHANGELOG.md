@@ -18,7 +18,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Balance pass to all racial hero selection, skill selection and strategy selection. Mostly minor but most noticeable changes below(Pixyy)
    - Elf increased use of warden and keeper.
    - Reduced use of mirror image skill.
-   - Reduced the appearance rate of Goblin Tinker.
+   - Reduced the appearance rate of Goblin Tinker
+- Strategy tweaks and optimizations (Pixyy)
+   - Improvements to human, orc, undead and night elf strategy compositions.
+   - Fixed undead harassment group numbering.
+   - Hero priorities for building and resurrecting increased.
+   - Tweaks to item buying priorities, town portals are more important, other items less so or no longer built.
+   - Improvements to base defense logic.
+   - Tweaks to the dynamic strategies to balance the counter units and correct some cases of invalid counter units being built.
 
 ### Fixed
 - Tweaked ranged units to only avoid melee units only if damaged to 70% instead of 90% and reduced distance to trigger slightly to improve AI performance. (Pixyy)
