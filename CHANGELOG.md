@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [Unreleased]
+
+### Fixed
+- Fixed an issue where dynamic counter calculations for team games made allied strength negate enemy strengths too much often resulting in an inappropriate counter choice.
+- Enemy and allied strength calculations for dynamic counters no longer watered down by the number of players in the game.
+- Strategy persistence profile setting now has an effect on the dynamic counters as it was supposed to.
+- If an AI re-evaluates counter type to the same existing counter while on the same strategy it will no longer spam the chat to allies with this fact.
+
 ## [3.1.0] - 2022-01-05
 
 ### Added
