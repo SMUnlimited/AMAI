@@ -718,84 +718,102 @@ function peon_assignment_all takes nothing returns nothing
 
 endfunction
 
+function calculate_strat_timer takes nothing returns integer
+  local integer x = GetRandomInt(-30, 30) - strat_minimum_time[strategy]*6 
+  set x = x*R2I(1 + 0.25*I2R(Max((3 - tier), 0))) // tier modifier, earlier tiers keep strategy for longer
+  set x = x/R2I(1 + 0.5*I2R(Max(difficulty - 2, 0))) // difficulty modifier, faster change time on insane
+  return x
+endfunction
+
 //============================================================================
 //  build_sequence_all
 //============================================================================
 function build_sequence_all takes nothing returns nothing
-  local integer x = R2I(I2R(-strat_minimum_time[strategy] * (4 - Min(3, tier)))/(3*sleep_multiplier*Max(difficulty - 1, 1)))
-  local integer counter_timer = R2I(I2R(-strat_minimum_time[strategy] * (4 - Min(3, tier)))/(3*sleep_multiplier*Max(difficulty - 1, 1))/2)
+  local integer x = calculate_strat_timer()
+  local integer counter_timer = R2I(RMax(I2R(calculate_strat_timer())/2,40))
   local integer new_tier = 0
   local integer last_counter = -1
   local boolean set_counter = true
   local boolean reportStrategy = false
+  local boolean reset_counter = false
 
   call Trace("Starting Build Sequence Loop")
     loop
       exitwhen player_defeated
     
-    if recalculate_heros then
+      if recalculate_heros then
         call AMAI_PickMeleeHero()
-      call set_skills()
-      set recalculate_heros = false
-    endif
-    
-    //call Trace("BUILD SEQUENCE: Running Loop")
+        call set_skills()
+        set recalculate_heros = false
+      endif
+      
+      //call Trace("BUILD SEQUENCE: Running Loop")
       call peon_assignment_all()
-    //call Trace("BUILD SEQUENCE: peon_assignment")
-      if x > 2 then
+      //call Trace("BUILD SEQUENCE: peon_assignment")
+      if x > 12 then
         set x = 0
-    //call Trace("BUILD SEQUENCE: StrategyChanger")
+        //call Trace("BUILD SEQUENCE: StrategyChanger")
         call StrategyChanger()
-      endif
-    if counter_timer > 0 then
-      set chosen_counter = DetermineCounterForce()
-      if last_counter != chosen_counter and (debugging or GetRandomInt(1,5) == 1) then // Only randomly report counter changes to allies not every single time unless debug mode is on
-        set reportStrategy = true
-      endif
-      set last_counter = chosen_counter
-      set set_counter = true
-      set counter_timer = R2I(I2R(-strat_minimum_time[strategy] * (4 - Min(3, tier)))/(3*sleep_multiplier*Max(difficulty - 1, 1))/2) 
-    endif
-
-    if last_strategy != strategy then
-        set last_strategy = strategy
-        set reportStrategy = true
-        call SetRaceAggression()
         if strategy <= 49 then
-          set x = R2I(I2R(-strat_minimum_time[strategy] * (4 - Min(3, tier)))/(3*sleep_multiplier*Max(difficulty - 1, 1)))
+            set x = calculate_strat_timer() / 2   // If same strategy only honor for half as long
+            set reset_counter = true
         endif
-        //call Trace("BUILD SEQUENCE: InitBuildarray")
-        call InitBuildArrayAM()
-        //call Trace("BUILD SEQUENCE: init_strategy")
-        call init_strategy()
-    endif
-    
-    if reportStrategy then
-      set reportStrategy = false
-      call DisplayToAlliesImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
-      call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
-    endif
-        
+      endif
+
+      if last_strategy != strategy then
+          set last_strategy = strategy
+          set reportStrategy = true
+          call SetRaceAggression()
+          if strategy <= 49 then
+            set x = calculate_strat_timer()
+            set reset_counter = true
+          endif
+          //call Trace("BUILD SEQUENCE: InitBuildarray")
+          call InitBuildArrayAM()
+          //call Trace("BUILD SEQUENCE: init_strategy")
+          call init_strategy()
+      endif
+
+      if (x > counter_timer and counter_timer < 0) or reset_counter then
+        set chosen_counter = DetermineCounterForce()
+        if last_counter != chosen_counter and (debugging or GetRandomInt(1,5) == 1) then // Only randomly report counter changes to allies not every single time unless debug mode is on
+          set reportStrategy = true
+        endif
+        set last_counter = chosen_counter
+        set set_counter = true
+        if reset_counter then
+          set reset_counter = false
+          set counter_timer = R2I(RMax(x/2,40))
+        else
+          set counter_timer = 2 // Once fired don't change again until strategy changes
+        endif  
+      endif
+      
+      if reportStrategy then
+        set reportStrategy = false
+        call DisplayToAlliesImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
+        call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
+      endif
+          
       set new_tier = GetTier()
       if tier != new_tier then
         set tier = new_tier
-        //call Trace("BUILD SEQUENCE: initbuildarray2")		
+        //call Trace("BUILD SEQUENCE: initbuildarray2")
         call InitBuildArrayAM()
       endif
 
       //call Trace("BUILD SEQUENCE: build_sequence")
-    call Sleep(0.05)
-    call build_sequence()
-    if set_counter == true then 
-      call DynamicStrategySelector()
-      set set_counter = false
-    endif
+      call Sleep(0.05)
+      call build_sequence()
+      if set_counter == true then 
+        call DynamicStrategySelector()
+        set set_counter = false
+      endif
       call Sleep(3 * sleep_multiplier)
-      //call Trace("BUILD SEQUENCE: peon_assignment 2")	  
+      //call Trace("BUILD SEQUENCE: peon_assignment 2")
       call peon_assignment_all()
       call Sleep(3 * sleep_multiplier)
-      set x = x + 1
-    set counter_timer = counter_timer + 1
+      set x = x + Max(R2I(6*sleep_multiplier), 1)
     endloop
 endfunction
 
