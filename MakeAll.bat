@@ -1,2 +1,0 @@
-@call MakeTFT
-@call MakeRoC
