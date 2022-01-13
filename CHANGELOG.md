@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [Unreleased]
+
+### Changed
+- Disabled a flee rule for heroes which means when stranded on there own they are more likely to use a town portal to save themselves.
+
+### Fixed
+- Fixed a bug in 2 strategies regarding priority of hero and frost wryms for undead.
+
 ## [3.1.1] - 2022-01-10
 
 ### Changed
