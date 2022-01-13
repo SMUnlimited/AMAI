@@ -1,0 +1,104 @@
+#IFDEF GLOBAL
+    boolean town_hall_built = false
+    real last_expansion_x = 0
+    real last_expansion_y = 0
+    real next_expansion_x = 0
+    real next_expansion_y = 0
+    boolean expansion_changed = false
+	
+#ELSE
+//***************************************************************
+//  This job is the modulization of the town hall fast build which will
+//  eventually be changed to allow fast build of any building
+//***************************************************************
+function GetFastBuildPeasantNumber takes nothing returns integer
+  local integer minres = Min(GetGold(),GetWood())
+  if minres < 40 or GetMinesOwned() == 0 then
+	//call Trace("0 fast build peasants")
+    return 0
+  elseif minres < 250 then  
+  	//call Trace("1 fast build peasant")
+    return 1
+  elseif minres < 350 then
+  	//call Trace("2 fast build peasants")
+    return 2
+  elseif minres < 450 then
+  	//call Trace("3 fast build peasants")
+    return 3
+  else
+  	//call Trace("4 fast build peasants")
+    return 4
+  endif
+endfunction
+
+function GetBuildingBuilt takes nothing returns unit
+     local group g = CreateGroup()
+	 if expansion_changed then
+		call GroupEnumUnitsInRange(g, last_expansion_x, last_expansion_y, 1000, null)
+     else
+		call GroupEnumUnitsInRange(g, next_expansion_x, next_expansion_y, 1000, null)	 
+	 endif
+	 set g = SelectByPlayer(g, ai_player, true)
+     set g = SelectNumberOfId(g, 1, old_id[racial_hall[1]])
+     return FirstOfGroup(g)
+endfunction
+
+function FastBuildBuilding takes nothing returns nothing
+  local unit u = GetBuildingBuilt()
+  local group tempg = CreateGroup()
+  local group g = null
+  local location unitloc = GetUnitLoc(u)
+  
+  call Trace("Town hall is being built soon")
+  if u == null then
+    return
+  endif
+  call Trace("Town hall is being built")
+	 call GroupEnumUnitsOfPlayer(tempg, ai_player,null)
+	 set tempg = SelectNumberOfId(tempg, 50, old_id[racial_militia] )
+	 set tempg = SelectByAlive(tempg, true)
+	 if FirstOfGroup(tempg) == null then
+		call DestroyGroup(tempg)
+		set tempg = CreateGroup()
+		call GroupEnumUnitsOfPlayer(tempg, ai_player, null)	 
+		set tempg = SelectNumberOfId(tempg, 50, old_id[racial_peon] )
+		set tempg = SelectByAlive(tempg, true)
+	 endif
+  call GroupClear(g)  
+  set g = GetNearestSubGroupOfGroup(tempg, unitloc, GetFastBuildPeasantNumber())
+  call GroupTargetOrder(g, "repair", u)
+  call Trace("Fast Build Town Hall")
+  set town_hall_built = true
+  call RemoveLocation(unitloc)
+  call DestroyGroup(tempg)
+  call DestroyGroup(g)
+  set unitloc = null
+  set tempg = null
+  set g = null
+endfunction
+
+function FastBuildCheck takes nothing returns nothing
+  if GetUnitX(current_expansion) != next_expansion_x or GetUnitY(current_expansion) != next_expansion_y then
+    set last_expansion_x = next_expansion_x
+    set last_expansion_y = next_expansion_y
+    set next_expansion_x = GetUnitX(current_expansion)
+    set next_expansion_y = GetUnitY(current_expansion)
+    set expansion_changed = true
+  else
+    set expansion_changed = false
+  endif
+  if TownCount(racial_hall[1]) - TownCountDone(racial_hall[1]) > 0 then
+    //if expansion_changed and not town_hall_built then
+    if not town_hall_built then  
+	  call FastBuildBuilding()
+    endif
+  else
+    set town_hall_built = false
+  endif
+endfunction
+
+function FastBuild takes nothing returns nothing
+	call FastBuildCheck()
+	call TQAddJob(10, FAST_BUILD, 0)
+endfunction
+#ENDIF
