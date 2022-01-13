@@ -670,7 +670,7 @@ globals
     //-----------------------------------------------------------------------
 
     // default values
-    string language = "Chinese"  // Possible values: "" (dialog), "English", "Deutsch", "Swedish", "French", "Spanish", "Romanian", "Chinese"
+    string language = ""  // Possible values: "" (dialog), "English", "Deutsch", "Swedish", "French", "Spanish", "Romanian", "Chinese"
     string game_mode = "" // Possible values: "" (dialog), "commander", "no_human", "ai_only"
 
     integer array command_number

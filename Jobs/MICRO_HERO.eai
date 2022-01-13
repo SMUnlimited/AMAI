@@ -163,6 +163,10 @@ function SaveHero takes integer hn returns nothing
   call ExecuteSaveHero(hn, ActionListEval(), healer)
 endfunction
 
+function HeroBugFixHealthCheck takes integer hn returns boolean
+  return GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) >= 0.80 * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE) and IsUnitInGroup(hero_unit[hn], unit_healing)
+endfunction
+
 function MicroHeroJob takes integer hn returns nothing
   local real new_hp = 0.0
   local real teleportdistance = 0.0
@@ -171,12 +175,11 @@ function MicroHeroJob takes integer hn returns nothing
   call DisplayToAllJobDebug("MICRO_HERO Job start")
   
   // A Temporary Bug fix
-      //if GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) == GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE) and IsUnitInGroup(hero_unit[hn], unit_healing) then
-      if GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) >= (0.80*GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE)) and IsUnitInGroup(hero_unit[hn], unit_healing) then
-		call CreateDebugTag("HERO: Healing Bug Fix", 10, hero_unit[hn], 4.00, 2.00)
-		call RecycleGuardPosition(hero_unit[hn])
-		call GroupRemoveUnit(unit_healing, hero_unit[hn])
-      endif
+    if HeroBugFixHealthCheck(hn) then
+      call CreateDebugTag("HERO: Healing Bug Fix Job", 10, hero_unit[hn], 4.00, 2.00)
+      call RecycleGuardPosition(hero_unit[hn])
+      call GroupRemoveUnit(unit_healing, hero_unit[hn])
+    endif
   //
   
   set new_hp = GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) / GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE)
@@ -211,11 +214,10 @@ function MicroHeroJob takes integer hn returns nothing
 	//  call DisplayToAll(Int2Str(R2I(DistanceBetweenPoints(hero_enemy_loc[hn],GetUnitLoc(hero_unit[hn])))))
 
 	  set teleportdistance =  DistanceBetweenPoints(hero_loc[hn], town_loc[most_threatened_town]) 
-	  if not teleporting and GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) < RMax(0.20 * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE), flee_minimum_health) and not IsUnitInGroup(hero_unit[hn], unit_healing) then
+	  if not teleporting and GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) < RMax(flee_health_percentage * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE), flee_minimum_health) and not IsUnitInGroup(hero_unit[hn], unit_healing) then
 	    call SaveHero(hn)
 	  elseif not teleporting and town_threatened and town_threat[most_threatened_town] >= teleport_min_threat and teleportdistance > LinearInterpolation(teleport_low_threat, teleport_high_threat, teleport_low_threat_distance, teleport_high_threat_distance, town_threat[most_threatened_town]) and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 and town_can_tp[most_threatened_town] and army_strength[GetArmyOfUnit(hero_unit[hn])] >= teleport_army_min_strength then
-	      //if LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] then
-        if LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > (army_strength[town_threat_army[most_threatened_town]]*3)/4 then
+	      if LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] * 0.75 then
 			//call PingMinimap(GetLocationX(hero_loc[hn]), GetLocationY(hero_loc[hn]), 10.00)
 		    //call PingMinimap(GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]), 10.00)	
 			//call DisplayToAll("Protection Town Portal: " + Int2Str(R2I(teleportdistance)))

@@ -286,7 +286,7 @@ globals
     real harass_radius_flee_ranged = 1200  // how far away from ranged enemy units harassing units turn and flee
     real harass_radius_flee_melee = 800  // how far away from melee enemy units harassing units turn and flee  
     boolean chatting	= true  // set to false to turn off computer taunts and chatting (Can still talk in observer mode)
-    real full_threat_distance = 650  // a enemy army within this distance is counted as a full threat
+    real full_threat_distance = 600  // a enemy army within this distance is counted as a full threat
     real no_threat_distance = 3000  // a enemy army outside this distance is counted as no threat
     real distance_threat_exponent = 0.8  // how fast the threat increases as the enemy army gets from the no_threat_distance to the full_threat_distance
     real distance_threat_mult = 540  // how much the threat vlaue goes up on a town when a enemy army aproaches, higher value means higher threat to town
@@ -298,13 +298,13 @@ globals
     real atl_enemy_end = 4   // until that enemy number
     real atl_enemy_start_mult = 1  // the multiplier starts for accepted threat level starts with this
     real atl_enemy_end_mult = 1.5    // and ends with this    
-    real teleport_low_threat = 50  // Army uses TP to get home and defend if a threat is greater than this
-    real teleport_high_threat = 100  // Army uses TP to get home and defend if a threat is greater than this
-    real teleport_low_threat_distance = 4000  // Army won't use TP home if they are closer to base than this and a low threat level appears
-    real teleport_high_threat_distance = 2300  // Army won't use TP home if they are closer to base than this and a high threat level appears
+    real teleport_low_threat = 40  // Army uses TP to get home and defend if a threat is greater than this
+    real teleport_high_threat = 80  // Army uses TP to get home and defend if a threat is greater than this
+    real teleport_low_threat_distance = 6000  // Army won't use TP home if they are closer to base than this and a low threat level appears
+    real teleport_high_threat_distance = 3000  // Army won't use TP home if they are closer to base than this and a high threat level appears
     real teleport_army_min_strength = 20  // how big the army need to be for use of TP to threatened town
-    real teleport_min_threat = 50  // minimum threat level TP use is allowed on  
-    integer shredder_peon_count = 12  // how many peons does a goblin shredder replace in lumber harvesting
+    real teleport_min_threat = 70  // minimum threat level TP use is allowed on  
+    integer shredder_peon_count = 6  // how many peons does a goblin shredder replace in lumber harvesting
     integer minimum_peon_wood = 2000 // computers don't build any workers for lumber harvesting if they have more lumber than this
     integer maximum_peon_wood = 200  // computers build all needed workers for lumber harvesting if they have lumber lower than this  
 #PRAGMA END VERSION SETTINGS
@@ -353,7 +353,7 @@ globals
 	integer ghoul_prio = 250  // priority for ghoul building
     integer expa_prio = 200 // priority for expansion building
     integer expa_emergency_prio = 300  // priority for rebuilding an expansion
-    integer expa_rebuild_prio = 300 // priority for rebuilding an expansion
+    integer expa_rebuild_prio = 200 // priority for rebuilding an expansion
     integer peon_1_mine_number = 15 // maximum number of peons to build when 1 mine is owned (redundent if race uses ghouls)
     integer peon_2_mines_number = 20 // maximum number of peons to build when 2 mines are owned (redundent if race uses ghouls)
     integer peon_mines_number = 24  // maximum number of peons to build when more mines are owned (redundent if race uses ghouls)
@@ -386,7 +386,7 @@ globals
     integer race_advanced_melee = 0  // an advanced melee unit to replace the basic one, only necessary when basic_melee is used
     boolean race_has_ghouls = false  // has the race a ghoul-like wood harvester/fighter unit ?
     boolean race_ghouls_attack = true  // do those ghouls go with the army on attacks ?
-	integer race_min_ghouls = 3  // smallest number of ghouls to build at all times
+	integer race_min_ghouls = 2  // smallest number of ghouls to build at all times
 	integer race_max_ghouls = 5  // maximum number of ghouls to build in low lumber situations
     boolean race_has_power_build = false  // can multiple racial workers work on the same building ?
     boolean race_no_wood_harvest = false  // has the race no wood harvesters ?
@@ -988,22 +988,23 @@ globals
     gamecache udg_debug_cache = null
     string udg_current_category = null
     timer udg_debug_timer = CreateTimer()
-	boolean job_debug = false	// Job system reports will be displayed (used for finding thread crashes)
-	integer debug_player = 0
+    boolean job_debug = false	// Job system reports will be displayed (used for finding thread crashes)
+    integer debug_player = 0
 
 //==============================================================
 // (AMAI)  Dynamic Strategy variables
 //==============================================================
     integer chosen_counter = -1
-	integer chosen_counter_unit = 0
-	string array strengthtext
-	#INCLUDETABLE <$VER$\Strengths.txt>
-		integer array dyanti_%1
-		integer totalanti_%1 = 0
-		integer array dychance_%1
-		integer totalchance_%1 = 0
-	#ENDINCLUDE	
-	
+    integer chosen_counter_unit = 0
+    boolean no_counter = true
+    string array strengthtext
+    #INCLUDETABLE <$VER$\Strengths.txt>
+      integer array dyanti_%1
+      integer totalanti_%1 = 0
+      integer array dychance_%1
+      integer totalchance_%1 = 0
+    #ENDINCLUDE	
+
 endglobals
 
 
@@ -2893,8 +2894,8 @@ function GetCurrentStrategyReport takes nothing returns string
 endfunction
 
 function GetCurrentDynamicReport takes nothing returns string
-  if strengthtext[chosen_counter] != null then 
-	return " " + chat_dynamic_counter + strengthtext[chosen_counter]
+  if strengthtext[chosen_counter] != null and no_counter == false then 
+    return " " + chat_dynamic_counter + strengthtext[chosen_counter]
   endif
   return ""
 endfunction
@@ -6440,7 +6441,6 @@ function HealUnit takes unit healer, unit to_heal, boolean hero_heal returns not
     if healer_type[id] == HEALER_TYPE_WARD then
       if not ward_cast then
         call IssuePointOrderById(healer, healer_spell[id], GetUnitX(healer), GetUnitY(healer))
-//        set ward_cast = true
       endif
     else
       if healer_type[id] != HEALER_TYPE_HERO or hero_heal then
@@ -8450,39 +8450,49 @@ endfunction
 //============================================================================
 // Makes upgrades have a dynamic priority that changes based on the number of
 // units that have been built. 
-// Param : quantity-num to build, unitid-the upgrade, unitcount- number of units (NOTE must calculate yourself and then pass)
-//              maxunits - number of units needed to make priority 100% the value given, prio - Base priority
+// Param : quantity-num to build, unitid-the upgrade, start tier- must be at this tier to research, unitcount- number of units (NOTE must calculate yourself and then pass)
+//              maxunits - number of units needed to make priority 100% the value given, 
+//              prio - Base priority, this actually starts at priority of 1 and steadily increases as number of units goes up
 //              tierbonus - adds or subtracts a bonus when you reach later tiers
 //============================================================================
 
 function BuildAdvUpgr takes integer qty, integer unitid, integer starttier, integer unitcount, integer maxunits, integer tierprio, integer prio returns nothing
-	if tier >= starttier then
-	if unitcount > 0 then
-	    if qty >= tier-starttier+1 then
-			call BuildUpgr(tier-starttier + 1, unitid, R2I(LinearInterpolation(0, maxunits, 1, prio + ((tier-starttier)* tierprio) , unitcount)))
-		else
-			// If tier greater than the start tier and qty is less than the difference between the two
-			call BuildUpgr(qty, unitid, R2I(LinearInterpolation(0, maxunits, 1, prio + ((tier-starttier)* tierprio), unitcount)))
-		endif
-	endif
-	endif
+  if tier >= starttier then
+    if unitcount > 0 then
+        if qty >= tier-starttier+1 then
+        call BuildUpgr(tier-starttier + 1, unitid, R2I(LinearInterpolation(0, maxunits, 1, prio + ((tier-starttier)* tierprio) , unitcount)))
+      else
+        // If tier greater than the start tier and qty is less than the difference between the two
+        call BuildUpgr(qty, unitid, R2I(LinearInterpolation(0, maxunits, 1, prio + ((tier-starttier)* tierprio), unitcount)))
+      endif
+    endif
+  endif
 endfunction
 
-// unitper - Number of units to give a 1% chance of building upgrade
+//============================================================================
+// Makes upgrades be built by chance based on number of relevant units. Unlike BuildAdvUpgr the priority of the upgrade stays at the value specified if the random element succeeds.
+// Note the random element is re-run very often.
+// Note tier bonus priority is a fixed bonus.
+// Param : quantity-num to build, unitid-the upgrade,  start tier- must be at this tier to research, unitcount- number of units (NOTE must calculate yourself and then pass)
+//              unitper - Number of units to give a 1% chance of building upgrade,
+//              max - Maximum chance to research
+//              prio - Base priority
+//============================================================================
+
 function BuildAdvUpgr2 takes integer qty, integer upgid, integer starttier, integer unitcount, real unitper, integer max, integer prio returns nothing
 //set num = (R2I((100 - FoodUsed())/GetFoodUsed(old_id[])) - 1) * prio_q_inc   // build upgrade priority at priority of unit
-	if tier >= starttier then
-	if unitcount > 0 then
-		if GetRandomInt(1, 100) <= Min(R2I(unitcount/unitper), max) then
-	    if qty >= tier-starttier+1 then
-			call BuildUpgr(tier-starttier + 1, upgid, prio)
-		else
-			// If tier greater than the start tier and qty is less than the difference between the two
-			call BuildUpgr(qty, upgid, prio)
-		endif
-		endif
-	endif
-	endif
+  if tier >= starttier then
+    if unitcount > 0 then
+      if GetRandomInt(1, 100) <= Min(R2I(unitcount/unitper), max) then
+        if qty >= tier-starttier+1 then
+        call BuildUpgr(tier-starttier + 1, upgid, prio + ((tier-starttier)*4))
+      else
+        // If tier greater than the start tier and qty is less than the difference between the two
+        call BuildUpgr(qty, upgid, prio + ((tier-starttier)*4))
+      endif
+      endif
+    endif
+  endif
 endfunction
 //============================================================================
 function SetBuildUpgrExAM takes integer easy, integer med, integer hard, integer unitid, integer prio returns nothing
@@ -8571,68 +8581,74 @@ function DetermineCounterForce takes nothing returns integer
    local integer thirdstr = -1
    local integer array temps
    local real ally_null = 0    // Blank point
+   local string strdebug = " Counter Strengths: "
    
    set num_strengths = 0
    set j = 0
 #INCLUDETABLE <$VER$\Strengths.txt>
-	set tstrength[num_strengths] = R2I(RMax(enemy_%1 - ally_%2 - ally_%3,0)*100)
-	set strength = strength + tstrength[num_strengths]
-	set strengthtext[num_strengths] = "%1"
-	set num_strengths = num_strengths + 1
+  set tstrength[num_strengths] = R2I(RMax(enemy_%1 - (ally_%2/20) - (ally_%3/20),0)*10)
+  //set strength = strength + tstrength[num_strengths]
+  set strengthtext[num_strengths] = "%1"
+  set num_strengths = num_strengths + 1
 #ENDINCLUDE
 
-	// Normalise strength
-	//loop
-	//	exitwhen j >= num_strengths
-	//	set tstrength[j] = R2I((tstrength[j]*100)/strength)
-	//	set total_strength = total_strength + tstrength[j]
-	//	set j = j + 1
-	//endloop
-	loop
-		exitwhen j >= num_strengths
-		if tstrength[j] > tstrength[maxstr] then
-			set thirdstr = secondstr
-			set secondstr = maxstr
-			set maxstr = j
-		elseif secondstr == -1 or tstrength[j] > tstrength[secondstr] then
-			set thirdstr = secondstr
-			set secondstr = j
-		elseif thirdstr == -1 or tstrength[j] > tstrength[thirdstr] then
-			set thirdstr = j
-		endif
-		set j = j + 1
-	endloop
-	if chosen_counter >= 0 then
-		if tstrength[chosen_counter] > 0 then
-			set tstrength[chosen_counter] = tstrength[chosen_counter] + R2I(strat_persistence/200) // Bonus to current counter
-			set strength = strength + R2I(strat_persistence/200)
-		endif
-	endif
-	call Trace("Highest Enemy Unit Strength is:" + strengthtext[maxstr] + " with total:" + Int2Str(tstrength[maxstr]))
-	set j = 0
-	// Remove bad strats to not affect calculations with really low amounts of strength
-	loop
-		exitwhen j >= num_strengths
-		if tstrength[j] < 3 then
-			set tstrength[j] = 0
-		endif
-		set total_strength = total_strength + tstrength[j]
-		set j = j+1
-	endloop
-	
-	// No strength so just use a random option
-	if total_strength == 0 then
-		set j = GetRandomInt(0, num_strengths)
-	else
-		set j = 0
-		set random =GetRandomInt(1, total_strength)
-		set strength = 0
-		loop
-			set strength = strength + tstrength[j]
-			exitwhen random <= strength or j >= num_strengths
-			set j = j + 1	// Will be the the chosen strength to build units against
-		endloop
-	endif
+    loop
+      exitwhen j >= num_strengths
+      if tstrength[j] > tstrength[maxstr] then
+        set thirdstr = secondstr
+        set secondstr = maxstr
+        set maxstr = j
+      elseif secondstr == -1 or tstrength[j] > tstrength[secondstr] then
+        set thirdstr = secondstr
+        set secondstr = j
+      elseif thirdstr == -1 or tstrength[j] > tstrength[thirdstr] then
+        set thirdstr = j
+      endif
+      set j = j + 1
+    endloop
+    if chosen_counter >= 0 then
+      if tstrength[chosen_counter] > 0 then
+        call Trace("Persistence counter bonus:" + Int2Str(R2I(strat_persistence/20)))
+        set tstrength[chosen_counter] = tstrength[chosen_counter] + R2I(strat_persistence/20) // Bonus to current counter
+        //set strength = strength + R2I(strat_persistence/200)
+      endif
+    endif
+    //call Trace("Highest Enemy Unit Strength is:" + strengthtext[maxstr] + " with total:" + Int2Str(tstrength[maxstr]))
+    set j = 0
+    // Remove bad strats to not affect calculations with really low amounts of strength
+    loop
+      exitwhen j >= num_strengths
+      if tstrength[j] < 3 then
+        set tstrength[j] = 0
+      endif
+      set total_strength = total_strength + tstrength[j]
+      set strdebug = strdebug + strengthtext[j] + ":" + Int2Str(tstrength[j]) + " - "
+      set j = j+1
+    endloop
+    
+    // No strength so just use a random option
+    if total_strength == 0 then
+      set no_counter = true
+      set j = GetRandomInt(0, num_strengths - 1)
+      call Trace("Chosen counter:" + Int2Str(j) + strdebug)
+    else
+      set no_counter = false
+      set j = 0
+      set random =GetRandomInt(1, total_strength)
+      set strength = 0
+      loop
+        if j < num_strengths then
+          set strength = strength + tstrength[j]
+        endif
+        exitwhen random <= strength or j >= num_strengths
+        set j = j + 1	// Will be the the chosen strength to build units against
+      endloop
+      if (j == 11) then
+        call Trace("!ERROR: Should not get a counter that is not within the strength range!")
+      endif
+      call Trace("Random Num:" + Int2Str(random) + " Chosen counter:" + Int2Str(j) + strdebug)
+    endif
+
     return j
 endfunction
 
@@ -10379,7 +10395,7 @@ function DesperationAssault takes nothing returns nothing
       loop
         set u = FirstOfGroup(g)
         exitwhen u == null
-        if not IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+        if (IsUnitType(u, UNIT_TYPE_ANCIENT) or not IsUnitType(u, UNIT_TYPE_STRUCTURE)) then
           call AddAssault(60, GetUnitTypeId(u))
         endif
         call GroupRemoveUnit(g, u )
@@ -11538,11 +11554,10 @@ function HeroHealingBugFix takes nothing returns nothing
   local integer i = 1
     loop
       exitwhen i > 3
-      //if GetUnitState(hero_unit[i], UNIT_STATE_LIFE) == GetUnitState(hero_unit[i], UNIT_STATE_MAX_LIFE) and IsUnitInGroup(hero_unit[i], unit_healing) then
-      if GetUnitState(hero_unit[i], UNIT_STATE_LIFE) >= (0.80*GetUnitState(hero_unit[i], UNIT_STATE_MAX_LIFE)) and IsUnitInGroup(hero_unit[i], unit_healing) then
-		call Trace("HERO HEALING BUG FIX WAS RUN")
-		call RecycleGuardPosition(hero_unit[i])
-		call GroupRemoveUnit(unit_healing, hero_unit[i])
+      if HeroBugFixHealthCheck(i) then
+        call Trace("HERO: Healing Bug Fix")
+        call RecycleGuardPosition(hero_unit[i])
+        call GroupRemoveUnit(unit_healing, hero_unit[i])
       endif
       set i = i + 1
     endloop
@@ -11880,7 +11895,7 @@ function universal_peon_assignment takes nothing returns nothing
 
     call ClearHarvestAI()
     
-    if (desperation_assault) and TownCountDone(WISP)>0 then
+    if (desperation_assault) then
       return
     endif  
     
