@@ -718,11 +718,15 @@ function peon_assignment_all takes nothing returns nothing
 
 endfunction
 
-function calculate_strat_timer takes nothing returns integer
-  local integer x = GetRandomInt(-30, 30) - strat_minimum_time[strategy]*6 
+function calculate_strat_timer_seconds takes integer seconds returns integer
+  local integer x = GetRandomInt(-30, 30) - seconds
   set x = x*R2I(1 + 0.25*I2R(Max((3 - tier), 0))) // tier modifier, earlier tiers keep strategy for longer
   set x = x/R2I(1 + 0.5*I2R(Max(difficulty - 2, 0))) // difficulty modifier, faster change time on insane
   return x
+endfunction
+
+function calculate_strat_timer takes nothing returns integer
+  return calculate_strat_timer_seconds(strat_minimum_time[strategy]*6)
 endfunction
 
 //============================================================================
@@ -730,7 +734,7 @@ endfunction
 //============================================================================
 function build_sequence_all takes nothing returns nothing
   local integer x = calculate_strat_timer()
-  local integer counter_timer = R2I(RMax(I2R(calculate_strat_timer())/2,40))
+  local integer counter_timer = R2I(RMin(I2R(calculate_strat_timer())/2,-60))
   local integer new_tier = 0
   local integer last_counter = -1
   local boolean set_counter = true
@@ -755,7 +759,8 @@ function build_sequence_all takes nothing returns nothing
         //call Trace("BUILD SEQUENCE: StrategyChanger")
         call StrategyChanger()
         if strategy <= 49 then
-            set x = calculate_strat_timer() / 2   // If same strategy only honor for half as long
+            set x = Min(Max(calculate_strat_timer() / 2, -120), -60) // If same strategy persists give more time
+            set counter_timer = 2
             set reset_counter = true
         endif
       endif
@@ -766,6 +771,7 @@ function build_sequence_all takes nothing returns nothing
           call SetRaceAggression()
           if strategy <= 49 then
             set x = calculate_strat_timer()
+            set counter_timer = R2I(RMin(x/2,-80)) // Don't allow counter to change so soon
             set reset_counter = true
           endif
           //call Trace("BUILD SEQUENCE: InitBuildarray")
@@ -779,11 +785,9 @@ function build_sequence_all takes nothing returns nothing
         if last_counter != chosen_counter and (debugging or GetRandomInt(1,5) == 1) then // Only randomly report counter changes to allies not every single time unless debug mode is on
           set reportStrategy = true
         endif
-        set last_counter = chosen_counter
         set set_counter = true
         if reset_counter then
           set reset_counter = false
-          set counter_timer = R2I(RMax(x/2,40))
         else
           set counter_timer = 2 // Once fired don't change again until strategy changes
         endif  
