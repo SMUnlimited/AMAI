@@ -14,10 +14,20 @@ Additionally you need to install the *Tk* module if you want to run the Strategy
 
 Tested with strawbery perl 5.30 and Tk 804.034
 
+【这部分是 perl 的安装说明（可以安装`strawberry` ，也可以装`activestate`，建议装前者，百度就有），如果需要简化修改程序的难度，请额外安装图形化界面 Tk 】
+
+地图包下载（支持1.24+）-占用空间 25.9 M，迅雷网盘：
+链接：https://pan.xunlei.com/s/VN70v9geCKSXcoDF0lA3MQq2A1?pwd=i2bx#
+提取码：i2bx
+
 # Quick Build And Install
 - Use *makeTFT.bat* to create the scripts for the AI. 
 - Run *InstallTFTToMap.bat "C:\mymap.w3m"* to install the AI scripts to Warcraft 3 maps. 
 - Run up a custom game and select the map to play.
+
+【安装 perl 后，下载并解压程序（下载教程：https://blog.csdn.net/qq_53028759/article/details/123591435），运行*makeTFT.bat*，再按 https://www.bilibili.com/video/BV1nZ4y127XV/ 教程安装（在程序文件夹根目录右键>打开POWERSHELL窗口-WIN10以上系统，输入： perl InstallTFTtoDir.pl "地图文件夹路径，如：C:\Users\Administrator\Documents\Warcraft III\Maps\AMAI"）】
+
+【如果运行 *makeTFT.bat* 报错，请确认未修改过程序任意文件，新手请勿随意修改】
 
 # Playing AMAI
 First my suggestion is to create a subfolder in your "maps" folder like "maps\AMAI" and copy the maps you intend to use AMAI with there.
