@@ -336,13 +336,13 @@ sub fnamerep {
 
 sub incleval {
 	$_ = shift;
-	s/#EVAL\{([^}]*)}/eval($1)/ge;
+	s/#EVAL{([^}]*)}/eval($1)/ge;
 	return $_;
 }
 
 sub incloeval {
 	$_ = shift;
-	s/#OEVAL\{([^}]*)}/eval($1)/ge;
+	s/#OEVAL{([^}]*)}/eval($1)/ge;
 	return $_;
 }
 

@@ -35,8 +35,8 @@ MainLoop;
 
 sub ApplyTableChanges {
   my $ver = shift;
-  system "Templates\\MakeMake.bat $ver";
-  open(TABLEDEFS, "Templates\\TableDefs.ini") or die "File <Templates\\TableDefs.ini> not found!";
+  system "MakeMake.bat $ver";
+  open(TABLEDEFS, "TableDefs.ini") or die "File <TableDefs.ini> not found!";
   <TABLEDEFS>;
   my @tabledef = <TABLEDEFS>;
   chomp foreach (@tabledef);
@@ -236,7 +236,7 @@ sub ApplyBuildSequenceChanges {
 
 sub CreateNewFiles {
   my $ver = shift;
-  open(PROFILESDEF, "Templates\\Profiles.def") or die "File <Templates\\Profiles.def> not found";
+  open(PROFILESDEF, "Profiles.def") or die "File <Profiles.def> not found";
   <PROFILESDEF>;
   my @profilesdef = <PROFILESDEF>;
   close(PROFILESDEF);
@@ -252,7 +252,7 @@ sub CreateNewFiles {
   print NEWFILE "\n";
   close(NEWFILE);
 
-  open(STRATEGYDEF, "Templates\\Strategy.def") or die "File <Templates\\Strategy.def> not found";
+  open(STRATEGYDEF, "Strategy.def") or die "File <Strategy.def> not found";
   <STRATEGYDEF>;
   my @strategydef = <STRATEGYDEF>;
   close(STRATEGYDEF);  
