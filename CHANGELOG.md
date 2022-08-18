@@ -45,6 +45,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - HUMAN UPGRADE UPG_SUN_BLADE UPGRADE need LUMBER_MILL,CASTLE,BLACKSMITH(on 1.32,UPG_SUN_BLADE no need UPGRADE)
 - Adjustment HUMAN and ORC and Night Elf number of peons for mines
 - Non HUMAN _militia set now is empty
+- Add RESET_GUARD_POSITION_ONLY function (from [3.1.0])
 - Reduction Profiles can now be reused by AI players，now Profiles can't reused (if the Profiles Race same as AI Race)
    - New Profiles RandomInt, some values are random
 - Official AI is replaced form 1.32 (although there is no change) (Including ROC)
