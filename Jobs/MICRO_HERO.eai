@@ -8,7 +8,8 @@
     constant integer ACTION_HEALER = 6
     constant integer ACTION_MANA_FOUNTAIN = 7
 	constant integer ACTION_MOONWELLS = 8
-    
+    constant integer ACTION_POWER_FOUNTAIN = 9
+	
     location array hero_loc
     location array hero_dir
     real array hero_hp
@@ -40,7 +41,7 @@ function TeleportHome takes integer hn returns nothing
   set teleporting = true
   if c_ally_total > 1 and UnitAlive(major_hero) and major_hero != null then
 	  loop
-		exitwhen i >= 12
+		exitwhen i >= PLAYERAGGRESSIVE
 	      set p = Player(i)
 	      set start_loc =GetPlayerStartLocationLoc(p)
 	      //set dx = GetLocationX(start_loc) - GetLocationX(hero_loc)
@@ -92,7 +93,7 @@ function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothin
   
   if a != ACTION_DO_NOTHING and a != ACTION_TP then
     call RemoveGuardPosition(hero_unit[hn])
-	if not IsUnitInvisible(hero_unit[hn], Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+	if not IsUnitInvisible(hero_unit[hn], Player(PLAYERAGGRESSIVE)) then
 		call IssueImmediateOrder(hero_unit[hn], "windwalk")
 	endif
     if a != ACTION_HEALER and hero_unit[hn] == major_hero then
@@ -124,8 +125,13 @@ function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothin
   elseif a == ACTION_MANA_FOUNTAIN then
 	call CreateDebugTag("HERO: Going to Mana Fountain", 10, hero_unit[hn], 4.00, 2.00)  
     call GroupAddUnit(unit_healing, hero_unit[hn])
-	call TQAddUnitJob(0, MANA_FOUNTAIN, 80, hero_unit[hn])    
+	call TQAddUnitJob(0, MANA_FOUNTAIN, 80, hero_unit[hn])
     call IssuePointOrder(hero_unit[hn], "move", GetUnitX(nearest_neutral[NEUTRAL_MANA_FOUNTAIN]), GetUnitY(nearest_neutral[NEUTRAL_MANA_FOUNTAIN]))
+  elseif a == ACTION_POWER_FOUNTAIN then
+	call CreateDebugTag("HERO: Going to Power Fountain", 10, hero_unit[hn], 4.00, 2.00)  
+    call GroupAddUnit(unit_healing, hero_unit[hn])
+	call TQAddUnitJob(0, POWER_FOUNTAIN, 80, hero_unit[hn])
+    call IssuePointOrder(hero_unit[hn], "move", GetUnitX(nearest_neutral[NEUTRAL_POWER_FOUNTAIN]), GetUnitY(nearest_neutral[NEUTRAL_POWER_FOUNTAIN]))
   elseif a == ACTION_GO_HOME then
     //call UnitGoHome(hero_unit[hn])
 	call CreateDebugTag("HERO: Going Home", 10, hero_unit[hn], 4.00, 2.00)
@@ -158,13 +164,9 @@ endfunction
 function SaveHero takes integer hn returns nothing
   local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
   local unit healer = GetHealer()
-  call ActionListInit(9)
+  call ActionListInit(10)
 #INCLUDE <HeroFleeRules.ai>
   call ExecuteSaveHero(hn, ActionListEval(), healer)
-endfunction
-
-function HeroBugFixHealthCheck takes integer hn returns boolean
-  return GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) >= 0.80 * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE) and IsUnitInGroup(hero_unit[hn], unit_healing)
 endfunction
 
 function MicroHeroJob takes integer hn returns nothing
@@ -175,11 +177,11 @@ function MicroHeroJob takes integer hn returns nothing
   call DisplayToAllJobDebug("MICRO_HERO Job start")
   
   // A Temporary Bug fix
-    if HeroBugFixHealthCheck(hn) then
-      call CreateDebugTag("HERO: Healing Bug Fix Job", 10, hero_unit[hn], 4.00, 2.00)
-      call RecycleGuardPosition(hero_unit[hn])
-      call GroupRemoveUnit(unit_healing, hero_unit[hn])
-    endif
+      if GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) == GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE) and IsUnitInGroup(hero_unit[hn], unit_healing) then
+		call CreateDebugTag("HERO: Healing Bug Fix", 10, hero_unit[hn], 4.00, 2.00)
+		call RecycleGuardPosition(hero_unit[hn])
+		call GroupRemoveUnit(unit_healing, hero_unit[hn])
+      endif
   //
   
   set new_hp = GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) / GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE)
@@ -217,7 +219,7 @@ function MicroHeroJob takes integer hn returns nothing
 	  if not teleporting and GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) < RMax(flee_health_percentage * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE), flee_minimum_health) and not IsUnitInGroup(hero_unit[hn], unit_healing) then
 	    call SaveHero(hn)
 	  elseif not teleporting and town_threatened and town_threat[most_threatened_town] >= teleport_min_threat and teleportdistance > LinearInterpolation(teleport_low_threat, teleport_high_threat, teleport_low_threat_distance, teleport_high_threat_distance, town_threat[most_threatened_town]) and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 and town_can_tp[most_threatened_town] and army_strength[GetArmyOfUnit(hero_unit[hn])] >= teleport_army_min_strength then
-	      if LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] * 0.75 then
+	      if LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]]*0.75 then
 			//call PingMinimap(GetLocationX(hero_loc[hn]), GetLocationY(hero_loc[hn]), 10.00)
 		    //call PingMinimap(GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]), 10.00)	
 			//call DisplayToAll("Protection Town Portal: " + Int2Str(R2I(teleportdistance)))
