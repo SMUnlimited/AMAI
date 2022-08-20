@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 - Disabled a flee rule for heroes which means when stranded on there own they are more likely to use a town portal to save themselves.
+- Reworked the strategy timer to fix various issues with changing strategies and to fix issues with counters changing way to frequently.
+- Tier and insane difficulty has less of an effect on the strategy timer than before.
 
 ### Fixed
 - Fixed a bug in 2 strategies regarding priority of hero and frost wryms for undead.
