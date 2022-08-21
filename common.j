@@ -1,6 +1,5 @@
-// 1.32 native file
 //============================================================================
-// Native types. All native functions take extended handle types when
+// 1.33 Native types. All native functions take extended handle types when
 // possible to help prevent passing bad values to native functions
 //
 type agent			    extends     handle  // all reference counted objects
@@ -538,6 +537,14 @@ globals
     constant volumegroup        SOUND_VOLUMEGROUP_MUSIC             = ConvertVolumeGroup(5)
     constant volumegroup        SOUND_VOLUMEGROUP_AMBIENTSOUNDS     = ConvertVolumeGroup(6)
     constant volumegroup        SOUND_VOLUMEGROUP_FIRE              = ConvertVolumeGroup(7)
+//Cinematic Sound Constants
+    constant volumegroup        SOUND_VOLUMEGROUP_CINEMATIC_GENERAL         = ConvertVolumeGroup(8)
+    constant volumegroup        SOUND_VOLUMEGROUP_CINEMATIC_AMBIENT         = ConvertVolumeGroup(9)
+    constant volumegroup        SOUND_VOLUMEGROUP_CINEMATIC_MUSIC           = ConvertVolumeGroup(10)
+    constant volumegroup        SOUND_VOLUMEGROUP_CINEMATIC_DIALOGUE        = ConvertVolumeGroup(11)
+    constant volumegroup        SOUND_VOLUMEGROUP_CINEMATIC_SOUND_EFFECTS_1 = ConvertVolumeGroup(12)
+    constant volumegroup        SOUND_VOLUMEGROUP_CINEMATIC_SOUND_EFFECTS_2 = ConvertVolumeGroup(13)
+    constant volumegroup        SOUND_VOLUMEGROUP_CINEMATIC_SOUND_EFFECTS_3 = ConvertVolumeGroup(14)
 
 
 //===================================================
@@ -831,6 +838,7 @@ globals
     constant playerunitevent    EVENT_PLAYER_UNIT_SPELL_FINISH          = ConvertPlayerUnitEvent(275)
     constant playerunitevent    EVENT_PLAYER_UNIT_SPELL_ENDCAST         = ConvertPlayerUnitEvent(276)
     constant playerunitevent    EVENT_PLAYER_UNIT_PAWN_ITEM             = ConvertPlayerUnitEvent(277)
+    constant playerunitevent    EVENT_PLAYER_UNIT_STACK_ITEM            = ConvertPlayerUnitEvent(319)
 
     //===================================================
     // For use with TriggerRegisterUnitEvent
@@ -845,6 +853,7 @@ globals
     constant unitevent          EVENT_UNIT_SPELL_FINISH                 = ConvertUnitEvent(292)
     constant unitevent          EVENT_UNIT_SPELL_ENDCAST                = ConvertUnitEvent(293)
     constant unitevent          EVENT_UNIT_PAWN_ITEM                    = ConvertUnitEvent(294)
+    constant unitevent          EVENT_UNIT_STACK_ITEM                   = ConvertUnitEvent(318)
 
     //===================================================
     // Limit Event API constants
@@ -2635,6 +2644,17 @@ constant native GetChangingUnitPrevOwner    takes nothing returns player
 constant native GetManipulatingUnit takes nothing returns unit
 constant native GetManipulatedItem  takes nothing returns item
 
+// For EVENT_PLAYER_UNIT_PICKUP_ITEM, returns the item absorbing the picked up item in case it is stacking.
+// Returns null if the item was a powerup and not a stacking item.
+constant native BlzGetAbsorbingItem takes nothing returns item
+constant native BlzGetManipulatedItemWasAbsorbed takes nothing returns boolean
+
+// EVENT_PLAYER_UNIT_STACK_ITEM
+// Source is the item that is losing charges, Target is the item getting charges.
+constant native BlzGetStackingItemSource takes nothing returns item
+constant native BlzGetStackingItemTarget takes nothing returns item
+constant native BlzGetStackingItemTargetPreviousCharges takes nothing returns integer
+
 // EVENT_PLAYER_UNIT_ISSUED_ORDER
 constant native GetOrderedUnit takes nothing returns unit
 constant native GetIssuedOrderId takes nothing returns integer
@@ -2747,6 +2767,9 @@ constant native GetEventTargetUnit takes nothing returns unit
 // EVENT_UNIT_PICKUP_ITEM
 // EVENT_UNIT_USE_ITEM
 // See the Player Unit/Item manipulation Event API above for event info funcs
+
+// EVENT_UNIT_STACK_ITEM
+// See the Player Unit/Item stack Event API above for event info funcs
 
 // EVENT_UNIT_ISSUED_ORDER
 // EVENT_UNIT_ISSUED_POINT_ORDER
@@ -3697,6 +3720,7 @@ native SetSoundVelocity             takes sound soundHandle, real x, real y, rea
 native AttachSoundToUnit            takes sound soundHandle, unit whichUnit returns nothing
 
 native StartSound                   takes sound soundHandle returns nothing
+native StartSoundEx                 takes sound soundHandle, boolean fadeIn returns nothing
 native StopSound                    takes sound soundHandle, boolean killWhenDone, boolean fadeOut returns nothing
 native KillSoundWhenDone            takes sound soundHandle returns nothing
 
@@ -4052,6 +4076,8 @@ native BlzFrameGetHeight                           takes framehandle frame retur
 native BlzFrameGetWidth                            takes framehandle frame returns real
 native BlzFrameSetFont                             takes framehandle frame, string fileName, real height, integer flags returns nothing
 native BlzFrameSetTextAlignment                    takes framehandle frame, textaligntype vert, textaligntype horz returns nothing
+native BlzFrameGetChildrenCount                    takes framehandle frame returns integer
+native BlzFrameGetChild                            takes framehandle frame, integer index returns framehandle
 native BlzTriggerRegisterFrameEvent                takes trigger whichTrigger, framehandle frame, frameeventtype eventId returns event
 native BlzGetTriggerFrame                          takes nothing returns framehandle
 native BlzGetTriggerFrameEvent                     takes nothing returns frameeventtype
@@ -4078,6 +4104,7 @@ native BlzSetSpecialEffectMatrixScale              takes effect whichEffect, rea
 native BlzResetSpecialEffectMatrix                 takes effect whichEffect returns nothing
 native BlzGetUnitAbility                           takes unit whichUnit, integer abilId returns ability
 native BlzGetUnitAbilityByIndex                    takes unit whichUnit, integer index returns ability
+native BlzGetAbilityId                             takes ability whichAbility returns integer
 native BlzDisplayChatMessage                       takes player whichPlayer, integer recipient, string message returns nothing
 native BlzPauseUnitEx                              takes unit whichUnit, boolean flag returns nothing
 // native BlzFourCC2S                                 takes integer value returns string
@@ -4178,3 +4205,20 @@ native BlzCreateDestructableZWithSkin              takes integer objectid, real 
 native BlzCreateDeadDestructableWithSkin           takes integer objectid, real x, real y, real face, real scale, integer variation, integer skinId returns destructable
 native BlzCreateDeadDestructableZWithSkin          takes integer objectid, real x, real y, real z, real face, real scale, integer variation, integer skinId returns destructable
 native BlzGetPlayerTownHallCount                   takes player whichPlayer returns integer
+
+native BlzQueueImmediateOrderById      takes unit whichUnit, integer order returns boolean
+native BlzQueuePointOrderById          takes unit whichUnit, integer order, real x, real y returns boolean
+native BlzQueueTargetOrderById         takes unit whichUnit, integer order, widget targetWidget returns boolean
+native BlzQueueInstantPointOrderById   takes unit whichUnit, integer order, real x, real y, widget instantTargetWidget returns boolean
+native BlzQueueInstantTargetOrderById  takes unit whichUnit, integer order, widget targetWidget, widget instantTargetWidget returns boolean
+native BlzQueueBuildOrderById          takes unit whichPeon, integer unitId, real x, real y returns boolean
+native BlzQueueNeutralImmediateOrderById   takes player forWhichPlayer,unit neutralStructure, integer unitId returns boolean
+native BlzQueueNeutralPointOrderById       takes player forWhichPlayer,unit neutralStructure, integer unitId, real x, real y returns boolean
+native BlzQueueNeutralTargetOrderById      takes player forWhichPlayer,unit neutralStructure, integer unitId, widget target returns boolean
+
+// returns the number of orders the unit currently has queued up
+native BlzGetUnitOrderCount takes unit whichUnit returns integer
+// clears either all orders or only queued up orders
+native BlzUnitClearOrders takes unit whichUnit, boolean onlyQueued returns nothing
+// stops the current order and optionally clears the queue
+native BlzUnitForceStopOrder takes unit whichUnit, boolean clearQueue returns nothing
