@@ -5,14 +5,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+- Support for warcraft 3 1.33 libraries.
+
 ### Changed
 - Disabled a flee rule for heroes which means when stranded on there own they are more likely to use a town portal to save themselves.
 - Reworked the strategy timer to fix various issues with changing strategies and to fix issues with counters changing way to frequently.
 - Tier and insane difficulty has less of an effect on the strategy timer than before.
 - Make sure AI leaves at least one ghoul to continue harvesting wood in any case.
+- Refactoring of the TFT bat files to re-use scripts instead of duplicating script lines.
+
+### Removed
+- The numbered blizzard.j files are now removed and instead generated from the full original blizzard.j. Saves time when updating for new versions.
 
 ### Fixed
 - Fixed a bug in 2 strategies regarding priority of hero and frost wryms for undead.
+- AMAI VS AI mode now makes use of the latest blizzard.j instead of a much older version.
 
 ## [3.1.1] - 2022-01-10
 

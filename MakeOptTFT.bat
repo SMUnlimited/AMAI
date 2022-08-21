@@ -1,30 +1,5 @@
 @ECHO OFF
-ECHO Making AMAI
-ECHO _____________________________
-ECHO creating \Scripts\TFT\common.ai
-perl ejass.pl common.eai TFT VER:TFT > Scripts\TFT\common.ai
-ECHO \Scripts\TFT\common.ai created
-ECHO _____________________________
-ECHO creating \Scripts\TFT\elf.ai
-perl ejass.pl races.eai TFT VER:TFT ELF RACE:ELF > Scripts\TFT\elf.ai
-ECHO \Scripts\TFT\elf.ai created
-ECHO _____________________________
-ECHO creating \Scripts\TFT\human.ai
-perl ejass.pl races.eai TFT VER:TFT HUMAN RACE:HUMAN > Scripts\TFT\human.ai
-ECHO \Scripts\TFT\human.ai created
-ECHO _____________________________
-ECHO creating \Scripts\TFT\orc.ai
-perl ejass.pl races.eai TFT VER:TFT ORC RACE:ORC > Scripts\TFT\orc.ai
-ECHO \Scripts\TFT\orc.ai created
-ECHO _____________________________
-ECHO creating \Scripts\TFT\undead.ai
-perl ejass.pl races.eai TFT VER:TFT UNDEAD RACE:UNDEAD > Scripts\TFT\undead.ai
-ECHO \Scripts\TFT\undead.ai created
-ECHO _____________________________
-ECHO creating \Scripts\Blizzard.j
-perl ejass.pl Blizzard.eai TFT VER:TFT > Scripts\Blizzard.j
-ECHO \Scripts\Blizzard.j created
-ECHO _____________________________
+call MakeTFTBase.bat 0
 ECHO Optimizing Scripts
 perl Optimize.pl Scripts\TFT\common.ai -l TFT\Races.txt Scripts\TFT\$2
 perl Optimize.pl -b Scripts\Blizzard.j
