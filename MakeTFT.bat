@@ -33,7 +33,9 @@ pjass common.j Scripts\TFT\common.ai Scripts\TFT\undead.ai
 jassparser common.j Scripts\TFT\common.ai Scripts\TFT\undead.ai
 ECHO _____________________________
 ECHO creating \Scripts\Blizzard.j
-perl ejass.pl Blizzard.eai TFT VER:TFT > Scripts\Blizzard.j
+perl SplitBlizzardJ.pl
+perl ejass.pl Blizzard3.eai TFT VER:TFT > Blizzard3Gen.j
+perl ejass.pl Blizzard.eai TFT VER:TFT AMAI VS:AMAI > Scripts\Blizzard.j
 ECHO \Scripts\Blizzard.j created
 pjass common.j Scripts\Blizzard.j
 jassparser common.j Scripts\Blizzard.j

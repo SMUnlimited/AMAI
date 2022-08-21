@@ -1,6 +1,5 @@
 @ECHO OFF
 ECHO Making AMAI VS AI
-ECHO NOTE: COMMANDER IS NOT SUPPORTED
 ECHO _____________________________
 ECHO creating \Scripts\TFT\common.ai
 perl ejass.pl common.eai TFT VER:TFT > Scripts\TFT\common.ai
@@ -32,7 +31,9 @@ pjass common.j Scripts\TFT\common.ai Scripts\TFT\undead.ai
 pjass common.j Scripts\TFT\common.ai Scripts\TFT\undead2.ai
 ECHO _____________________________
 ECHO creating \Scripts\Blizzard.j
-perl ejass.pl BlizzardVAI.eai TFT VER:TFT > Scripts\Blizzard.j
+perl SplitBlizzardJ.pl
+perl ejass.pl Blizzard3VAI.eai TFT VER:TFT > Blizzard3Gen.j
+perl ejass.pl Blizzard.eai TFT VER:TFT > Scripts\Blizzard.j
 ECHO \Scripts\Blizzard.j created
 pjass common.j Scripts\Blizzard.j
 ECHO _____________________________
