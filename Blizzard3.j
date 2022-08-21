@@ -91,7 +91,7 @@ function InitBlizzardGlobals takes nothing returns nothing
     // Init force presets
     set index = 0
     loop
-        exitwhen index == bj_MAX_PLAYER_SLOTS
+        exitwhen index == (playermax + 4)
         set bj_FORCE_PLAYER[index] = CreateForce()
         call ForceAddPlayer(bj_FORCE_PLAYER[index], Player(index))
         set index = index + 1
@@ -119,7 +119,7 @@ function InitBlizzardGlobals takes nothing returns nothing
     set userControlledPlayers = 0
     set index = 0
     loop
-        exitwhen index >= bj_MAX_PLAYERS
+        exitwhen index >= playermax
         if (GetPlayerController(Player(index)) == MAP_CONTROL_USER and GetPlayerSlotState(Player(index)) == PLAYER_SLOT_STATE_PLAYING) then
             set userControlledPlayers = userControlledPlayers + 1
         endif
@@ -188,7 +188,7 @@ function InitSummonableCaps takes nothing returns nothing
         call SetPlayerTechMaxAllowed(Player(index), 'uske', bj_MAX_SKELETONS)
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
 endfunction
 
