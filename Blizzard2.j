@@ -15,7 +15,7 @@ function BJDebugMsg takes string msg returns nothing
     loop
         call DisplayTimedTextToPlayer(Player(i),0,0,60,msg)
         set i = i + 1
-        exitwhen i == bj_MAX_PLAYERS
+        exitwhen i == playermax
     endloop
 endfunction
 
@@ -753,10 +753,11 @@ endfunction
 //===========================================================================
 function SmartCameraPanBJ takes player whichPlayer, location loc, real duration returns nothing
     local real dist
+	local location cameraLoc = GetCameraTargetPositionLoc()
     if (GetLocalPlayer() == whichPlayer) then
         // Use only local code (no net traffic) within this block to avoid desyncs.
 
-        set dist = DistanceBetweenPoints(loc, GetCameraTargetPositionLoc())
+        set dist = DistanceBetweenPoints(loc, cameraLoc)
         if (dist >= bj_SMARTPAN_TRESHOLD_SNAP) then
             // If the user is too far away, snap the camera.
             call PanCameraToTimed(GetLocationX(loc), GetLocationY(loc), 0)
@@ -767,6 +768,7 @@ function SmartCameraPanBJ takes player whichPlayer, location loc, real duration 
             // User is close enough, so don't touch the camera.
         endif
     endif
+	call RemoveLocation(cameraLoc)
 endfunction
 
 //===========================================================================
@@ -1048,7 +1050,7 @@ function TriggerRegisterAnyUnitEventBJ takes trigger trig, playerunitevent which
         call TriggerRegisterPlayerUnitEvent(trig, Player(index), whichEvent, null)
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYER_SLOTS
+        exitwhen index == playercreep
     endloop
 endfunction
 
@@ -2948,7 +2950,7 @@ function PauseAllUnitsBJ takes boolean pause returns nothing
         call GroupClear( g )
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYER_SLOTS
+        exitwhen index == playercreep
     endloop
     call DestroyGroup(g)
 endfunction
@@ -3848,7 +3850,7 @@ function GetUnitsOfTypeIdAll takes integer unitid returns group
         call GroupAddGroup(g, result)
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYER_SLOTS
+        exitwhen index == playercreep
     endloop
     call DestroyGroup(g)
 
@@ -3915,7 +3917,7 @@ function GetPlayersByMapControl takes mapcontrol whichControl returns force
         endif
 
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == bj_MAX_PLAYER_SLOTS
+        exitwhen playerIndex == playercreep
     endloop
 
     return f
@@ -4286,12 +4288,12 @@ function SetForceAllianceStateBJ takes force sourceForce, force targetForce, int
                 endif
 
                 set targetIndex = targetIndex + 1
-                exitwhen targetIndex == bj_MAX_PLAYER_SLOTS
+                exitwhen targetIndex == playercreep
             endloop
         endif
 
         set sourceIndex = sourceIndex + 1
-        exitwhen sourceIndex == bj_MAX_PLAYER_SLOTS
+        exitwhen sourceIndex == playercreep
     endloop
 endfunction
 
@@ -4333,7 +4335,7 @@ function ShareEverythingWithTeamAI takes player whichPlayer returns nothing
         endif
 
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == bj_MAX_PLAYERS
+        exitwhen playerIndex == playermax
     endloop
 endfunction
 
@@ -4355,7 +4357,7 @@ function ShareEverythingWithTeam takes player whichPlayer returns nothing
         endif
 
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == bj_MAX_PLAYERS
+        exitwhen playerIndex == playermax
     endloop
 endfunction
 
@@ -4366,7 +4368,7 @@ endfunction
 function ConfigureNeutralVictim takes nothing returns nothing
     local integer index
     local player indexPlayer
-    local player neutralVictim = Player(bj_PLAYER_NEUTRAL_VICTIM)
+    local player neutralVictim = Player(playermax + 1)
 
     set index = 0
     loop
@@ -4376,7 +4378,7 @@ function ConfigureNeutralVictim takes nothing returns nothing
         call SetPlayerAlliance(indexPlayer, neutralVictim, ALLIANCE_PASSIVE, false)
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
 
     // Neutral Victim and Neutral Aggressive should not fight each other.
@@ -4390,7 +4392,7 @@ endfunction
 
 //===========================================================================
 function MakeUnitsPassiveForPlayerEnum takes nothing returns nothing
-    call SetUnitOwner(GetEnumUnit(), Player(bj_PLAYER_NEUTRAL_VICTIM), false)
+    call SetUnitOwner(GetEnumUnit(), Player(playermax + 1), false)
 endfunction
 
 //===========================================================================
@@ -4419,7 +4421,7 @@ function MakeUnitsPassiveForTeam takes player whichPlayer returns nothing
         endif
 
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == bj_MAX_PLAYERS
+        exitwhen playerIndex == playermax
     endloop
 endfunction
 
@@ -5113,7 +5115,7 @@ function ForceSetLeaderboardBJ takes leaderboard lb, force toForce returns nothi
             call PlayerSetLeaderboard(indexPlayer, lb)
         endif
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
 endfunction
 
@@ -5196,7 +5198,7 @@ function LeaderboardGetIndexedPlayerBJ takes integer position, leaderboard lb re
         endif
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
 
     return Player(PLAYER_NEUTRAL_PASSIVE)
@@ -5694,7 +5696,7 @@ function TryInitCinematicBehaviorBJ takes nothing returns nothing
         loop
             call TriggerRegisterPlayerEvent(bj_cineSceneBeingSkipped, Player(index), EVENT_PLAYER_END_CINEMATIC)
             set index = index + 1
-            exitwhen index == bj_MAX_PLAYERS
+            exitwhen index == playermax
         endloop
         call TriggerAddAction(bj_cineSceneBeingSkipped, function CancelCineSceneBJ)
     endif
@@ -6100,7 +6102,7 @@ function TryInitRescuableTriggersBJ takes nothing returns nothing
         loop
             call TriggerRegisterPlayerUnitEvent(bj_rescueUnitBehavior, Player(index), EVENT_PLAYER_UNIT_RESCUED, null)
             set index = index + 1
-            exitwhen index == bj_MAX_PLAYER_SLOTS
+            exitwhen index == playercreep
         endloop
         call TriggerAddAction(bj_rescueUnitBehavior, function TriggerActionUnitRescuedBJ)
     endif
@@ -6149,7 +6151,7 @@ function InitRescuableBehaviorBJ takes nothing returns nothing
             return
         endif
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
 endfunction
 
@@ -7288,7 +7290,7 @@ function MeleeStartingResources takes nothing returns nothing
         endif
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
 endfunction
 
@@ -7350,7 +7352,7 @@ function MeleeStartingHeroLimit takes nothing returns nothing
         call ReducePlayerTechMaxAllowed(Player(index), 'Nfir', bj_MELEE_HERO_TYPE_LIMIT)
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
 endfunction
 
@@ -7403,7 +7405,7 @@ function MeleeGrantHeroItems takes nothing returns nothing
         set bj_meleeTwinkedHeroes[index] = 0
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYER_SLOTS
+        exitwhen index == playercreep
     endloop
 
     // Register for an event whenever a hero is trained, so that we can give
@@ -7415,7 +7417,7 @@ function MeleeGrantHeroItems takes nothing returns nothing
         call TriggerAddAction(trig, function MeleeGrantItemsToTrainedHero)
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
 
     // Register for an event whenever a neutral hero is hired, so that we
@@ -7483,7 +7485,7 @@ function MeleeClearExcessUnits takes nothing returns nothing
         endif
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
 endfunction
 
@@ -7907,7 +7909,7 @@ endfunction
 
 //===========================================================================
 // Starting Units for Players Whose Race is Unknown
-//   - 12 Sheep, placed randomly around the start location
+//   - playermax Sheep, placed randomly around the start location
 //
 function MeleeStartingUnitsUnknownRace takes player whichPlayer, location startLoc, boolean doHeroes, boolean doCamera, boolean doPreload returns nothing
     local integer index
@@ -7919,7 +7921,7 @@ function MeleeStartingUnitsUnknownRace takes player whichPlayer, location startL
     loop
         call CreateUnit(whichPlayer, 'nshe', GetLocationX(startLoc) + GetRandomReal(-256, 256), GetLocationY(startLoc) + GetRandomReal(-256, 256), GetRandomReal(0, 360))
         set index = index + 1
-        exitwhen index == 12
+        exitwhen index == playermax
     endloop
 
     if (doHeroes) then
@@ -7965,7 +7967,7 @@ function MeleeStartingUnits takes nothing returns nothing
         endif
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
     
 endfunction
@@ -8053,7 +8055,7 @@ function MeleeStartingAI takes nothing returns nothing
         endif
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
 endfunction
 
@@ -8123,7 +8125,7 @@ function MeleeGetAllyStructureCount takes player whichPlayer returns integer
         endif
             
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == bj_MAX_PLAYERS
+        exitwhen playerIndex == playermax
     endloop
 
     return buildingCount
@@ -8147,7 +8149,7 @@ function MeleeGetAllyCount takes player whichPlayer returns integer
         endif
 
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == bj_MAX_PLAYERS
+        exitwhen playerIndex == playermax
     endloop
 
     return playerCount
@@ -8177,7 +8179,7 @@ function MeleeGetAllyKeyStructureCount takes player whichPlayer returns integer
         endif
             
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == bj_MAX_PLAYERS
+        exitwhen playerIndex == playermax
     endloop
 
     return keyStructs
@@ -8256,7 +8258,7 @@ function MeleeRemoveObservers takes nothing returns nothing
         endif
 
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == bj_MAX_PLAYERS
+        exitwhen playerIndex == playermax
     endloop
 endfunction
 
@@ -8285,7 +8287,7 @@ function MeleeCheckForVictors takes nothing returns force
                 endif
 
                 set opponentIndex = opponentIndex + 1
-                exitwhen opponentIndex == bj_MAX_PLAYERS
+                exitwhen opponentIndex == playermax
             endloop
 
             // Keep track of each opponentless player so that we can give
@@ -8295,7 +8297,7 @@ function MeleeCheckForVictors takes nothing returns force
         endif
 
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == bj_MAX_PLAYERS
+        exitwhen playerIndex == playermax
     endloop
 
     // Set the game over global flag
@@ -8347,7 +8349,7 @@ function MeleeCheckForLosersAndVictors takes nothing returns nothing
         endif
             
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == bj_MAX_PLAYERS
+        exitwhen playerIndex == playermax
     endloop
 
     // Now that the defeated flags are set, check if there are any victors
@@ -8429,7 +8431,7 @@ function MeleeExposePlayer takes player whichPlayer, boolean expose returns noth
         endif
 
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == bj_MAX_PLAYERS
+        exitwhen playerIndex == playermax
     endloop
 
     call CripplePlayer( whichPlayer, toExposeTo, expose )
@@ -8462,13 +8464,13 @@ function MeleeExposeAllPlayers takes nothing returns nothing
             endif
 
             set playerIndex2 = playerIndex2 + 1
-            exitwhen playerIndex2 == bj_MAX_PLAYERS
+            exitwhen playerIndex2 == playermax
         endloop
 
         call CripplePlayer( indexPlayer, toExposeTo, true )
 
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == bj_MAX_PLAYERS
+        exitwhen playerIndex == playermax
     endloop
 
     call DestroyForce( toExposeTo )
@@ -8488,9 +8490,9 @@ function MeleeCrippledPlayerTimeout takes nothing returns nothing
         endif
 
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == bj_MAX_PLAYERS
+        exitwhen playerIndex == playermax
     endloop
-    if (playerIndex == bj_MAX_PLAYERS) then
+    if (playerIndex == playermax) then
         return
     endif
     set exposedPlayer = Player(playerIndex)
@@ -8583,7 +8585,7 @@ function MeleeCheckForCrippledPlayers takes nothing returns nothing
         endif
             
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == bj_MAX_PLAYERS
+        exitwhen playerIndex == playermax
     endloop
 endfunction
 
@@ -8719,7 +8721,7 @@ function MeleeTriggerTournamentFinishSoon takes nothing returns nothing
 
             endif
             set playerIndex = playerIndex + 1
-            exitwhen playerIndex == bj_MAX_PLAYERS
+            exitwhen playerIndex == playermax
         endloop
 
         // Expose all players
@@ -8772,7 +8774,7 @@ function MeleeTournamentFinishNowRuleA takes integer multiplier returns nothing
             set playerScore[index] = 0
         endif
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
 
     // Compute team scores and team forces
@@ -8798,14 +8800,14 @@ function MeleeTournamentFinishNowRuleA takes integer multiplier returns nothing
                 endif
 
                 set index2 = index2 + 1
-                exitwhen index2 == bj_MAX_PLAYERS
+                exitwhen index2 == playermax
             endloop
 
             set teamCount = teamCount + 1
         endif
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
 
     // The game is now over
@@ -8975,7 +8977,7 @@ function MeleeInitVictoryDefeat takes nothing returns nothing
         endif
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
 
     // Test for victory / defeat at startup, in case the user has already won / lost.
@@ -8995,13 +8997,30 @@ endfunction
 function CheckInitPlayerSlotAvailability takes nothing returns nothing
     local integer index
 
+    if GetPlayerController(Player(14)) != MAP_CONTROL_CREEP and GetPlayerController(Player(14)) != MAP_CONTROL_NEUTRAL and GetPlayerController(Player(14)) != MAP_CONTROL_RESCUABLE then
+	  set playercreep = 26
+	  set playermax = 24
+	  set PLAYER_COLOR_MAROONX             = ConvertPlayerColor(12)
+      set PLAYER_COLOR_NAVYX               = ConvertPlayerColor(13)
+      set PLAYER_COLOR_TURQUOISEX          = ConvertPlayerColor(14)
+      set PLAYER_COLOR_VIOLETX             = ConvertPlayerColor(15)
+      set PLAYER_COLOR_WHEATX              = ConvertPlayerColor(16)
+      set PLAYER_COLOR_PEACHX              = ConvertPlayerColor(17)
+      set PLAYER_COLOR_MINTX               = ConvertPlayerColor(18)
+      set PLAYER_COLOR_LAVENDERX           = ConvertPlayerColor(19)
+      set PLAYER_COLOR_COALX               = ConvertPlayerColor(20)
+      set PLAYER_COLOR_SNOWX               = ConvertPlayerColor(21)
+      set PLAYER_COLOR_EMERALDX            = ConvertPlayerColor(22)
+      set PLAYER_COLOR_PEANUTX             = ConvertPlayerColor(23)
+    endif
+
     if (not bj_slotControlReady) then
         set index = 0
         loop
             set bj_slotControlUsed[index] = false
             set bj_slotControl[index] = MAP_CONTROL_USER
             set index = index + 1
-            exitwhen index == bj_MAX_PLAYERS
+            exitwhen index == playermax
         endloop
         set bj_slotControlReady = true
     endif
@@ -9046,18 +9065,18 @@ function TeamInitPlayerSlots takes integer teamCount returns nothing
         endif
 
         set index = index + 1
-        exitwhen index == bj_MAX_PLAYERS
+        exitwhen index == playermax
     endloop
 endfunction
 
 //===========================================================================
 function MeleeInitPlayerSlots takes nothing returns nothing
-    call TeamInitPlayerSlots(bj_MAX_PLAYERS)
+    call TeamInitPlayerSlots(playermax)
 endfunction
 
 //===========================================================================
 function FFAInitPlayerSlots takes nothing returns nothing
-    call TeamInitPlayerSlots(bj_MAX_PLAYERS)
+    call TeamInitPlayerSlots(playermax)
 endfunction
 
 //===========================================================================

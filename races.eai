@@ -200,7 +200,7 @@ function initRacialTraits takes nothing returns nothing
    if race_ancient_expansion_available then
 	call Trace("Ancient Expansion is true")
    endif
-   set race_towerrush_available = (race_towerrush_available and i <= race_towerrush_probability)
+   //set race_towerrush_available = (race_towerrush_available and i <= race_towerrush_probability)
    if race_towerrush_available then
 	call Trace("Towerrush variable is true")
    endif   
@@ -216,7 +216,10 @@ function CanTowerRush takes nothing returns nothing
 	endif
 	
 	 if hero_rush_bonus[hero[1]] >= race_towerrush_hero_rush_level then
-		if distance < 8000 then   // Total percentage to be choosen is 33%
+		if ai_time > 60 then     // 5 mins
+			set towerrush = false
+			//call Trace("Tower Rush - Out of Time")
+		elseif distance < 8000 then   // Total percentage to be choosen is 33%
 			call StartTowerRush(180)
 		elseif i <= 75 and distance < 11000 then // Total percentage to be choosen is 25%
 			call StartTowerRush(160)
@@ -530,7 +533,7 @@ function setup_ghouls takes nothing returns nothing
 	set harvesting_ghouls = 0
   elseif wave <= 4 then
     set attacking_ghouls = Max(6, gn - 2)
-	set harvesting_ghouls = 0
+	set harvesting_ghouls = 1
   //elseif wave==2 then
   //  set attacking_ghouls = Max(6, gn - 2)
  // elseif wood < maximum_peon_wood then
@@ -540,7 +543,7 @@ function setup_ghouls takes nothing returns nothing
   //elseif wood > maximum_peon_wood and wood < minimum_peon_wood / 2 then
   //  set attacking_ghouls = gn - Max(2 - (4 * TownCountDone(neutral_shredder)), 0)
   else
-	  set harvesting_ghouls = Max(0,Min(5 - wood / R2I(maximum_peon_wood*1),gn) - (R2I(shredder_peon_count/2) * TownCountDone(neutral_shredder)))
+	  set harvesting_ghouls = Max(1,Min(5 - wood / R2I(maximum_peon_wood*1),gn) - (R2I(shredder_peon_count/2) * TownCountDone(neutral_shredder)))
 	  set attacking_ghouls = gn - harvesting_ghouls 
   endif
   set attacking_ghouls = Min(Max(attacking_ghouls, 0), gn)
@@ -567,12 +570,14 @@ endfunction
 function build_sequence takes nothing returns nothing
   call global_build_sequence()
   
-    if towerrush then
-	   call AddBlock(2, GRUNT, true, 0, STRONGHOLD, 1000)
-	   call BuildUnit(1, hero[1], 100)
-       call BuildUnit(1, race_towerrush_requirement, 98)
+  if towerrush then
+    call BuildUnit(1, hero[1], 200)
+    if race_towerrush_requirement != 0 then
+      call BuildUnit(1, race_towerrush_requirement, 200)
     endif
-	
+    call BuildUnit(1, race_simple_melee, 160)
+  endif
+
   if strategy >= rp_strat_length then
     call cmdBuild()
   else
@@ -673,9 +678,16 @@ endfunction
 function peon_assignment takes nothing returns nothing
 
   call ClearHarvestAI()
-
-  call harvest_gold(0)
-  if not race_manual_loading then
+  if race_manual_loading then
+    if TownHasMine(0) then
+        call HarvestGold(0, Max(ver_optimal_gold - 1, 0))
+        if (TownCountDone(racial_peon) == 5 or TownCountDone(racial_peon) == 6) then
+          call HarvestWood(0, 2) // 5th and 6th wisp has higher priority onto wood so they free to build other buildings earlier
+        endif
+        call HarvestGold(0, 1)
+    endif
+  else
+    call harvest_gold(0)
     call harvest_gold(1)
     call harvest_gold(2)
     call harvest_gold(3)
@@ -706,12 +718,27 @@ function peon_assignment_all takes nothing returns nothing
 
 endfunction
 
+function calculate_strat_timer_seconds takes integer seconds returns integer
+  local integer x = GetRandomInt(-30, 30) - seconds
+  set x = x*R2I(1 + 0.25*I2R(Max((3 - tier), 0))) // tier modifier, earlier tiers keep strategy for longer
+  set x = x/R2I(1 + 0.5*I2R(Max(difficulty - 2, 0))) // difficulty modifier, faster change time on insane
+  return x
+endfunction
+
+function calculate_strat_timer takes nothing returns integer
+  return calculate_strat_timer_seconds(strat_minimum_time[strategy]*6)
+endfunction
 //============================================================================
 //  build_sequence_all
 //============================================================================
 function build_sequence_all takes nothing returns nothing
-  local integer x = R2I(I2R(-strat_minimum_time[strategy] * (4 - Min(3, tier)))/(3*sleep_multiplier*Max(difficulty - 1, 1)))
+  local integer x = calculate_strat_timer()
+  local integer counter_timer = R2I(RMin(I2R(calculate_strat_timer())/2,-60))
   local integer new_tier = 0
+  local integer last_counter = -1
+  local boolean set_counter = true
+  local boolean reportStrategy = false
+  local boolean reset_counter = false
 
   call Trace("Starting Build Sequence Loop")
     loop
@@ -726,41 +753,69 @@ function build_sequence_all takes nothing returns nothing
 	  //call Trace("BUILD SEQUENCE: Running Loop")
       call peon_assignment_all()
 	  //call Trace("BUILD SEQUENCE: peon_assignment")
-      if x > 2 then
+      if x > 12 then
         set x = 0
 		//call Trace("BUILD SEQUENCE: StrategyChanger")
         call StrategyChanger()
+        if strategy <= 49 then
+            set x = Min(Max(calculate_strat_timer() / 2, -120), -60) // If same strategy persists give more time
+            set counter_timer = 2
+            set reset_counter = true
       endif
+	  endif
 
       if last_strategy != strategy then
         set last_strategy = strategy
+        set reportStrategy = true
         call SetRaceAggression()
         if strategy <= 49 then
-          set x = R2I(I2R(-strat_minimum_time[strategy] * (4 - Min(3, tier)))/(3*sleep_multiplier*Max(difficulty - 1, 1)))
+            set x = calculate_strat_timer()
+            set counter_timer = R2I(RMin(x/2,-80)) // Don't allow counter to change so soon
+            set reset_counter = true
         endif
 		//call Trace("BUILD SEQUENCE: InitBuildarray")
         call InitBuildArrayAM()
 		//call Trace("BUILD SEQUENCE: init_strategy")
         call init_strategy()
+	  endif
+	  
+      if (x > counter_timer and counter_timer < 0) or reset_counter then
+        set chosen_counter = DetermineCounterForce()
+        if last_counter != chosen_counter and (debugging or GetRandomInt(1,5) == 1) then // Only randomly report counter changes to allies not every single time unless debug mode is on
+          set reportStrategy = true
+        endif
+        set set_counter = true
+        if reset_counter then
+          set reset_counter = false
+        else
+          set counter_timer = 2 // Once fired don't change again until strategy changes
+        endif  
+      endif
+    
+      if reportStrategy then
+        set reportStrategy = false
         call DisplayToAlliesImportant( GetCurrentStrategyReport() )
         call DisplayToObserversImportant( GetCurrentStrategyReport() )
       endif
-    
+
       set new_tier = GetTier()
       if tier != new_tier then
         set tier = new_tier
-		//call Trace("BUILD SEQUENCE: initbuildarray2")		
+		//call Trace("BUILD SEQUENCE: initbuildarray2")
         call InitBuildArrayAM()
       endif
 
 	  	//call Trace("BUILD SEQUENCE: build_sequence")
 	  call Sleep(0.05)
       call build_sequence()
+      if set_counter == true then 
+        set set_counter = false
+      endif
       call Sleep(3 * sleep_multiplier)
-	  	//call Trace("BUILD SEQUENCE: peon_assignment 2")	  
+	  //call Trace("BUILD SEQUENCE: peon_assignment 2")
       call peon_assignment_all()
-      call Sleep(3 * sleep_multiplier)
       set x = x + 1
+      set counter_timer = counter_timer + 1
     endloop
 endfunction
 
