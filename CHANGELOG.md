@@ -10,12 +10,12 @@ Jzy-chitong has provided various updates and ported features back to this older 
 ### Added
 - Improved chinese language translations [jzy-chitong56]
 - Commander resource tributes are now translated (translated by google)
-- Commander improvements added Page turning.
+- Added Next and Previous Page buttons to the commander.
 - Automatic support for more than 12 Players based on version you playing on.
   - All 24 player colours are now supported by AMAI.(from [3.0.0]) 
   - Various messaging and attack targeting will now work with more than 12 players.(from [3.0.0]) 
   - Increased script delay on higher number of players to reduce performance impact.
-- With Commander installed if no HumanPlayer on game, the first Observer can choose the language. 
+- With Commander installed if no Human is playing, the first Observer can choose the language. 
 - Commander now includes Zoom feature based from wc3champions. [jzy-chitong56]
   - Input "-zoomxxxx" to adjust the sight distance, and XXXX is a number, such as "-zoom1000"，max zoom is 5000
   - Observers start at an increased zoom level.
