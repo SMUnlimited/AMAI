@@ -5,78 +5,56 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
-## [2.6.1-cn] - 2022-08-4
+Jzy-chitong has provided various updates and ported features back to this older version of AMAI if you play on the older editions of warcraft 3. 
+
 ### Added
-- New chinese language translation, include Blizzard.eai [function Tribute]
-   - translation add more sentence for all language(translate by google)
-- Console add Page turning，adapted more than 12  AIPlayer and give more Strategy choose [Blizzard.eai]
-- if no HumanPlayer on game, the first Observer must choose language 
-- Add Undead UPGRADE UPG_SKEL_MASTERY
-- Undead strategy add GargGhouls
-- Input "-zoomxxxx" to adjust the sight distance, and XXXX is a number, such as "-zoom1000"，max zoom is 5000 (learn w3chambers)
-   - the Observer zoom increase 200
+- Improved chinese language translations [jzy-chitong56]
+- Commander resource tributes are now translated (translated by google)
+- Commander improvements added Page turning.
+- Automatic support for more than 12 Players based on version you playing on.
+  - All 24 player colours are now supported by AMAI.(from [3.0.0]) 
+  - Various messaging and attack targeting will now work with more than 12 players.(from [3.0.0]) 
+  - Increased script delay on higher number of players to reduce performance impact.
+- With Commander installed if no HumanPlayer on game, the first Observer can choose the language. 
+- Commander now includes Zoom feature based from wc3champions. [jzy-chitong56]
+  - Input "-zoomxxxx" to adjust the sight distance, and XXXX is a number, such as "-zoom1000"，max zoom is 5000
+  - Observers start at an increased zoom level.
+- AMAI now can use power fountains if available on the map.
+- A small chance for AMAI to pick the profile of Legendary human players (Note not the skill of the real players)
 
 ### Changed
 - Computer skill level is now shown by default on AMAI players. (from [3.0.0]) 
-- Tweaked english gramatical errors for various strategy messages. (from [3.0.0]) 
+- Tweaked english grammatical errors for various strategy messages. (from [3.0.0]) 
 - Tweaks to Brewmaster and Alchemist skill picks. (Pixyy) (from [3.1.0]) 
-- Balance pass to all racial hero selection, skill selection and strategy selection. Mostly minor but most noticeable changes include (consult Pixyy)  (from [3.1.0]) 
-   - Night Elf increased use of warden and keeper.
-   - Reduced use of mirror image skill.
-- Strategy tweaks and optimizations  (consult Pixyy)  (from [3.1.0])
-   - Removed non-useful units from harass attacks and fixed undead harassment group numbering.
-   - Improvements to human, orc, undead and night elf dynamic strategy adjustment.
-- Strategy additional Improvements
-   - Unreasonable build restrictions have been removed
-   - Main city upgrade priorities for all tactics have been rebalanced around 50 (Including ROC)
-   - Increased the number of training units for Tier1 of all races
-   - Adjusted the night elf training Hippo eagle command to reduce the occupied population of the Hippo eagle that can only be brought to the air
-   - Night Elf Talon now use FAERIE_DRAGON against the air , because AI won't become a bird , match the MOUNTAIN_GIANT at the same time
-   - Human Knight strategy now use COPTER , no STEAM_TANK , and Reduced GRYPHON quantity and priority
 - Very minor balance tweak so less expensive units food wise are needed before AI starts to consider [all] armor or weapon upgrades for them.  (from [3.1.1])
 - Creep building detection range slightly increased(Pixyy) (from [3.1.0])
 - Front base distance range increased(Pixyy) (from [3.1.0])
 - Reduced number of mines needed before going into high upkeep(Pixyy) (from [3.1.0])
 - Tweaks to town portal so more likely to be used for lower threats(Pixyy) (from [3.1.0])
 - At the beginning of the game, HUMAN and ORC have two peon HarvestWood
-- Synchronization part function GetArmyHealthState change(from common.eai)
-- Synchronization function UpdateDebugPlayer and call UpdateDebugPlayer(from common.eai)
-- debug_player 1 → 0(from common.eai)
-- HUMAN UPGRADE UPG_SUN_BLADE UPGRADE need LUMBER_MILL,CASTLE,BLACKSMITH(on 1.32,UPG_SUN_BLADE no need UPGRADE)
-- Adjustment HUMAN and ORC and Night Elf number of peons for mines
-- Non HUMAN _militia set now is empty
-- Add RESET_GUARD_POSITION_ONLY function (from [3.1.0])
+- Mechanical armies will not enter emergency healing state because the only non-mechnical unit/hero is damaged. (from [3.0.0])
+- When the debug player is killed we will now switch to a new player to debug. (from [3.0.0])
+- Adjust HUMAN, ORC and Night Elf number of peons for gold mines.
 - Reduction Profiles can now be reused by AI players，now Profiles can't reused (if the Profiles Race same as AI Race)
    - New Profiles RandomInt, some values are random
-- Official AI is replaced form 1.32 (although there is no change) (Including ROC)
+- Original AI scripts have corrected form ID's (no playable impact) (Including ROC)
+- Calibration the Player name colors to match a little better.
+- Make sure AI leaves at least one ghoul to continue harvesting wood in any case. (from [master])
+- Reworked the strategy timer to fix various issues with changing strategies and to fix issues with counters changing way to frequently. (from [master])
 
 ### Fixed
-- Fix the chinese language encoding issues(from [3.0.1]) 
-- Improved support for 24 players. (from [3.0.0]) （no-native）-- Automatic according to version（Above or below the war3_1.29）
-  - All 24 player colours are now supported by AMAI.(from [3.0.0]) 
-  - Various messaging and attack targeting will now work with more than 12 players.(from [3.0.0]) 
-  - Blizzard.eai，Blizzard1~4.j，BlizzardVAI.eai，DETECT_DEFEAT.eai，REVEAL_ENEMY.eai，UPDATE_STRENGTH.eai，MICRO_HERO.eai，common.eai，TOWN_TRACK.eai, ARMY_TRACK.eai, RETREAT_CONTROL.eai, RESET_WINDWALKER.eai, MILITIA_EXPAND.eai, MICRO_UNITS.eai, HARASS.eai, FOCUSFIRE_CONTROL.eai,   ALL 12players→24players , 13players→23players, 15players→27players(self-adaption)
-  - common.eai，PlayerNeutralExtra 14players→26players （self-adaption）
-  - common.eai , sleep_multiplier , slm_start = 6 (war3_1.29 Automatic change to 9), slm_end = 10 (war3_1.29 Automatic change to 23), slm_end_mult = 3
-  - GlobalSettings.txt , sleep_multiplier , slm_start = 6 , slm_end = 10 ,  slm_end_mult = 3
-  - Other 12 Player→24players（only on war3_1.29+, Automatic change）
+- Add missing requirement for UPG_SKEL_MASTERY.
+- Add missing UPG_SUN_BLADE UPGRADE.
 - Tweaked ranged units to avoid melee units only if damaged to 70% instead of 90% and reduced distance to trigger slightly. (Pixyy) (from [3.1.0]) 
 - Fixed an issue where healing totems are not cast correctly. (Pixyy) (from [3.1.0]) 
 - Front base distance range slightly increased again to help fix night elf troops getting stuck in base(now is 1100). (Pixyy) (from [3.1.0]) 
 - Heroes a little more likely to teleport to rescue a town regardless of the profiles aggression and smaller threat levels. (Pixyy) (from [3.1.0]) 
 - Fixed an issue where human upgrades magic sentry and flare could not be researched by the AI. (Pixyy) (from [3.1.0]) 
-- Fixed some not chinese language translation
-- Fixed the Dialog only show title at first
-- Fixed the Dialog cannot change language
-- Calibration the Player name color 
+- Fixed the Commander Dialog only showing title at first.
+- Fixed issue with the Commander Dialog where you cannot change language.
 - Add welcome message and opening tactical report Time of report (try to fix the problem of using default language for the first two reports)
-- Fixed some strategy no hero3 or misspelled two hero2  (Including ROC)
 - Fix Night Elf initial mining logic such that they build the starting buildings first before completely filling the gold mine. (Pixyy) (from [3.1.1])
-- Fix Night Elf and Undead 's race_tower_id(Settings.txt)  (Including ROC  Human,  Elf and Undead )
-
-### Easter Egg
-- AI now can use power fountain (if map have power fountain)
-- AI Profiles can chance that the incarnation to Legendary real person players
+- Fix Night Elf and Undead 's race_tower_id(Settings.txt)  (Including ROC  Human,  Elf and Undead)
 
 ## [2.6.1] - 2021-01-13
 - Fixed support for pre-1.32 versions.
