@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
-Jzy-chitong has provided various updates and ported features back to this older version of AMAI if you play on the older editions of warcraft 3. 
+Jzy-chitong56 has provided various updates and ported features back to this older version of AMAI if you play on the older editions of warcraft 3. 
 
 ### Added
 - Improved chinese language translations [jzy-chitong56]
@@ -17,7 +17,7 @@ Jzy-chitong has provided various updates and ported features back to this older 
   - Increased script delay on higher number of players to reduce performance impact.
 - With Commander installed if no Human is playing, the first Observer can choose the language. 
 - Commander now includes Zoom feature based from wc3champions. [jzy-chitong56]
-  - Input "-zoomxxxx" to adjust the sight distance, and XXXX is a number, such as "-zoom1000"，max zoom is 5000
+  - Input "-zoomxxxx" to adjust the sight distance, and XXXX is a number, such as "-zoom1000"，max zoom is 3000
   - Observers start at an increased zoom level.
 - AMAI now can use power fountains if available on the map.
 - A small chance for AMAI to pick the profile of Legendary human players (Note not the skill of the real players)
