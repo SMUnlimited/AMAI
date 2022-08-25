@@ -44,7 +44,7 @@ Jzy-chitong56 has provided various updates and ported features back to this olde
 
 ### Fixed
 - Add missing requirement for UPG_SKEL_MASTERY.
-- Add missing UPG_SUN_BLADE UPGRADE.
+- Add missing UPG_SUN_BLADE UPGRADE， but study did not write the strategy.
 - Tweaked ranged units to avoid melee units only if damaged to 70% instead of 90% and reduced distance to trigger slightly. (Pixyy) (from [3.1.0]) 
 - Fixed an issue where healing totems are not cast correctly. (Pixyy) (from [3.1.0]) 
 - Front base distance range slightly increased again to help fix night elf troops getting stuck in base(now is 1100). (Pixyy) (from [3.1.0]) 
