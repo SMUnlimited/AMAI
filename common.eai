@@ -932,6 +932,7 @@ globals
     integer array p_expansion_target_bonus  // aggression bonus for expansion targets
     integer array p_comp_chosen_target_bonus  // aggression bonus for targets chosen by the hard coded AI
     integer array p_surrender  // How likly amai will give up, 0 being never give up and 4 being give up really easily
+    integer array p_rare // Ensures the profile is rarely picked
     real array p_gold_unit_percentage  // The higher this is the more unit production buildings are constructed. reccomended 0.9 to 1
     real array p_taunt_rate // Will display a taunt every 5th second for this percent of the time. Reccomended 1 to 2
 //    real taunt_rate = 1.00 // how man % of the time computers taunt, set by profiles. Recommended values 0.50 to 1.50
@@ -2619,6 +2620,7 @@ function set_profiles takes nothing returns nothing
   #FOR $X$ FROM $ONE$ TO $RACENUM$
     set fav_unit[#EVAL{(%row-1)*$RACENUM$+$X$-1}] = %#OEVAL{16+$RACENUM$+$X$}
   #ENDFOR
+    set p_rare[#EVAL{%row-1}] = %#OEVAL{17+$RACENUM$+$RACENUM$}
 
 #AFTERINCLUDE
     set profile_length = #EVAL{%row-1}
@@ -2643,40 +2645,36 @@ function SetProfileNotUsed takes integer profile returns nothing
   call StoreBoolean(profileCache, Int2Str(PROFILE_USED), Int2Str(profile), false)
 endfunction
 
-function GetProfileChanceSum takes integer num returns integer
-  local integer i = 0
-  local integer sum = 0
-  local integer profileChance = 1 // Currently all profiles have equal chance of being picked
-  loop
-    exitwhen i >= num
-    set sum = sum + profileChance 
-    set i = i + 1
-  endloop
-  return sum
-endfunction
-
 function GetUnusedProfile takes player p returns integer
   local integer i = 0
   local integer array unusedProfiles
   local integer unusedCount = 0
+  local integer array unusedRareProfiles
+    local integer unusedRareCount = 0
   local integer profile = 0
   local integer p_sum = 0
   loop
-    if (p_race[i] == R_RANDOM or p_race[i] == own_race) and (not IsProfileUsed(i)) then
+    if p_rare[i] == 0 and (p_race[i] == R_RANDOM or p_race[i] == own_race) and (not IsProfileUsed(i)) then
        set unusedProfiles[unusedCount] = i
        set unusedCount = unusedCount + 1
+    elseif p_rare[i] == 1 and (p_race[i] == R_RANDOM or p_race[i] == own_race) and (not IsProfileUsed(i)) then
+       set unusedRareProfiles[unusedRareCount] = i
+       set unusedRareCount = unusedRareCount + 1
     endif
     set i = i + 1
     exitwhen i >= profile_length
   endloop
-  if unusedCount > 0 then // pick from unused profiles
-    set p_sum = GetProfileChanceSum(unusedCount - 1)
-    call TracePlayer("Profile select rand " + Int2Str(p_sum), GetPlayerId(ai_player))
-    set profile = GetRandomInt(0, p_sum)
+  if (unusedRareCount > 0 and GetRandomInt(0,9) == 0) then
+    set profile = GetRandomInt(0, unusedRareCount - 1)
+    set profile = unusedRareProfiles[profile]
+    call TracePlayer("Rare Profile select " + Int2Str(profile), GetPlayerId(ai_player))
+  elseif unusedCount > 0 then // pick from unused profiles
+    set profile = GetRandomInt(0, unusedCount - 1)
     set profile = unusedProfiles[profile]
+    call TracePlayer("Profile select " + Int2Str(profile), GetPlayerId(ai_player))
   else // fail safe - pick anything as no valid profile available
-    set profile = GetRandomInt(0, GetProfileChanceSum(profile_length - 1))
-    call TracePlayer("FAILSAFE Profile Selection", GetPlayerId(ai_player))
+    set profile = GetRandomInt(0, profile_length - 1)
+    call TracePlayer("FAILSAFE Profile Selection " + Int2Str(profile), GetPlayerId(ai_player))
   endif
   call SetProfileUsed(profile)
   return profile

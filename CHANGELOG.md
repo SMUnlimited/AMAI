@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 - Support for warcraft 3 1.33 libraries.
+- A small chance for AMAI to pick the profile name of Legendary players (jzy-chitong56)
+  - Also added ability to configure your own legendary profiles via new profile setting option "rare profile"
 
 ### Changed
 - Disabled a flee rule for heroes which means when stranded on there own they are more likely to use a town portal to save themselves.
@@ -21,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Fixed
 - Fixed a bug in 2 strategies regarding priority of hero and frost wryms for undead.
 - AMAI VS AI mode now makes use of the latest blizzard.j instead of a much older version.
+- Fixed issue where profiles were being re-used all the time instead of when running out of applicable profiles.
 
 ## [3.1.1] - 2022-01-10
 
