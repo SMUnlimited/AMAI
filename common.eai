@@ -842,6 +842,10 @@ globals
 	constant integer RACE = 3
 	constant integer RACE_PREF = 4
 	constant integer USE_SPECIAL_RACES = 5
+  constant integer PROFILE_SELECTION = 6
+  
+  gamecache profileCache = InitGameCache("AMAI_AI")
+  
 	//gamecache settings = InitGameCache("AMAI_Set.w3v")
     
     string array char_table
@@ -1084,7 +1088,7 @@ endfunction
 // Properly clear the game caches to make sure they are empty on use
 function InitAMAIGameCache takes nothing returns nothing
 	//call FlushGameCache(InitGameCache("AMAI_TM.w3v"))
-	//call FlushGameCache(InitGameCache("AMAI_AI.w3v"))
+  call FlushGameCache(InitGameCache("AMAI_AI.w3v"))
 	//call FlushGameCache(InitGameCache("AMAI_Com.w3v"))
 	//call FlushGameCache(InitGameCache("AMAI_Set.w3v"))
 	//call FlushGameCache(InitGameCache("AMAI_CVM.w3v"))
@@ -1623,6 +1627,12 @@ function UpdateDebugPlayer takes nothing returns nothing
 		if debug_player > 24 then
 			set debug_player = 24 // Do not go above 24
 		endif
+endfunction
+
+function TracePlayer takes string s, integer playernum returns nothing
+	if debugging then
+		call DisplayToAllFromPlayer(s, playernum, false)
+	endif	
 endfunction
 
 //============================================================================
@@ -2618,32 +2628,123 @@ endfunction
 
 //============================================================================
 function IsProfileUsed takes integer profile returns boolean
-  return LoadBoolean(com, PROFILE_USED, profile)
+  //return LoadBoolean(com, PROFILE_USED, profile)
+  return GetStoredBoolean(profileCache, Int2Str(PROFILE_USED), Int2Str(profile))
 endfunction
 
 //============================================================================
 function SetProfileUsed takes integer profile returns nothing
   call SaveBoolean(com, PROFILE_USED, profile, true)
+  call StoreBoolean(profileCache, Int2Str(PROFILE_USED), Int2Str(profile), true) // Profile selection has to use gamecaches as hashtables are not saved between AI's
+endfunction
+
+function SetProfileNotUsed takes integer profile returns nothing
+  call SaveBoolean(com, PROFILE_USED, profile, false)
+  call StoreBoolean(profileCache, Int2Str(PROFILE_USED), Int2Str(profile), false)
+endfunction
+
+function GetProfileChanceSum takes integer num returns integer
+  local integer i = 0
+  local integer sum = 0
+  local integer profileChance = 1 // Currently all profiles have equal chance of being picked
+  loop
+    exitwhen i >= num
+    set sum = sum + profileChance 
+    set i = i + 1
+  endloop
+  return sum
+endfunction
+
+function GetUnusedProfile takes player p returns integer
+  local integer i = 0
+  local integer array unusedProfiles
+  local integer unusedCount = 0
+  local integer profile = 0
+  local integer p_sum = 0
+  loop
+    if (p_race[i] == R_RANDOM or p_race[i] == own_race) and (not IsProfileUsed(i)) then
+       set unusedProfiles[unusedCount] = i
+       set unusedCount = unusedCount + 1
+    endif
+    set i = i + 1
+    exitwhen i >= profile_length
+  endloop
+  if unusedCount > 0 then // pick from unused profiles
+    set p_sum = GetProfileChanceSum(unusedCount - 1)
+    call TracePlayer("Profile select rand " + Int2Str(p_sum), GetPlayerId(ai_player))
+    set profile = GetRandomInt(0, p_sum)
+    set profile = unusedProfiles[profile]
+  else // fail safe - pick anything as no valid profile available
+    set profile = GetRandomInt(0, GetProfileChanceSum(profile_length - 1))
+    call TracePlayer("FAILSAFE Profile Selection", GetPlayerId(ai_player))
+  endif
+  call SetProfileUsed(profile)
+  return profile
 endfunction
 
 //============================================================================
 function InitProfile takes nothing returns nothing
   local integer i = 0
+  local integer countplayers = 0
+  local player p
+  local player first = null
 
   call set_profiles()
-//  call getPreviousProfiles()
-  
+
   if debug_profile != -1 then
     set profile = debug_profile
   else
-    loop
-      set profile = GetRandomInt(0, profile_length)
-      set i = i + 1 // Don't try and pick a profile beyond a sensible attempt limit
-      exitwhen (p_race[profile] == R_RANDOM or p_race[profile] == own_race) and (not IsProfileUsed(profile) or i > profile_length)
-    endloop
-  endif
 
-  call SetProfileUsed(profile)
+    call Sleep((GetPlayerId(ai_player)*0.02)) // Staggered entry into method for thread safety with profile cache
+        
+    loop
+      exitwhen not IsProfileUsed(-1)
+      call Sleep(0.01)
+    endloop
+    
+    call SetProfileUsed(-1) // current AI locks to ensure only it is processing profiles
+    call TracePlayer("Has locked profile selection ID:" + Int2Str(GetPlayerId(ai_player)), GetPlayerId(ai_player))
+    
+    set profile = GetUnusedProfile(ai_player)
+    
+    //set countplayers = 1
+    //loop
+    //  exitwhen countplayers > GetBJMaxPlayers() or (first != null)
+    //  set p = Player(countplayers)
+    //  if (GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) == MAP_CONTROL_COMPUTER) then
+    //    if first == null then
+    //      set first = p
+    //    endif
+    //  endif
+    //  set countplayers = countplayers + 1
+    //endloop
+    
+    //if (first == ai_player) then
+    //  set countplayers = 1
+    //  loop
+    //    exitwhen countplayers > GetBJMaxPlayers()
+    //    set p = Player(countplayers)
+    //    if (GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) == MAP_CONTROL_COMPUTER) then
+    //      set profile = GetUnusedProfile(p)
+    //      call DisplayToAllFromPlayer("Set initial profiles player " + Int2Str(countplayers) + " profile " +  Int2Str(profile), GetPlayerId(ai_player), false)
+    //      call StoreInteger(profileCache, Int2Str(PROFILE_SELECTION), Int2Str(countplayers), profile)
+    //    endif
+    //    set countplayers = countplayers + 1
+    //  endloop
+      
+    //  call SetProfileUsed(-2) // Unlock other AI's
+    //else
+    //  loop
+    //    exitwhen IsProfileUsed(-2)
+    //    call Sleep(0.01)
+    //  endloop  
+    //endif
+    
+    // If first AI determine every players profiles
+
+    //set profile = GetStoredInteger(profileCache, Int2Str(PROFILE_SELECTION), Int2Str(GetPlayerId(ai_player)))
+    call SetProfileNotUsed(-1)
+  endif
 
   if not fixedcomputername then
   	set ai_name = profilename[profile]
