@@ -7,8 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 - Support for warcraft 3 1.33 libraries.
-- A small chance for AMAI to pick the profile name of Legendary players (jzy-chitong56)
+- A small chance for AMAI to pick the profile name of Legendary players (from 2.6.x by jzy-chitong56)
   - Also added ability to configure your own legendary profiles via new profile setting option "rare profile"
+- AMAI now can use power fountains if available on the map (from 2.6.x by jzy-chitong56)   
 
 ### Changed
 - Disabled a flee rule for heroes which means when stranded on there own they are more likely to use a town portal to save themselves.
