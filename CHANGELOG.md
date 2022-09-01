@@ -25,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed a bug in 2 strategies regarding priority of hero and frost wryms for undead.
 - AMAI VS AI mode now makes use of the latest blizzard.j instead of a much older version.
 - Fixed issue where profiles were being re-used all the time instead of when running out of applicable profiles.
+- Fixed various unresolved issues on maps with more than 12 players (from 2.6.x by jzy-chitong56)
+- Should be a little smoother performance wise when running with more than 12 players. (from 2.6.x by jzy-chitong56)
 
 ## [3.1.1] - 2022-01-10
 
