@@ -6,20 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## [Unreleased]
 
 ### Added
-- Support for warcraft 3 1.33 libraries.
+- Min Support of Warcraft 3 increased to 1.33.
 - A small chance for AMAI to pick the profile name of Legendary players (from 2.6.x by jzy-chitong56)
-  - Also added ability to configure your own legendary profiles via new profile setting option "rare profile"
-- AMAI now can use power fountains if available on the map (from 2.6.x by jzy-chitong56)   
+  - (DevTools) Also added ability to configure your own legendary profiles via new profile setting option "rare profile"
+- AMAI now can use power fountains if available on the map (from 2.6.x by jzy-chitong56)
+- New Random Profile which is completely random on all personality traits (from 2.6.x by jzy-chitong56)
 
 ### Changed
 - Disabled a flee rule for heroes which means when stranded on there own they are more likely to use a town portal to save themselves.
 - Reworked the strategy timer to fix various issues with changing strategies and to fix issues with counters changing way to frequently.
 - Tier and insane difficulty has less of an effect on the strategy timer than before.
-- Make sure AI leaves at least one ghoul to continue harvesting wood in any case.
-- Refactoring of the TFT bat files to re-use scripts instead of duplicating script lines.
+- Make sure AI leaves at least one ghoul to continue harvesting wood in any case. (Pixxy)
+- (DevTools) Refactoring of the TFT bat files to re-use scripts instead of duplicating script lines.
+- Colour Balance on messages improved to be aligned with the players actual colour. (from 2.6.x by jzy-chitong56)
 
 ### Removed
-- The numbered blizzard.j files are now removed and instead generated from the full original blizzard.j. Saves time when updating for new versions.
+- (DevTools) The numbered blizzard.j files are now removed and instead generated from the full original blizzard.j. Saves time when updating for new versions.
 
 ### Fixed
 - Fixed a bug in 2 strategies regarding priority of hero and frost wryms for undead.
@@ -27,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issue where profiles were being re-used all the time instead of when running out of applicable profiles.
 - Fixed various unresolved issues on maps with more than 12 players (from 2.6.x by jzy-chitong56)
 - Should be a little smoother performance wise when running with more than 12 players. (from 2.6.x by jzy-chitong56)
+
 
 ## [3.1.1] - 2022-01-10
 
