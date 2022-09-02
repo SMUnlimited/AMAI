@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - (DevTools) Also added ability to configure your own legendary profiles via new profile setting option "rare profile"
 - AMAI now can use power fountains if available on the map (from 2.6.x by jzy-chitong56)
 - New Random Profile which is completely random on all personality traits (from 2.6.x by jzy-chitong56)
+- Just typing -cmd without any options will now open the commander as well as the ESC key.
 
 ### Changed
 - Disabled a flee rule for heroes which means when stranded on there own they are more likely to use a town portal to save themselves.
@@ -19,9 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Make sure AI leaves at least one ghoul to continue harvesting wood in any case. (Pixxy)
 - (DevTools) Refactoring of the TFT bat files to re-use scripts instead of duplicating script lines.
 - Colour Balance on messages improved to be aligned with the players actual colour. (from 2.6.x by jzy-chitong56)
+- Changed keyboard shortcut for commander to "-cmd:" instead of cmd and you don't have to leave a space after the first ':' anymore.
+- Language dialog can now be set for first human observer if there is not any playing humans. (from 2.6.x by jzy-chitong56)
 
 ### Removed
 - (DevTools) The numbered blizzard.j files are now removed and instead generated from the full original blizzard.j. Saves time when updating for new versions.
+- Outdated links from the commander intro message.
 
 ### Fixed
 - Fixed a bug in 2 strategies regarding priority of hero and frost wryms for undead.

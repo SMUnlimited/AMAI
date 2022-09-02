@@ -24,7 +24,7 @@
     integer command_length = 0
 
     string array parsed_command
-    string command_prefix = "Cmd:"
+    string command_prefix = "-cmd"
 
     button array cdlg_button
     integer array cdlg_number
@@ -113,6 +113,7 @@
     string dlgbutton_commander = ""
     string dlgbutton_no_human = ""
     string dlgbutton_ai_only = ""
+    boolean debugging = false
 
     leaderboard color_board = null
     
@@ -142,6 +143,13 @@ function Parser takes string ChatMsg returns nothing
    //Pulls Words and places them each in their own Variable
    loop
      if (SubStringBJ(ChatMsg,A,A) == " ") then
+       set parsed_command[I] = StringCase(SubStringBJ(ChatMsg, (Last + 1), (A - 1)), true)
+       set Last = A
+       set I = I + 1
+     elseif (SubStringBJ(ChatMsg,A,A) == ":") then
+       if (SubStringBJ(ChatMsg,A+1,A+1) == " ") then
+        set A = A + 1 // space after the : so include in separator
+       endif 
        set parsed_command[I] = StringCase(SubStringBJ(ChatMsg, (Last + 1), (A - 1)), true)
        set Last = A
        set I = I + 1
@@ -400,36 +408,31 @@ function Convert2Player takes string Comp, boolean all_allowed returns player
 
   if Comp == "All" then
     if all_allowed then
-	  set theplayer = Player(PLAYER_NEUTRAL_AGGRESSIVE)
-      //return Player(14)
+      set theplayer = Player(PLAYER_NEUTRAL_AGGRESSIVE)
     else
       call DisplayToTP(all_not_allowed)
-      //return null
     endif
-	
+
   elseif (CColor == null) then
    //Makes Sure color was typed Correctly  
     //Makes sure number is 0 or bigger and 11 or smaller
     if (S2I(Comp) >= 0) and (S2I(Comp) < GetBJMaxPlayers()) then
-	  set theplayer = Player(S2I(Comp))
-      //return Player(S2I(Comp))
+      set theplayer = Player(S2I(Comp))
     else
       call DisplayToTP(player_id_mistyped)
-      //return null
     endif
   else
   //Compares the color until we get a match then stores that player
-  loop
-    exitwhen((CColor == GetPlayerColor(Player(j))) or (j > GetBJMaxPlayers()))
-    set j = j + 1
-    if (j > GetBJMaxPlayers()) then
-      call DisplayToTP(color_word_mistyped)
-      //return null
+    loop
+      exitwhen((CColor == GetPlayerColor(Player(j))) or (j > GetBJMaxPlayers()))
+      set j = j + 1
+      if (j > GetBJMaxPlayers()) then
+        call DisplayToTP(color_word_mistyped)
+      endif
+    endloop
+    if j <= GetBJMaxPlayers() then
+      set theplayer = Player(j)
     endif
-  endloop
-	if j <= GetBJMaxPlayers() then
-		set theplayer = Player(j)
-	endif
   endif
 
   //Returns player
@@ -743,12 +746,24 @@ endfunction
 //===========================================================================
 // The Commander
 //===========================================================================
+function DialogCommander takes nothing returns nothing
+  set commanded_player[GetPlayerId(GetTriggerPlayer())] = null
+  call DialogDisplay(GetTriggerPlayer(), start_dialog, true)
+endfunction
+
 function Commander takes nothing returns nothing
   local player Comp = null
   local string ChatMsg = GetEventPlayerChatString()
   local integer cn = 0
 
   call Parser(ChatMsg)
+
+  call DisplayToTP("Command:" + parsed_command[1] + ":" + parsed_command[2]+ ":" + parsed_command[3] + ":" + parsed_command[4])
+
+  if parsed_command[1] == "" then
+    call DialogCommander()
+    return
+  endif
 
   if parsed_command[1] == "HELP" then
     call Helpin()
@@ -792,11 +807,6 @@ function Commander takes nothing returns nothing
     call ExecuteCommand(Comp, cn)
   endif
 
-endfunction
-
-function DialogCommander takes nothing returns nothing
-  set commanded_player[GetPlayerId(GetTriggerPlayer())] = null
-  call DialogDisplay(GetTriggerPlayer(), start_dialog, true)
 endfunction
 
 function DialogResponse takes nothing returns nothing
@@ -984,7 +994,7 @@ function BuildStartDialog takes nothing returns nothing
   set start_dialog = DialogCreate()
   call DialogSetMessage(start_dialog, dlghdr_choose_ally)
   set sdbn_button[sdbn_length] = DialogAddButton(start_dialog, dlgbutton_all, 65)
-  set sdbn_number[sdbn_length] = 14
+  set sdbn_number[sdbn_length] = PLAYER_NEUTRAL_AGGRESSIVE
   set sdbn_length = sdbn_length + 1
   loop
     exitwhen i >= GetBJMaxPlayers()
@@ -1178,7 +1188,7 @@ function SendToAllAIs takes integer cmd, integer data returns nothing
   endloop
 endfunction
 
-function GetNextHuman takes integer last returns integer
+function GetNextPlayableHuman takes integer last returns integer
   local integer i = last + 1
   loop
     exitwhen i >= GetBJMaxPlayers()
@@ -1190,8 +1200,28 @@ function GetNextHuman takes integer last returns integer
   return -1
 endfunction
 
+function GetFirstPlayableHuman takes nothing returns integer
+  return GetNextPlayableHuman(-1)
+endfunction
+
 function GetFirstHuman takes nothing returns integer
-  return GetNextHuman(-1)
+  local integer i = 0
+  loop
+    exitwhen i >= GetBJMaxPlayers()
+    if GetPlayerController(Player(i)) == MAP_CONTROL_USER and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING then
+      return i
+    endif
+    set i = i + 1
+  endloop
+  set i = 0
+  loop
+    exitwhen i >= GetBJMaxPlayers()
+    if IsPlayerObserver(Player(i)) then
+      return i
+    endif
+    set i = i + 1
+  endloop
+  return -1
 endfunction
 
 function CheckAllyToControl takes player p returns boolean
@@ -1247,14 +1277,14 @@ function GameStartDefault takes nothing returns nothing
 endfunction
 
 function GameStartDlg takes nothing returns nothing
-  local integer host = GetFirstHuman()
+  local integer host = GetFirstPlayableHuman()
   local integer p = host
   loop
     if p == -1 then
       return
     endif
     exitwhen CheckAllyToControl(Player(p))
-    set p = GetNextHuman(p)
+    set p = GetNextPlayableHuman(p)
   endloop
   if game_mode != "" then
     call GameStartDefault()
