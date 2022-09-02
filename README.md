@@ -1,6 +1,6 @@
-# AMAI
-![AMAI](AMAI.jpg)
-Advanced Melee Artifical Intelligence Mod For Warcraft 3
+# ![AMAI](AMAI.jpg)
+
+Advanced Melee Artificial Intelligence Mod For Warcraft 3
 
 Created by **AIAndy**, **Zalamander** and the **Strategy Master**.
 
