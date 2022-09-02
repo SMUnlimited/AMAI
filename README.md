@@ -1,4 +1,5 @@
 # AMAI
+![AMAI](AMAI.jpg)
 Advanced Melee Artifical Intelligence Mod For Warcraft 3
 
 Created by **AIAndy**, **Zalamander** and the **Strategy Master**.
@@ -10,12 +11,13 @@ As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601
 # Warcraft Requirements
 | AMAI Version    | War3 Support                   | Comments |
 | -----------|--------------------------------|---------------|
-| 2.5.4      | Min 1.24+ | Classic edition from 2008 |
-| 2.6.1      | Min 1.24+ | Better Support for 1.30+ |
-| 3.0        | Min 1.32+ | Full Support for the 1.30+ era |
+| 2.5.4      | Min 1.24+ - Max 1.28 | Classic edition from 2008 |
+| 2.6.2      | Min 1.24+ | Some support for 1.30+ features|
+| 3.0        | Min 1.32+ | Full Support for the 1.30+ |
 | 3.1        | Min 1.32.10+ |  |
+| 3.2        | Min 1.33  |  |
 
-* There are reports that v1.29 of Warcraft 3 prevents AMAI from chatting. This is just an issue with this version and you can downgrade or upgrade.
+* Avoid v1.29 of Warcraft 3 as it breaks various things and prevents AMAI from chatting. This is just an issue with this version and you can downgrade or upgrade.
 
 # How to Play
 AMAI release comes with the standard AI scripts pre-built for you.
@@ -23,7 +25,9 @@ AMAI release comes with the standard AI scripts pre-built for you.
 It is suggested to create a subfolder in your "maps" folder like "maps\AMAI" and copy the maps you intend to use AMAI with there.
 For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.html to extract a copy of official maps.
 
+- On windows make sure the maps to install on are not in a protected UAC location. This may mean you have to copy into your Maps folder `C:\Users\<username>\Documents\Warcraft III\Maps` after install
 - From a windows commandline or powershell type `InstallTFTToMap.bat "C:\mymap.w3m"` and press enter to install AMAI to maps
+![example](example.jpg)
 - Alternatively for complex installs if you have `perl` installed from a commandline you can type `perl InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` and press enter to install AMAI to all maps in a directory and subdirectories.
 - After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
 
