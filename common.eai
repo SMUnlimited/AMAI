@@ -671,7 +671,7 @@ globals
     integer array rp_strat_sort
     boolean array beginning_strat
     integer array strat_minimum_time
-    integer rp_strat_length	= 0
+    integer rp_strat_length = 0
     integer rp_strat_sort_length = 0
     integer small_map_tier1_bonus = 20
     real k_add_start_mult = 3
@@ -845,7 +845,7 @@ globals
 	constant integer USE_SPECIAL_RACES = 5
   constant integer PROFILE_SELECTION = 6
   
-  gamecache profileCache = InitGameCache("AMAI_AI")
+  gamecache amaiCache = InitGameCache("AMAI_AI.w3v")
   
 	//gamecache settings = InitGameCache("AMAI_Set.w3v")
     
@@ -1105,7 +1105,7 @@ endfunction
 
 //============================================================================
 function c2s takes playercolor c returns string
-  return cs2s(ai_name, c)
+  return cs2s(ai_name, c) + ": "
 endfunction
 
 //===========================================================================
@@ -1216,6 +1216,7 @@ endfunction
 //============================================================================
 // (AMAI)	Int2Str
 //  Converts and integer number to a string (This only works for actual integer numbers)
+//  Cannot use native I2S in any AI related code
 //  for unit ids etc you must use common.j natives
 //============================================================================
 function InitDigits takes nothing returns nothing
@@ -1236,6 +1237,10 @@ function Int2Str takes integer ic returns string
     local integer i = ic
     local integer ialt = 0
     local boolean neg = false
+    
+    if digit_map[0] == null then
+      call InitDigits() // If called before digits has been initialized do it ourselves.
+    endif
 
     if i == 0 then
       return "0"
@@ -2525,18 +2530,18 @@ endfunction
 //============================================================================
 function IsProfileUsed takes integer profile returns boolean
   //return LoadBoolean(com, PROFILE_USED, profile)
-  return GetStoredBoolean(profileCache, Int2Str(PROFILE_USED), Int2Str(profile))
+  return GetStoredBoolean(amaiCache, Int2Str(PROFILE_USED), Int2Str(profile))
 endfunction
 
 //============================================================================
 function SetProfileUsed takes integer profile returns nothing
   call SaveBoolean(com, PROFILE_USED, profile, true)
-  call StoreBoolean(profileCache, Int2Str(PROFILE_USED), Int2Str(profile), true) // Profile selection has to use gamecaches as hashtables are not saved between AI's
+  call StoreBoolean(amaiCache, Int2Str(PROFILE_USED), Int2Str(profile), true) // Profile selection has to use gamecaches as hashtables are not saved between AI's
 endfunction
 
 function SetProfileNotUsed takes integer profile returns nothing
   call SaveBoolean(com, PROFILE_USED, profile, false)
-  call StoreBoolean(profileCache, Int2Str(PROFILE_USED), Int2Str(profile), false)
+  call StoreBoolean(amaiCache, Int2Str(PROFILE_USED), Int2Str(profile), false)
 endfunction
 
 function GetUnusedProfile takes player p returns integer
@@ -2619,7 +2624,7 @@ function InitProfile takes nothing returns nothing
     //    if (GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) == MAP_CONTROL_COMPUTER) then
     //      set profile = GetUnusedProfile(p)
     //      call DisplayToAllFromPlayer("Set initial profiles player " + Int2Str(countplayers) + " profile " +  Int2Str(profile), GetPlayerId(ai_player), false)
-    //      call StoreInteger(profileCache, Int2Str(PROFILE_SELECTION), Int2Str(countplayers), profile)
+    //      call StoreInteger(amaiCache, Int2Str(PROFILE_SELECTION), Int2Str(countplayers), profile)
     //    endif
     //    set countplayers = countplayers + 1
     //  endloop
@@ -2634,7 +2639,7 @@ function InitProfile takes nothing returns nothing
     
     // If first AI determine every players profiles
 
-    //set profile = GetStoredInteger(profileCache, Int2Str(PROFILE_SELECTION), Int2Str(GetPlayerId(ai_player)))
+    //set profile = GetStoredInteger(amaiCache, Int2Str(PROFILE_SELECTION), Int2Str(GetPlayerId(ai_player)))
     call SetProfileNotUsed(-1)
   endif
 

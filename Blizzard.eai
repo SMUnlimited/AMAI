@@ -32,6 +32,7 @@
     integer cdlg_length = 0
 
     dialog number_dialog = null
+    dialog last_number_dialog = null
     dialog player_dialog = null
     dialog start_dialog = null
     dialog root_dialog = null
@@ -60,7 +61,10 @@
     integer pcbn_length = 0
 
     button array ndbn_button
+    button next_button = null
+    button previous_button = null
     integer ndbn_length = 0
+    integer ndbn_paged_length = 0
 
     dialog array dlg_dialog
     string array dlg_string
@@ -118,7 +122,7 @@
     leaderboard color_board = null
     
     //gamecache translation = InitGameCache("Commander.w3v")
-	hashtable translation = InitHashtable()
+    hashtable translation = InitHashtable()
 
 #INCLUDE <Blizzard2.j>
 #INCLUDE <Blizzard3Gen.j>
@@ -779,7 +783,7 @@ function Commander takes nothing returns nothing
   if Comp == null then
     call DisplayToTP(specified_player_not_valid)
     return
-  elseif Comp != Player(14) then
+  elseif Comp != Player(PLAYER_NEUTRAL_AGGRESSIVE) then
     if GetPlayerController(Comp) != MAP_CONTROL_COMPUTER then
        call DisplayToTP(not_specified_computer)
       return
@@ -809,11 +813,79 @@ function Commander takes nothing returns nothing
 
 endfunction
 
+function AddCancelButton takes dialog d returns nothing
+  call DialogAddButton(d, dlgbutton_cancel, 8) // backspace
+endfunction
+
+function AddNextButton takes dialog d returns nothing
+  set next_button = DialogAddButton(d, dlgbutton_next_page, 110) // n
+endfunction
+
+function AddPreviousButton takes dialog d returns nothing
+  set previous_button = DialogAddButton(d, dlgbutton_previous_page, 112) // p
+endfunction
+
+// Builds a pageable number dialog
+function BuildNumberDialog takes player p, integer startnum returns dialog
+  local integer maxCount = 25  // Configure this to increase total number options to display
+  local integer i = startnum
+  local dialog new_dialog = DialogCreate()
+  //call DisplayToAll("STRAT Max: " + I2S(maxCount) + " for player: " + I2S(GetPlayerId(p)) + " starting page at:" + I2S(i))
+  call DialogDestroy(last_number_dialog)
+  set last_number_dialog = new_dialog
+  call DialogSetMessage(new_dialog, dlghdr_choose_number)
+  set ndbn_length = startnum
+  set ndbn_paged_length = 0
+  loop
+    exitwhen i >= 9 + startnum or i >= maxCount
+    set ndbn_button[ndbn_length] = DialogAddButton(new_dialog, I2S(i), IMinBJ(48 + i, 57))
+    set ndbn_length = ndbn_length + 1
+    set ndbn_paged_length = ndbn_paged_length + 1
+    set i = i + 1
+  endloop
+  if (i < maxCount) then
+    call AddNextButton(new_dialog)
+  endif
+  if (i > 9) then
+    call AddPreviousButton(new_dialog)
+  endif
+  call AddCancelButton(new_dialog)
+  return new_dialog
+endfunction
+
+function NumberDialogResponse takes nothing returns nothing
+  local integer i = 0
+  local button b = GetClickedButton()
+  local trigger t = CreateTrigger()
+  local dialog d
+  loop
+    exitwhen ndbn_button[i] == b or i >= ndbn_length
+    set i = i + 1
+  endloop
+  if (b == next_button) then // next page
+    set d = BuildNumberDialog(commanded_player[GetPlayerId(GetTriggerPlayer())], i)
+    call TriggerRegisterDialogEvent(t, d )
+    call TriggerAddAction(t, function NumberDialogResponse)
+    call DialogDisplay(GetTriggerPlayer(), d, true)
+  endif
+  if (b == previous_button) then // previous page
+    set d = BuildNumberDialog(commanded_player[GetPlayerId(GetTriggerPlayer())], i - ndbn_paged_length - 9)
+    call TriggerRegisterDialogEvent(t, d )
+    call TriggerAddAction(t, function NumberDialogResponse)
+    call DialogDisplay(GetTriggerPlayer(), d, true)
+  endif
+  if (ndbn_button[i] == b) then
+    set current_number_par[GetPlayerId(GetTriggerPlayer())] =i
+    call ExecuteDialogCommand(commanded_player[GetPlayerId(GetTriggerPlayer())], current_command[GetPlayerId(GetTriggerPlayer())])
+  endif
+endfunction
+
 function DialogResponse takes nothing returns nothing
   local button b = GetClickedButton()
   local integer i = 0
   local dialog d = null
   local integer cn = 0
+  local trigger t
 
   loop
     if i >= cdlg_length then
@@ -828,7 +900,15 @@ function DialogResponse takes nothing returns nothing
 
   if d != null then
     set current_command[GetPlayerId(GetTriggerPlayer())] = cn
-    call DialogDisplay(GetTriggerPlayer(), d, true)
+    if (d == number_dialog) then
+      set t = CreateTrigger()
+      set d = BuildNumberDialog(commanded_player[GetPlayerId(GetTriggerPlayer())], 0)
+      call TriggerRegisterDialogEvent(t, d )
+      call TriggerAddAction(t, function NumberDialogResponse)
+      call DialogDisplay(GetTriggerPlayer(), d, true) 
+    else
+      call DialogDisplay(GetTriggerPlayer(), d, true)
+    endif 
     return
   endif
 
@@ -864,20 +944,6 @@ function PlayerDialogResponse takes nothing returns nothing
     set i = i + 1
   endloop
   set current_player_par[GetPlayerId(GetTriggerPlayer())] = pcbn_number[i]
-  call ExecuteDialogCommand(commanded_player[GetPlayerId(GetTriggerPlayer())], current_command[GetPlayerId(GetTriggerPlayer())])
-endfunction
-
-function NumberDialogResponse takes nothing returns nothing
-  local integer i = 0
-  local button b = GetClickedButton()
-  loop
-    if i >= ndbn_length then
-      return
-    endif
-    exitwhen ndbn_button[i] == b
-    set i = i + 1
-  endloop
-  set current_number_par[GetPlayerId(GetTriggerPlayer())] =i
   call ExecuteDialogCommand(commanded_player[GetPlayerId(GetTriggerPlayer())], current_command[GetPlayerId(GetTriggerPlayer())])
 endfunction
 
@@ -949,10 +1015,6 @@ function RegisterCommands takes nothing returns nothing
 #ENDINCLUDE
 endfunction
 
-function AddCancelButton takes dialog d returns nothing
-  call DialogAddButton(d, dlgbutton_cancel, 512)
-endfunction
-
 function RegisterCDialogButton takes button b, integer cn, dialog d returns nothing
   set cdlg_button[cdlg_length] = b
   set cdlg_number[cdlg_length] = cn
@@ -1008,22 +1070,6 @@ function BuildStartDialog takes nothing returns nothing
   call AddCancelButton(start_dialog)
   call TriggerRegisterDialogEvent(t, start_dialog )
   call TriggerAddAction(t, function StartDialogResponse)
-endfunction
-
-function BuildNumberDialog takes nothing returns nothing
-  local trigger t = CreateTrigger()
-  local integer i = 0
-  set number_dialog = DialogCreate()
-  call DialogSetMessage(number_dialog, dlghdr_choose_number)
-  loop
-    exitwhen i >= 10
-    set ndbn_button[ndbn_length] = DialogAddButton(number_dialog, I2S(i), IMinBJ(48 + i, 57))
-    set ndbn_length = ndbn_length + 1
-    set i = i + 1
-  endloop
-  call AddCancelButton(number_dialog)
-  call TriggerRegisterDialogEvent(t, number_dialog )
-  call TriggerAddAction(t, function NumberDialogResponse)
 endfunction
 
 function BuildPlayerDialog takes nothing returns nothing
@@ -1148,7 +1194,7 @@ endfunction
 
 function BuildDialogs takes nothing returns nothing
   call BuildStartDialog()
-  call BuildNumberDialog()
+  set number_dialog = DialogCreate()
   call BuildPlayerDialog()
   call BuildCommandDialogs()
   call BuildTributeDialogs()
