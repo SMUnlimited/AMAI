@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - AMAI now can use power fountains if available on the map (from 2.6.x by jzy-chitong56)
 - New Random Profile which is completely random on all personality traits (from 2.6.x by jzy-chitong56)
 - Just typing -cmd without any options will now open the commander as well as the ESC key.
+- Commander player selection and strategy selections now have multiple pages (from 2.6.x by jzy-chitong56)
 
 ### Changed
 - Disabled a flee rule for heroes which means when stranded on there own they are more likely to use a town portal to save themselves.
