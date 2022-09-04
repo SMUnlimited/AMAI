@@ -1,0 +1,425 @@
+//============================================================================
+//  Elf Melee Strategic AI
+//============================================================================
+globals
+    boolean startup     = true
+
+    integer C_huntress  = 0
+    integer C_archers   = 0
+    integer C_dryads    = 0
+    integer C_chimaera  = 0
+
+    boolean lore        = false
+    boolean wind        = false
+    boolean ages        = false
+    boolean eternity    = false
+    boolean war         = false
+    boolean hunters     = false
+    boolean ballista    = false
+    boolean claws       = false
+    boolean roost       = false
+    boolean use_bears   = false
+endglobals
+
+//============================================================================
+//  set_skills
+//============================================================================
+function set_skills takes nothing returns nothing
+    //------------------------------------------------------------------------
+    if hero_id == MOON_CHICK then
+    //------------------------------------------------------------------------
+        set skills1[ 1] = SEARING_ARROWS
+        set skills1[ 2] = TRUESHOT
+        set skills1[ 3] = SEARING_ARROWS
+        set skills1[ 4] = TRUESHOT
+        set skills1[ 5] = SEARING_ARROWS
+        set skills1[ 6] = STARFALL
+        set skills1[ 7] = TRUESHOT
+        set skills1[ 8] = SCOUT
+        set skills1[ 9] = SCOUT
+        set skills1[10] = SCOUT
+    endif
+    //------------------------------------------------------------------------
+    if hero_id2 == MOON_CHICK then
+    //------------------------------------------------------------------------
+        set skills2[ 1] = TRUESHOT
+        set skills2[ 2] = SEARING_ARROWS
+        set skills2[ 3] = TRUESHOT
+        set skills2[ 4] = SEARING_ARROWS
+        set skills2[ 5] = TRUESHOT
+        set skills2[ 6] = STARFALL
+        set skills2[ 7] = SEARING_ARROWS
+        set skills2[ 8] = SCOUT
+        set skills2[ 9] = SCOUT
+        set skills2[10] = SCOUT
+    endif
+
+    //------------------------------------------------------------------------
+    if hero_id == KEEPER then
+    //------------------------------------------------------------------------
+        set skills1[ 1] = FORCE_NATURE
+        set skills1[ 2] = ENT_ROOTS
+        set skills1[ 3] = FORCE_NATURE
+        set skills1[ 4] = THORNS_AURA
+        set skills1[ 5] = FORCE_NATURE
+        set skills1[ 6] = TRANQUILITY
+        set skills1[ 7] = ENT_ROOTS
+        set skills1[ 8] = ENT_ROOTS
+        set skills1[ 9] = THORNS_AURA
+        set skills1[10] = THORNS_AURA
+    endif
+    //------------------------------------------------------------------------
+    if hero_id2 == KEEPER then
+    //------------------------------------------------------------------------
+        set skills2[ 1] = THORNS_AURA
+        set skills2[ 2] = ENT_ROOTS
+        set skills2[ 3] = ENT_ROOTS
+        set skills2[ 4] = THORNS_AURA
+        set skills2[ 5] = ENT_ROOTS
+        set skills2[ 6] = TRANQUILITY
+        set skills2[ 7] = THORNS_AURA
+        set skills2[ 8] = FORCE_NATURE
+        set skills2[ 9] = FORCE_NATURE
+        set skills2[10] = FORCE_NATURE
+    endif
+
+    //------------------------------------------------------------------------
+    if hero_id == DEMON_HUNTER then
+    //------------------------------------------------------------------------
+        set skills1[ 1] = IMMOLATION
+        set skills1[ 2] = EVASION
+        set skills1[ 3] = EVASION
+        set skills1[ 4] = MANA_BURN
+        set skills1[ 5] = MANA_BURN
+        set skills1[ 6] = METAMORPHOSIS
+        set skills1[ 7] = MANA_BURN
+        set skills1[ 8] = EVASION
+        set skills1[ 9] = IMMOLATION
+        set skills1[10] = IMMOLATION
+    endif
+    //------------------------------------------------------------------------
+    if hero_id2 == DEMON_HUNTER then
+    //------------------------------------------------------------------------
+        set skills2[ 1] = MANA_BURN
+        set skills2[ 2] = EVASION
+        set skills2[ 3] = MANA_BURN
+        set skills2[ 4] = EVASION
+        set skills2[ 5] = MANA_BURN
+        set skills2[ 6] = METAMORPHOSIS
+        set skills2[ 7] = EVASION
+        set skills2[ 8] = IMMOLATION
+        set skills2[ 9] = IMMOLATION
+        set skills2[10] = IMMOLATION
+    endif
+endfunction
+
+//============================================================================
+//  setup_force
+//============================================================================
+function setup_force takes nothing returns nothing
+    call AwaitMeleeHeroes()
+    call InitMeleeGroup()
+
+    call SetMeleeGroup( hero_id     )
+    call SetMeleeGroup( hero_id2    )
+    call SetMeleeGroup( ARCHER      )
+    call SetMeleeGroup( HUNTRESS    )
+    call SetMeleeGroup( DRUID_TALON )
+    call SetMeleeGroup( DRUID_CLAW  )
+    call SetMeleeGroup( DRYAD       )
+    call SetMeleeGroup( HIPPO       )
+    call SetMeleeGroup( HIPPO_RIDER )
+    call SetMeleeGroup( CHIMAERA    )
+
+    call SetInitialWave(10)
+endfunction
+
+//============================================================================
+//  attack_sequence
+//============================================================================
+function attack_sequence takes nothing returns nothing
+    local boolean needs_exp
+    local boolean has_siege
+    local boolean major_ok
+    local boolean air_units
+    local integer chim
+
+    loop
+        exitwhen GetUnitCountDone(hero_id)>0
+        call Sleep(2)
+    endloop
+
+    call StaggerSleep(0,2)
+    loop
+        loop
+            exitwhen not CaptainRetreating()
+            call Sleep(2)
+        endloop
+
+        call setup_force()
+
+        set major_ok         = GetUnitCountDone(HUNTRESS)>=2
+        set needs_exp        = take_exp and (major_ok or GetGoldOwned()<2000)
+        set chim             = GetUnitCountDone(CHIMAERA)
+        set has_siege        = GetUnitCountDone(BALLISTA)>0 or chim>0
+        set air_units        = GetUnitCountDone(HIPPO_RIDER)>0
+        set allow_air_creeps = air_units or GetUnitCountDone(ARCHER)>0
+
+        call SingleMeleeAttack(needs_exp,has_siege,major_ok,air_units)
+    endloop
+endfunction
+
+//============================================================================
+//  init_booleans
+//============================================================================
+function init_booleans takes nothing returns nothing
+    set C_huntress  = GetUnitCount(HUNTRESS)
+    set C_archers   = GetUnitCount(ARCHER)
+    set C_dryads    = GetUnitCount(DRYAD)
+    set C_chimaera  = GetUnitCount(CHIMAERA)
+    set lore        = GetUnitCountDone(ANCIENT_LORE)>0
+    set wind        = GetUnitCountDone(ANCIENT_WIND)>0
+    set ages        = TownCountDone(TREE_AGES)>0
+    set eternity    = TownCountDone(TREE_ETERNITY)>0
+    set war         = GetUnitCountDone(ANCIENT_WAR)>0
+    set hunters     = GetUnitCountDone(HUNTERS_HALL)>0
+    set ballista    = GetUnitCount(BALLISTA)>0
+    set claws       = TownCount(DRUID_CLAW)>0
+    set roost       = GetUnitCountDone(CHIMAERA_ROOST)>0
+    set use_bears   = lore and GetUpgradeLevel(UPG_DRUID_CLAW)>=2
+endfunction
+
+//============================================================================
+//  upgrade_sequence
+//============================================================================
+function upgrade_sequence takes nothing returns nothing
+
+    //*** HUNTER'S HALL UPGRADES ***
+    //
+    if hunters then
+        call SetBuildUpgr( 1, UPG_STR_MOON   )
+        call SetBuildUpgr( 1, UPG_MOON_ARMOR )
+
+        if ages then
+            call SetBuildUpgr( 2, UPG_STR_MOON   )
+            call SetBuildUpgr( 2, UPG_MOON_ARMOR )
+
+            if eternity then
+                call SetBuildUpgr( 3, UPG_STR_MOON   )
+                call SetBuildUpgr( 3, UPG_MOON_ARMOR )
+            endif
+        endif
+
+        call SetBuildUpgr( 1, UPG_STR_WILD )
+        call SetBuildUpgr( 1, UPG_HIDES    )
+
+        if ages then
+            call SetBuildUpgr( 2, UPG_STR_WILD )
+            call SetBuildUpgr( 2, UPG_HIDES    )
+
+            if eternity then
+                call SetBuildUpgr( 3, UPG_STR_WILD )
+                call SetBuildUpgr( 3, UPG_HIDES    )
+
+                if ballista then
+                    call SetBuildUpgr( 1, UPG_ULTRAVISION )
+                endif
+            endif
+        endif
+    endif
+
+    //*** ANCIENT OF WAR UPGRADES ***
+    //
+    if war then
+        if ages then
+            call SetBuildUpgr( 1, UPG_BOWS )
+
+            if hunters then
+                call SetBuildUpgr( 1, UPG_BOLT )
+
+                if eternity then
+                    call SetBuildUpgr( 1, UPG_GLAIVE   )
+                    call SetBuildUpgr( 1, UPG_MARKSMAN )
+                    call SetBuildUpgr( 1, UPG_SCOUT    )
+                endif
+            endif
+        endif
+    endif
+
+    //*** ANCIENT OF LORE UPGRADES ***
+    //
+    if lore then
+        call SetBuildUpgr( 1, UPG_DRUID_CLAW )
+
+        if eternity then
+            call SetBuildUpgr( 2, UPG_DRUID_CLAW )
+        endif
+
+        call SetBuildUpgr( 1, UPG_ABOLISH )
+    endif
+
+    //*** ANCIENT OF WIND UPGRADES ***
+    //
+    if lore then
+        call SetBuildUpgr( 1, UPG_DRUID_TALON )
+
+        if eternity then
+            call SetBuildUpgr( 2, UPG_DRUID_TALON )
+        endif
+    endif
+
+    //*** CHIM ROOST UPGRADES ***
+    //
+    if roost and GetUnitCount(CHIMAERA)>0 then
+        call SetBuildUpgr( 1, UPG_CHIM_ACID )
+    endif
+endfunction
+
+//============================================================================
+//  forces_sequence
+//============================================================================
+function forces_sequence takes nothing returns nothing
+    local integer farms = GetUnitCountDone(MOON_WELL) + TownCountDone(TREE_LIFE)
+    local integer siege_avail
+    local integer count
+
+    //*** MELEE FORCES ***
+    //
+    if farms < 6 then
+        return
+    endif
+    call FoodPool( 18,  true,HUNTRESS,3,  lore,DRUID_CLAW,4 )
+
+    //*** SIEGE FORCES ***
+    //
+    call FoodPool( 4,  hunters and ages,BALLISTA,4,  roost,CHIMAERA,5 )
+    if farms < 7 then
+        return
+    endif
+    call FoodPool( 10,  hunters and ages,BALLISTA,4,  roost,CHIMAERA,5 )
+
+    //*** OTHER FORCES ***
+    //
+    //
+    if wind then
+        call SetBuildUnit( 2, DRUID_TALON )
+    endif
+endfunction
+
+//============================================================================
+//  build_sequence
+//============================================================================
+function build_sequence takes nothing returns nothing
+    local integer mines = GetMinesOwned()
+
+    call InitBuildArray()
+    call init_booleans()
+
+    call MeleeTownHall( 0, TREE_LIFE )
+    call MeleeTownHall( 1, TREE_LIFE )
+
+    call SetBuildUnit( 5, WISP              )
+    call SetBuildUnit( 1, ANCIENT_WAR       )
+    call SetBuildUnit( 1, MOON_WELL         )
+    call SetBuildUnit( 9, WISP              )
+    call SetBuildUnit( 2, MOON_WELL         )
+    call SetBuildUnit( 1, ARCHER            )
+    call SetBuildUnit(10, WISP              )
+    call SetBuildUnit( 1, ELF_ALTAR         )
+    call SetBuildUnit( 2, ARCHER            )
+    call SetBuildUnit(11, WISP              )
+    call SetBuildUnit( 3, ARCHER            )
+    call SetBuildUnit( 1, hero_id           )
+
+    call FoodPool( 8,  true,ARCHER,2,  lore,DRYAD,3 )
+
+    call SetBuildUnit( 3, MOON_WELL         )
+    call SetBuildUnit( 1, HUNTERS_HALL      )
+
+    call FoodPool( 12,  true,ARCHER,2,  lore,DRYAD,3 )
+
+    call SetBuildUnit( 1, HUNTRESS          )
+    call SetBuildUpgr( 1, UPG_MOON_ARMOR    )
+    call SetBuildUnit( 2, HUNTRESS          )
+    call SetBuildUnit( 1, TREE_AGES         )
+
+    call FoodPool( 9,  true,HUNTRESS,3,  use_bears,DRUID_CLAW,4 )
+
+    call SetBuildUpgr( 1, UPG_STR_MOON      )
+
+    call FoodPool( 12,  true,HUNTRESS,3,  use_bears,DRUID_CLAW,4 )
+
+    call SetBuildUnit( 4, MOON_WELL         )
+    call SetBuildUnit( 2, ANCIENT_WAR       )
+    call SetBuildUpgr( 2, UPG_STR_MOON      )
+    call SetBuildUpgr( 1, UPG_BOWS          )
+
+    if MeleeDifficulty() != MELEE_NEWBIE then
+        call SetBuildUnit(  1, hero_id2     )
+    endif
+
+    call BasicExpansion( mines < 2, TREE_LIFE )
+
+    call GuardSecondary( 1, 2, ANCIENT_PROTECT )
+    call GuardSecondary( 2, 2, ANCIENT_PROTECT )
+
+    call forces_sequence()
+    call upgrade_sequence()
+
+    if mines > 1 then
+        call SetBuildUnit( 16, WISP )
+    endif
+
+    call SetBuildUnit( 5, MOON_WELL         )
+    call SetBuildUnit( 1, ANCIENT_LORE      )
+    call SetBuildUnit( 1, ANCIENT_WIND      )
+    call SetBuildUnit( 1, TREE_ETERNITY     )
+    call SetBuildUnit( 1, CHIMAERA_ROOST    )
+    call SetBuildUnit( 6, MOON_WELL         )
+
+    if GetUnitCount(CHIMAERA_ROOST)>0 and GetUnitCount(ZEPPELIN)<3 then
+        call GetZeppelin()
+    endif
+
+    call MeleeTownHall( 2, TREE_LIFE )
+
+    call BasicExpansion( mines < 3, TREE_LIFE )
+endfunction
+
+//============================================================================
+//  peon_assignment
+//============================================================================
+function peon_assignment takes nothing returns nothing
+    local integer T
+    loop
+        call ClearHarvestAI()
+
+        set T = TownWithMine()
+
+        call HarvestGold(T,4)
+        call HarvestWood(0,1)
+        call HarvestGold(T,1)
+        call HarvestWood(0,2)
+
+        if GetUnitCountDone(ELF_MINE)>1 then
+            call HarvestGold(T+1,5)
+        endif
+
+        call HarvestWood(1,20)
+
+        call build_sequence()
+        call Sleep(3)
+    endloop
+endfunction
+
+//============================================================================
+//	main
+//============================================================================
+function main takes nothing returns nothing
+    set do_debug_cheats = GetAiPlayer()==1
+
+    call PickMeleeHero(RACE_NIGHTELF)
+    call set_skills()
+    call StandardAI(function SkillArrays, function peon_assignment, function attack_sequence)
+    call PlayGame()
+endfunction

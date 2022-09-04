@@ -1,0 +1,277 @@
+#IFDEF GLOBAL
+
+    group unit_healing = CreateGroup()
+    group unit_rescueing = CreateGroup()
+    group unit_harassing = CreateGroup()
+    group unit_zepplin_move = CreateGroup()
+	group unit_buying_item = CreateGroup()
+	group unit_buying_merc = CreateGroup()
+	group unit_buying_tavern = CreateGroup()
+
+#ELSE
+
+//============================================================================
+// Micro Units Control - // Updated by Strategy Master 26/07/05
+//============================================================================
+
+
+//function MakeUnitHeal takes unit u returns nothing
+//  local unit healer = GetHealer()
+//  local location unitloc = GetUnitLoc(healer)
+//  local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
+
+//  if IsUnitType(u, UNIT_TYPE_HERO) then
+//    return
+//  endif
+  
+//  if healer != null and not IsUnitType(u, UNIT_TYPE_MECHANICAL) then
+//    call RemoveGuardPosition(u)
+//    call GroupAddUnit(unit_healing, u)
+//    call TQAddUnitJob(GetTimeToReachLoc(u, unitloc) + 1, RESET_GUARD_POSITION, 0, u)
+//    call IssuePointOrder(u, "move", GetUnitX(healer), GetUnitY(healer))
+//    call HealUnit(healer, u, true)
+//	call RemoveLocation(unitloc)
+//	set unitloc = null
+//  elseif race_use_fountain and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_MECHANICAL) and neutral_enemy[NEUTRAL_HEALING_FOUNTAIN] <= 0 and not (GetUnitTypeId(u) == old_id[racial_ghoul]) and not (GetUnitTypeId(u) == old_id[racial_militia]) and neutral_available[NEUTRAL_HEALING_FOUNTAIN] and nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null and (not neutral_guarded[NEUTRAL_HEALING_FOUNTAIN] or (neutral_night_buy[NEUTRAL_HEALING_FOUNTAIN] and daytime >= 18 and nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null)) then
+//      call RemoveGuardPosition(u)
+//    	call GroupAddUnit(unit_healing, u)
+//  //  call TQAddUnitJob(8, RESET_HEALTH, 80, u)
+//  //  call IssuePointOrder(u, "move", GetUnitX(nearest_neutral[NEUTRAL_HEALING_FOUNTAIN]), GetUnitY(nearest_neutral[NEUTRAL_HEALING_FOUNTAIN]))
+//      call TQAddUnitJob(0.5, HEALTH_FOUNTAIN, 80, u)
+//  endif
+//endfunction
+
+//============================================================================
+function StatueControl takes unit u returns nothing
+  local location statue_loc = GetProjectedLoc(last_ally_loc, GetSubtractionLoc(last_ally_loc, last_enemy_loc), statue_distance)
+  local location unitloc = GetUnitLoc(u)
+  if DistanceBetweenPoints(unitloc, statue_loc) > 200 then
+    call IssuePointOrderLoc(u, "move", statue_loc)
+  endif
+  call RemoveLocation(statue_loc)
+  set statue_loc = null
+  call RemoveLocation(unitloc)
+  set unitloc = null
+endfunction
+
+//============================================================================
+function SaveUnit takes unit u returns nothing
+  local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
+  local unit healer = GetHealer()
+  local location l = null
+  local group g = null
+  local location unitloc = null
+  local location temploc = null
+  local integer hFountainID = GetHealthFountainID()
+  
+  if IsUnitType(u, UNIT_TYPE_HERO) then
+    return
+  endif
+  
+  if (GetUnitTypeId(u) == old_id[racial_militia]) then
+	return
+  endif
+  
+  call RemoveGuardPosition(u)
+  if not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+	call IssueImmediateOrder(u, "windwalk")
+  endif
+//  call SetUnitUserData(u, UNIT_GOING_HOME)
+
+  if healer != null and not IsUnitType(u, UNIT_TYPE_MECHANICAL) then
+  	call CreateDebugTag("Going to Healer", 10, u, 3.00, 1.50)	
+  	set unitloc = GetUnitLoc(healer)
+  	if GetLocationX(last_enemy_loc) != 0 and GetLocationY(last_enemy_loc) != 0 then
+  		set l = GetProjectedLoc(unitloc, GetSubtractionLoc(unitloc, last_enemy_loc), 350)
+  		call TQAddUnitJob(GetTimeToReachLoc(u, l) + 1, RESET_GUARD_POSITION, 0, u)
+  		call IssuePointOrderLoc(u, "move", l)	
+  		call RemoveLocation(l)
+  		set l = null		
+  	else
+  		call TQAddUnitJob(GetTimeToReachLoc(u, unitloc) + 1, RESET_GUARD_POSITION, 0, u)
+  		call IssuePointOrderLoc(u, "move", unitloc)				
+  	endif
+    call GroupAddUnit(unit_healing, u)
+  	call RemoveLocation(unitloc)
+  	set unitloc = null
+    call HealUnit(healer, u, false)
+  elseif race_use_fountain and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_MECHANICAL) and neutral_enemy[hFountainID] <= 0 and not (GetUnitTypeId(u) == old_id[racial_ghoul]) and not (GetUnitTypeId(u) == old_id[racial_militia]) and neutral_available[hFountainID] and nearest_neutral[hFountainID] != null and (not neutral_guarded[hFountainID] or (neutral_night_buy[hFountainID] and daytime >= 18 and nearest_neutral[hFountainID] != null))  then
+    if follow_zeppelin != null and not IsUnitInGroup(follow_zeppelin, unit_rescueing) and not IsUnitType(u, UNIT_TYPE_FLYING) then
+//      call SetUnitUserData(follow_zeppelin, UNIT_RESCUEING)
+  		call CreateDebugTag("Zepplin to fountain", 10, follow_zeppelin, 3.00, 1.50)
+      call GroupAddUnit(unit_rescueing, follow_zeppelin)
+      set g = CreateGroup()
+      call GroupAddUnit(g, follow_zeppelin)
+  		call GroupAddUnit(unit_healing, u)	  
+      call TQAddGroupJob(0, ZEPPELIN_MOVE, ZTARGET_FOUNTAIN, u, g)
+    else
+		  call GroupAddUnit(unit_healing, u)
+	  	call CreateDebugTag("Going to Fountain", 10, u, 3.00, 1.50)
+		  call TQAddUnitJob(0, HEALTH_FOUNTAIN, 80, u)
+     	call IssuePointOrder(u, "move", GetUnitX(nearest_neutral[hFountainID]), GetUnitY(nearest_neutral[hFountainID]))  
+    endif
+  elseif race_has_moonwells and TownCountDone(racial_farm) > 0 and not IsUnitType(u, UNIT_TYPE_SUMMONED) then
+    if follow_zeppelin != null and not IsUnitInGroup(follow_zeppelin, unit_rescueing) and not IsUnitType(u, UNIT_TYPE_FLYING) then
+  		call GroupAddUnit(unit_rescueing, follow_zeppelin)
+  		call CreateDebugTag("Zeppelin to Moonwells", 10, u, 3.00, 1.50)
+  		set g = CreateGroup()
+  		call GroupAddUnit(g, follow_zeppelin)
+  		call GroupAddUnit(unit_healing, u)	
+  		call TQAddGroupJob(0, ZEPPELIN_MOVE, ZTARGET_MOONWELLS, u, g)		
+  	else
+  		call CreateDebugTag("Going to Moonwells", 10, u, 3.00, 1.50)
+  		call GroupAddUnit(unit_healing, u)
+  		call TQAddUnitJob(0, MOON_WELL_CONTROL, 80, u)
+  	endif
+  //elseif GetUnitCurrentOrder(u) != OrderId("move") then	
+  elseif follow_zeppelin != null and not IsUnitInGroup(follow_zeppelin, unit_rescueing) and not IsUnitType(u, UNIT_TYPE_FLYING) then
+//    call SetUnitUserData(follow_zeppelin, UNIT_RESCUEING)
+	  call CreateDebugTag("Zepplin Home", 10, u, 3.00, 1.50)
+    call GroupAddUnit(unit_rescueing, follow_zeppelin)
+    set g = CreateGroup()
+    call GroupAddUnit(g, follow_zeppelin)
+	  call GroupAddUnit(unit_healing, u)	
+    call TQAddGroupJob(0, ZEPPELIN_MOVE, ZTARGET_HOME, u, g)
+  else
+	  call CreateDebugTag("Going Home", 10, u, 3.00, 1.50)
+    call GroupAddUnit(unit_healing, u)
+    call TQAddUnitJob(0, SEND_HOME, 50, u)
+    //call TQAddUnitJob(GetTimeToReachLoc(u, home_location) + 1, RESET_GUARD_POSITION, 0, u)
+    //call IssuePointOrderLoc(u, "move", home_location)			 
+  
+  endif
+endfunction
+
+//============================================================================
+function GetMana takes unit u returns nothing
+	local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
+  local integer mFountainID = GetManaFountainID()
+	
+	if race_use_fountain and GetUnitState(u, UNIT_STATE_MANA) < GetUnitState(u, UNIT_STATE_MAX_MANA) * 0.4 and not IsUnitType(u, UNIT_TYPE_PEON) and neutral_enemy[mFountainID] <= 0 and not (GetUnitTypeId(u) == old_id[racial_ghoul]) and not (GetUnitTypeId(u) == old_id[racial_militia]) and neutral_available[mFountainID] and nearest_neutral[mFountainID] != null and (not neutral_guarded[mFountainID] or (neutral_night_buy[mFountainID] and daytime >= 18 and nearest_neutral[mFountainID] != null)) then
+		call CreateDebugTag("Going to mana fountain", 10, u, 3.00, 1.50)	  
+		call GroupAddUnit(unit_healing, u)
+		call TQAddUnitJob(8, MANA_FOUNTAIN, 80, u)    
+		call IssuePointOrder(u, "move", GetUnitX(nearest_neutral[mFountainID]), GetUnitY(nearest_neutral[mFountainID]))
+	endif
+endfunction
+
+//============================================================================
+function MicroUnitsJob takes nothing returns nothing
+  local group g = CreateGroup()
+  local unit u = null
+  local real unit_life = 0
+  local real unit_mana = 0
+  local group new_healer_group = CreateGroup()
+  local boolean ward_check = false
+  local boolean prev_ward = ward_cast
+  local location unitloc = null
+
+  
+  local real health_sum = 0.0
+  local integer count = 0
+  local real unit_health_ratio = 0.0
+
+  if major_hero == null or not UnitAlive(major_hero) then
+    set major_hero = GetMajorHero()
+  endif
+
+  //call DisplayToAllJobDebug("MICRO_UNITS Job Started") 
+
+  //call GroupEnumUnitsInRange(g,GetUnitX(major_hero),GetUnitY(major_hero),battle_radius,null)
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectByAlive(g, true)  
+  set g = SelectByUnitStandard(g, true)
+  set g = SelectUnittype(g,UNIT_TYPE_PEON,false)
+  set g = SelectUnittype(g,UNIT_TYPE_STRUCTURE,false)
+  set g = SelectUnittype(g,UNIT_TYPE_SUMMONED,false)
+  //call DisplayToAll("MICRO_UNITS: Group made") 
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+	//call DisplayToAllJobDebug("MICRO_UNITS: Main Loop")
+    set unit_life = GetUnitState(u, UNIT_STATE_LIFE)
+    set unit_mana = GetUnitState(u, UNIT_STATE_MANA)
+    set unitloc = GetUnitLoc(u)	
+    //if (attack_running or town_threatened) then //and DistanceBetweenUnits(major_hero, u) <= battle_radius then
+	  //call Trace("MIRCO_UNITS: Attack healing section")
+      //if IsPlayerAlly(GetOwningPlayer(u), ai_player) then
+	    //call Trace("MICRO_UNITS: Friendly Unit")
+        if GetUnitTypeId(u) == 'ohwd' then
+//         	call GroupAddUnit(new_healer_group, u)
+          if GetOwningPlayer(u) == ai_player then
+            set ward_check = true
+          endif
+        endif
+        if not (IsUnitType(u, UNIT_TYPE_MECHANICAL) or IsUnitType(u, UNIT_TYPE_SUMMONED)) and not IsUnitIllusion(u) and GetUnitFoodUsed(u) > 0 and unit_life < RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) then
+          call SaveUnit(u) 
+        else
+#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%4" =~ /\bstatue\b/
+        if GetUnitTypeId(u) == o%1 then
+        //call DisplayToAllJobDebug("MICRO_UNITS: Statue Control")
+          if attack_running and GetLocationX(last_enemy_loc) != 0 and GetLocationY(last_enemy_loc) != 0 then
+            call StatueControl(u)
+          endif
+        //call DisplayToAllJobDebug("MICRO_UNITS: Statue Control end")
+        endif
+#ENDINCLUDE
+         if IsUnitHealer(u) then
+          call GroupAddUnit(new_healer_group, u)
+         endif
+              //if GetUnitFoodUsed(u) > 0 and unit_mana < RMax(0.35 * GetUnitState(u, UNIT_STATE_MAX_MANA), 50) then
+            	//call GetMana(u)
+		      //endif
+		endif
+      //else
+      //endif
+	//else
+		// HEAL ARMY CODE
+		//INCONSISTENCY  - NOT MODDABLE DETECTED HERE
+		//if GetUnitTypeId(u) == 'ohwd' then
+			//set ward_cast = true
+		//endif
+		// ///////////////////////////////////
+		//if not (IsUnitType(u, UNIT_TYPE_MECHANICAL)) then
+		//	set unit_health_ratio = unit_life / GetUnitState(u, UNIT_STATE_MAX_LIFE)
+		//	set health_sum = health_sum + unit_health_ratio
+		//	set count = count + 1
+
+
+		//	if GetHealerId(GetUnitTypeId(u)) != -1 and GetUnitState(u, UNIT_STATE_MANA) >= (healer_mana_cost[GetHealerId(GetUnitTypeId(u))] * 2) / 3 and ((healer_upg_id[GetHealerId(GetUnitTypeId(u))] == 0) or (GetUpgradeLevel(healer_upg_id[GetHealerId(GetUnitTypeId(u))]) >= healer_upg_level[GetHealerId(GetUnitTypeId(u))])) then
+		//		call GroupAddUnit(new_healer_group, u)
+		//	endif	
+		
+		//	if not IsUnitInGroup(u, unit_healing) then
+		//		if unit_life < RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) then
+		//		    //call DisplayToAllJobDebug("MICRO_UNITS Special Extra Save")
+		//			call SaveUnit(u)
+		//		elseif unit_health_ratio <= 0.5 then
+		//		    //call DisplayToAllJobDebug("MICRO_UNITS Make Unit Heal")
+		//			call MakeUnitHeal(u) 
+		//		endif
+		//	endif
+		//endif		
+	//endif
+		
+    call GroupRemoveUnit(g,u)
+	call RemoveLocation(unitloc)
+	set unitloc = null
+  endloop
+  call DestroyGroup(g)
+  set g = null
+ 
+  //call DisplayToAll("MICRO_UNITS: Clear up code")
+  if prev_ward or not ward_cast then
+    set ward_cast = ward_check
+  endif
+  call DestroyGroup(healer_group)
+  set healer_group = new_healer_group
+  set new_healer_group = null
+
+//endif
+
+  call TQAddJob(1 * sleep_multiplier, MICRO_UNITS, 0)
+  //call DisplayToAll("MICRO_UNITS END")
+
+endfunction
+
+#ENDIF
