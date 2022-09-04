@@ -56,6 +56,7 @@
     button array sdbn_button
     integer array sdbn_number
     integer sdbn_length = 0
+    integer sdbn_paged_length = 0
 
     button array pcbn_button
     integer array pcbn_number
@@ -65,6 +66,8 @@
     button array ndbn_button
     button next_button = null
     button previous_button = null
+    button all_button = null
+    button clanguage = null
     integer ndbn_length = 0
     integer ndbn_paged_length = 0
 
@@ -238,6 +241,12 @@ endfunction
 
 function c2s takes player p returns string
   return cs2s(GetPlayerName(p), GetPlayerColor(p)) + ": "
+endfunction
+
+function TraceToTP takes string msg returns nothing
+  if debugging then
+    call DisplayToTP(msg)
+  endif
 endfunction
 
 function DisplayToTP takes string msg returns nothing
@@ -654,6 +663,11 @@ function ExecuteCommand takes player Comp, integer number returns nothing
   if command_par2[number] != -1 then  
     call CommandAI(Comp, par2, par3)
   endif
+  
+  if command_number[number] == 51 then
+    set debugging = not debugging
+  endif
+  
   if command_number[number] != -1 then
     call CommandAI(Comp, cn, par1)
   endif
@@ -752,8 +766,103 @@ endfunction
 //===========================================================================
 // The Commander
 //===========================================================================
+function AddCancelButton takes dialog d returns nothing
+  call DialogAddButton(d, dlgbutton_cancel, 8) // backspace
+endfunction
+
+function AddNextButton takes dialog d returns nothing
+  set next_button = DialogAddButton(d, dlgbutton_next_page, 78) // n
+endfunction
+
+function AddPreviousButton takes dialog d returns nothing
+  set previous_button = DialogAddButton(d, dlgbutton_previous_page, 80) // p
+endfunction
+
+function BuildStartDialog takes player current_player, integer startnum returns dialog
+  local integer i = 0
+  local integer totalplayers = 0
+  local dialog d = DialogCreate()
+  call DialogDestroy(start_dialog)
+  call DialogSetMessage(d, dlghdr_choose_ally)
+  loop
+      exitwhen i >= GetBJMaxPlayers()
+      if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(current_player, Player(i)) then
+        set totalplayers = totalplayers + 1
+      endif
+      set i = i + 1
+  endloop
+  call TraceToTP("Max: " + I2S(totalplayers) + " for player: " + I2S(GetPlayerId(current_player)) + " starting page at:" + I2S(startnum))
+  set sdbn_length = startnum
+  if startnum <= 0 then
+    set i = 0
+  else
+    set i = sdbn_number[sdbn_length - 1] + 1
+  endif
+  set all_button = DialogAddButton(d, dlgbutton_all, 65)
+  set sdbn_paged_length = 0
+  loop
+    exitwhen sdbn_paged_length >= 8 or sdbn_length >= totalplayers
+    if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(current_player, Player(i)) then
+      call TraceToTP("Create Button: " + I2S(sdbn_length) + " Player:" + I2S(i))
+      set sdbn_button[sdbn_length] = DialogAddButton(d, cs2s(GetPlayerName(Player(i)), GetPlayerColor(Player(i))), IMinBJ(48 + i, 57))
+      set sdbn_number[sdbn_length] = i
+      set sdbn_length = sdbn_length + 1
+      set sdbn_paged_length = sdbn_paged_length + 1
+    endif
+    set i = i + 1
+  endloop
+  call TraceToTP("sdbn length: " + I2S(sdbn_length))
+  if (sdbn_length < totalplayers) then
+    call AddNextButton(d)
+  endif
+  if (sdbn_length > 8) then
+    call AddPreviousButton(d)
+  endif
+  call AddCancelButton(d)
+  return d
+endfunction
+
+function StartDialogResponse takes nothing returns nothing
+  local integer i = 0
+  local button b = GetClickedButton()
+  local trigger t = CreateTrigger()
+  loop
+    exitwhen sdbn_button[i] == b or i >= sdbn_length
+    set i = i + 1
+  endloop
+  if (b == next_button) then // next page
+    set start_dialog = BuildStartDialog(GetTriggerPlayer(), i)
+    call TriggerRegisterDialogEvent(t, start_dialog )
+    call TriggerAddAction(t, function StartDialogResponse)
+    call DialogDisplay(GetTriggerPlayer(), start_dialog, true)
+  endif
+  if (b == previous_button) then // previous page
+    set start_dialog = BuildStartDialog(GetTriggerPlayer(), i - sdbn_paged_length - 8)
+    call TriggerRegisterDialogEvent(t, start_dialog )
+    call TriggerAddAction(t, function StartDialogResponse)
+    call DialogDisplay(GetTriggerPlayer(), start_dialog, true)
+  endif
+  if (b == all_button or sdbn_button[i] == b) then 
+    if (sdbn_button[i] == b) then
+      set commanded_player[GetPlayerId(GetTriggerPlayer())] = Player(sdbn_number[i])
+    elseif (b == all_button) then
+      set commanded_player[GetPlayerId(GetTriggerPlayer())] = Player(PLAYER_NEUTRAL_AGGRESSIVE)
+    endif
+    if commanded_player[GetPlayerId(GetTriggerPlayer())] != Player(PLAYER_NEUTRAL_AGGRESSIVE) and (not IsPlayerAlly(GetTriggerPlayer(), commanded_player[GetPlayerId(GetTriggerPlayer())])) then
+      call DisplayFromDlg(chat_no_ally)
+      return
+    endif
+    call DialogDisplay(GetTriggerPlayer(), root_dialog, true)
+  endif
+
+endfunction
+
 function DialogCommander takes nothing returns nothing
+  local trigger t = CreateTrigger()
   set commanded_player[GetPlayerId(GetTriggerPlayer())] = null
+  set start_dialog = BuildStartDialog(GetTriggerPlayer(), 0)
+  call TriggerRegisterDialogEvent(t, start_dialog )
+  call TriggerAddAction(t, function StartDialogResponse)
   call DialogDisplay(GetTriggerPlayer(), start_dialog, true)
 endfunction
 
@@ -815,18 +924,6 @@ function Commander takes nothing returns nothing
 
 endfunction
 
-function AddCancelButton takes dialog d returns nothing
-  call DialogAddButton(d, dlgbutton_cancel, 8) // backspace
-endfunction
-
-function AddNextButton takes dialog d returns nothing
-  set next_button = DialogAddButton(d, dlgbutton_next_page, 110) // n
-endfunction
-
-function AddPreviousButton takes dialog d returns nothing
-  set previous_button = DialogAddButton(d, dlgbutton_previous_page, 112) // p
-endfunction
-
 // Builds a pageable number dialog
 function BuildNumberDialog takes player p, integer startnum returns dialog
   local integer maxCount = 25  // Configure this to increase total number options to display
@@ -871,9 +968,14 @@ function BuildPlayerDialog takes integer startnum returns dialog
       endif
       set i = i + 1
   endloop
-  set i = startnum
+  call TraceToTP("Max: " + I2S(totalplayers) + " starting page at:" + I2S(startnum))
+  if startnum <= 0 then
+    set i = 0
+  else
+    set i = pcbn_number[pcbn_length - 1] + 1 // player id we got up to
+  endif
   loop
-    exitwhen i >= 9 + startnum or i >= totalplayers
+    exitwhen pcbn_paged_length >= 9 or pcbn_length >= totalplayers
     if not IsPlayerObserver(Player(i)) and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING then
       set pcbn_button[pcbn_length] = DialogAddButton(new_dialog, cs2s(GetPlayerName(Player(i)), GetPlayerColor(Player(i))), IMinBJ(48 + i, 57))
       set pcbn_number[pcbn_length] = i
@@ -882,10 +984,11 @@ function BuildPlayerDialog takes integer startnum returns dialog
     endif
     set i = i + 1
   endloop
-  if (i < totalplayers) then
+  call TraceToTP("pcbn length: " + I2S(sdbn_length))
+  if (pcbn_length < totalplayers) then
     call AddNextButton(new_dialog)
   endif
-  if (i > 9) then
+  if (pcbn_length > 9) then
     call AddPreviousButton(new_dialog)
   endif
   call AddCancelButton(new_dialog)
@@ -903,7 +1006,7 @@ function PlayerDialogResponse takes nothing returns nothing
   endloop
   if (b == next_button) then // next page
     set d = BuildPlayerDialog(i)
-    call TriggerRegisterDialogEvent(t, d )
+    call TriggerRegisterDialogEvent(t, d)
     call TriggerAddAction(t, function PlayerDialogResponse)
     call DialogDisplay(GetTriggerPlayer(), d, true)
   endif
@@ -985,24 +1088,6 @@ function DialogResponse takes nothing returns nothing
   endif
 
   call ExecuteDialogCommand(commanded_player[GetPlayerId(GetTriggerPlayer())], cn)
-endfunction
-
-function StartDialogResponse takes nothing returns nothing
-  local integer i = 0
-  local button b = GetClickedButton()
-  loop
-    if i >= sdbn_length then
-      return
-    endif
-    exitwhen sdbn_button[i] == b
-    set i = i + 1
-  endloop
-  set commanded_player[GetPlayerId(GetTriggerPlayer())] = Player(sdbn_number[i])
-  if commanded_player[GetPlayerId(GetTriggerPlayer())] != Player(PLAYER_NEUTRAL_AGGRESSIVE) and (not IsPlayerAlly(GetTriggerPlayer(), commanded_player[GetPlayerId(GetTriggerPlayer())])) then
-    call DisplayFromDlg(chat_no_ally)
-    return
-  endif
-  call DialogDisplay(GetTriggerPlayer(), root_dialog, true)
 endfunction
 
 function TributeDialogResponse takes nothing returns nothing
@@ -1108,28 +1193,6 @@ function FindDialog takes string s returns dialog
   return null
 endfunction
 
-function BuildStartDialog takes nothing returns nothing
-  local trigger t = CreateTrigger()
-  local integer i = 0
-  set start_dialog = DialogCreate()
-  call DialogSetMessage(start_dialog, dlghdr_choose_ally)
-  set sdbn_button[sdbn_length] = DialogAddButton(start_dialog, dlgbutton_all, 65)
-  set sdbn_number[sdbn_length] = PLAYER_NEUTRAL_AGGRESSIVE
-  set sdbn_length = sdbn_length + 1
-  loop
-    exitwhen i >= GetBJMaxPlayers()
-    if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING then
-      set sdbn_button[sdbn_length] = DialogAddButton(start_dialog, cs2s(GetPlayerName(Player(i)), GetPlayerColor(Player(i))), IMinBJ(48 + i, 57))
-      set sdbn_number[sdbn_length] = i
-      set sdbn_length = sdbn_length + 1
-    endif
-    set i = i + 1
-  endloop
-  call AddCancelButton(start_dialog)
-  call TriggerRegisterDialogEvent(t, start_dialog )
-  call TriggerAddAction(t, function StartDialogResponse)
-endfunction
-
 function AddCommandDialog takes integer i returns nothing
   local dialog current_dialog = null
   local dialog next_dialog = null
@@ -1232,7 +1295,6 @@ function BuildTributeDialogs takes nothing returns nothing
 endfunction
 
 function BuildDialogs takes nothing returns nothing
-  call BuildStartDialog()
   set number_dialog = DialogCreate()
   set player_dialog = DialogCreate()
   call BuildCommandDialogs()
