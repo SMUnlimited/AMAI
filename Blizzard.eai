@@ -37,6 +37,7 @@
     dialog last_player_dialog = null
     dialog start_dialog = null
     dialog root_dialog = null
+    dialog clanguage_dialog = null
 
     integer array current_command
     integer array current_player_par
@@ -67,7 +68,7 @@
     button next_button = null
     button previous_button = null
     button all_button = null
-    button clanguage = null
+    button clanguage_button = null
     integer ndbn_length = 0
     integer ndbn_paged_length = 0
 
@@ -120,6 +121,8 @@
     string dlgbutton_give_lumber = "Give Lumber"
     string dlgbutton_tribute = ""
     string dlgbutton_commander = ""
+    string dlgbutton_commander_language = ""
+    string dlgbutton_player_ally = ""
     string dlgbutton_no_human = ""
     string dlgbutton_ai_only = ""
     boolean debugging = false
@@ -243,14 +246,14 @@ function c2s takes player p returns string
   return cs2s(GetPlayerName(p), GetPlayerColor(p)) + ": "
 endfunction
 
+function DisplayToTP takes string msg returns nothing
+  call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 5, msg )
+endfunction
+
 function TraceToTP takes string msg returns nothing
   if debugging then
     call DisplayToTP(msg)
   endif
-endfunction
-
-function DisplayToTP takes string msg returns nothing
-  call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 5, msg )
 endfunction
 
 function DisplayToPlayer takes player p, string msg returns nothing
@@ -663,11 +666,7 @@ function ExecuteCommand takes player Comp, integer number returns nothing
   if command_par2[number] != -1 then  
     call CommandAI(Comp, par2, par3)
   endif
-  
-  if command_number[number] == 51 then
-    set debugging = not debugging
-  endif
-  
+    
   if command_number[number] != -1 then
     call CommandAI(Comp, cn, par1)
   endif
@@ -763,6 +762,17 @@ function FindCommand takes nothing returns integer
 
 endfunction
 
+#INCLUDETABLE <Languages.txt> #EFR
+function initLanguage%1 takes nothing returns nothing
+#INCLUDETABLE <Languages\%1\Commander.txt> #ENC:%4 #EFR
+  set %1 = "%2"
+#ENDINCLUDE
+#INCLUDETABLE <Languages\%1\CommandsTrans.txt> #ENC:%4 #EFR
+  call SaveStr(translation, StringHash(language), StringHash("%1"), "%2")
+#ENDINCLUDE
+endfunction
+#ENDINCLUDE
+
 //===========================================================================
 // The Commander
 //===========================================================================
@@ -776,6 +786,27 @@ endfunction
 
 function AddPreviousButton takes dialog d returns nothing
   set previous_button = DialogAddButton(d, dlgbutton_previous_page, 80) // p
+endfunction
+
+function CommanderLanguageResponse takes nothing returns nothing
+  local button b = GetClickedButton()
+  if false then
+#INCLUDETABLE <Languages.txt> #EFR
+  elseif b == %1_button then
+    set language = "%1"
+    call initLanguage%1()
+#ENDINCLUDE
+  endif
+endfunction
+
+function BuildCommanderLanguage takes nothing returns dialog
+  local dialog d = DialogCreate()
+  call DialogDestroy(clanguage_dialog)
+  call DialogSetMessage(d, "Choose Language")
+#INCLUDETABLE <Languages.txt> #EFR
+  set %1_button = DialogAddButton(d, "%1", %3)
+#ENDINCLUDE
+  return d
 endfunction
 
 function BuildStartDialog takes player current_player, integer startnum returns dialog
@@ -801,7 +832,7 @@ function BuildStartDialog takes player current_player, integer startnum returns 
   set all_button = DialogAddButton(d, dlgbutton_all, 65)
   set sdbn_paged_length = 0
   loop
-    exitwhen sdbn_paged_length >= 8 or sdbn_length >= totalplayers
+    exitwhen sdbn_paged_length >= 7 or sdbn_length >= totalplayers
     if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(current_player, Player(i)) then
       call TraceToTP("Create Button: " + I2S(sdbn_length) + " Player:" + I2S(i))
       set sdbn_button[sdbn_length] = DialogAddButton(d, cs2s(GetPlayerName(Player(i)), GetPlayerColor(Player(i))), IMinBJ(48 + i, 57))
@@ -815,9 +846,10 @@ function BuildStartDialog takes player current_player, integer startnum returns 
   if (sdbn_length < totalplayers) then
     call AddNextButton(d)
   endif
-  if (sdbn_length > 8) then
+  if (sdbn_length > 7) then
     call AddPreviousButton(d)
   endif
+  set clanguage_button = DialogAddButton(d, dlgbutton_commander_language,67) // c
   call AddCancelButton(d)
   return d
 endfunction
@@ -837,10 +869,17 @@ function StartDialogResponse takes nothing returns nothing
     call DialogDisplay(GetTriggerPlayer(), start_dialog, true)
   endif
   if (b == previous_button) then // previous page
-    set start_dialog = BuildStartDialog(GetTriggerPlayer(), i - sdbn_paged_length - 8)
+    set start_dialog = BuildStartDialog(GetTriggerPlayer(), i - sdbn_paged_length - 7)
     call TriggerRegisterDialogEvent(t, start_dialog )
     call TriggerAddAction(t, function StartDialogResponse)
     call DialogDisplay(GetTriggerPlayer(), start_dialog, true)
+  endif
+  if (b == clanguage_button) then
+    set clanguage_dialog = BuildCommanderLanguage()
+    set language_trigger = CreateTrigger()
+    call TriggerRegisterDialogEvent(language_trigger, clanguage_dialog)
+    call TriggerAddAction(language_trigger, function CommanderLanguageResponse)
+    call DialogDisplay(GetTriggerPlayer(), clanguage_dialog, true)
   endif
   if (b == all_button or sdbn_button[i] == b) then 
     if (sdbn_button[i] == b) then
@@ -866,6 +905,17 @@ function DialogCommander takes nothing returns nothing
   call DialogDisplay(GetTriggerPlayer(), start_dialog, true)
 endfunction
 
+function SendToAllAIs takes integer cmd, integer data returns nothing
+  local integer i = 0
+  loop
+    exitwhen i >= GetBJMaxPlayers()
+    if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER then
+      call CommandAI(Player(i), cmd, data)
+    endif
+    set i = i + 1
+  endloop
+endfunction
+
 function Commander takes nothing returns nothing
   local player Comp = null
   local string ChatMsg = GetEventPlayerChatString()
@@ -887,6 +937,12 @@ function Commander takes nothing returns nothing
 
   if parsed_command[1] == "BOARD" then
     call ShowBoard()
+    return
+  endif
+
+  if parsed_command[1] == "DEBUG" then
+    set debugging = not debugging
+    call SendToAllAIs(51, 0)
     return
   endif
 
@@ -952,10 +1008,11 @@ function BuildNumberDialog takes player p, integer startnum returns dialog
   return new_dialog
 endfunction
 
-function BuildPlayerDialog takes integer startnum returns dialog
+function BuildPlayerDialog takes player currentplayer, integer startnum returns dialog
   local integer i = 0
   local dialog new_dialog = DialogCreate()
   local integer totalplayers = 0
+  local string ally = ""
   call DialogDestroy(last_player_dialog)
   set last_player_dialog = new_dialog
   call DialogSetMessage(new_dialog, dlghdr_choose_player)
@@ -977,7 +1034,12 @@ function BuildPlayerDialog takes integer startnum returns dialog
   loop
     exitwhen pcbn_paged_length >= 9 or pcbn_length >= totalplayers
     if not IsPlayerObserver(Player(i)) and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING then
-      set pcbn_button[pcbn_length] = DialogAddButton(new_dialog, cs2s(GetPlayerName(Player(i)), GetPlayerColor(Player(i))), IMinBJ(48 + i, 57))
+      if (IsPlayerAlly(currentplayer, Player(i))) then
+        set ally = " (" + dlgbutton_player_ally + ")"
+      else
+        set ally = ""
+      endif  
+      set pcbn_button[pcbn_length] = DialogAddButton(new_dialog, cs2s(GetPlayerName(Player(i)), GetPlayerColor(Player(i))) + ally, IMinBJ(48 + i, 57))
       set pcbn_number[pcbn_length] = i
       set pcbn_length = pcbn_length + 1
       set pcbn_paged_length = pcbn_paged_length + 1
@@ -1005,13 +1067,13 @@ function PlayerDialogResponse takes nothing returns nothing
     set i = i + 1
   endloop
   if (b == next_button) then // next page
-    set d = BuildPlayerDialog(i)
+    set d = BuildPlayerDialog(GetTriggerPlayer(), i)
     call TriggerRegisterDialogEvent(t, d)
     call TriggerAddAction(t, function PlayerDialogResponse)
     call DialogDisplay(GetTriggerPlayer(), d, true)
   endif
   if (b == previous_button) then // previous page
-    set d = BuildPlayerDialog(i - pcbn_paged_length - 9)
+    set d = BuildPlayerDialog(GetTriggerPlayer(), i - pcbn_paged_length - 9)
     call TriggerRegisterDialogEvent(t, d )
     call TriggerAddAction(t, function PlayerDialogResponse)
     call DialogDisplay(GetTriggerPlayer(), d, true)
@@ -1077,7 +1139,7 @@ function DialogResponse takes nothing returns nothing
       call DialogDisplay(GetTriggerPlayer(), d, true) 
     elseif (d == player_dialog) then
       set t = CreateTrigger()
-      set d = BuildPlayerDialog(0)
+      set d = BuildPlayerDialog(GetTriggerPlayer(), 0)
       call TriggerRegisterDialogEvent(t, d )
       call TriggerAddAction(t, function PlayerDialogResponse)
       call DialogDisplay(GetTriggerPlayer(), d, true) 
@@ -1324,17 +1386,6 @@ function InitCommanderPart takes nothing returns nothing
   call TimerStart(t,3.0, false, function MapInit)
 endfunction
 
-function SendToAllAIs takes integer cmd, integer data returns nothing
-  local integer i = 0
-  loop
-    exitwhen i >= GetBJMaxPlayers()
-    if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER then
-      call CommandAI(Player(i), cmd, data)
-    endif
-    set i = i + 1
-  endloop
-endfunction
-
 function GetNextPlayableHuman takes integer last returns integer
   local integer i = last + 1
   loop
@@ -1450,16 +1501,7 @@ function GameStartDlg takes nothing returns nothing
   call DialogDisplay(Player(host), game_start_dialog, true)
 endfunction
 
-#INCLUDETABLE <Languages.txt> #EFR
-function initLanguage%1 takes nothing returns nothing
-#INCLUDETABLE <Languages\%1\Commander.txt> #ENC:%4 #EFR
-  set %1 = "%2"
-#ENDINCLUDE
-#INCLUDETABLE <Languages\%1\CommandsTrans.txt> #ENC:%4 #EFR
-  call SaveStr(translation, StringHash(language), StringHash("%1"), "%2")
-#ENDINCLUDE
-endfunction
-#ENDINCLUDE
+
 
 function LanguageDlgResponse takes nothing returns nothing
   local button b = GetClickedButton()

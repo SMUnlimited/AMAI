@@ -7,12 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 - Min Support of Warcraft 3 increased to 1.33.
-- A small chance for AMAI to pick the profile name of Legendary players (from 2.6.x by jzy-chitong56)
-  - (DevTools) Also added ability to configure your own legendary profiles via new profile setting option "rare profile"
-- AMAI now can use power fountains if available on the map (from 2.6.x by jzy-chitong56)
-- New Random Profile which is completely random on all personality traits (from 2.6.x by jzy-chitong56)
+- A small chance for AMAI to pick the profile name of Legendary players. (from 2.6.x by jzy-chitong56)
+  - (DevTools) Also added ability to configure your own legendary profiles via new profile setting option "rare profile".
+- AMAI now can use power fountains if available on the map. (from 2.6.x by jzy-chitong56)
+- New Random Profile which is completely random on all personality traits. (from 2.6.x by jzy-chitong56)
 - Just typing -cmd without any options will now open the commander as well as the ESC key.
-- Commander player selection and strategy selections now have multiple pages with next and previous buttons (from 2.6.x by jzy-chitong56)
+- Commander player selection and strategy selections now have multiple pages with next and previous buttons. (from 2.6.x by jzy-chitong56)
+- Added ability to change the language of the commander interface and actions independently from other players.
 
 ### Changed
 - Disabled a flee rule for heroes which means when stranded on there own they are more likely to use a town portal to save themselves.
@@ -23,7 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Colour Balance on messages improved to be aligned with the players actual colour. (from 2.6.x by jzy-chitong56)
 - Changed keyboard shortcut for commander to "-cmd:" instead of cmd and you don't have to leave a space after the first ':' anymore.
 - Language dialog can now be set for first human observer if there is not any playing humans. (from 2.6.x by jzy-chitong56)
-- Commander only shows valid allies on the initial menu and supports multiple pages.
+- Commander only shows valid allies on the initial menu rather than include enemies that cannot be interacted with.
+- Commander enemy targeting will now highlight which players are allies so you don't confuse friend from foe.
 
 ### Removed
 - (DevTools) The numbered blizzard.j files are now removed and instead generated from the full original blizzard.j. Saves time when updating for new versions.
@@ -33,7 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed a bug in 2 strategies regarding priority of hero and frost wryms for undead.
 - AMAI VS AI mode now makes use of the latest blizzard.j instead of a much older version.
 - Fixed issue where profiles were being re-used all the time instead of when running out of applicable profiles.
-- Fixed various unresolved issues on maps with more than 12 players (from 2.6.x by jzy-chitong56)
+- Fixed various unresolved issues on maps with more than 12 players. (from 2.6.x by jzy-chitong56)
 - Should be a little smoother performance wise when running with more than 12 players. (from 2.6.x by jzy-chitong56)
 
 
