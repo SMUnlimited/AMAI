@@ -3,42 +3,42 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [Unreleased]
+## [2.6.2] - 2022-09-04
 
 Jzy-chitong has provided various updates and ported features back to this older version of AMAI if you play on the older editions of warcraft 3. 
 
 ### Added
 - Improved chinese language translations [jzy-chitong56]
 - Commander resource tributes are now translated (translated by google)
-- Added Next and Previous Page buttons to the commander.
+- Commander player selection and strategy selections now have multiple pages with next and previous buttons. (from 2.6.x by jzy-chitong56)
 - Automatic support for more than 12 Players based on version you playing on.
   - All 24 player colours are now supported by AMAI.(from [3.0.0]) 
   - Various messaging and attack targeting will now work with more than 12 players.(from [3.0.0]) 
   - Increased script delay on higher number of players to reduce performance impact.
-- With Commander installed if no Human is playing, the first Observer can choose the language. 
 - Commander now includes Zoom feature based from wc3champions. [jzy-chitong56]
   - Input "-zoomxxxx" to adjust the sight distance, and XXXX is a number, such as "-zoom1000"，max zoom is 5000
   - Observers start at an increased zoom level.
-- AMAI now can use power fountains if available on the map.
-- A small chance for AMAI to pick the profile of Legendary human players (Note not the skill of the real players)
+- A small chance for AMAI to pick the profile name of Legendary players. (from 2.6.x by jzy-chitong56)
+  - (DevTools) Also added ability to configure your own legendary profiles via new profile setting option "rare profile".
+- AMAI now can use power fountains if available on the map. (from 2.6.x by jzy-chitong56)
+- New Random Profile which is completely random on all personality traits. (from 2.6.x by jzy-chitong56)
+- Added ability to change the language of the commander interface and actions independently from other players (Using the All option in 2.6.x)
 
 ### Changed
+- Language dialog can now be set for first human observer if there is not any playing humans. (from 2.6.x by jzy-chitong56)
 - Computer skill level is now shown by default on AMAI players. (from [3.0.0]) 
 - Tweaked english grammatical errors for various strategy messages. (from [3.0.0]) 
 - Tweaks to Brewmaster and Alchemist skill picks. (Pixyy) (from [3.1.0]) 
-- Very minor balance tweak so less expensive units food wise are needed before AI starts to consider [all] armor or weapon upgrades for them.  (from [3.1.1])
 - Creep building detection range slightly increased(Pixyy) (from [3.1.0])
 - Front base distance range increased(Pixyy) (from [3.1.0])
 - Reduced number of mines needed before going into high upkeep(Pixyy) (from [3.1.0])
 - Tweaks to town portal so more likely to be used for lower threats(Pixyy) (from [3.1.0])
-- At the beginning of the game, HUMAN and ORC have two peon HarvestWood
+- At the beginning of the game, HUMAN and ORC have two peons Harvesting Wood.
 - Mechanical armies will not enter emergency healing state because the only non-mechnical unit/hero is damaged. (from [3.0.0])
 - When the debug player is killed we will now switch to a new player to debug. (from [3.0.0])
 - Adjust HUMAN, ORC and Night Elf number of peons for gold mines.
-- Reduction Profiles can now be reused by AI players，now Profiles can't reused (if the Profiles Race same as AI Race)
-   - New Profiles RandomInt, some values are random
 - Original AI scripts have corrected form ID's (no playable impact) (Including ROC)
-- Calibration the Player name colors to match a little better.
+- Colour Balance on messages improved to be aligned with the players actual colour. (from 2.6.x by jzy-chitong56)
 - Make sure AI leaves at least one ghoul to continue harvesting wood in any case. (from [master])
 - Reworked the strategy timer to fix various issues with changing strategies and to fix issues with counters changing way to frequently. (from [master])
 
@@ -50,9 +50,6 @@ Jzy-chitong has provided various updates and ported features back to this older 
 - Front base distance range slightly increased again to help fix night elf troops getting stuck in base(now is 1100). (Pixyy) (from [3.1.0]) 
 - Heroes a little more likely to teleport to rescue a town regardless of the profiles aggression and smaller threat levels. (Pixyy) (from [3.1.0]) 
 - Fixed an issue where human upgrades magic sentry and flare could not be researched by the AI. (Pixyy) (from [3.1.0]) 
-- Fixed the Commander Dialog only showing title at first.
-- Fixed issue with the Commander Dialog where you cannot change language.
-- Add welcome message and opening tactical report Time of report (try to fix the problem of using default language for the first two reports)
 - Fix Night Elf initial mining logic such that they build the starting buildings first before completely filling the gold mine. (Pixyy) (from [3.1.1])
 - Fix Night Elf and Undead 's race_tower_id(Settings.txt)  (Including ROC  Human,  Elf and Undead)
 
