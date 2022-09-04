@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [Unreleased]
+## [3.2.0] - 2022-09-04
 
 ### Added
 - Min Support of Warcraft 3 increased to 1.33.
@@ -37,7 +37,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issue where profiles were being re-used all the time instead of when running out of applicable profiles.
 - Fixed various unresolved issues on maps with more than 12 players. (from 2.6.x by jzy-chitong56)
 - Should be a little smoother performance wise when running with more than 12 players. (from 2.6.x by jzy-chitong56)
-
 
 ## [3.1.1] - 2022-01-10
 
