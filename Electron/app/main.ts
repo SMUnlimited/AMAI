@@ -1,4 +1,4 @@
-import {app, BrowserWindow, dialog, screen } from 'electron';
+import {app, BrowserWindow, dialog, Menu, screen } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as remote from '@electron/remote/main';
@@ -11,6 +11,8 @@ const args = process.argv.slice(1),
 
 // needed to call remote inside app
 remote.initialize();
+
+Menu.setApplicationMenu(null);
 
 function createWindow(): BrowserWindow {
 
@@ -67,6 +69,7 @@ const execInstall = async () => {
   const { signal } = controller;
 
   const dir = dialog.showOpenDialogSync(win, {
+    // TODO: add i18n here
     title : "Open AMAI Maps Directory",
     properties: ['openDirectory']
   });
@@ -75,21 +78,24 @@ const execInstall = async () => {
 
   if(!dir || (dir && dir.length === 0)) {
     win.webContents.send('on-install-empty');
+    return;
   }
 
-  console.log('dir', dir);
-
+  // open modal on front
   win.webContents.send('on-install-init', dir[0]);
 
+  // init install proccess
   child = cp.fork(require.resolve('../install'), [ dir[0] ], { signal }, (error) => {
     win.webContents.send('on-install-error', error);
   });
 
+  // send messages to modal on front
   child.on('message', (message) => {
     win.webContents.send('on-install-message', message);
   });
 
-  child.on('exit', function() {
+  // close modal on process finishes
+  child.on('exit', () => {
     win.webContents.send('on-install-exit');
   });
 
