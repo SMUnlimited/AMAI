@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Just typing -cmd without any options will now open the commander as well as the ESC key.
 - Commander player selection and strategy selections now have multiple pages with next and previous buttons. (from 2.6.x by jzy-chitong56)
 - Added ability to change the language of the commander interface and actions independently from other players.
+- Start of the Manager project with Electron.
 
 ### Changed
 - Disabled a flee rule for heroes which means when stranded on there own they are more likely to use a town portal to save themselves.
