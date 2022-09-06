@@ -94,7 +94,7 @@ const execInstall = async (isMap: boolean = false) => {
   });
 
   // init install proccess
-  child = cp.fork(require.resolve('../install.ts'), [ response[0] ], { signal }, (error) => {
+  child = cp.fork(require.resolve('./install.js'), [ response[0] ], { signal }, (error) => {
     win.webContents.send('on-install-error', error);
   });
 
