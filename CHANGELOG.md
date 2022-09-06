@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Just typing -cmd without any options will now open the commander as well as the ESC key.
 - Commander player selection and strategy selections now have multiple pages with next and previous buttons. (from 2.6.x by jzy-chitong56)
 - Added ability to change the language of the commander interface and actions independently from other players.
+- Added a map pack that contains a few official maps with AMAI already installed.
 - Start of the Manager project with Electron.
 
 ### Changed
