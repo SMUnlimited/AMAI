@@ -22,10 +22,13 @@ As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601
 # How to Play
 AMAI release comes with the standard AI scripts pre-built for you.
 
-It is suggested to create a subfolder in your "maps" folder like "maps\AMAI" and copy the maps you intend to use AMAI with there.
-For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.html to extract a copy of official maps.
+It is suggested to create a subfolder in your "maps" folder like `C:\Users\<username>\Documents\Warcraft III\Maps\AMAI` and copy the maps you intend to use AMAI with there.
 
-- On windows make sure the maps to install on are not in a protected UAC location. This may mean you have to copy into your Maps folder `C:\Users\<username>\Documents\Warcraft III\Maps` after install
+You can opt to download a map pack containing a selection with AMAI preinstalled on or you can install onto your own maps.
+
+For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.html to extract a copy of the official blizzard maps to install AMAI onto.
+
+- On windows make sure the maps to install on are not in a protected UAC location. This may mean you have to copy into your Maps folder afterwards.
 - From a windows commandline or powershell type `InstallTFTToMap.bat "C:\mymap.w3m"` and press enter to install AMAI to maps
 ![example](example.jpg)
 - Alternatively for complex installs if you have `perl` installed from a commandline you can type `perl InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` and press enter to install AMAI to all maps in a directory and subdirectories.
