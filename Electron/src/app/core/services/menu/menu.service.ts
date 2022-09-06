@@ -22,7 +22,12 @@ export class MenuService {
             this.electronService.ipcRenderer.send('install-map');
           }
         },
-        { label: 'Compile' },
+        // TODO: recreate MakeTFT script
+        // { label: 'Compile' },
+        // TODO: recreate MakeOptTFT.bat script
+        // { label: 'Compile, Optimize' },
+        // TODO: recreate MakeVAITFT.bat script
+        // { label: 'Compile AMAI vs Default AI' },
       ]
     },
     {
