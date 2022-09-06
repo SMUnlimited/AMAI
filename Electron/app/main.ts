@@ -2,6 +2,7 @@ import {app, BrowserWindow, dialog, Menu, screen } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as remote from '@electron/remote/main';
+import { InstallModel } from '../commons/models';
 const ipcMain = require('electron').ipcMain;
 const cp = require('child_process');
 
@@ -64,28 +65,36 @@ function createWindow(): BrowserWindow {
   return win;
 }
 
-const execInstall = async () => {
+const execInstall = async (isMap: boolean = false) => {
   const controller = new AbortController();
   const { signal } = controller;
 
-  const dir = dialog.showOpenDialogSync(win, {
+  const response = dialog.showOpenDialogSync(win, {
     // TODO: add i18n here
-    title : "Open AMAI Maps Directory",
-    properties: ['openDirectory']
+    title : isMap ? "Open WC3 Map File": "Open AMAI Maps Directory",
+    // TODO: Change to let multiples selections when is map
+    properties: isMap ? ['openFile'] : ['openDirectory'],
+    // TODO: add i18n here
+    filters: isMap ? [
+      { name: 'WC3 Map File', extensions: ['w3x', 'w3m'] },
+    ] : null,
   });
 
   let child;
 
-  if(!dir || (dir && dir.length === 0)) {
+  if(!response || (response && response.length === 0)) {
     win.webContents.send('on-install-empty');
     return;
   }
 
   // open modal on front
-  win.webContents.send('on-install-init', dir[0]);
+  win.webContents.send('on-install-init', <InstallModel>{
+    response: response[0],
+    isMap
+  });
 
   // init install proccess
-  child = cp.fork(require.resolve('../install'), [ dir[0] ], { signal }, (error) => {
+  child = cp.fork(require.resolve('../install.ts'), [ response[0] ], { signal }, (error) => {
     win.webContents.send('on-install-error', error);
   });
 
@@ -102,8 +111,12 @@ const execInstall = async () => {
 }
 
 const install = () => {
-  ipcMain && ipcMain.on('install', async () => {
+  ipcMain && ipcMain.on('install-folder', async () => {
     execInstall();
+  });
+
+  ipcMain && ipcMain.on('install-map', async () => {
+    execInstall(true);
   });
 }
 

@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component } from '@angular/core';
 import { ElectronService, MenuService } from './core/services';
 import { TranslateService } from '@ngx-translate/core';
 import { APP_CONFIG } from '../environments/environment';
-// const {ipcRenderer} = require('electron')
+import { InstallModel } from '../../commons/models';
 
 @Component({
   selector: 'app-root',
@@ -10,7 +10,9 @@ import { APP_CONFIG } from '../environments/environment';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent {
+  public title = '';
   public active = false;
+  public couldClose = false;
   public messages = [];
 
   constructor(
@@ -25,25 +27,30 @@ export class AppComponent {
     if (electronService.isElectron) {
       this.menu.createMenu();
 
-      this.electronService.ipcRenderer.on('on-install-init', (_, args) => {
+      this.electronService.ipcRenderer.on('on-install-init', (_, args: InstallModel) => {
+        console.log('args', args)
+        // TODO: use i18n to translate
+        this.title = `Installing into ${args.response}`;
         this.active = true;
+        this.couldClose = false;
         this.messages = [];
-        this.cdr.detectChanges();
-        this.messages && this.messages.push(`Installing in directory: ${args}`);
+        // TODO: use i18n to translate
+        !args.isMap && this.messages && this.messages.push(`Installing in directory: ${args.response}`);
         this.cdr.detectChanges();
       });
 
       this.electronService.ipcRenderer.on('on-install-empty', (_, args) => {
         console.log('args', args);
         this.active = false;
+        this.couldClose = true;
         this.cdr.detectChanges();
       });
 
       this.electronService.ipcRenderer.on('on-install-exit', (_, args) => {
-        console.log('args', args);
-        console.log('exit');
-        //this.active = false;
-        //this.cdr.detectChanges();
+        // TODO: use i18n to translate
+        this.title = 'Installation finished...';
+        this.couldClose = true;
+        this.cdr.detectChanges();
       });
 
       this.electronService.ipcRenderer.on('on-install-message', (_, args) => {
@@ -54,12 +61,16 @@ export class AppComponent {
 
       this.electronService.ipcRenderer.on('on-install-error', (_, args) => {
         console.log('args', args);
-        this.active = false;
+        this.couldClose = true;
         this.cdr.detectChanges();
       });
 
     } else {
       console.log('Run in browser');
     }
+  }
+
+  public closeCmd() {
+    this.couldClose ? (this.active = false) : null;
   }
 }
