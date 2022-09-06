@@ -11,8 +11,15 @@ export class MenuService {
       label: 'Files',
       submenu: [
         {
-          label: 'Install', click: () => {
-            this.electronService.ipcRenderer.send('install');
+          label: 'Install on Folder',
+          click: () => {
+            this.electronService.ipcRenderer.send('install-folder');
+          }
+        },
+        {
+          label: 'Install on Map',
+          click: () => {
+            this.electronService.ipcRenderer.send('install-map');
           }
         },
         { label: 'Compile' },

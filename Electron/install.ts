@@ -22,17 +22,23 @@ const getAllFiles = (dirPath, arrayOfFiles) => {
 }
 
 // export const installOnDirectory = (dirName) => {}
-export const installOnDirectory = async () => {
+const installOnDirectory = async () => {
   const args = process.argv.slice(2);
-  const dirPath = args[0];
+  const response = args[0];
 
-  spawnSync('echo', [`start install processing...`]);
-
-  getAllFiles(dirPath, arrayOfFiles);
+  // TODO: change to receive array of maps
+  if (fs.statSync(response).isDirectory()) {
+    // on directory
+    getAllFiles(response, arrayOfFiles);
+  } else {
+    // on single map
+    arrayOfFiles.push(response);
+  }
 
   if(arrayOfFiles) {
     for (const file of arrayOfFiles) {
-      process.send(`path.extname(file): ${path.extname(file)}`);
+      /** uncomment to debbug */
+      // process.send(`path.extname(file): ${path.extname(file)}`);
 
       const ext = path.extname(file).toLowerCase();
 
@@ -52,8 +58,8 @@ export const installOnDirectory = async () => {
           { encoding : 'utf8' }
         );
 
-        spawnSync('echo', [`MPQEditor ${file}`]);
-        process.send(`MPQEditor ${file}`);
+        // spawnSync('echo', [`running execuMPQEditor ${file}`]);
+        process.send(`running MPQEditor ${file}`);
 
         const f1AddToMPQ =  spawnSync(
           `../AddToMPQ.exe`,
@@ -67,8 +73,8 @@ export const installOnDirectory = async () => {
           { encoding : 'utf8' }
         );
 
-        spawnSync('echo', [`AddToMPQ 1 ${file}`]);
-        process.send(`AddToMPQ 1 ${file}`);
+        // spawnSync('echo', [`running AddToMPQ 1 ${file}`]);
+        process.send(`running AddToMPQ 1 ${file}`);
 
         const f2AddToMPQ =  spawnSync(
           `../AddToMPQ.exe`,
@@ -86,8 +92,8 @@ export const installOnDirectory = async () => {
           { encoding : 'utf8' }
         );
 
-        spawnSync('echo', [`AddToMPQ 2 ${file}`]);
-        process.send(`AddToMPQ 2 ${file}`);
+        // spawnSync('echo', [`running AddToMPQ 2 ${file}`]);
+        process.send(`running AddToMPQ 2 ${file}`);
 
         const f3AddToMPQ =  spawnSync(
           `../AddToMPQ.exe`,
@@ -105,15 +111,16 @@ export const installOnDirectory = async () => {
           { encoding : 'utf8' }
         );
 
-        spawnSync('echo', [`AddToMPQ 3 ${file}`]);
-        process.send(`AddToMPQ 3 ${file}`);
+        // spawnSync('echo', [`running AddToMPQ 3 ${file}`]);
+        process.send(`running AddToMPQ 3 ${file}`);
       } catch(error) {
         console.log(error);
+        process.send(`process install finish with error: ${error}`);
       }
     }
   }
 
-  spawnSync('echo', [`finish install processing...`]);
+  // spawnSync('echo', [`finish install processing into folder ${dirPath}`]);
 }
 
 installOnDirectory();
