@@ -14,6 +14,10 @@
     string array command_key1
     string array command_key2
     string array command_key3
+    string array command_text1
+    string array command_text2
+    string array command_text3
+    string array command_text4
     string array command_dlg1
     integer array command_hotkey1
     string array command_dlg2
@@ -38,6 +42,7 @@
     dialog start_dialog = null
     dialog root_dialog = null
     dialog clanguage_dialog = null
+    dialog tribute_type_dlg = null
 
     integer array current_command
     integer array current_player_par
@@ -767,6 +772,11 @@ function initLanguage%1 takes nothing returns nothing
 #INCLUDETABLE <Languages\%1\Commander.txt> #ENC:%4 #EFR
   set %1 = "%2"
 #ENDINCLUDE
+#INCLUDETABLE <Languages\English\Commander.txt> #ENC:%4 #EFR
+  if %1 == null or %1 == "" then
+    set %1 = "%2" // English backup if translation missing
+  endif
+#ENDINCLUDE
 #INCLUDETABLE <Languages\%1\CommandsTrans.txt> #ENC:%4 #EFR
   call SaveStr(translation, StringHash(language), StringHash("%1"), "%2")
 #ENDINCLUDE
@@ -788,6 +798,125 @@ function AddPreviousButton takes dialog d returns nothing
   set previous_button = DialogAddButton(d, dlgbutton_previous_page, 80) // p
 endfunction
 
+function AddCDCancelButtons takes nothing returns nothing
+  local integer i = 0
+  loop
+    exitwhen i >= dlg_length
+    call AddCancelButton(dlg_dialog[i])
+    set i = i + 1
+  endloop
+endfunction
+
+function RegisterCDialogButton takes button b, integer cn, dialog d returns nothing
+  set cdlg_button[cdlg_length] = b
+  set cdlg_number[cdlg_length] = cn
+  set cdlg_dialog[cdlg_length] = d
+  set cdlg_length = cdlg_length + 1
+  //call DisplayToAll("RegsiterButton:" + I2S(cn) + " length:" + I2S(cdlg_length))
+endfunction
+
+function FindDialog takes string s returns dialog
+  local integer i = 0
+  loop
+    exitwhen i >= dlg_length
+    if dlg_string[i] == s then
+      return dlg_dialog[i]
+    endif
+    set i = i + 1
+  endloop
+  return null
+endfunction
+
+function TributeDialogResponse takes nothing returns nothing
+  local button b = GetClickedButton()
+  local integer pid = GetPlayerId(GetTriggerPlayer())
+  if b == tribute_g then
+    set tribute_type[pid] = "G"
+  elseif b == tribute_l then
+    set tribute_type[pid] = "L"
+  elseif b == tribute_give_g then
+    set tribute_type[pid] = "GiveG"
+  elseif b == tribute_give_l then
+    set tribute_type[pid] = "GiveL"
+  else
+    return
+  endif
+  call DialogSetMessage(tribute_dlg, dlghdr_tribute_amount)
+  call DialogDisplay(GetTriggerPlayer(), tribute_dlg, true)
+endfunction
+
+function TributeAmountDialogResponse takes nothing returns nothing
+  local integer i = 0
+  local button b = GetClickedButton()
+  local string tribute_amount = null
+  local integer pid = GetPlayerId(GetTriggerPlayer())
+  loop
+    if i >= tribute_dlg_length then
+      return
+    endif
+    exitwhen tribute_dlg_button[i] == b
+    set i = i + 1
+  endloop
+  set tribute_amount = I2S((i+1) * 100)
+  call Tribute(GetTriggerPlayer(), commanded_player[pid], tribute_type[pid], tribute_amount)
+endfunction
+
+function BuildTributeDialogs takes nothing returns nothing
+  local trigger t = CreateTrigger()
+  local integer i = 0
+
+  call DialogDestroy(tribute_type_dlg)
+  set tribute_type_dlg = DialogCreate()
+  call DialogSetMessage(tribute_type_dlg, dlghdr_tribute_type)
+  set tribute_g = DialogAddButton(tribute_type_dlg, dlgbutton_gold, 71)
+  set tribute_l = DialogAddButton(tribute_type_dlg, dlgbutton_lumber, 76)
+  set tribute_give_g = DialogAddButton(tribute_type_dlg, dlgbutton_give_gold, 79)
+  set tribute_give_l = DialogAddButton(tribute_type_dlg, dlgbutton_give_lumber, 85)
+  call AddCancelButton(tribute_type_dlg)
+  call TriggerRegisterDialogEvent(t, tribute_type_dlg)
+  call TriggerAddAction(t, function TributeDialogResponse)
+  //call DisplayToAll("RegsiterButton:" + dlgbutton_tribute)
+  call RegisterCDialogButton(DialogAddButton(root_dialog, dlgbutton_tribute, 84), 0, tribute_type_dlg)
+  
+  set tribute_dlg = DialogCreate()
+  call DialogSetMessage(tribute_dlg, dlghdr_tribute_amount)
+  loop
+    exitwhen i >= 10
+    set tribute_dlg_button[i] = DialogAddButton(tribute_dlg, I2S(100 * (i+1)), IMinBJ(48 + i, 57))
+    set i = i + 1
+  endloop
+  call AddCancelButton(tribute_dlg)
+  set tribute_dlg_length = i
+  set t = CreateTrigger()
+  call TriggerRegisterDialogEvent(t, tribute_dlg)
+  call TriggerAddAction(t, function TributeAmountDialogResponse)
+endfunction
+
+function Translation takes string s returns string
+  if HaveSavedString(translation, StringHash(language), StringHash(s)) then
+    //call DisplayToAll("Translated " + s + " to " + language)
+    return LoadStr(translation, StringHash(language), StringHash(s))
+  elseif HaveSavedString(translation, StringHash("English"), StringHash(s)) then
+    //call DisplayToAll("Translated " + s + " to english FAILSAFE")
+    return LoadStr(translation, StringHash("English"), StringHash(s))  
+  else
+    //call DisplayToAll("Translated " + s + " to file default")  
+    return s
+  endif
+endfunction
+
+function reTranslateCommands takes nothing returns nothing
+  local integer i = 0
+  loop
+    exitwhen i >= command_length
+    set command_dlg1[i] = Translation(command_text1[i])
+    set command_dlg2[i] = Translation(command_text2[i])
+    set command_dlg3[i] = Translation(command_text3[i])
+    set command_msg[i] = Translation(command_text4[i])
+    set i = i + 1
+  endloop
+endfunction
+
 function CommanderLanguageResponse takes nothing returns nothing
   local button b = GetClickedButton()
   if false then
@@ -797,6 +926,7 @@ function CommanderLanguageResponse takes nothing returns nothing
     call initLanguage%1()
 #ENDINCLUDE
   endif
+  call reTranslateCommands()
 endfunction
 
 function BuildCommanderLanguage takes nothing returns dialog
@@ -891,91 +1021,8 @@ function StartDialogResponse takes nothing returns nothing
       call DisplayFromDlg(chat_no_ally)
       return
     endif
+    call DialogSetMessage(root_dialog, dlghdr_root)
     call DialogDisplay(GetTriggerPlayer(), root_dialog, true)
-  endif
-
-endfunction
-
-function DialogCommander takes nothing returns nothing
-  local trigger t = CreateTrigger()
-  set commanded_player[GetPlayerId(GetTriggerPlayer())] = null
-  set start_dialog = BuildStartDialog(GetTriggerPlayer(), 0)
-  call TriggerRegisterDialogEvent(t, start_dialog )
-  call TriggerAddAction(t, function StartDialogResponse)
-  call DialogDisplay(GetTriggerPlayer(), start_dialog, true)
-endfunction
-
-function SendToAllAIs takes integer cmd, integer data returns nothing
-  local integer i = 0
-  loop
-    exitwhen i >= GetBJMaxPlayers()
-    if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER then
-      call CommandAI(Player(i), cmd, data)
-    endif
-    set i = i + 1
-  endloop
-endfunction
-
-function Commander takes nothing returns nothing
-  local player Comp = null
-  local string ChatMsg = GetEventPlayerChatString()
-  local integer cn = 0
-
-  call Parser(ChatMsg)
-
-  call DisplayToTP("Command:" + parsed_command[1] + ":" + parsed_command[2]+ ":" + parsed_command[3] + ":" + parsed_command[4])
-
-  if parsed_command[1] == "" then
-    call DialogCommander()
-    return
-  endif
-
-  if parsed_command[1] == "HELP" then
-    call Helpin()
-    return
-  endif
-
-  if parsed_command[1] == "BOARD" then
-    call ShowBoard()
-    return
-  endif
-
-  if parsed_command[1] == "DEBUG" then
-    set debugging = not debugging
-    call SendToAllAIs(51, 0)
-    return
-  endif
-
-  set Comp = Convert2Player(parsed_command[1], true)
-  if Comp == null then
-    call DisplayToTP(specified_player_not_valid)
-    return
-  elseif Comp != Player(PLAYER_NEUTRAL_AGGRESSIVE) then
-    if GetPlayerController(Comp) != MAP_CONTROL_COMPUTER then
-       call DisplayToTP(not_specified_computer)
-      return
-    elseif not IsPlayerAlly(GetTriggerPlayer(), Comp) then
-      call DisplayFromPlayer(Comp, chat_no_ally)
-      return
-    endif
-  endif
-
-  if parsed_command[2] == "TRIBUTE" or parsed_command[2] == "TRIB" then
-    call Tribute(GetTriggerPlayer(), Comp, parsed_command[4], parsed_command[3])
-    return
-  endif
-
-  set cn = FindCommand()
-
-  if cn < 0 then
-    call DisplayFromPlayer(Comp, command_not_valid)
-    return
-  endif
-
-  if Comp == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
-    call ExecuteCommandForAll(cn)
-  else
-    call ExecuteCommand(Comp, cn)
   endif
 
 endfunction
@@ -1117,6 +1164,7 @@ function DialogResponse takes nothing returns nothing
   local dialog d = null
   local integer cn = 0
   local trigger t
+  local string message = null
 
   loop
     if i >= cdlg_length then
@@ -1144,95 +1192,40 @@ function DialogResponse takes nothing returns nothing
       call TriggerAddAction(t, function PlayerDialogResponse)
       call DialogDisplay(GetTriggerPlayer(), d, true) 
     else
+      if d == tribute_type_dlg then
+        //call BuildTributeDialogs()
+        call DialogDisplay(GetTriggerPlayer(), tribute_type_dlg, true)
+      elseif message != "" then
+          set i = 0
+          loop
+            if d == dlg_dialog[i] then
+              if  dlg_string[i] != null then
+                set message = dlg_string[i]
+              endif
+            endif
+            set i = i + 1
+            exitwhen i >= dlg_length
+          endloop
+          call DialogSetMessage(d, message)
+      endif
       call DialogDisplay(GetTriggerPlayer(), d, true)
     endif 
+
     return
   endif
 
   call ExecuteDialogCommand(commanded_player[GetPlayerId(GetTriggerPlayer())], cn)
 endfunction
 
-function TributeDialogResponse takes nothing returns nothing
-  local button b = GetClickedButton()
-  local integer pid = GetPlayerId(GetTriggerPlayer())
-  if b == tribute_g then
-    set tribute_type[pid] = "G"
-  elseif b == tribute_l then
-    set tribute_type[pid] = "L"
-  elseif b == tribute_give_g then
-    set tribute_type[pid] = "GiveG"
-  elseif b == tribute_give_l then
-    set tribute_type[pid] = "GiveL"
-  else
-    return
-  endif
-  call DialogDisplay(GetTriggerPlayer(), tribute_dlg, true)
-endfunction
-
-function TributeAmountDialogResponse takes nothing returns nothing
-  local integer i = 0
-  local button b = GetClickedButton()
-  local string tribute_amount = null
-  local integer pid = GetPlayerId(GetTriggerPlayer())
-  loop
-    if i >= tribute_dlg_length then
-      return
-    endif
-    exitwhen tribute_dlg_button[i] == b
-    set i = i + 1
-  endloop
-  set tribute_amount = I2S((i+1) * 100)
-  call Tribute(GetTriggerPlayer(), commanded_player[pid], tribute_type[pid], tribute_amount)
-endfunction
-
-function Translation takes string s returns string
-  if HaveSavedString(translation, StringHash(language), StringHash(s)) then
-    return LoadStr(translation, StringHash(language), StringHash(s))
-  else
-    return s
-  endif
-endfunction
-
-function RegisterCommand takes string c_key1, string c_key2, string c_key3, integer c_number, integer c_par1, integer c_par2, integer c_par3, string c_dlg1, integer c_hk1, string c_dlg2, integer c_hk2, string c_dlg3, integer c_hk3, string c_msg returns nothing
-  set command_key1[command_length] = StringCase(c_key1, true)
-  set command_key2[command_length] = StringCase(c_key2, true)
-  set command_key3[command_length] = StringCase(c_key3, true)
-  set command_number[command_length] = c_number
-  set command_par1[command_length] = c_par1
-  set command_par2[command_length] = c_par2
-  set command_par3[command_length] = c_par3
-  set command_dlg1[command_length] = Translation(c_dlg1)
-  set command_hotkey1[command_length] = c_hk1
-  set command_dlg2[command_length] = Translation(c_dlg2)
-  set command_hotkey2[command_length] = c_hk2
-  set command_dlg3[command_length] = Translation(c_dlg3)
-  set command_hotkey3[command_length] = c_hk3
-  set command_msg[command_length] = Translation(c_msg)
-  set command_length = command_length + 1
-endfunction
-
-function RegisterCommands takes nothing returns nothing
-#INCLUDETABLE <Commands.txt> #EFR
-  call RegisterCommand("%1", "%2", "%3", %4, %5, %6, %7, "%8", %9, "%10", %11, "%12", %13, "%14")
-#ENDINCLUDE
-#INCLUDETABLE <Languages.txt> #EFR
-  call RegisterCommand("LANGUAGE", "%1", "", 71, #EVAL{%row-1}, -1, -1, "AI Setting", 0, "Language", 76, "%1", %3, "%2")
-#ENDINCLUDE
-endfunction
-
-function RegisterCDialogButton takes button b, integer cn, dialog d returns nothing
-  set cdlg_button[cdlg_length] = b
-  set cdlg_number[cdlg_length] = cn
-  set cdlg_dialog[cdlg_length] = d
-  set cdlg_length = cdlg_length + 1
-endfunction
-
 function RegisterDialog takes string s returns dialog
   local dialog d = DialogCreate()
   local trigger t = CreateTrigger()
+
   if s == "" then
+    //call DisplayToAll("RegsiterDialog:" + dlghdr_root)
     call DialogSetMessage(d, dlghdr_root)
   else
+    //call DisplayToAll("RegsiterDialog:" + s)
     call DialogSetMessage(d, s)
   endif
   set dlg_dialog[dlg_length] = d
@@ -1241,18 +1234,6 @@ function RegisterDialog takes string s returns dialog
   call TriggerRegisterDialogEvent(t, d)
   call TriggerAddAction(t, function DialogResponse)
   return d
-endfunction
-
-function FindDialog takes string s returns dialog
-  local integer i = 0
-  loop
-    exitwhen i >= dlg_length
-    if dlg_string[i] == s then
-      return dlg_dialog[i]
-    endif
-    set i = i + 1
-  endloop
-  return null
 endfunction
 
 function AddCommandDialog takes integer i returns nothing
@@ -1308,15 +1289,6 @@ function AddCommandDialog takes integer i returns nothing
   endif
 endfunction
 
-function AddCDCancelButtons takes nothing returns nothing
-  local integer i = 0
-  loop
-    exitwhen i >= dlg_length
-    call AddCancelButton(dlg_dialog[i])
-    set i = i + 1
-  endloop
-endfunction
-
 function BuildCommandDialogs takes nothing returns nothing
   local integer i = 0
   loop
@@ -1327,38 +1299,134 @@ function BuildCommandDialogs takes nothing returns nothing
   set root_dialog = FindDialog("")
 endfunction
 
-function BuildTributeDialogs takes nothing returns nothing
-  local dialog d = DialogCreate()
+function DialogCommander takes nothing returns nothing
   local trigger t = CreateTrigger()
-  local integer i = 0
+  set commanded_player[GetPlayerId(GetTriggerPlayer())] = null
+  set start_dialog = BuildStartDialog(GetTriggerPlayer(), 0)
+  call TriggerRegisterDialogEvent(t, start_dialog )
+  call TriggerAddAction(t, function StartDialogResponse)
+  call DialogDisplay(GetTriggerPlayer(), start_dialog, true)
+  if (root_dialog != null) then
+      //set root_dialog = RegisterDialog("")
+      set cdlg_length = 0
+      set dlg_length = 0
+      call DialogDestroy(root_dialog)
+  endif
+  call BuildCommandDialogs()
+  call BuildTributeDialogs()
+  call AddCDCancelButtons()
+endfunction
 
-  call DialogSetMessage(d, dlghdr_tribute_type)
-  set tribute_g = DialogAddButton(d, dlgbutton_gold, 71)
-  set tribute_l = DialogAddButton(d, dlgbutton_lumber, 76)
-  set tribute_give_g = DialogAddButton(d, dlgbutton_give_gold, 79)
-  set tribute_give_l = DialogAddButton(d, dlgbutton_give_lumber, 85)
-  call AddCancelButton(d)
-  call TriggerRegisterDialogEvent(t, d)
-  call TriggerAddAction(t, function TributeDialogResponse)
-  call RegisterCDialogButton(DialogAddButton(root_dialog, dlgbutton_tribute, 84), 0, d)
-  
-  set tribute_dlg = DialogCreate()
-  call DialogSetMessage(tribute_dlg, dlghdr_tribute_amount)
+function SendToAllAIs takes integer cmd, integer data returns nothing
+  local integer i = 0
   loop
-    exitwhen i >= 10
-    set tribute_dlg_button[i] = DialogAddButton(tribute_dlg, I2S(100 * (i+1)), IMinBJ(48 + i + 1, 57))
+    exitwhen i >= GetBJMaxPlayers()
+    if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER then
+      call CommandAI(Player(i), cmd, data)
+    endif
     set i = i + 1
   endloop
-  call AddCancelButton(tribute_dlg)
-  set tribute_dlg_length = i
-  set t = CreateTrigger()
-  call TriggerRegisterDialogEvent(t, tribute_dlg)
-  call TriggerAddAction(t, function TributeAmountDialogResponse)
+endfunction
+
+function Commander takes nothing returns nothing
+  local player Comp = null
+  local string ChatMsg = GetEventPlayerChatString()
+  local integer cn = 0
+
+  call Parser(ChatMsg)
+
+  call DisplayToTP("Command:" + parsed_command[1] + ":" + parsed_command[2]+ ":" + parsed_command[3] + ":" + parsed_command[4])
+
+  if parsed_command[1] == "" then
+    call DialogCommander()
+    return
+  endif
+
+  if parsed_command[1] == "HELP" then
+    call Helpin()
+    return
+  endif
+
+  if parsed_command[1] == "BOARD" then
+    call ShowBoard()
+    return
+  endif
+
+  if parsed_command[1] == "DEBUG" then
+    set debugging = not debugging
+    call SendToAllAIs(51, 0)
+    return
+  endif
+
+  set Comp = Convert2Player(parsed_command[1], true)
+  if Comp == null then
+    call DisplayToTP(specified_player_not_valid)
+    return
+  elseif Comp != Player(PLAYER_NEUTRAL_AGGRESSIVE) then
+    if GetPlayerController(Comp) != MAP_CONTROL_COMPUTER then
+       call DisplayToTP(not_specified_computer)
+      return
+    elseif not IsPlayerAlly(GetTriggerPlayer(), Comp) then
+      call DisplayFromPlayer(Comp, chat_no_ally)
+      return
+    endif
+  endif
+
+  if parsed_command[2] == "TRIBUTE" or parsed_command[2] == "TRIB" then
+    call Tribute(GetTriggerPlayer(), Comp, parsed_command[4], parsed_command[3])
+    return
+  endif
+
+  set cn = FindCommand()
+
+  if cn < 0 then
+    call DisplayFromPlayer(Comp, command_not_valid)
+    return
+  endif
+
+  if Comp == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
+    call ExecuteCommandForAll(cn)
+  else
+    call ExecuteCommand(Comp, cn)
+  endif
+
+endfunction
+
+function RegisterCommand takes string c_key1, string c_key2, string c_key3, integer c_number, integer c_par1, integer c_par2, integer c_par3, string c_dlg1, integer c_hk1, string c_dlg2, integer c_hk2, string c_dlg3, integer c_hk3, string c_msg returns nothing
+  set command_key1[command_length] = StringCase(c_key1, true)
+  set command_key2[command_length] = StringCase(c_key2, true)
+  set command_key3[command_length] = StringCase(c_key3, true)
+  set command_number[command_length] = c_number
+  set command_par1[command_length] = c_par1
+  set command_par2[command_length] = c_par2
+  set command_par3[command_length] = c_par3
+  set command_text1[command_length] = c_dlg1
+  set command_text2[command_length] = c_dlg2
+  set command_text3[command_length] = c_dlg3
+  set command_text4[command_length] = c_msg
+  set command_dlg1[command_length] = Translation(c_dlg1)
+  set command_hotkey1[command_length] = c_hk1
+  set command_dlg2[command_length] = Translation(c_dlg2)
+  set command_hotkey2[command_length] = c_hk2
+  set command_dlg3[command_length] = Translation(c_dlg3)
+  set command_hotkey3[command_length] = c_hk3
+  set command_msg[command_length] = Translation(c_msg)
+  set command_length = command_length + 1
+endfunction
+
+function RegisterCommands takes nothing returns nothing
+#INCLUDETABLE <Commands.txt> #EFR
+  call RegisterCommand("%1", "%2", "%3", %4, %5, %6, %7, "%8", %9, "%10", %11, "%12", %13, "%14")
+#ENDINCLUDE
+#INCLUDETABLE <Languages.txt> #EFR
+  call RegisterCommand("LANGUAGE", "%1", "", 71, #EVAL{%row-1}, -1, -1, "AI Setting", 0, "Language", 76, "%1", %3, "%2")
+#ENDINCLUDE
 endfunction
 
 function BuildDialogs takes nothing returns nothing
   set number_dialog = DialogCreate()
   set player_dialog = DialogCreate()
+  set tribute_type_dlg = DialogCreate()
   call BuildCommandDialogs()
   call BuildTributeDialogs()
   call AddCDCancelButtons()
