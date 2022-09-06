@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [Unreleased]
+
+### Fix
+- Port fix such that commander menu titles don't go missing in some cases (from 2.6.x by jzy-chitong56)
+- Fix translation issues with the commander and by using the commander language selection, also ensure english is the default for missing translations.
+
 ## [3.2.0] - 2022-09-04
 
 ### Added
@@ -14,7 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Just typing -cmd without any options will now open the commander as well as the ESC key.
 - Commander player selection and strategy selections now have multiple pages with next and previous buttons. (from 2.6.x by jzy-chitong56)
 - Added ability to change the language of the commander interface and actions independently from other players.
-- Added a map pack that contains a few official maps with AMAI already installed.
+- Added a map pack that contains a few official maps with AMAI already installed for those that struggle to install or use an OS that cannot install AMAI.
 - Start of the Manager project with Electron.
 
 ### Changed

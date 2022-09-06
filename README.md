@@ -13,7 +13,7 @@ As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601
 | -----------|--------------------------------|---------------|
 | 2.5.4      | Min 1.24+ - Max 1.28 | Classic edition from 2008 |
 | 2.6.2      | Min 1.24+ | Some support for 1.30+ features|
-| 3.0        | Min 1.32+ | Full Support for the 1.30+ |
+| 3.0        | Min 1.32+ | Full Support for the 1.32+ |
 | 3.1        | Min 1.32.10+ |  |
 | 3.2        | Min 1.33  |  |
 
@@ -24,7 +24,7 @@ AMAI release comes with the standard AI scripts pre-built for you.
 
 It is suggested to create a subfolder in your "maps" folder like `C:\Users\<username>\Documents\Warcraft III\Maps\AMAI` and copy the maps you intend to use AMAI with there.
 
-You can opt to download a map pack containing a selection with AMAI preinstalled on or you can install onto your own maps.
+You can opt to download a map pack containing a selection with AMAI preinstalled if you struggle to install or use an OS that is not supported. Or you can install onto your own maps with the below instructions.
 
 For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.html to extract a copy of the official blizzard maps to install AMAI onto.
 
