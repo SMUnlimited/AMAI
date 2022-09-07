@@ -27,6 +27,7 @@ export class AppComponent {
     if (electronService.isElectron) {
       this.menu.createMenu();
 
+      // TODO: add 'push notification'/'notification'
       this.electronService.ipcRenderer.on('on-install-init', (_, args: InstallModel) => {
         console.log('args', args)
         // TODO: use i18n to translate
@@ -39,6 +40,7 @@ export class AppComponent {
         this.cdr.detectChanges();
       });
 
+      // TODO: add 'push notification'/'notification'
       this.electronService.ipcRenderer.on('on-install-empty', (_, args) => {
         console.log('args', args);
         this.active = false;
@@ -46,6 +48,7 @@ export class AppComponent {
         this.cdr.detectChanges();
       });
 
+      // TODO: add 'push notification'/'notification'
       this.electronService.ipcRenderer.on('on-install-exit', (_, args) => {
         // TODO: use i18n to translate
         this.title = 'Installation finished...';
@@ -59,6 +62,7 @@ export class AppComponent {
         this.cdr.detectChanges();
       });
 
+      // TODO: add 'push notification'/'notification'
       this.electronService.ipcRenderer.on('on-install-error', (_, args) => {
         console.log('args', args);
         this.couldClose = true;
