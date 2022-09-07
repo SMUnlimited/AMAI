@@ -6,19 +6,19 @@ const environment = process.env.ELECTRON_ENV;
 const isDev = environment === `development`;
 const arrayOfFiles = [];
 
-// let currentExecDir = `../`, currentScriptDir = `..\\`;
+// let currentExecDir = `../`, currentScriptDir = `../`;
 
 // if(isProduction) {
 //   currentExecDir = `./`;
-//   currentScriptDir = `.\\`;
+//   currentScriptDir = `./`;
 // }
 
 
-let currentExecDir = `./resources/`, currentScriptDir = `.\\resources\\`;
+let currentExecDir = `./resources/`, currentScriptDir = `./resources/`;
 
 if(isDev) {
   currentExecDir = `../`;
-  currentScriptDir = `..\\`;
+  currentScriptDir = `../`;
 }
 
 console.log(`environment`, environment);
@@ -95,10 +95,10 @@ const installOnDirectory = async () => {
           `${currentExecDir}AddToMPQ.exe`,
           [
             file,
-             `${currentScriptDir}Scripts\\TFT\\common.ai`,
-            `${currentScriptDir}Scripts\\common.ai`,
-            `${currentScriptDir}Scripts\\Blizzard.j`,
-            `${currentScriptDir}Scripts\\Blizzard.j`,
+             `${currentScriptDir}Scripts/TFT/common.ai`,
+            `${currentScriptDir}Scripts/common.ai`,
+            `${currentScriptDir}Scripts/Blizzard.j`,
+            `${currentScriptDir}Scripts/Blizzard.j`,
           ],
           { encoding : `utf8` }
         );
@@ -117,14 +117,14 @@ const installOnDirectory = async () => {
           `${currentExecDir}AddToMPQ.exe`,
           [
             file,
-            `${currentScriptDir}Scripts\\TFT\\elf.ai`,
-            `${currentScriptDir}Scripts\\elf.ai`,
-            `${currentScriptDir}Scripts\\TFT\\human2.ai`,
-            `${currentScriptDir}Scripts\\human2.ai`,
-            `${currentScriptDir}Scripts\\TFT\\orc2.ai`,
-            `${currentScriptDir}Scripts\\orc2.ai`,
-            `${currentScriptDir}Scripts\\TFT\\undead2.ai`,
-            `${currentScriptDir}Scripts\\undead2.ai`,
+            `${currentScriptDir}Scripts/TFT/elf.ai`,
+            `${currentScriptDir}Scripts/elf.ai`,
+            `${currentScriptDir}Scripts/TFT/human.ai`,
+            `${currentScriptDir}Scripts/human.ai`,
+            `${currentScriptDir}Scripts/TFT/orc.ai`,
+            `${currentScriptDir}Scripts/orc.ai`,
+            `${currentScriptDir}Scripts/TFT/undead.ai`,
+            `${currentScriptDir}Scripts/undead.ai`,
           ],
           { encoding : `utf8` }
         );
@@ -141,14 +141,14 @@ const installOnDirectory = async () => {
           `${currentExecDir}AddToMPQ.exe`,
           [
             file,
-            `${currentScriptDir}Scripts\\TFT\\elf2.ai`,
-            `${currentScriptDir}Scripts\\elf2.ai`,
-            `${currentScriptDir}Scripts\\TFT\\human.ai`,
-            `${currentScriptDir}Scripts\\human.ai`,
-            `${currentScriptDir}Scripts\\TFT\\orc.ai`,
-            `${currentScriptDir}Scripts\\orc.ai`,
-            `${currentScriptDir}Scripts\\TFT\\undead.ai`,
-            `${currentScriptDir}Scripts\\undead.ai`,
+            `${currentScriptDir}Scripts/TFT/elf2.ai`,
+            `${currentScriptDir}Scripts/elf2.ai`,
+            `${currentScriptDir}Scripts/TFT/human2.ai`,
+            `${currentScriptDir}Scripts/human2.ai`,
+            `${currentScriptDir}Scripts/TFT/orc2.ai`,
+            `${currentScriptDir}Scripts/orc2.ai`,
+            `${currentScriptDir}Scripts/TFT/undead2.ai`,
+            `${currentScriptDir}Scripts/undead2.ai`,
           ],
           { encoding : `utf8` }
         );
