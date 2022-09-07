@@ -5,9 +5,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+
+### Changed
+
+### Removed
+- (DevTools) Stopped AMAI.mpq being generated, it is an old leftover from the old ways to run AMAI.
+
+### Fix
+
+## [3.2.1] - 2022-09-07
+
 ### Fix
 - Port fix such that commander menu titles don't go missing in some cases (from 2.6.x by jzy-chitong56)
 - Fix translation issues with the commander and by using the commander language selection, also ensure english is the default for missing translations.
+- (DevTools) Language selection dialog message is now exposed for translation.
 
 ## [3.2.0] - 2022-09-04
 
