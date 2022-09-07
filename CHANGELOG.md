@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+
+### Changed
+
+### Removed
+
+### Fix
+
+## [3.2.1] - 2022-09-07
+
 ### Fix
 - Port fix such that commander menu titles don't go missing in some cases (from 2.6.x by jzy-chitong56)
 - Fix translation issues with the commander and by using the commander language selection, also ensure english is the default for missing translations.
