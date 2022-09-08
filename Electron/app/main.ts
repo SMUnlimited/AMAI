@@ -15,6 +15,10 @@ remote.initialize();
 
 Menu.setApplicationMenu(null);
 
+function isDev() {
+  return require.main.filename.indexOf('app.asar') === -1;
+}
+
 function createWindow(): BrowserWindow {
 
   const size = screen.getPrimaryDisplay().workAreaSize;
@@ -65,10 +69,8 @@ function createWindow(): BrowserWindow {
   return win;
 }
 
-const execInstall = async (isMap: boolean = false) => {
+const execInstall = async (signal, isMap: boolean = false) => {
   const controller = new AbortController();
-  const { signal } = controller;
-
   const response = dialog.showOpenDialogSync(win, {
     // TODO: add i18n here
     title : isMap ? "Open WC3 Map File": "Open AMAI Maps Directory",
@@ -82,7 +84,30 @@ const execInstall = async (isMap: boolean = false) => {
 
   let child;
 
-  if(!response || (response && response.length === 0)) {
+  // passing reference to external call back
+  signal = controller.signal;
+
+  let currentExecDir = `./AMAI-release/`, relativePath = '../';
+
+  if(!isDev()) {
+    currentExecDir = `../resources/AMAI/`;
+    relativePath = '';
+  }
+
+  /** uncomment to debbug */
+  // const ls = cp.spawnSync(
+  //   `ls`,
+  //   [`./resources`,],
+  //   { encoding : `utf8` }
+  // );
+  // process.send(ls.stdout);
+  // win.webContents.send('on-install-message', '__dirname: ' + __dirname);
+  // win.webContents.send('on-install-message', 'ls: ' + ls.stdout);
+  // win.webContents.send('on-install-message', 'isProd: ' + !isDev());
+  // win.webContents.send('on-install-message', 'currentExecDir: ' + currentExecDir);
+  // win.webContents.send('on-install-message', 'relativePath: ' + relativePath);
+
+  if(!response || (response?.length === 0)) {
     win.webContents.send('on-install-empty');
     return;
   }
@@ -93,30 +118,55 @@ const execInstall = async (isMap: boolean = false) => {
     isMap
   });
 
+  // Change the relative path from where the script will be executed
+  // MPQEditor and AddToMPQ only work when files and folders are in same directory
+  try {
+     process.chdir(currentExecDir);
+  } catch(err) {
+    console.log('error:', err.message);
+  }
+
+
   // init install proccess
-  child = cp.fork(require.resolve('./install.js'), [ response[0] ], { signal }, (error) => {
-    win.webContents.send('on-install-error', error);
-  });
+  try {
+    child = cp.fork(
+      require.resolve(`${relativePath}${currentExecDir}install.js`),
+      [ response[0] ],
+      { signal },
+      (err) => {
+        win.webContents.send('on-install-error', err);
+      }
+    );
 
-  // send messages to modal on front
-  child.on('message', (message) => {
-    win.webContents.send('on-install-message', message);
-  });
 
-  // close modal on process finishes
-  child.on('exit', () => {
-    win.webContents.send('on-install-exit');
-  });
+    // send messages to modal on front
+    child.on('message', (message) => {
+      win.webContents.send('on-install-message', message);
+    });
 
+    // close modal on process finishes
+    child.on('exit', () => {
+      win.webContents.send('on-install-exit');
+    });
+  } catch(err) {
+    win.webContents.send('on-install-error', err.message);
+  }
 }
 
 const install = () => {
+  let signal = {};
+
   ipcMain && ipcMain.on('install-folder', async () => {
-    execInstall();
+    execInstall(signal);
   });
 
   ipcMain && ipcMain.on('install-map', async () => {
-    execInstall(true);
+    execInstall(signal, true);
+  });
+
+  // TODO: stop process with signal
+  ipcMain && ipcMain.on('on-stop-process', async () => {
+    // stop process here
   });
 }
 

@@ -1,32 +1,13 @@
 const fs = require("fs");
 const path = require("path");
 const spawnSync = require("child_process").spawnSync;
-const environment = process.env.ELECTRON_ENV;
-
-const isDev = environment === `development`;
 const arrayOfFiles = [];
 
-// let currentExecDir = `../`, currentScriptDir = `../`;
-
-// if(isProduction) {
-//   currentExecDir = `./`;
-//   currentScriptDir = `./`;
-// }
-
-
-let currentExecDir = `./resources/`, currentScriptDir = `./resources/`;
-
-if(isDev) {
-  currentExecDir = `../`;
-  currentScriptDir = `../`;
-}
-
-console.log(`environment`, environment);
 
 /** uncomment to debbug */
 // const ls = spawnSync(
 //   `ls`,
-//   [`./resources`,],
+//   [`.\\resources`,],
 //   { encoding : `utf8` }
 // );
 // process.send(ls.stdout);
@@ -37,10 +18,10 @@ const getAllFiles = (dirPath, arrayOfFiles) => {
   arrayOfFiles = arrayOfFiles || [];
 
   files.forEach(function(file) {
-    if (fs.statSync(dirPath + "/" + file).isDirectory()) {
-      arrayOfFiles = getAllFiles(dirPath + "/" + file, arrayOfFiles);
+    if (fs.statSync(dirPath + "\\" + file).isDirectory()) {
+      arrayOfFiles = getAllFiles(dirPath + "\\" + file, arrayOfFiles);
     } else {
-      arrayOfFiles.push(path.join(dirPath, "/", file));
+      arrayOfFiles.push(path.join(dirPath, "\\", file));
     }
   })
 
@@ -78,7 +59,7 @@ const installOnDirectory = async () => {
         // execute same way how InstallTFTtoDir.pl
 
         const mpqEditor = spawnSync(
-          `${currentExecDir}MPQEditor.exe`,
+          `MPQEditor.exe`,
           [`htsize`, file, `64`],
           { encoding : `utf8` }
         );
@@ -92,13 +73,13 @@ const installOnDirectory = async () => {
             : process.send(`running MPQEditor ${file}`);
 
         const f1AddToMPQ =  spawnSync(
-          `${currentExecDir}AddToMPQ.exe`,
+          `AddToMPQ.exe`,
           [
             file,
-             `${currentScriptDir}Scripts/TFT/common.ai`,
-            `${currentScriptDir}Scripts/common.ai`,
-            `${currentScriptDir}Scripts/Blizzard.j`,
-            `${currentScriptDir}Scripts/Blizzard.j`,
+            `Scripts\\TFT\\common.ai`,
+            `Scripts\\common.ai`,
+            `Scripts\\Blizzard.j`,
+            `Scripts\\Blizzard.j`,
           ],
           { encoding : `utf8` }
         );
@@ -114,17 +95,17 @@ const installOnDirectory = async () => {
             : process.send(`running AddToMPQ 1 ${file}`);
 
         const f2AddToMPQ =  spawnSync(
-          `${currentExecDir}AddToMPQ.exe`,
+          `AddToMPQ.exe`,
           [
             file,
-            `${currentScriptDir}Scripts/TFT/elf.ai`,
-            `${currentScriptDir}Scripts/elf.ai`,
-            `${currentScriptDir}Scripts/TFT/human.ai`,
-            `${currentScriptDir}Scripts/human.ai`,
-            `${currentScriptDir}Scripts/TFT/orc.ai`,
-            `${currentScriptDir}Scripts/orc.ai`,
-            `${currentScriptDir}Scripts/TFT/undead.ai`,
-            `${currentScriptDir}Scripts/undead.ai`,
+            `Scripts\\TFT\\elf.ai`,
+            `Scripts\\elf.ai`,
+            `Scripts\\TFT\\human.ai`,
+            `Scripts\\human.ai`,
+            `Scripts\\TFT\\orc.ai`,
+            `Scripts\\orc.ai`,
+            `Scripts\\TFT\\undead.ai`,
+            `Scripts\\undead.ai`,
           ],
           { encoding : `utf8` }
         );
@@ -138,17 +119,17 @@ const installOnDirectory = async () => {
             : process.send(`running AddToMPQ 2 ${file}`);
 
         const f3AddToMPQ =  spawnSync(
-          `${currentExecDir}AddToMPQ.exe`,
+          `AddToMPQ.exe`,
           [
             file,
-            `${currentScriptDir}Scripts/TFT/elf2.ai`,
-            `${currentScriptDir}Scripts/elf2.ai`,
-            `${currentScriptDir}Scripts/TFT/human2.ai`,
-            `${currentScriptDir}Scripts/human2.ai`,
-            `${currentScriptDir}Scripts/TFT/orc2.ai`,
-            `${currentScriptDir}Scripts/orc2.ai`,
-            `${currentScriptDir}Scripts/TFT/undead2.ai`,
-            `${currentScriptDir}Scripts/undead2.ai`,
+            `Scripts\\TFT\\elf2.ai`,
+            `Scripts\\elf2.ai`,
+            `Scripts\\TFT\\human2.ai`,
+            `Scripts\\human2.ai`,
+            `Scripts\\TFT\\orc2.ai`,
+            `Scripts\\orc2.ai`,
+            `Scripts\\TFT\\undead2.ai`,
+            `Scripts\\undead2.ai`,
           ],
           { encoding : `utf8` }
         );
