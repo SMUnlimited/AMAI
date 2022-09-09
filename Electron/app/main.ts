@@ -87,11 +87,15 @@ const execInstall = async (signal, isMap: boolean = false) => {
   // passing reference to external call back
   signal = controller.signal;
 
-  let currentExecDir = `./AMAI-release/`, relativePath = '../';
+  let currentExecDir = `./AMAI-release/`,
+    currentScriptDir = './AMAI-release/';
 
   if(!isDev()) {
-    currentExecDir = `../resources/AMAI/`;
-    relativePath = '';
+    currentExecDir = `./AMAI/`;
+    currentScriptDir = path.join(
+      __dirname,
+      `../${currentExecDir}`
+    );
   }
 
   /** uncomment to debbug */
@@ -100,12 +104,12 @@ const execInstall = async (signal, isMap: boolean = false) => {
   //   [`./resources`,],
   //   { encoding : `utf8` }
   // );
-  // process.send(ls.stdout);
+  // // process.send(ls.stdout);
   // win.webContents.send('on-install-message', '__dirname: ' + __dirname);
   // win.webContents.send('on-install-message', 'ls: ' + ls.stdout);
   // win.webContents.send('on-install-message', 'isProd: ' + !isDev());
   // win.webContents.send('on-install-message', 'currentExecDir: ' + currentExecDir);
-  // win.webContents.send('on-install-message', 'relativePath: ' + relativePath);
+  // win.webContents.send('on-install-message', `install js path: ../${currentExecDir}install.js`);
 
   if(!response || (response?.length === 0)) {
     win.webContents.send('on-install-empty');
@@ -121,16 +125,24 @@ const execInstall = async (signal, isMap: boolean = false) => {
   // Change the relative path from where the script will be executed
   // MPQEditor and AddToMPQ only work when files and folders are in same directory
   try {
-     process.chdir(currentExecDir);
+     process.chdir(currentScriptDir);
   } catch(err) {
     console.log('error:', err.message);
+
+    /** uncomment to debbug */
+    // win.webContents.send('on-install-message', 'Error: ' + err.message);
   }
 
 
   // init install proccess
   try {
     child = cp.fork(
-      require.resolve(`${relativePath}${currentExecDir}install.js`),
+      require.resolve(
+        path.join(
+          __dirname,
+          `../${currentExecDir}install.js`
+        )
+      ),
       [ response[0] ],
       { signal },
       (err) => {
