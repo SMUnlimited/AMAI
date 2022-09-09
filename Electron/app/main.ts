@@ -13,13 +13,14 @@ const args = process.argv.slice(1),
 // needed to call remote inside app
 remote.initialize();
 
+// disable default menu
 Menu.setApplicationMenu(null);
 
-function isDev() {
+const isDev = () => {
   return require.main.filename.indexOf('app.asar') === -1;
 }
 
-function createWindow(): BrowserWindow {
+const createWindow = (): BrowserWindow => {
 
   const size = screen.getPrimaryDisplay().workAreaSize;
 
@@ -36,13 +37,14 @@ function createWindow(): BrowserWindow {
     },
   });
 
-  // need to remote work with electron > 14...
+  // needed to remote work with electron > 14...
   remote.enable(win.webContents);
 
   if (serve) {
     const debug = require('electron-debug');
     debug();
 
+    // hot reload frontend
     require('electron-reloader')(module);
     win.loadURL('http://localhost:4200');
   } else {
@@ -165,7 +167,7 @@ const execInstall = async (signal, isMap: boolean = false) => {
   }
 }
 
-const install = () => {
+const installProcess = () => {
   let signal = {};
 
   ipcMain && ipcMain.on('install-folder', async () => {
@@ -182,14 +184,14 @@ const install = () => {
   });
 }
 
-function init() {
+const init = () => {
   try {
     // This method will be called when Electron has finished
     // initialization and is ready to create browser windows.
     // Some APIs can only be used after this event occurs.
     // Added 400 ms to fix the black background issue while using transparent window. More detais at https://github.com/electron/electron/issues/15947
-    app.on('ready', function(){
-      setTimeout(function (){
+    app.on('ready', () => {
+      setTimeout(() => {
         createWindow();
       }, 400)
     });
@@ -219,4 +221,4 @@ function init() {
 }
 
 init();
-install();
+installProcess();

@@ -18,14 +18,14 @@ export class AppComponent {
   constructor(
     private electronService: ElectronService,
     private translate: TranslateService,
-    private menu: MenuService,
+    private menuService: MenuService,
     private cdr: ChangeDetectorRef,
   ) {
     this.translate.setDefaultLang('en');
     console.log('APP_CONFIG', APP_CONFIG);
 
     if (electronService.isElectron) {
-      this.menu.createMenu();
+      this.menuService.createMenu();
 
       // TODO: add 'push notification'/'notification'
       this.electronService.ipcRenderer.on('on-install-init', (_, args: InstallModel) => {
@@ -37,6 +37,14 @@ export class AppComponent {
         this.messages = [];
         // TODO: use i18n to translate
         !args.isMap && this.messages && this.messages.push(`Installing in directory: ${args.response}`);
+
+        // disable the menu while the script is running
+        this
+          .menuService
+          .changeEnabledMenuState(false);
+
+        // force update in angular view after update any variable
+        // because we are in a IPC async
         this.cdr.detectChanges();
       });
 
@@ -53,6 +61,11 @@ export class AppComponent {
         // TODO: use i18n to translate
         this.title = 'Installation finished...';
         this.couldClose = true;
+
+        this
+          .menuService
+          .changeEnabledMenuState(true);
+
         this.cdr.detectChanges();
       });
 
@@ -66,6 +79,11 @@ export class AppComponent {
       this.electronService.ipcRenderer.on('on-install-error', (_, args) => {
         console.log('args', args);
         this.couldClose = true;
+
+        this
+          .menuService
+          .changeEnabledMenuState(true);
+
         this.cdr.detectChanges();
       });
 
