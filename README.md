@@ -34,6 +34,12 @@ For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.htm
 - Alternatively for complex installs if you have `perl` installed from a commandline you can type `perl InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` and press enter to install AMAI to all maps in a directory and subdirectories.
 - After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
 
+# How use AMAI installer:
+
+-Unzip the contents of the installer in a folder of your choice.
+-After unzip, download the newest version of AMAI and unzip it in the folder {your-amai-installer}/resources
+-Double-click amai-electron-manager.exe to open the installer.
+
 ## Notes
 - Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on custom maps (e.g towerdefence), it will make no difference on such maps.
 - The old `AMAI.exe` installer from classic AMAI has been moved into the `Templates` folder and will not work unless you run `MPQEditor htsize "C:\mymap.w3m" 64` from a commandline first.
@@ -47,6 +53,27 @@ Additionally you need to install the *Tk* module if you want to run the **Strate
 Tested with strawbery perl 5.30 and Tk 804.034
 
 *You may need to run as an administrator if you have issues with maps not displaying any teams.
+
+# Build Requirements for Electron
+-node 14 or greater...
+-npm 6 or greater...
+-angular-cli 14 or greater...
+
+# Running electron locally:
+-Go to the Electron folder inside the project and open the IDE of your choice.
+-first run `npm i` to install project dependencies
+-run `npm start` to open in development environment
+
+# Deploying the Electron Installer:
+
+-run `npm run electron:build` inside Electron folder
+-zip the contents of the release/win-unpacked folder and deploy this zipped file
+
+## Notes about Electron Installer build process:
+-I'm working on doing the zip mentioned above in an automated way.
+-The build process creates the executable for the current operating system only. To create other executables, the process must be run on the corresponding operating system.
+-I will be working on the possibility of building the linux executable on windows.
+-The only features available at the moment are to install AMAI in directories and in a specific map. I'm working on compiling, etc.
 
 ## TFT Build
 - Run/double click *makeTFT.bat* to create the standard scripts for the AI.
