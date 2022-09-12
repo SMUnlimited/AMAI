@@ -137,10 +137,31 @@
     
     //gamecache translation = InitGameCache("Commander.w3v")
     hashtable translation = InitHashtable()
+    
+    timer last_timer = null
+    trigger last_player_trigger = null
+    triggeraction last_player_trigger_action = null
+    trigger last_number_trigger = null
+    triggeraction last_number_trigger_action = null
+    trigger last_dialog_trigger = null
+    triggeraction last_dialog_trigger_action = null
+    trigger last_main_trigger = null
+    trigger array dlg_trigger
+    trigger array last_tribute_trigger
 
 #INCLUDE <Blizzard2.j>
 #INCLUDE <Blizzard3Gen.j>
 #INCLUDE <Blizzard4.j>
+
+function DestroyLastTrigger takes trigger t, triggeraction ta returns nothing
+  if (ta != null and t != null) then
+    call TriggerRemoveAction(t, ta)
+  endif
+  if (t != null) then
+    call TriggerClearActions(t)
+    call DestroyTrigger(t)
+  endif
+endfunction
 
 //***************************************************************************
 //*
@@ -368,6 +389,8 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
       exitwhen TimerGetRemaining(t) <= 0
       call TriggerSleepAction(0.5)
     endloop
+    call DestroyTimer(t)
+    set t = null
     call SyncSelections()
     set j = 0
     loop
@@ -400,6 +423,7 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
   loop
     exitwhen i >= bits_per_selection
     call RemoveUnit(sel_unit[i])
+    set sel_unit[i] = null
     set i = i + 1
   endloop
 
@@ -414,6 +438,10 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
   if target_int[0] != 0 then
     set sum = -sum
   endif
+  
+  call DestroyGroup(old_selection)
+  set old_selection = null
+  set u = null
 
 //  call DisplayToPlayer(sync_p, I2S(sum))
 
@@ -458,6 +486,8 @@ function Convert2Player takes string Comp, boolean all_allowed returns player
       set theplayer = Player(j)
     endif
   endif
+  
+  set CColor = null
 
   //Returns player
   return theplayer
@@ -514,12 +544,15 @@ function Helpin takes nothing returns nothing
 #INCLUDETABLE <Languages\CommanderHelp.txt>
   call DisplayHelpToPlayer(p, "%1")
 #ENDINCLUDE
+  set p = null
 endfunction
 
 //===========================================================================
 // Map Initialization (Runs all stuff needed to be run after map is loaded)
 //===========================================================================
 function MapInit takes nothing returns nothing
+
+  call DestroyTimer(last_timer)
 
   //Displays the Leaderboard
   call CreateBoard()
@@ -637,6 +670,7 @@ endfunction
 //===========================================================================
 function GetParValue takes integer par returns integer
   local player p = null
+  local integer pid = -1
   if par == -1 then
     return 0
   elseif par == -30 then
@@ -650,7 +684,9 @@ function GetParValue takes integer par returns integer
     if p == null then
       return -1000000
     else
-      return GetPlayerId(p)
+      set pid = GetPlayerId(p)
+      set p = null
+      return pid
     endif
   elseif par < 0 then
     return S2I(parsed_command[-par])
@@ -840,10 +876,12 @@ function TributeDialogResponse takes nothing returns nothing
   elseif b == tribute_give_l then
     set tribute_type[pid] = "GiveL"
   else
+    set b = null
     return
   endif
   call DialogSetMessage(tribute_dlg, dlghdr_tribute_amount)
   call DialogDisplay(GetTriggerPlayer(), tribute_dlg, true)
+  set b = null
 endfunction
 
 function TributeAmountDialogResponse takes nothing returns nothing
@@ -853,12 +891,14 @@ function TributeAmountDialogResponse takes nothing returns nothing
   local integer pid = GetPlayerId(GetTriggerPlayer())
   loop
     if i >= tribute_dlg_length then
+      set b = null
       return
     endif
     exitwhen tribute_dlg_button[i] == b
     set i = i + 1
   endloop
   set tribute_amount = I2S((i+1) * 100)
+  set b = null
   call Tribute(GetTriggerPlayer(), commanded_player[pid], tribute_type[pid], tribute_amount)
 endfunction
 
@@ -866,6 +906,8 @@ function BuildTributeDialogs takes nothing returns nothing
   local trigger t = CreateTrigger()
   local integer i = 0
 
+   call DestroyLastTrigger(last_tribute_trigger[0], null)
+   call DestroyLastTrigger(last_tribute_trigger[1], null)
   call DialogDestroy(tribute_type_dlg)
   set tribute_type_dlg = DialogCreate()
   call DialogSetMessage(tribute_type_dlg, dlghdr_tribute_type)
@@ -875,6 +917,7 @@ function BuildTributeDialogs takes nothing returns nothing
   set tribute_give_l = DialogAddButton(tribute_type_dlg, dlgbutton_give_lumber, 85)
   call AddCancelButton(tribute_type_dlg)
   call TriggerRegisterDialogEvent(t, tribute_type_dlg)
+  set last_tribute_trigger[0] = t
   call TriggerAddAction(t, function TributeDialogResponse)
   //call DisplayToAll("RegsiterButton:" + dlgbutton_tribute)
   call RegisterCDialogButton(DialogAddButton(root_dialog, dlgbutton_tribute, 84), 0, tribute_type_dlg)
@@ -890,7 +933,9 @@ function BuildTributeDialogs takes nothing returns nothing
   set tribute_dlg_length = i
   set t = CreateTrigger()
   call TriggerRegisterDialogEvent(t, tribute_dlg)
+  set last_tribute_trigger[1] = t
   call TriggerAddAction(t, function TributeAmountDialogResponse)
+  set t = null
 endfunction
 
 function Translation takes string s returns string
@@ -928,6 +973,7 @@ function CommanderLanguageResponse takes nothing returns nothing
 #ENDINCLUDE
   endif
   call reTranslateCommands()
+  set b = null
 endfunction
 
 function BuildCommanderLanguage takes nothing returns dialog
@@ -989,6 +1035,9 @@ function StartDialogResponse takes nothing returns nothing
   local integer i = 0
   local button b = GetClickedButton()
   local trigger t = CreateTrigger()
+  call DestroyLastTrigger(last_dialog_trigger, last_dialog_trigger_action)
+  set last_dialog_trigger = null
+  set last_dialog_trigger_action = null
   loop
     exitwhen sdbn_button[i] == b or i >= sdbn_length
     set i = i + 1
@@ -996,13 +1045,15 @@ function StartDialogResponse takes nothing returns nothing
   if (b == next_button) then // next page
     set start_dialog = BuildStartDialog(GetTriggerPlayer(), i)
     call TriggerRegisterDialogEvent(t, start_dialog )
-    call TriggerAddAction(t, function StartDialogResponse)
+    set last_dialog_trigger_action = TriggerAddAction(t, function StartDialogResponse)
+    set last_dialog_trigger = t
     call DialogDisplay(GetTriggerPlayer(), start_dialog, true)
   endif
   if (b == previous_button) then // previous page
     set start_dialog = BuildStartDialog(GetTriggerPlayer(), i - sdbn_paged_length - 7)
     call TriggerRegisterDialogEvent(t, start_dialog )
-    call TriggerAddAction(t, function StartDialogResponse)
+    set last_dialog_trigger_action = TriggerAddAction(t, function StartDialogResponse)
+    set last_dialog_trigger = t
     call DialogDisplay(GetTriggerPlayer(), start_dialog, true)
   endif
   if (b == clanguage_button) then
@@ -1020,12 +1071,15 @@ function StartDialogResponse takes nothing returns nothing
     endif
     if commanded_player[GetPlayerId(GetTriggerPlayer())] != Player(PLAYER_NEUTRAL_AGGRESSIVE) and (not IsPlayerAlly(GetTriggerPlayer(), commanded_player[GetPlayerId(GetTriggerPlayer())])) then
       call DisplayFromDlg(chat_no_ally)
+      set b = null
+      set t = null
       return
     endif
     call DialogSetMessage(root_dialog, dlghdr_root)
     call DialogDisplay(GetTriggerPlayer(), root_dialog, true)
   endif
-
+  set b = null
+  set t = null
 endfunction
 
 // Builds a pageable number dialog
@@ -1034,6 +1088,9 @@ function BuildNumberDialog takes player p, integer startnum returns dialog
   local integer i = startnum
   local dialog new_dialog = DialogCreate()
   //call DisplayToAll("STRAT Max: " + I2S(maxCount) + " for player: " + I2S(GetPlayerId(p)) + " starting page at:" + I2S(i))
+  call DestroyLastTrigger(last_number_trigger, last_number_trigger_action)
+  set last_number_trigger = null
+  set last_number_trigger_action = null  
   call DialogDestroy(last_number_dialog)
   set last_number_dialog = new_dialog
   call DialogSetMessage(new_dialog, dlghdr_choose_number)
@@ -1061,6 +1118,9 @@ function BuildPlayerDialog takes player currentplayer, integer startnum returns 
   local dialog new_dialog = DialogCreate()
   local integer totalplayers = 0
   local string ally = ""
+    call DestroyLastTrigger(last_player_trigger, last_player_trigger_action)
+  set last_player_trigger = null
+  set last_player_trigger_action = null
   call DialogDestroy(last_player_dialog)
   set last_player_dialog = new_dialog
   call DialogSetMessage(new_dialog, dlghdr_choose_player)
@@ -1110,6 +1170,11 @@ function PlayerDialogResponse takes nothing returns nothing
   local button b = GetClickedButton()
   local trigger t = CreateTrigger()
   local dialog d
+  
+  call DestroyLastTrigger(last_player_trigger, last_player_trigger_action)
+  set last_player_trigger = null
+  set last_player_trigger_action = null
+  
   loop
     exitwhen pcbn_button[i] == b or i >= pcbn_length
     set i = i + 1
@@ -1117,19 +1182,24 @@ function PlayerDialogResponse takes nothing returns nothing
   if (b == next_button) then // next page
     set d = BuildPlayerDialog(GetTriggerPlayer(), i)
     call TriggerRegisterDialogEvent(t, d)
-    call TriggerAddAction(t, function PlayerDialogResponse)
+    set last_player_trigger_action = TriggerAddAction(t, function PlayerDialogResponse)
+    set last_player_trigger = t
     call DialogDisplay(GetTriggerPlayer(), d, true)
   endif
   if (b == previous_button) then // previous page
     set d = BuildPlayerDialog(GetTriggerPlayer(), i - pcbn_paged_length - 9)
     call TriggerRegisterDialogEvent(t, d )
-    call TriggerAddAction(t, function PlayerDialogResponse)
+    set last_player_trigger_action = TriggerAddAction(t, function PlayerDialogResponse)
+    set last_player_trigger = t
     call DialogDisplay(GetTriggerPlayer(), d, true)
   endif
   if (pcbn_button[i] == b) then
     set current_player_par[GetPlayerId(GetTriggerPlayer())] = pcbn_number[i]
     call ExecuteDialogCommand(commanded_player[GetPlayerId(GetTriggerPlayer())], current_command[GetPlayerId(GetTriggerPlayer())])
   endif
+  set b = null
+  set t = null
+  set d = null
 endfunction
 
 function NumberDialogResponse takes nothing returns nothing
@@ -1137,6 +1207,9 @@ function NumberDialogResponse takes nothing returns nothing
   local button b = GetClickedButton()
   local trigger t = CreateTrigger()
   local dialog d
+  call DestroyLastTrigger(last_number_trigger, last_number_trigger_action)
+  set last_number_trigger = null
+  set last_number_trigger_action = null
   loop
     exitwhen ndbn_button[i] == b or i >= ndbn_length
     set i = i + 1
@@ -1144,19 +1217,24 @@ function NumberDialogResponse takes nothing returns nothing
   if (b == next_button) then // next page
     set d = BuildNumberDialog(commanded_player[GetPlayerId(GetTriggerPlayer())], i)
     call TriggerRegisterDialogEvent(t, d )
-    call TriggerAddAction(t, function NumberDialogResponse)
+    set last_number_trigger_action = TriggerAddAction(t, function NumberDialogResponse)
+    set last_number_trigger = t
     call DialogDisplay(GetTriggerPlayer(), d, true)
   endif
   if (b == previous_button) then // previous page
     set d = BuildNumberDialog(commanded_player[GetPlayerId(GetTriggerPlayer())], i - ndbn_paged_length - 9)
     call TriggerRegisterDialogEvent(t, d )
-    call TriggerAddAction(t, function NumberDialogResponse)
+    set last_number_trigger_action = TriggerAddAction(t, function NumberDialogResponse)
+    set last_number_trigger = t
     call DialogDisplay(GetTriggerPlayer(), d, true)
   endif
   if (ndbn_button[i] == b) then
     set current_number_par[GetPlayerId(GetTriggerPlayer())] =i
     call ExecuteDialogCommand(commanded_player[GetPlayerId(GetTriggerPlayer())], current_command[GetPlayerId(GetTriggerPlayer())])
   endif
+  set b = null
+  set t = null
+  set d = null
 endfunction
 
 function DialogResponse takes nothing returns nothing
@@ -1166,9 +1244,12 @@ function DialogResponse takes nothing returns nothing
   local integer cn = 0
   local trigger t
   local string message = null
+  
+  call DestroyLastTrigger(last_main_trigger, null)
 
   loop
     if i >= cdlg_length then
+      set b = null
       return
     endif
     exitwhen b == cdlg_button[i]
@@ -1184,13 +1265,15 @@ function DialogResponse takes nothing returns nothing
       set t = CreateTrigger()
       set d = BuildNumberDialog(commanded_player[GetPlayerId(GetTriggerPlayer())], 0)
       call TriggerRegisterDialogEvent(t, d )
-      call TriggerAddAction(t, function NumberDialogResponse)
+      set last_number_trigger_action = TriggerAddAction(t, function NumberDialogResponse)
+      set last_number_trigger = t
       call DialogDisplay(GetTriggerPlayer(), d, true) 
     elseif (d == player_dialog) then
       set t = CreateTrigger()
       set d = BuildPlayerDialog(GetTriggerPlayer(), 0)
       call TriggerRegisterDialogEvent(t, d )
-      call TriggerAddAction(t, function PlayerDialogResponse)
+      set last_player_trigger_action = TriggerAddAction(t, function PlayerDialogResponse)
+      set last_player_trigger = t
       call DialogDisplay(GetTriggerPlayer(), d, true) 
     else
       if d == tribute_type_dlg then
@@ -1205,13 +1288,16 @@ function DialogResponse takes nothing returns nothing
               endif
             endif
             set i = i + 1
+            call DestroyLastTrigger(dlg_trigger[dlg_length], null) //  clean up previous triggers
             exitwhen i >= dlg_length
           endloop
           call DialogSetMessage(d, message)
       endif
       call DialogDisplay(GetTriggerPlayer(), d, true)
     endif 
-
+    set b = null
+    set t = null
+    set d = null
     return
   endif
 
@@ -1231,9 +1317,11 @@ function RegisterDialog takes string s returns dialog
   endif
   set dlg_dialog[dlg_length] = d
   set dlg_string[dlg_length] = s
+  set dlg_trigger[dlg_length] = t
   set dlg_length  = dlg_length + 1
   call TriggerRegisterDialogEvent(t, d)
   call TriggerAddAction(t, function DialogResponse)
+  set t = null
   return d
 endfunction
 
@@ -1252,6 +1340,8 @@ function AddCommandDialog takes integer i returns nothing
       set current_dialog = FindDialog(current_name)
       if current_dialog != null then
         call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg3[i], command_hotkey3[i]), i, next_dialog)
+        set current_dialog = null
+        set next_dialog = null
         return
       endif
       set current_dialog = RegisterDialog(current_name)
@@ -1270,6 +1360,8 @@ function AddCommandDialog takes integer i returns nothing
       set current_dialog = FindDialog(current_name)
       if current_dialog != null then
         call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg2[i], command_hotkey2[i]), i, next_dialog)
+        set current_dialog = null
+        set next_dialog = null
         return
       endif
       set current_dialog = RegisterDialog(current_name)
@@ -1283,11 +1375,15 @@ function AddCommandDialog takes integer i returns nothing
     set current_dialog = FindDialog(current_name)
     if current_dialog != null then
       call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg1[i], command_hotkey1[i]), i, next_dialog)
+      set current_dialog = null
+      set next_dialog = null
       return
     endif
     set current_dialog = RegisterDialog(current_name)
     call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg1[i], command_hotkey1[i]), i, next_dialog)
   endif
+  set current_dialog = null
+  set next_dialog = null
 endfunction
 
 function BuildCommandDialogs takes nothing returns nothing
@@ -1305,7 +1401,8 @@ function DialogCommander takes nothing returns nothing
   set commanded_player[GetPlayerId(GetTriggerPlayer())] = null
   set start_dialog = BuildStartDialog(GetTriggerPlayer(), 0)
   call TriggerRegisterDialogEvent(t, start_dialog )
-  call TriggerAddAction(t, function StartDialogResponse)
+  set last_dialog_trigger_action = TriggerAddAction(t, function StartDialogResponse)
+  set last_dialog_trigger = t
   call DialogDisplay(GetTriggerPlayer(), start_dialog, true)
   if (root_dialog != null) then
       //set root_dialog = RegisterDialog("")
@@ -1316,6 +1413,7 @@ function DialogCommander takes nothing returns nothing
   call BuildCommandDialogs()
   call BuildTributeDialogs()
   call AddCDCancelButtons()
+  set t = null
 endfunction
 
 function SendToAllAIs takes integer cmd, integer data returns nothing
@@ -1340,41 +1438,49 @@ function Commander takes nothing returns nothing
 
   if parsed_command[1] == "" then
     call DialogCommander()
+    set Comp = null
     return
   endif
 
   if parsed_command[1] == "HELP" then
     call Helpin()
+    set Comp = null
     return
   endif
 
   if parsed_command[1] == "BOARD" then
     call ShowBoard()
+    set Comp = null
     return
   endif
 
   if parsed_command[1] == "DEBUG" then
     set debugging = not debugging
     call SendToAllAIs(51, 0)
+    set Comp = null
     return
   endif
 
   set Comp = Convert2Player(parsed_command[1], true)
   if Comp == null then
     call DisplayToTP(specified_player_not_valid)
+    set Comp = null
     return
   elseif Comp != Player(PLAYER_NEUTRAL_AGGRESSIVE) then
     if GetPlayerController(Comp) != MAP_CONTROL_COMPUTER then
        call DisplayToTP(not_specified_computer)
+       set Comp = null
       return
     elseif not IsPlayerAlly(GetTriggerPlayer(), Comp) then
       call DisplayFromPlayer(Comp, chat_no_ally)
+      set Comp = null
       return
     endif
   endif
 
   if parsed_command[2] == "TRIBUTE" or parsed_command[2] == "TRIB" then
     call Tribute(GetTriggerPlayer(), Comp, parsed_command[4], parsed_command[3])
+    set Comp = null
     return
   endif
 
@@ -1382,6 +1488,7 @@ function Commander takes nothing returns nothing
 
   if cn < 0 then
     call DisplayFromPlayer(Comp, command_not_valid)
+    set Comp = null
     return
   endif
 
@@ -1391,6 +1498,7 @@ function Commander takes nothing returns nothing
     call ExecuteCommand(Comp, cn)
   endif
 
+  set Comp = null
 endfunction
 
 function RegisterCommand takes string c_key1, string c_key2, string c_key3, integer c_number, integer c_par1, integer c_par2, integer c_par3, string c_dlg1, integer c_hk1, string c_dlg2, integer c_hk2, string c_dlg3, integer c_hk3, string c_msg returns nothing
@@ -1452,7 +1560,11 @@ function InitCommanderPart takes nothing returns nothing
   call BuildDialogs()
 
   //Timer that calls MapInit
+  set last_timer = t
   call TimerStart(t,3.0, false, function MapInit)
+  set commander_trigger = null
+  set cdlg_trigger = null
+  set t = null
 endfunction
 
 function GetNextPlayableHuman takes integer last returns integer
@@ -1518,6 +1630,9 @@ function RemoveHumanUnitsAndRes takes nothing returns nothing
   call ForGroup(g, function EnumKillUnit)
   call SetPlayerState(p, PLAYER_STATE_RESOURCE_GOLD, 0)
   call SetPlayerState(p, PLAYER_STATE_RESOURCE_LUMBER, 0)
+  call DestroyGroup(g)
+  set g = null
+  set p = null
 endfunction
 
 function GameStartDlgResponse takes nothing returns nothing
@@ -1531,6 +1646,7 @@ function GameStartDlgResponse takes nothing returns nothing
   endif
   call DialogDestroy(game_start_dialog)
   call DestroyTrigger(game_start_trigger)
+  set cb = null
 endfunction
 
 function GameStartDefault takes nothing returns nothing
@@ -1584,6 +1700,7 @@ function LanguageDlgResponse takes nothing returns nothing
   endif
     call PauseAllUnitsBJ(false)
   call GameStartDlg()
+  set b = null
 endfunction
 
 function LanguageDefault takes nothing returns nothing
@@ -1600,7 +1717,7 @@ endfunction
 
 function LanguageDlg takes nothing returns nothing
   local integer host = GetFirstHuman()
-  
+  call DestroyTimer(last_timer)
   // Need to pause computer ai and players
   call PauseAllUnitsBJ(true)
   
@@ -1622,7 +1739,9 @@ endfunction
 
 function InitCommander takes nothing returns nothing
   local timer t = CreateTimer()
+  set last_timer = t
   call TimerStart(t,1.0, false, function LanguageDlg)
+  set t = null
 endfunction
 
 #INCLUDE <Blizzard5.j>
