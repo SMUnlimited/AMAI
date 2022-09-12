@@ -15,6 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 - Re-installing AMAI should no longer increase map file size. Also maps file size after install appear to be about 40% smaller.
+- Fixed memory leaks with the commander now that dialogs get regenerated this was more of an issue.
+- Fixed Norwegian Commander caused by translating text to empty strings. Such behavior so should no longer break commander logic.
 
 ## [3.2.1] - 2022-09-07
 
