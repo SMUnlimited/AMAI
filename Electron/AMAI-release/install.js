@@ -73,13 +73,12 @@ const installOnDirectory = async () => {
             : process.send(`running MPQEditor ${file}`);
 
         const f1AddToMPQ =  spawnSync(
-          `AddToMPQ.exe`,
+          `MPQEditor.exe`,
           [
+            'a',
             file,
-            `Scripts\\TFT\\common.ai`,
-            `Scripts\\common.ai`,
-            `Scripts\\Blizzard.j`,
-            `Scripts\\Blizzard.j`,
+            `Scripts\\TFT\\*.ai`,
+            `Scripts`
           ],
           { encoding : `utf8` }
         );
@@ -95,17 +94,12 @@ const installOnDirectory = async () => {
             : process.send(`running AddToMPQ 1 ${file}`);
 
         const f2AddToMPQ =  spawnSync(
-          `AddToMPQ.exe`,
+          `MPQEditor.exe`,
           [
+            'a',
             file,
-            `Scripts\\TFT\\elf.ai`,
-            `Scripts\\elf.ai`,
-            `Scripts\\TFT\\human.ai`,
-            `Scripts\\human.ai`,
-            `Scripts\\TFT\\orc.ai`,
-            `Scripts\\orc.ai`,
-            `Scripts\\TFT\\undead.ai`,
-            `Scripts\\undead.ai`,
+            `Scripts\\Blizzard.j`,
+            `Scripts\\Blizzard.j`,
           ],
           { encoding : `utf8` }
         );
@@ -119,17 +113,10 @@ const installOnDirectory = async () => {
             : process.send(`running AddToMPQ 2 ${file}`);
 
         const f3AddToMPQ =  spawnSync(
-          `AddToMPQ.exe`,
+          `MPQEditor.exe`,
           [
-            file,
-            `Scripts\\TFT\\elf2.ai`,
-            `Scripts\\elf2.ai`,
-            `Scripts\\TFT\\human2.ai`,
-            `Scripts\\human2.ai`,
-            `Scripts\\TFT\\orc2.ai`,
-            `Scripts\\orc2.ai`,
-            `Scripts\\TFT\\undead2.ai`,
-            `Scripts\\undead2.ai`,
+            'f',
+            file
           ],
           { encoding : `utf8` }
         );
@@ -140,7 +127,7 @@ const installOnDirectory = async () => {
         // spawnSync(`echo`, [`running AddToMPQ 3 ${file}`]);
         f3AddToMPQ.error ?
           process.send(f3AddToMPQ.error.message)
-            : process.send(`running AddToMPQ 3 ${file}`);
+            : process.send(`finish MPQEditor close/apply ${file}`);
       } catch(error) {
         console.log(error);
         process.send(`process install finish with error: ${error}`);
