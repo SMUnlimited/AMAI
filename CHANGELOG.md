@@ -13,12 +13,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Removed
 - (DevTools) Stopped AMAI.mpq being generated, it is an old leftover from the old ways to run AMAI.
+- (DevTools) Removed ancient AddToMPQ.exe and use MPQEditor for all operations under the hood.
 
-### Fix
+### Fixed
+- Re-installing AMAI should no longer increase map file size. Also maps file size after install appear to be about 40% smaller.
+- Fixed some memory leaks mainly with the commander, this was more of an issue now that dialogs are being regenerated.
+- Fixed Norwegian Commander caused by translating text to empty strings. Such behavior so should no longer break commander logic.
 
 ## [3.2.1] - 2022-09-07
 
-### Fix
+### Fixed
 - Port fix such that commander menu titles don't go missing in some cases (from 2.6.x by jzy-chitong56)
 - Fix translation issues with the commander and by using the commander language selection, also ensure english is the default for missing translations.
 - (DevTools) Language selection dialog message is now exposed for translation.
