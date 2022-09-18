@@ -23,7 +23,15 @@ export class MenuService {
           }
         },
         // TODO: recreate MakeTFT script
-        // { label: 'Compile' },
+        // FIXME: convert MakeTFTBase.bat to JS script
+        // FIXME: convert MakeTFT.bat to JS script
+        // FIXME: convert ejass.pl to JS script
+        {
+          label: 'Compile',
+          click: () => {
+            this.electronService.ipcRenderer.send('compile');
+          }
+         },
         // TODO: recreate MakeOptTFT.bat script
         // { label: 'Compile, Optimize' },
         // TODO: recreate MakeVAITFT.bat script
