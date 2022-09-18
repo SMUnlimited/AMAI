@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
--Amai installer
+-Amai installer with Electron
 
 ### Changed
 
@@ -39,7 +39,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Commander player selection and strategy selections now have multiple pages with next and previous buttons. (from 2.6.x by jzy-chitong56)
 - Added ability to change the language of the commander interface and actions independently from other players.
 - Added a map pack that contains a few official maps with AMAI already installed for those that struggle to install or use an OS that cannot install AMAI.
-- Start of the Manager project with Electron.
 
 ### Changed
 - Disabled a flee rule for heroes which means when stranded on there own they are more likely to use a town portal to save themselves.
