@@ -57,26 +57,24 @@ Tested with strawbery perl 5.30 and Tk 804.034
 
 *You may need to run as an administrator if you have issues with maps not displaying any teams.
 
-# Build Requirements for Electron
--node 14 or greater...
--npm 6 or greater...
--angular-cli 14 or greater...
+## Build Requirements for Electron
+- node 14 or greater...
+- npm 6 or greater...
+- angular-cli 14 or greater...
 
-# Running electron locally:
--Go to the Electron folder inside the project and open the IDE of your choice.
--first run `npm i` to install project dependencies
--run `npm start` to open in development environment
+## Running electron locally:
+- Go to the Electron folder inside the project and open the IDE of your choice.
+- first run `npm i` to install project dependencies
+- run `npm start` to open in development environment
 
-# Deploying the Electron Installer:
+## Deploying the Electron Installer:
+- run `npm run electron:build` inside Electron folder
+- zip the contents of the release/win-unpacked folder and deploy this zipped file
 
--run `npm run electron:build` inside Electron folder
--zip the contents of the release/win-unpacked folder and deploy this zipped file
-
-## Notes about Electron Installer build process:
--I'm working on doing the zip mentioned above in an automated way.
--The build process creates the executable for the current operating system only. To create other executables, the process must be run on the corresponding operating system.
--I will be working on the possibility of building the linux executable on windows.
--The only features available at the moment are to install AMAI in directories and in a specific map. I'm working on compiling, etc.
+### Notes about Electron Installer build process:
+- I'm working on doing the zip mentioned above in an automated way.
+- The build process creates the executable for the current operating system only. To create other executables, the process must be run on the corresponding operating system.
+- I will be working on the possibility of building the linux executable on windows.
 
 ## TFT Build
 - Run/double click *makeTFT.bat* to create the standard scripts for the AI.
