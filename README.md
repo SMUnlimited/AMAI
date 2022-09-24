@@ -37,11 +37,11 @@ For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.htm
 - After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
 
 ## How use AMAI installer
--Unzip the contents of the installer in a folder of your choice.
--After unzip, download the newest version of AMAI and unzip it in the folder {your-amai-installer}/resources
- - For install support you just need the Scripts folder and MPQEditor.exe placed in this directory.
--Double-click amai-electron-manager.exe to open the installer.
--You can install to a single map or a whole directory.
+- Unzip the contents of the installer in a folder of your choice.
+- After unzip, download the newest version of AMAI and unzip it in the folder {your-amai-installer}/resources
+  - For install support you just need the Scripts folder and MPQEditor.exe placed in this directory.
+- Double-click amai-electron-manager.exe to open the installer.
+- You can install to a single map or a whole directory.
 
 ## Notes
 - Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on custom maps (e.g towerdefence), it will make no difference on such maps.
