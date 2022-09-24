@@ -49,7 +49,7 @@ const installOnDirectory = async () => {
       const ext = path.extname(file).toLowerCase();
 
       if(ext.indexOf(`w3m`) >= 0 || ext.indexOf(`w3x`) >= 0) {
-        process.send(`installing into file: ${file}`);
+        process.send(`#### Installing into file: ${file} ####`);
       } else {
         process.send(`skip file: ${file}`);
         continue;
@@ -70,7 +70,7 @@ const installOnDirectory = async () => {
         // spawnSync(`echo`, [`running execuMPQEditor ${file}`]);
         mpqEditor.error ?
           process.send(mpqEditor.error.message)
-            : process.send(`running MPQEditor ${file}`);
+            : process.send(`Resize map hashtable size ${file}`);
 
         const f1AddToMPQ =  spawnSync(
           `MPQEditor.exe`,
@@ -91,7 +91,7 @@ const installOnDirectory = async () => {
 
         f1AddToMPQ.error ?
           process.send(f1AddToMPQ.error.message)
-            : process.send(`running AddToMPQ 1 ${file}`);
+            : process.send(`Add ai scripts ${file}`);
 
         const f2AddToMPQ =  spawnSync(
           `MPQEditor.exe`,
@@ -110,7 +110,7 @@ const installOnDirectory = async () => {
         // spawnSync(`echo`, [`running AddToMPQ 2 ${file}`]);
         f2AddToMPQ.error ?
           process.send(f2AddToMPQ.error.message)
-            : process.send(`running AddToMPQ 2 ${file}`);
+            : process.send(`Add commander script ${file}`);
 
         const f3AddToMPQ =  spawnSync(
           `MPQEditor.exe`,
@@ -127,10 +127,10 @@ const installOnDirectory = async () => {
         // spawnSync(`echo`, [`running AddToMPQ 3 ${file}`]);
         f3AddToMPQ.error ?
           process.send(f3AddToMPQ.error.message)
-            : process.send(`finish MPQEditor close/apply ${file}`);
+            : process.send(`Optimize map MPQ ${file}`);
       } catch(error) {
         console.log(error);
-        process.send(`process install finish with error: ${error}`);
+        process.send(`Install failed with error: ${error}`);
       }
     }
   }
