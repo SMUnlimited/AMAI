@@ -31,6 +31,7 @@ const createWindow = (): BrowserWindow => {
     width: size.width,
     height: size.height,
     webPreferences: {
+      devTools: false,
       nodeIntegration: true,
       allowRunningInsecureContent: (serve),
       contextIsolation: false,  // false if you want to run e2e test with Spectron
