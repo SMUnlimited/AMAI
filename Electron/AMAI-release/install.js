@@ -30,7 +30,7 @@ const getAllFiles = (dirPath, arrayOfFiles) => {
 
 const installOnDirectory = async () => {
   const args = process.argv.slice(2);
-  const installCommander = args[1]
+  const installCommander = (args[1] == 'true');
   const response = args[0];
 
   // TODO: change to receive array of maps
@@ -94,7 +94,7 @@ const installOnDirectory = async () => {
           process.send(f1AddToMPQ.error.message)
             : process.send(`Add ai scripts ${file}`);
 
-        if (installCommander == undefined || installCommander) {
+        if (installCommander) {
 
           const f2AddToMPQ =  spawnSync(
             `MPQEditor.exe`,

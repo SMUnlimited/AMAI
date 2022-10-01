@@ -72,7 +72,7 @@ const createWindow = (): BrowserWindow => {
   return win;
 }
 
-const execInstall = async (signal, isMap: boolean = false) => {
+const execInstall = async (signal, commander: boolean = true, isMap: boolean = false) => {
   const controller = new AbortController();
   const response = dialog.showOpenDialogSync(win, {
     // TODO: add i18n here
@@ -122,6 +122,7 @@ const execInstall = async (signal, isMap: boolean = false) => {
   // open modal on front
   win.webContents.send('on-install-init', <InstallModel>{
     response: response[0],
+    commander,
     isMap
   });
 
@@ -146,7 +147,7 @@ const execInstall = async (signal, isMap: boolean = false) => {
           `../${currentExecDir}install.js`
         )
       ),
-      [ response[0] ],
+      [ response[0], commander ],
       { signal },
       (err) => {
         win.webContents.send('on-install-error', err);
@@ -174,9 +175,17 @@ const installProcess = () => {
   ipcMain && ipcMain.on('install-folder', async () => {
     execInstall(signal);
   });
+  
+  ipcMain && ipcMain.on('install-folder-noc', async () => {
+    execInstall(signal, false, false);
+  });
 
   ipcMain && ipcMain.on('install-map', async () => {
-    execInstall(signal, true);
+    execInstall(signal, true, true);
+  });
+  
+  ipcMain && ipcMain.on('install-map-noc', async () => {
+    execInstall(signal, false, true);
   });
 
   // TODO: stop process with signal

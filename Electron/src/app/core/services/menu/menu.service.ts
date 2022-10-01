@@ -17,21 +17,33 @@ export class MenuService {
           }
         },
         {
+          label: 'Install on Folder (No Commander)',
+          click: () => {
+            this.electronService.ipcRenderer.send('install-folder-noc');
+          }
+        },
+        {
           label: 'Install on Map',
           click: () => {
             this.electronService.ipcRenderer.send('install-map');
+          }
+        },
+        {
+          label: 'Install on Map (No Commander)',
+          click: () => {
+            this.electronService.ipcRenderer.send('install-map-noc');
           }
         },
         // TODO: recreate MakeTFT script
         // FIXME: convert MakeTFTBase.bat to JS script
         // FIXME: convert MakeTFT.bat to JS script
         // FIXME: convert ejass.pl to JS script
-        {
-          label: 'Compile',
-          click: () => {
-            this.electronService.ipcRenderer.send('compile');
-          }
-         },
+        //{
+        //  label: 'Compile',
+        //  click: () => {
+        //    this.electronService.ipcRenderer.send('compile');
+        //  }
+        // },
         // TODO: recreate MakeOptTFT.bat script
         // { label: 'Compile, Optimize' },
         // TODO: recreate MakeVAITFT.bat script
