@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Re-installing AMAI should no longer increase map file size. Also maps file size after install appear to be about 40% smaller.
 - Fixed some memory leaks mainly with the commander, this was more of an issue now that dialogs are being regenerated.
 - Fixed Norwegian Commander caused by translating text to empty strings. Such behavior so should no longer break commander logic.
+- Fixed an issue where air creep strength was assumed to be 0 which could cause AI to attack air creeps without a way to attack them.
 
 ## [3.2.1] - 2022-09-07
 
