@@ -4,7 +4,6 @@ if not exist %1 (
 )
 MPQEditor htsize %1 64
 MPQEditor a %1 Scripts\TFT\*.ai Scripts
-MPQEditor a %1 Scripts\Blizzard.j Scripts\Blizzard.j
 MPQEditor f %1
 ECHO Installed AMAI to Map %1
 pause

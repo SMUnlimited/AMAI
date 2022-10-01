@@ -30,6 +30,7 @@ const getAllFiles = (dirPath, arrayOfFiles) => {
 
 const installOnDirectory = async () => {
   const args = process.argv.slice(2);
+  const installCommander = args[1]
   const response = args[0];
 
   // TODO: change to receive array of maps
@@ -93,24 +94,28 @@ const installOnDirectory = async () => {
           process.send(f1AddToMPQ.error.message)
             : process.send(`Add ai scripts ${file}`);
 
-        const f2AddToMPQ =  spawnSync(
-          `MPQEditor.exe`,
-          [
-            'a',
-            file,
-            `Scripts\\Blizzard.j`,
-            `Scripts\\Blizzard.j`,
-          ],
-          { encoding : `utf8` }
-        );
+        if (installCommander == undefined || installCommander) {
 
-        /** uncomment to debbug */
-       // console.log('f2AddToMPQ', f2AddToMPQ.error);
+          const f2AddToMPQ =  spawnSync(
+            `MPQEditor.exe`,
+            [
+              'a',
+              file,
+              `Scripts\\Blizzard.j`,
+              `Scripts\\Blizzard.j`,
+            ],
+            { encoding : `utf8` }
+          );
 
-        // spawnSync(`echo`, [`running AddToMPQ 2 ${file}`]);
-        f2AddToMPQ.error ?
-          process.send(f2AddToMPQ.error.message)
-            : process.send(`Add commander script ${file}`);
+          /** uncomment to debbug */
+         // console.log('f2AddToMPQ', f2AddToMPQ.error);
+
+          // spawnSync(`echo`, [`running AddToMPQ 2 ${file}`]);
+          f2AddToMPQ.error ?
+            process.send(f2AddToMPQ.error.message)
+              : process.send(`Add commander script ${file}`);
+
+        }
 
         const f3AddToMPQ =  spawnSync(
           `MPQEditor.exe`,

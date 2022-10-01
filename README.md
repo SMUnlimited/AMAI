@@ -32,6 +32,7 @@ For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.htm
 
 ## Commandline install
 - From a windows commandline or powershell type `InstallTFTToMap.bat "C:\mymap.w3m"` and press enter to install AMAI to maps
+- If you want to have the Commander installed to control team mates or easily change language settings additionally run `InstallCommanderToMap.bat "C:\mymap.w3m"`
 ![example](example.jpg)
 - Alternatively for complex installs if you have `perl` installed from a commandline you can type `perl InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` and press enter to install AMAI to all maps in a directory and subdirectories.
 - After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
@@ -116,16 +117,20 @@ Tested with strawbery perl 5.30 and Tk 804.034
 
 
 # Commander
-The Commander allows you to give orders to your ally AI's.
+The Commander allows you to give orders to your ally AI's. 
 
-To *disable* the commander rename/delete the blizzard.j file within `Scripts/` before running the install script.
-You must disable the commander if you want to play on an older version of warcraft 3.
+There will also be language selection dialogs to change the language of dialogs and AI chat messages.
 
-If you installed The Commander to the map there will be language selection dialogs to select a language. Another dialog may also appear with options
+To *disable* the commander do not run the `InstallCommanderToMap.bat` script or run the `DisableCommander.bat "C:\mymap.w3m"` script afterwards.
+For the perl directory install script you can specify not to run it via the `perl InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI" "false"`
 
-1) No Commander
+You must disable the commander if you want to play on an older version of warcraft 3 or custom melee maps.
+
+ Another dialog may also appear with options
+
+1) No Commander - Disables the commander in game
 2) With Commander - Press 'ESC' to bring up the commander menu.
-3) Computers Only - Same as commander except you dont play at all and instead can only issue orders to try and make your ally ai win
+3) Computers Only - Same as commander except humans do not play, they can only issue orders via the commander to try and make the ally ai win.
 
 ## Commander Advanced Settings
 
@@ -148,6 +153,8 @@ AMAI is designed to work with melee maps.
 
 If you make a custom map you need to make sure in the world editor it is also set to Latest Patch dataset and still using the melee AI.
 If you don't do this the AI will get stuck upgrading past tier 2 as it will use the vanilla patch.
+
+Scripted maps may need to disable the Commander as it will otherwise conflict.
 
 To change the patch data set use the following menus from the world editor.
 > scenario -
