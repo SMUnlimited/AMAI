@@ -192,6 +192,7 @@ globals
     constant integer NEUTRAL_SHIPYARD = 7
     constant integer NEUTRAL_MARKETPLACE = 8
     constant integer NEUTRAL_POWER_FOUNTAIN = 9
+    constant integer NEUTRAL_COUNT = 10
     
     constant integer UPKEEP_UNDECIDED = 0
     constant integer UPKEEP_NOT_ALLOWED = 1
@@ -4017,20 +4018,25 @@ endfunction
     
 // endfunction
 
+function CreatePathingUnitFull takes unit u, player p, integer id, real x, real y returns unit
+    set u = CreateUnit(ai_player, id, GetLocationX(home_location), GetLocationY(home_location), 270.00) 
+    call SetUnitInvulnerable(u, true)
+    if (not debugging) then
+      call ShowUnit(u, false)
+    endif
+    call SetUnitUseFood(u, false)
+    call SetUnitMoveSpeed(u, 522)
+    call RemoveGuardPosition(u)
+    return u
+endfunction
+
 function CreatePathingUnit takes unit u returns unit
     local integer groundid = 'ewsp'
     if GetPlayerRace(ai_player) == RACE_NIGHTELF then
       set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
     endif
     // Have to use ai_player as larger maps the passive player ai is restricted at such large numbers of units with orders being paused for seconds then continuing. Appears to be hardcoded into the warcraft 3 engine.
-    set u = CreateUnit(ai_player, groundid, GetLocationX(home_location), GetLocationY(home_location), 270.00) 
-    call SetUnitInvulnerable(u, true)
-    if (not debugging) then
-      call ShowUnit(u, false)
-    endif
-    call SetUnitUseFood(u, false)
-    call SetUnitMoveSpeed(u, 520)
-    call RemoveGuardPosition(u)
+    set u = CreatePathingUnitFull(u, ai_player, groundid, GetLocationX(home_location), GetLocationY(home_location))
     return u
 endfunction
 
@@ -4048,27 +4054,22 @@ function CanPathToLoc takes location locA, location target, pathingtype path ret
     local location l = null
     local real checktime = 0
     local real totaltime = 0
-	local location prev_loc = null
-	local integer checks = 0	// Number of times unit has stayed at same position
+    local location prev_loc = null
+    local integer checks = 0	// Number of times unit has stayed at same position
     
     if path == PATHING_TYPE_WALKABILITY then
-        set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(locA), GetLocationY(locA), 270.00)
+        set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(locA), GetLocationY(locA))
     elseif path == PATHING_TYPE_FLOATABILITY then
-        set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), seaid, GetLocationX(locA), GetLocationY(locA), 270.00)
+        set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), seaid, GetLocationX(locA), GetLocationY(locA))
     elseif path == PATHING_TYPE_AMPHIBIOUSPATHING then
-        set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), amphibiousid, GetLocationX(locA), GetLocationY(locA), 270.00)
+        set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), amphibiousid, GetLocationX(locA), GetLocationY(locA))
     elseif path == PATHING_TYPE_FLYABILITY then
-        set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), flyid, GetLocationX(locA), GetLocationY(locA), 270.00)
+        set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), flyid, GetLocationX(locA), GetLocationY(locA))
     else
         return -1.0
     endif
 
-	    call SetUnitInvulnerable(u, true)
-        call ShowUnit(u, false)
-        call SetUnitUseFood(u, false)
-        call SetUnitMoveSpeed(u, 520)
-        call RemoveGuardPosition(u)
-        call IssuePointOrder(u, "move", GetLocationX(target), GetLocationY(target))
+    call IssuePointOrder(u, "move", GetLocationX(target), GetLocationY(target))
 //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Path Unit Created")
 
     set checktime =  GetTimeToReachLoc(u, target)
@@ -5444,13 +5445,7 @@ function GetLumberLocationAtBase takes nothing returns location
 	else
 		set groundid = old_id[racial_peon]
 	endif
-    set u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), groundid, home_location, 270.00)
-    if (not debugging) then
-      call ShowUnit(u, false)
-    endif  
-    call SetUnitUseFood(u, false)
-    call SetUnitMoveSpeed(u, 500)
-    call RemoveGuardPosition(u)
+    set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(home_location), GetLocationY(home_location))
 	call IssueImmediateOrder(u, "autoharvestlumber")
 	call Sleep(5.00)
 	set l = GetUnitLoc(u)
@@ -6941,9 +6936,9 @@ function CheckAllNeutrals takes nothing returns nothing
 
   call Sleep(5)
   loop
-	exitwhen i > 9
-      call CheckNeutral(i)
-	set i = i + 1
+    exitwhen i >= NEUTRAL_COUNT
+    call CheckNeutral(i)
+    set i = i + 1
   endloop
 
   if nearest_neutral[GetHealthFountainID()] != null then
@@ -6980,9 +6975,9 @@ function CheckAllNeutralsQuick takes nothing returns nothing
 	local integer i = 0
 	
   loop
-	exitwhen i > 8
-      call CheckNeutralQuick(i)
-	set i = i + 1
+    exitwhen i >= NEUTRAL_COUNT
+    call CheckNeutralQuick(i)
+    set i = i + 1
   endloop
 
  // if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null then
@@ -7007,7 +7002,7 @@ function PathingThread takes nothing returns nothing
   call MakeExpansionList()
   set water_map = water_expansion_list_length >= expansion_list_length
   call ChooseExpansion()
-  call CheckFastExpansion()  
+  call CheckFastExpansion()
   call CheckAllNeutrals() // The more advanced new system check
 
 endfunction
@@ -7724,6 +7719,7 @@ function InitAMAI takes nothing returns nothing
     call InitUpkeep()
     call InitNeutralBuildings()
     call StartThread(function PathingThread)
+    //call StartThread(function ExpansionThread)
     //call StartThread(function CheckAllNeutrals)
     call InitHealers()
     call InitUpgradeTimeArray()
