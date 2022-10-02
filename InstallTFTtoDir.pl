@@ -3,7 +3,8 @@
 use strict;
 
 sub process_dir {
-	my ($dirname, $commander) = @ARGV;
+	my $dirname = $_[0];
+  my $commander = $_[1];
 	my $filename;
 	
 	opendir my $DIR, $dirname or die "Could not open $dirname\n";
@@ -12,7 +13,7 @@ sub process_dir {
 		next if $filename eq "." || $filename eq "..";
 		if ((-d "$dirname/$filename") ) {
 			print "Installing AMAI to dir $dirname\\$filename\n";
-			process_dir ("$dirname\\$filename");
+			process_dir ("$dirname\\$filename", $commander);
 		} elsif ($filename =~ m/\.w3m$/ || $filename =~ m/\.w3x$/ ) {
       if (!(defined($commander)) || $commander eq "true") {
         print "Installing AMAI and Commander to $dirname/$filename\n";
@@ -31,4 +32,4 @@ sub process_dir {
 	closedir($DIR);
 }
 
-process_dir ($ARGV[0]);
+process_dir ($ARGV[0], $ARGV[1]);
