@@ -23,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed some memory leaks mainly with the commander, this was more of an issue now that dialogs are being regenerated.
 - Fixed Norwegian Commander caused by translating text to empty strings. Such behavior so should no longer break commander logic.
 - Fixed an issue where air creep strength was assumed to be 0 which could cause AI to attack air creeps without a way to attack them.
+- Fixed an issue where invisible pathing units were not moving on very large maps with lots of mines and neutral buildings and players.
+- Reduced lag impact that invisible pathing units have on game start for large amounts of players.
 
 ## [3.2.1] - 2022-09-07
 
