@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - New AMAI installer (powered by Electron) for a user friendly way to install to maps or directories.
 - Commander is no longer installed by default if you use the bat scripts. You must use the new `InstallCommanderToMap.bat' file.
 - Added a script `DisableCommander.bat` if you want to disable the commander post install.
+- Counter strengths are now translated.
 
 ### Changed
 - The install AMAI to a directory perl script supports passing an additional argument "false" to not install the commander.
