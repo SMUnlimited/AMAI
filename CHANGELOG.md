@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed an issue where invisible pathing units were not moving on very large maps with lots of mines and neutral buildings and players.
 - Reduced lag impact that invisible pathing units have on game start for large amounts of players.
 - Fixed an issue where an ai could surrender and give all there buildings to Player 13.
+- Invalid strategy commander message is now translated.
 
 ## [3.2.1] - 2022-09-07
 
