@@ -1359,23 +1359,30 @@ endfunction
 // (AMAI) Language Translation/ Chat functions
 //============================================================================
 function AddTrans takes string lang, string key, string value returns nothing
-  set translation[translation_length] = value
-  call SaveInteger(translation_map, StringHash(lang), StringHash(key), translation_length)
-  set translation_length = translation_length + 1
+
+    set translation[translation_length] = value
+    call SaveInteger(translation_map, StringHash(lang), StringHash(key), translation_length)
+    set translation_length = translation_length + 1
+
 endfunction
 
 //============================================================================
 function ApplyTrans takes string s returns string
   //local integer transnum = LoadInteger(translation_map, StringHash(language), StringHash(s))
   //if transnum != null then
+  local string trans = ""
   if HaveSavedInteger(translation_map, StringHash(language), StringHash(s)) then
     //return translation[transnum]
-    return translation[LoadInteger(translation_map, StringHash(language), StringHash(s))]
-  elseif HaveSavedInteger(translation_map, StringHash("English"), StringHash(s)) then // Backup translate to english
-    return translation[LoadInteger(translation_map, StringHash("English"), StringHash(s))]
-  else
+    set trans = translation[LoadInteger(translation_map, StringHash(language), StringHash(s))]
+  endif
+  if (trans == null or trans == "") and HaveSavedInteger(translation_map, StringHash("English"), StringHash(s)) then // Backup translate to english
+    set trans = translation[LoadInteger(translation_map, StringHash("English"), StringHash(s))]
+  endif
+  if (trans == null or trans == "") then
     //call DisplayTimedTextToPlayer(Player(0),0,0,15,message_add+s+":handle not saved")
     return s
+  else
+    return trans
   endif
 endfunction
 
@@ -2942,7 +2949,7 @@ endfunction
 
 function GetCurrentDynamicReport takes nothing returns string
   if strengthtext[chosen_counter] != null and no_counter == false then 
-    return " " + chat_dynamic_counter + ApplyTrans(strengthtext[chosen_counter])
+    return " " + chat_dynamic_counter + " " + ApplyTrans(strengthtext[chosen_counter])
   endif
   return ""
 endfunction
@@ -5343,38 +5350,37 @@ endfunction
 
 //============================================================================
 function GetLocationInDistanceFromLoc takes location loc, real dist returns location
-    local integer groundid = 'ewsp'
     local real distance = 0
     local unit u = null
     local location l = null
     local real checktime = 0
-	local boolean exitloop = false
+    local boolean exitloop = false
 
     set u = CreatePathingUnit(u)
     call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
     set checktime =  GetTimeToReachLoc(u, home_location)
-    call UnitApplyTimedLife(u, 'BTLF', checktime)
     call Sleep(0.3)
 
     loop
-	   exitwhen (exitloop == true)
-	   set l = GetUnitLoc(u)
-	   set distance = DistanceBetweenPoints(l, loc)
-	   if distance >= dist then
+     exitwhen (exitloop == true)
+     set l = GetUnitLoc(u)
+     set distance = DistanceBetweenPoints(l, loc)
+     if distance >= dist then
  //          call DisplayToAll("loc found")
-			set exitloop = true
-	        //return l
-	   elseif GetUnitState(u, UNIT_STATE_LIFE) <= 0 then
-            call RemoveLocation(l)
-            set l = null
-			set exitloop = true
-	      //return null
-	   else
-            call RemoveLocation(l)
-            set l = null		
-	   endif
-	   call Sleep(0.3)
+        set exitloop = true
+          //return l
+     elseif GetUnitState(u, UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u) == OrderId("stop") or GetUnitCurrentOrder(u) != OrderId("move") then
+        call RemoveLocation(l)
+        set l = null
+        set exitloop = true
+        //return null
+     else
+        call RemoveLocation(l)
+        set l = null		
+     endif
+     call Sleep(0.3)
     endloop
+    call RemoveUnit(u)
     set u = null
     return l
 endfunction
@@ -5382,7 +5388,6 @@ endfunction
 
 //============================================================================
 function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns location
-    local integer groundid = 'ewsp'
     local real distance = 0
     local unit u = null
     local location l = null
@@ -5393,7 +5398,6 @@ function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns l
     set u = CreatePathingUnit(u)
     call IssuePointOrderLoc(u, "move", loc)
     set checktime =  GetTimeToReachLoc(u, loc)
-    call UnitApplyTimedLife(u, 'BTLF', checktime / 2)
     call Sleep(0.3)
     
     loop
@@ -5402,10 +5406,12 @@ function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns l
 	   if distance >= d then
  //     	call DisplayToAll("loc found")
 //    	call PingMinimap(GetLocationX(l), GetLocationY(l), 20)
+          call RemoveUnit(u)
           set u = null
 	        return l
-	   elseif GetUnitState(u, UNIT_STATE_LIFE) <= 0 then
+	   elseif GetUnitState(u, UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u) == OrderId("stop") or GetUnitCurrentOrder(u) != OrderId("move") then
             call RemoveLocation(l)
+            call RemoveUnit(u)
             set l = null
             set u = null
 //             call DisplayToAll("loc not found")
@@ -5413,6 +5419,7 @@ function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns l
 	   endif
 	   call Sleep(0.3)
     endloop
+    call RemoveUnit(u)
     set u = null
     return null
     
@@ -6264,7 +6271,7 @@ function ComputeFrontPoints takes nothing returns nothing
           call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, -90))
           call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, 80))
           call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, -80))
-        elseif GetUnitState(u[i], UNIT_STATE_LIFE) <= 0 then
+        elseif GetUnitState(u[i], UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u[i]) == OrderId("stop") or GetUnitCurrentOrder(u[i]) != OrderId("move") then
           set patherdone[i] = true
           call RemoveUnit(u[i])
           set u[i] = null
