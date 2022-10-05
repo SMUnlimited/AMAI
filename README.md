@@ -30,19 +30,21 @@ For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.htm
 
 - On windows make sure the maps to install on are not in a protected UAC location. This may mean you have to copy into your Maps folder afterwards.
 
+## AMAI installer
+- The installer has to be downloaded separately as its much larger compared to the AI package.
+- Unzip the contents of the installer to a folder of your choice.
+- After unzip, download the newest version of AMAI and unzip it in the folder `{your-amai-installer}/resources/AMAI`
+  - Minimum needed is the `Scripts` folder and `MPQEditor.exe` placed in the AMAI directory.
+- Double-click amai-electron-manager.exe to open the installer.
+- You can install to a single map or a whole directory.
+![installer](installer.jpg)
+
 ## Commandline install
 - From a windows commandline or powershell type `InstallTFTToMap.bat "C:\mymap.w3m"` and press enter to install AMAI to maps
 - If you want to have the Commander installed to control team mates or easily change language settings additionally run `InstallCommanderToMap.bat "C:\mymap.w3m"`
 ![example](example.jpg)
 - Alternatively for complex installs if you have `perl` installed from a commandline you can type `perl InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` and press enter to install AMAI to all maps in a directory and subdirectories.
 - After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
-
-## How use AMAI installer
-- Unzip the contents of the installer in a folder of your choice.
-- After unzip, download the newest version of AMAI and unzip it in the folder {your-amai-installer}/resources
-  - For install support you just need the Scripts folder and MPQEditor.exe placed in this directory.
-- Double-click amai-electron-manager.exe to open the installer.
-- You can install to a single map or a whole directory.
 
 ## Notes
 - Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on custom maps (e.g towerdefence), it will make no difference on such maps.
