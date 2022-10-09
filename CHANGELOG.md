@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Chinese Translation improvements.
 
 ### Removed
+- (DevTools) Old non-working installer has now been removed now we have new version in place.
 
 ### Fixed
 
