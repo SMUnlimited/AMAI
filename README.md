@@ -48,7 +48,6 @@ For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.htm
 
 ## Notes
 - Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on custom maps (e.g towerdefence), it will make no difference on such maps.
-- The old `AMAI.exe` installer from classic AMAI has been moved into the `Templates` folder and will not work unless you run `MPQEditor htsize "C:\mymap.w3m" 64` from a commandline first.
 - You may need to run as an administrator if you have issues with maps not displaying any teams.
 
 # Build Requirements
