@@ -53,7 +53,7 @@ function TrackTown takes integer num returns boolean
   local location l = Location(0,0)
   local location unitloc = null
   local location temploc = null
-  
+
   call GroupClear(town_group[num])
   set town_value[num] = 0
   set town_count[num] = 0
@@ -65,21 +65,21 @@ function TrackTown takes integer num returns boolean
     if GetUnitState(u, UNIT_STATE_LIFE) > 0 and GetOwningPlayer(u) == Player(town_owner[num]) and IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitInGroup(u, in_town_group) then
       call GroupAddUnit(town_group[num], u)
       call GroupAddUnit(in_town_group, u)
-	  set temploc = l
+      set temploc = l
       set unitloc = GetUnitLoc(u)
       set l = GetSumLoc(temploc, unitloc)
+      call RemoveLocation(temploc)
+      call RemoveLocation(unitloc)
       set town_count[num] = town_count[num] + 1
       set town_value[num] = town_value[num] + 1
       if IsUnitType(u, UNIT_TYPE_TOWNHALL) and UnitAlive(u) then
         set town_can_tp[num] = true
       endif
-	  call RemoveLocation(temploc)
-	  call RemoveLocation(unitloc)
-	  set temploc = null
-	  set unitloc = null
     endif
     call GroupRemoveUnit(g, u)
   endloop
+  set temploc = null
+  set unitloc = null
   call DestroyGroup(g)
   set g = null
   set temploc = l
@@ -94,9 +94,9 @@ function TrackTown takes integer num returns boolean
   set l = null
   if town_count[num] == 0 then
     call DestroyGroup(town_group[num])
-	set town_group[num] = null
+    set town_group[num] = null
     call RemoveLocation(town_loc[num])
-	set town_loc[num] = null
+    set town_loc[num] = null
     return false
   endif
   return true
@@ -108,7 +108,9 @@ function TrackExistingTowns takes nothing returns nothing
   loop
     exitwhen i >= town_num
     if TrackTown(i) then
-      call CopyTown(i, first_free)
+      if i != first_free then
+        call CopyTown(i, first_free)
+      endif
       set first_free = first_free + 1
     endif
     set i = i + 1
@@ -121,14 +123,14 @@ function SeedNewTownAtLoc takes location l, integer p returns nothing
   set town_loc[town_num] = l
   set town_threat[town_num] = 0
   set town_group[town_num] = CreateGroup()
-  call TrackTown(town_num)
-  set town_num = town_num + 1
+  if TrackTown(town_num) then
+    set town_num = town_num + 1
+  endif
 endfunction
 
 function SeedNewTownsForPlayer takes integer p returns nothing
   local group g = CreateGroup()
   local unit u = null
-  local location l = null
   call GroupEnumUnitsOfPlayer(g, Player(p), null)
   loop
     set u = FirstOfGroup(g)
@@ -140,7 +142,6 @@ function SeedNewTownsForPlayer takes integer p returns nothing
   endloop
   call DestroyGroup(g)
   set g = null
-  set l = null
 endfunction
 
 function SeedNewTowns takes nothing returns nothing

@@ -29,11 +29,11 @@ function TrackArmy takes integer num returns boolean
   local group g = CreateGroup()
   local unit u = null
   local location l = Location(0,0)
-  
+
   call GroupClear(army_group[num])
   set army_strength[num] = 0
   set army_count[num] = 0
-  
+
   call GroupEnumUnitsInRangeOfLoc(g, army_loc[num], army_radius, null)
   set g = SelectByUnitStandard(g, true)
   loop
@@ -41,34 +41,33 @@ function TrackArmy takes integer num returns boolean
     exitwhen u == null
     if UnitAlive(u) and GetOwningPlayer(u) == Player(army_owner[num]) and not (IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitType(u, UNIT_TYPE_PEON) or IsUnitInGroup(u, in_army_group)) then
       if GetOwningPlayer(u) != ai_player and IsUnitInvisible(u, ai_player) then 
-			// Fix using invisible units to exploit amai to force defend its town
-	  else
-		  if u == major_hero then
-	        set main_army = num
-	      endif
-	      call GroupAddUnit(army_group[num], u)
-	      call GroupAddUnit(in_army_group, u)
-	      set l = GetSumLoc_dd(l, GetUnitLoc(u))
-	      set army_count[num] = army_count[num] + 1
-	      set army_strength[num] = army_strength[num] + GetUnitStrength(u)
-	  endif
+        // Fix using invisible units to exploit amai to force defend its town
+      else
+        if u == major_hero then
+          set main_army = num
+        endif
+        call GroupAddUnit(army_group[num], u)
+        call GroupAddUnit(in_army_group, u)
+        set l = GetSumLoc_dd(l, GetUnitLoc(u))
+        set army_count[num] = army_count[num] + 1
+        set army_strength[num] = army_strength[num] + GetUnitStrength(u)
+      endif
     endif
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
   set g = null
-  set u = null
-  
+
   if army_strength[num] == 0 then
     call DestroyGroup(army_group[num])
     call RemoveLocation(army_loc[num])
     call RemoveLocation(army_dir[num])
     call RemoveLocation(army_future[num])
-    call RemoveLocation(l) 	
-	set l = null	
+    call RemoveLocation(l)
+    set l = null
     return false
-  endif  
-  
+  endif
+
   call RemoveLocation(army_dir[num])
   set l = GetDivisionLoc_d(l, Max(army_count[num], 1))
   set army_dir[num] = GetSubtractionLoc_kd(l, army_loc[num])
@@ -76,13 +75,12 @@ function TrackArmy takes integer num returns boolean
   set army_loc[num] = Location(GetLocationX(l), GetLocationY(l))
   call RemoveLocation(army_future[num])
   set army_future[num] = GetSumLoc_kd(army_loc[num], GetMultipleLoc(army_dir[num], army_future_mult))
-  
+
  // if army_strength[num] != 0 then
    // call PingMinimap(GetLocationX(l), GetLocationY(l), 4)
  // endif
-  call RemoveLocation(l)   
+  call RemoveLocation(l)
   set l = null
-  
   return true
 endfunction
 
@@ -92,7 +90,9 @@ function TrackExistingArmies takes nothing returns nothing
   loop
     exitwhen i >= army_num
     if TrackArmy(i) then
-      call CopyArmy(i, first_free)
+      if i != first_free then
+        call CopyArmy(i, first_free)
+      endif
       set first_free = first_free + 1
     endif
     set i = i + 1
@@ -107,7 +107,7 @@ function SeedNewArmyAtLoc takes location l, integer p returns nothing
   set army_future[army_num] = Location(0,0)
   set army_group[army_num] = CreateGroup()
   if TrackArmy(army_num) then
-	set army_num = army_num + 1
+    set army_num = army_num + 1
   endif
 endfunction
 
@@ -154,12 +154,11 @@ function UpdateSpecificTownThreat takes integer num returns nothing
     exitwhen i >= army_num
     set dist = RMax(DistanceBetweenPoints(army_future[i], town_loc[num]), full_threat_distance)
     if dist <= no_threat_distance then
-	  set loc = GetSubtractionLoc(town_loc[num], army_loc[i]) 
+	    set loc = GetSubtractionLoc(town_loc[num], army_loc[i]) 
       if DistanceBetweenPoints(army_loc[i], town_loc[num]) < GetLengthOfLoc(army_dir[i]) and RAbs(GetAngleBetweenLocs(army_dir[i], loc)) <= 0.4 then
         set dist = full_threat_distance
       endif
-	  call RemoveLocation(loc)
-	  set loc = null
+	    call RemoveLocation(loc)
       set threat = distance_threat_mult * army_strength[i] / Pow(dist, distance_threat_exponent)
       if IsPlayerAlly(Player(town_owner[num]), Player(army_owner[i])) then
         set town_threat[num] = town_threat[num] - threat
@@ -173,6 +172,7 @@ function UpdateSpecificTownThreat takes integer num returns nothing
     endif
     set i = i + 1
   endloop
+  set loc = null
   if IsPlayerAlly(Player(town_owner[num]), ai_player) then
     if (most_threatened_town == -1 or town_threat[most_threatened_town] < town_threat[num]) and town_count[num] > 0 then
       set most_threatened_town = num
@@ -207,7 +207,7 @@ function UpdateTownThreat takes nothing returns nothing
 endfunction
 
 function ArmyTrackJob takes nothing returns nothing
-  local unit alliance
+  //local unit alliance = null
   call DisplayToAllJobDebug("ARMY_TRACK JOB START")
   call GroupClear(in_army_group)
   call TrackExistingArmies()

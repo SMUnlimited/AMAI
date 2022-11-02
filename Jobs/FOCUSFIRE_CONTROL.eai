@@ -42,8 +42,8 @@ function GroupMicroSystem takes group g, group meleeg, group focus_group returns
   
   loop
     set u = FirstOfGroup(g)
-    set unitloc = GetUnitLoc(u)
     exitwhen u == null
+    set unitloc = GetUnitLoc(u)
     set copy = CopyGroup(meleeg)
     set melee = GetNearestOfGroup(copy, unitloc)
     if not IsUnitInGroup(u, focus_fire_group) and IsUnitFacingUnit(melee, u) and DistanceBetweenUnits(u, melee) < 150 and GetUnitMoveSpeed(melee) <= GetUnitMoveSpeed(u) and (not IsUnitType(u, UNIT_TYPE_FLYING) or (IsUnitType(u, UNIT_TYPE_FLYING) and IsUnitType(melee, UNIT_TYPE_ATTACKS_FLYING))) then // 220 is the smallest ranged unit in warcraft 3.
@@ -57,10 +57,14 @@ function GroupMicroSystem takes group g, group meleeg, group focus_group returns
       call RemoveLocation(l)
     endif
     call DestroyGroup(copy)
-    call RemoveLocation(unitloc)
+    if unitloc != null then
+      call RemoveLocation(unitloc)
+    endif
     call GroupRemoveUnit(g, u)
   endloop
   set copy = null
+  set melee = null
+  set unitloc = null
   set l = null
 endfunction
 
@@ -83,6 +87,7 @@ function GroupOrderFocusWindInstant_d takes group g returns nothing
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
+  set g = null
 endfunction
 
 function GroupOrderAttack_d takes group g, unit target returns nothing
@@ -97,6 +102,7 @@ function GroupOrderAttack_d takes group g, unit target returns nothing
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
+  set g = null
 endfunction
 
 function FocusGroupRemoveGuard takes group g returns nothing
@@ -176,11 +182,10 @@ function FocusFire takes unit u returns nothing
   if FirstOfGroup(micro_enemymelee_group) != null then
     call GroupMicroSystem(micro_ranged_group, micro_enemymelee_group, temp_focus)   // Move ranged units away from melee units, if moved here they will not focus fire
   endif
-  
   if BlzGroupGetSize(temp_focus) > 0 then
     if focus_fire_unit == null or focus_fire_unit != u then
       if IsUnitType(u,UNIT_TYPE_STRUCTURE) == false and not IsUnitOwnedByPlayer(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then // Dont windwalk for non-critical enemies
-        call GroupOrderFocusWindInstant_d(CopyGroup(temp_focus))  
+        call GroupOrderFocusWindInstant_d(CopyGroup(temp_focus))
       endif
       set focus_fire_unit = u
     endif
@@ -277,6 +282,11 @@ function FocusEnemyUnitsNearGroup takes group g returns nothing
       call FocusFire(building_min_health_unit)
     endif
   endif
+  set u = null
+  set hero_min_health_unit = null
+  set min_health_unit = null
+  set building_min_health_unit = null
+  set disabled_min_health_unit = null
 endfunction
 
 //============================================================================
@@ -323,7 +333,7 @@ function FocusFireJob takes nothing returns nothing
     //endloop
   endif
   call DestroyGroup(g)
-  set g = null 
+  set g = null
   call TQAddJob(2 * sleep_multiplier, FOCUSFIRE_CONTROL, 0)
 endfunction
 
