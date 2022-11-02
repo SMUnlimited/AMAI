@@ -7,62 +7,68 @@ function BuyNeutralHero takes integer id returns nothing
   local real time_next_try = 0
   local real distance = 0
   local integer nn = GetNeutralNumber(id)
+  local integer i = tier - TownCount(hero[1]) - TownCount(hero[2]) - TownCount(hero[3])
   local unit buying_unit = neutral_sent[nn]
   local unit tavern = nearest_neutral[nn]
   local boolean place_guarded = neutral_guarded[nn]
 
   call DisplayToAllJobDebug("BUY_NEUTRAL_HERO JOB START")
-  
+
     //call Trace("Get Tavern Hero Job")
 
-    if TownCountDone(id) >= neutral_wanted[nn] then
+    if TownCountDone(id) >= neutral_wanted[nn] or i <= 0 or nn != NEUTRAL_TAVERN then
       call RecycleGuardPosition(neutral_sent[nn])
-	  call GroupRemoveUnit(unit_buying_merc, neutral_sent[nn])
+      call GroupRemoveUnit(unit_buying_merc, neutral_sent[nn])
       set neutral_sent[nn] = null
       set neutral_ordered[nn] = false
       set buy_time_large[nn] = -1
       set buy_time_small[nn] = -1
+      set buying_unit = null
+      set tavern = null
       return
     endif
 
     if place_guarded and daytime >= 5 and daytime < 18 then
       set time_next_try = (18 - daytime)*20
-    else    
-
-    if buying_unit == null or GetUnitState(buying_unit, UNIT_STATE_LIFE) <= 0 then
-		set neutral_sent[nn] = GetUnitToBuy(tavern)
-		set buying_unit = neutral_sent[nn]
-    	if neutral_sent[nn] == null then
-        	call TQAddJob(sleep_multiplier, BUY_NEUTRAL, id)
-			call Trace("No unit to get neutral hero")
-        	return
-		else
-			call RemoveGuardPosition(buying_unit)
-			call Trace("unit for neutral hero obtained")
-		endif
-    endif
-	call GroupAddUnit(unit_buying_merc, buying_unit)
-
-     set timetotravel = GetTimeToReachUnit(buying_unit, tavern)
-
-    if current_time < (neutral_hero_time*5) - timetotravel then
-		set time_next_try = RMax((neutral_hero_time*5) - timetotravel - current_time, 0.5 )
     else
-    	set distance = DistanceBetweenUnits(buying_unit, tavern)
-    	if distance >= buy_distance then
-	   	call CreateDebugTag("Move to Tavern", 10, buying_unit, 3.00, 1.50)
-    		call IssuePointOrder(buying_unit, "move", GetUnitX(tavern), GetUnitY(tavern))
-      	set time_next_try = 4
-    	else
-		call CreateDebugTag("buy tavern hero", 10, buying_unit, 3.00, 1.50) 
-		call IssueImmediateOrder(buying_unit, "stop")
-      	call IssueNeutralImmediateOrderById(ai_player, tavern, old_id[id])
-      	set time_next_try = 0.5
-    	endif
-    endif
-    endif
 
+      if buying_unit == null or GetUnitState(buying_unit, UNIT_STATE_LIFE) <= 0 then
+        set neutral_sent[nn] = GetUnitToBuy(tavern)
+        set buying_unit = neutral_sent[nn]
+        if neutral_sent[nn] == null then
+          call TQAddJob(sleep_multiplier, BUY_NEUTRAL, id)
+          call Trace("No unit to get neutral hero")
+          set buying_unit = null
+          set tavern = null
+          return
+        else
+          call RemoveGuardPosition(buying_unit)
+          call Trace("unit for neutral hero obtained")
+        endif
+      endif
+      call GroupAddUnit(unit_buying_merc, buying_unit)
+
+      set timetotravel = GetTimeToReachUnit(buying_unit, tavern)
+
+      if current_time < (neutral_hero_time*5) - timetotravel then
+        set time_next_try = RMax((neutral_hero_time*5) - timetotravel - current_time, 0.5 )
+      else
+        set distance = DistanceBetweenUnits(buying_unit, tavern)
+        if distance >= buy_distance then
+          call CreateDebugTag("Move to Tavern", 10, buying_unit, 3.00, 1.50)
+          call IssuePointOrder(buying_unit, "move", GetUnitX(tavern), GetUnitY(tavern))
+          set time_next_try = 4
+        else
+          call CreateDebugTag("buy tavern hero", 10, buying_unit, 3.00, 1.50) 
+          call IssueImmediateOrder(buying_unit, "stop")
+          call IssueNeutralImmediateOrderById(ai_player, tavern, old_id[id])
+          set time_next_try = 0.5
+        endif
+      endif
+    endif
     call TQAddJob(time_next_try, BUY_NEUTRAL_HERO, id)
+    set buying_unit = null
+    set tavern = null
 endfunction
 
 #ENDIF
