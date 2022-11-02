@@ -3,8 +3,6 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [Unreleased]
-
 ### Added
 
 ### Changed
@@ -14,6 +12,65 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) Old non-working installer has now been removed now we have new version in place.
 
 ### Fixed
+
+## [3.2.2-cn] - 2022-10-31
+
+### Added
+- New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
+- Now the AI Attack Group will join non own racial units and heros (but excess heros may not be able to learn skills) , This function include adding mercenaries and dragons to the Attack Group( the function AttackGroupAddNeutrals no longer use) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
+- Note: the AI no longer sent repeat report by B.J command control C.AI
+- New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
+
+### Changed
+- Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
+   - Towerrush peon now have 4 , but UD have 2 , if Towerrush on , AI can compensate peon quantity(ELF compensate 6) , include ghouls
+   - New set for item , race_tower_item_quantity , like IVORY_TOWER or SACRIFICIAL_SKULL
+   - New set for tower , upgrade race_tower_upgrade2(ROC no race_tower_upgrade2)
+   - New set for tower , race_tower_idX(if the race_tower_id has Blig land (AbilityId 'Abgl'), set it ,cannot create Blig land)
+   - Now Towerrush no longer search Enemy Player StartLocationLoc , search all Enemy Player hall , if races is UD , will search the goldmine
+   - if Enemy Player is really human players , AI will build the tower closer to the enemy base
+   - Adjust the order of attack modes , town_threatened and towerrush code ahead
+   - Adjusted the logic of saving money , now open Towerrush no longer stop build
+   - Now AI can help ally Towerrush or rush Enemy , can call ally help too
+   - Now Towerrush max distance is 14000
+   - Now off Towerrush condition will judge AI have or have not heroes , prevent from off when the enemy creates heroes first
+   - Now AI will build race_simple_melee to help TR
+   - Perfect translation reports
+   - Fixed bug , AI no longer build tower on map centre
+   - Note: Because available_time too long , so AI TR donot buy NEUTRAL
+   - Note: The new pathfinder is not used to TR , Because the path finding direction is wrong (from home to home)
+- Synchronization  all function code to [master]
+   - 3.2.2 master 96800f0
+- Change GetPlayerAntiAirStrength returns form integer to real
+- BuyNeutralHero now judge AI hero count , if count == tier or nn != NEUTRAL_TAVERN, then return , Prevent AI from going to the store when the number of heroes reaches the maximum and there is no need to revive (only 3 hero , if have 4 hero or more , then the judge cannot normal operation)
+- BuyNeutral now judge NEUTRAL_TAVERN , if nn == NEUTRAL_TAVERN or buy_place == null, then return
+- Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
+- Optimized function XXXFountain code , no use local unit fountain
+- function CommonSleepUntilTargetDeadAM now judging target == null , improve operation efficiency
+- Improved a small part of excretion (common.ai and B.j) , now 24 player map run will smoothly
+- Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1peon HarvestWood
+- Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
+- Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
+- Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
+- function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency(but the function no longer use)
+- Army track  CopyArmy  no longer copy same integer , hopes it can improve efficiency
+- Town track  CopyTown  no longer copy same integer , hopes it can improve efficiency
+- GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100
+- Strategy additional Improvements
+   - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
+   - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
+   - Disturbance function global_init_strategy AddBlock
+   - Reorganized AddBlock
+   - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
+   - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)，fix ROC ELF race_has_moonwells to true
+
+###Fixed
+- Fixed some translation errors
+- Fixed some reports without translation
+- Fixed AI would not buy mercenaries and dragons 
+- Fixed BuildMovePeonZeppelin no longer at first set build_zeppelin = null
+- Fixed InitNeutralBuildings neutral_id[NEUTRAL_DRAGON_ROOST] use neutral_id[NEUTRAL_MERC_CAMP]'s number [i]
+- Fixed InitNeutralBuildings [NEUTRAL_DRAGON_ROOST] and [NEUTRAL_MERC_CAMP] search Error
 
 ## [3.2.2] - 2022-10-05
 
@@ -83,6 +140,63 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed various unresolved issues on maps with more than 12 players. (from 2.6.x by jzy-chitong56)
 - Should be a little smoother performance wise when running with more than 12 players. (from 2.6.x by jzy-chitong56)
 
+
+## [3.1.1-cn] - 2022-07-15
+### Added
+- Support for warcraft 3 1.33 libraries.
+- New chinese language translation, include Blizzard.eai [function Tribute]
+   - translation add more sentence for all language(translate by google)
+- translation add  chat_dynamic_counter unit type for all language(translate by google)
+- Console add Page turning，adapted more than 12  AIPlayer and give more Strategy choose [Blizzard.eai]
+- if no HumanPlayer on game, the first Observer must choose language 
+- Add Undead Upgrade UPG_SKEL_MASTERY
+- Profiles adjustment
+   - New Random Profile which is completely random on all personality traits
+   - Also added ability to configure your own legendary profiles via new profile setting option "rare profile"
+   - A small chance for AMAI to pick the profile name of Legendary players
+   - Fixed issue where profiles were being re-used all the time instead of when running out of applicable profiles.
+- Undead strategy add GargGhouls
+- Add shop towerrush report
+- Add SkyModel and TerrainFogEx (form Quenching ,if not close Quenching blizzard , usd Quenching will change AMAI blizzard.j, the Quenching  function can give convenient for people who shoot movies without the sky , Keep both sides aligned so that you can still experience 100% of the Quenching )
+- AI now can use power fountain (if map have power fountain)
+
+### Changed
+- At the beginning of the game, HUMAN and ORC have two peon HarvestWood
+- Strategy additional Improvements
+   - Unreasonable build restrictions have been removed
+   - Main city upgrade priorities for all tactics have been rebalanced around 50 (Including ROC)
+   - Increased the number of training units for Tier1 of all races
+   - Adjusted the night elf training Hippo eagle command to reduce the occupied population of the Hippo eagle that can only be brought to the air
+   - Night elf Talon now use FAERIE_DRAGON against the air , because AI won't become a bird , match the MOUNTAIN_GIANT at the same time
+   - Human Knight strategy now use COPTER , no STEAM_TANK , and Reduced GRYPHON quantity and priority
+   - All races tier1 no longer build shop, all strategy tier2 and tier3 build shop , because shop have AddBlock
+   - AddUnitToAnti% no longer build hall
+- HUMAN UPGRADE UPG_SUN_BLADE UPGRADE need LUMBER_MILL,CASTLE,BLACKSMITH(on 1.32,UPG_SUN_BLADE no need UPGRADE)
+- Adjustment HUMAN and ORC and Night Elf number of peons for mines
+- Non HUMAN _militia set now is empty
+- Official AI is replaced form 1.33 (although there is no change) (Including ROC)
+- No longer needed return bug , so notes part return null
+- Make sure AI leaves at least one ghoul to continue harvesting wood in any case. (Pixxy)
+- (DevTools) Refactoring of the TFT bat files to re-use scripts instead of duplicating script lines.
+
+### Removed
+- (DevTools) The numbered blizzard.j files are now removed and instead generated from the full original blizzard.j. Saves time when updating for new versions.
+
+### Fixed
+- Fixed support for 24 players.
+  - Blizzard.eai，Blizzard1~4.j，BlizzardVAI.eai，DETECT_DEFEAT.eai，REVEAL_ENEMY.eai，UPDATE_STRENGTH.eai，MICRO_HERO.eai，common.eai，TOWN_TRACK.eai, ARMY_TRACK.eai, RETREAT_CONTROL.eai, RESET_WINDWALKER.eai, MILITIA_EXPAND.eai, MICRO_UNITS.eai, HARASS.eai, FOCUSFIRE_CONTROL.eai,   ALL 12players→24players , 13players→23players, 15players→27players(self-adaption)
+  - common.eai，PlayerNeutralExtra 14players→26players （self-adaption）
+  - common.eai , sleep_multiplier , slm_start = 9, slm_end = 23, slm_end_mult = 3
+  - GlobalSettings.txt , sleep_multiplier , slm_start = 9 , slm_end = 23 ,  slm_end_mult = 3
+  - Other 12 Player→24players
+- Fixed some not chinese language translation
+- Fixed the Dialog only show title at first
+- Fixed the Dialog cannot change language
+- Colour Balance on messages improved to be aligned with the players actual colour.
+- Add welcome message and opening tactical report Time of report (try to fix the problem of using default language for the first two reports)
+- Fixed some strategy no hero3 or misspelled two hero2 (Including ROC)
+- Fix Night Elf and Undead 's race_tower_id(Settings.txt)  (Including ROC  Human,  Elf and Undead )
+
 ## [3.1.1] - 2022-01-10
 
 ### Changed
@@ -132,7 +246,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Ambush no longer used for hero units as its too easy to abuse and pick them off. (Pixyy)
 - Fixed an issue where no tier bonus was applying to the dynamic upgrade system.
 - Fixed an issue where human upgrades magic sentry and flare could not be researched by the AI. (Pixyy)
-
 
 ## [3.0.1] - 2021-01-30
 
