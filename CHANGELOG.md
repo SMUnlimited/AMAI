@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Added
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join non own racial units and heros (but excess heros may not be able to learn skills) , This function include adding mercenaries and dragons to the Attack Group( the function AttackGroupAddNeutrals no longer use) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
-- Note: the AI no longer sent repeat report by B.J command control C.AI
+- Note: the AI no longer sent repeat report for B.J command control C.AI
 - New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
 
 ### Changed
@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Fixed bug , AI no longer build tower on map centre
    - Note: Because available_time too long , so AI TR donot buy NEUTRAL
    - Note: The new pathfinder is not used to TR , Because the path finding direction is wrong (from home to home)
+   - Note: On ROC , This function is not enabled 
 - Synchronization  all function code to [master]
    - 3.2.2 master 96800f0
 - Change GetPlayerAntiAirStrength returns form integer to real
@@ -55,7 +56,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency(but the function no longer use)
 - Army track  CopyArmy  no longer copy same integer , hopes it can improve efficiency
 - Town track  CopyTown  no longer copy same integer , hopes it can improve efficiency
-- GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100
+- GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
 - Strategy additional Improvements
    - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
    - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
