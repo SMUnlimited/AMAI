@@ -73,6 +73,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed BuildMovePeonZeppelin no longer at first set build_zeppelin = null
 - Fixed InitNeutralBuildings neutral_id[NEUTRAL_DRAGON_ROOST] use neutral_id[NEUTRAL_MERC_CAMP]'s number [i]
 - Fixed InitNeutralBuildings [NEUTRAL_DRAGON_ROOST] and [NEUTRAL_MERC_CAMP] search Error
+- Fixed FocusGroupRemoveGuard not Remove unit GuardPosition and add RESET_GUARD_POSITION_ONLY Job(code was commented. I don't know if it was intentional)
 
 ## [3.2.2] - 2022-10-05
 
