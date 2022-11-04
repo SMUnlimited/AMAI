@@ -66,7 +66,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Reorganized AddBlock
    - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
    - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)，fix ROC ELF race_has_moonwells to true
-   - Adjust UPG_BOMBS BuildAdvUpgr2 unitcount to 0.2 , Maximum chance to 35 , In the test, after building COPTER, the enemy has no AIR , the COPTER no research UPG_BOMBS not useful
+   - Adjust UPG_BOMBS BuildAdvUpgr2 chance unitcount to 0.2 , Maximum to 35 , In the test, after building COPTER, the enemy has no AIR , the COPTER no research UPG_BOMBS not useful
 
 ###Fixed
 - Fixed some translation errors
