@@ -329,7 +329,7 @@ function InitNeutralBuildings takes nothing returns nothing
 
     // Set up a trigger to fire whenever an item is sold.
     set bj_stockItemPurchased = CreateTrigger()
-    call TriggerRegisterPlayerUnitEvent(bj_stockItemPurchased, Player(PLAYER_NEUTRAL_PASSIVE), EVENT_PLAYER_UNIT_SELL_ITEM, null)
+    call TriggerRegisterPlayerUnitEvent(bj_stockItemPurchased, Player(playercreep), EVENT_PLAYER_UNIT_SELL_ITEM, null)
     call TriggerAddAction(bj_stockItemPurchased, function RemovePurchasedItem)
 endfunction
 

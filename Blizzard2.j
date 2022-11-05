@@ -2903,11 +2903,11 @@ endfunction
 
 //===========================================================================
 function EnableCreepSleepBJ takes boolean enable returns nothing
-    call SetPlayerState(Player(PLAYER_NEUTRAL_AGGRESSIVE), PLAYER_STATE_NO_CREEP_SLEEP, IntegerTertiaryOp(enable, 0, 1))
+    call SetPlayerState(Player(playermax), PLAYER_STATE_NO_CREEP_SLEEP, IntegerTertiaryOp(enable, 0, 1))
 
     // If we're disabling, attempt to wake any already-sleeping creeps.
     if (not enable) then
-        call WakePlayerUnits(Player(PLAYER_NEUTRAL_AGGRESSIVE))
+        call WakePlayerUnits(Player(playermax))
     endif
 endfunction
 
@@ -4382,7 +4382,7 @@ function ConfigureNeutralVictim takes nothing returns nothing
     endloop
 
     // Neutral Victim and Neutral Aggressive should not fight each other.
-    set indexPlayer = Player(PLAYER_NEUTRAL_AGGRESSIVE)
+    set indexPlayer = Player(playermax)
     call SetPlayerAlliance(neutralVictim, indexPlayer, ALLIANCE_PASSIVE, true)
     call SetPlayerAlliance(indexPlayer, neutralVictim, ALLIANCE_PASSIVE, true)
 
@@ -5201,7 +5201,7 @@ function LeaderboardGetIndexedPlayerBJ takes integer position, leaderboard lb re
         exitwhen index == playermax
     endloop
 
-    return Player(PLAYER_NEUTRAL_PASSIVE)
+    return Player(playercreep)
 endfunction
 
 //===========================================================================
@@ -7423,7 +7423,7 @@ function MeleeGrantHeroItems takes nothing returns nothing
     // Register for an event whenever a neutral hero is hired, so that we
     // can give him/her their starting items.
     set trig = CreateTrigger()
-    call TriggerRegisterPlayerUnitEvent(trig, Player(PLAYER_NEUTRAL_PASSIVE), EVENT_PLAYER_UNIT_SELL, filterMeleeTrainedUnitIsHeroBJ)
+    call TriggerRegisterPlayerUnitEvent(trig, Player(playercreep), EVENT_PLAYER_UNIT_SELL, filterMeleeTrainedUnitIsHeroBJ)
     call TriggerAddAction(trig, function MeleeGrantItemsToHiredHero)
 
     // Flag that we are giving starting items to heroes, so that the melee
@@ -7444,10 +7444,10 @@ function MeleeClearExcessUnit takes nothing returns nothing
     local unit    theUnit = GetEnumUnit()
     local integer owner   = GetPlayerId(GetOwningPlayer(theUnit))
 
-    if (owner == PLAYER_NEUTRAL_AGGRESSIVE) then
+    if (owner == playermax) then
         // Remove any Neutral Hostile units from the area.
         call RemoveUnit(GetEnumUnit())
-    elseif (owner == PLAYER_NEUTRAL_PASSIVE) then
+    elseif (owner == playercreep) then
         // Remove non-structure Neutral Passive units from the area.
         if not IsUnitType(theUnit, UNIT_TYPE_STRUCTURE) then
             call RemoveUnit(GetEnumUnit())
@@ -8998,20 +8998,20 @@ function CheckInitPlayerSlotAvailability takes nothing returns nothing
     local integer index
 
     if GetPlayerController(Player(14)) != MAP_CONTROL_CREEP and GetPlayerController(Player(14)) != MAP_CONTROL_NEUTRAL and GetPlayerController(Player(14)) != MAP_CONTROL_RESCUABLE then
-	  set playercreep = 26
-	  set playermax = 24
-	  set PLAYER_COLOR_MAROONX             = ConvertPlayerColor(12)
-      set PLAYER_COLOR_NAVYX               = ConvertPlayerColor(13)
-      set PLAYER_COLOR_TURQUOISEX          = ConvertPlayerColor(14)
-      set PLAYER_COLOR_VIOLETX             = ConvertPlayerColor(15)
-      set PLAYER_COLOR_WHEATX              = ConvertPlayerColor(16)
-      set PLAYER_COLOR_PEACHX              = ConvertPlayerColor(17)
-      set PLAYER_COLOR_MINTX               = ConvertPlayerColor(18)
-      set PLAYER_COLOR_LAVENDERX           = ConvertPlayerColor(19)
-      set PLAYER_COLOR_COALX               = ConvertPlayerColor(20)
-      set PLAYER_COLOR_SNOWX               = ConvertPlayerColor(21)
-      set PLAYER_COLOR_EMERALDX            = ConvertPlayerColor(22)
-      set PLAYER_COLOR_PEANUTX             = ConvertPlayerColor(23)
+        set playercreep = 26
+        set playermax = 24
+        set PLAYER_COLOR_MAROONX             = ConvertPlayerColor(12)
+        set PLAYER_COLOR_NAVYX               = ConvertPlayerColor(13)
+        set PLAYER_COLOR_TURQUOISEX          = ConvertPlayerColor(14)
+        set PLAYER_COLOR_VIOLETX             = ConvertPlayerColor(15)
+        set PLAYER_COLOR_WHEATX              = ConvertPlayerColor(16)
+        set PLAYER_COLOR_PEACHX              = ConvertPlayerColor(17)
+        set PLAYER_COLOR_MINTX               = ConvertPlayerColor(18)
+        set PLAYER_COLOR_LAVENDERX           = ConvertPlayerColor(19)
+        set PLAYER_COLOR_COALX               = ConvertPlayerColor(20)
+        set PLAYER_COLOR_SNOWX               = ConvertPlayerColor(21)
+        set PLAYER_COLOR_EMERALDX            = ConvertPlayerColor(22)
+        set PLAYER_COLOR_PEANUTX             = ConvertPlayerColor(23)
     endif
 
     if (not bj_slotControlReady) then
