@@ -4,41 +4,60 @@
 // #  Created by Strategy Master 19/02/05. In principle its exactly the same
 // #  as the healing fountain job. All thats different is how its called from the retreat job.
 // ########################################################################
+
+function GetManaFountainID takes nothing returns integer
+  if nearest_neutral[NEUTRAL_POWER_FOUNTAIN] == null then
+    return NEUTRAL_MANA_FOUNTAIN
+  endif
+  return NEUTRAL_POWER_FOUNTAIN
+endfunction
+
+function GetManaFountainUnit takes nothing returns unit
+  if nearest_neutral[NEUTRAL_POWER_FOUNTAIN] == null then
+    return nearest_neutral[NEUTRAL_MANA_FOUNTAIN]
+  endif
+  return nearest_neutral[NEUTRAL_POWER_FOUNTAIN]
+endfunction
+
 function ManaFountainJob takes unit u, integer p returns nothing
 
 local real distance = 0
-local integer nn = NEUTRAL_MANA_FOUNTAIN
-local unit fountain = nearest_neutral[nn]
+local unit fountain = nearest_neutral[NEUTRAL_POWER_FOUNTAIN]
 local integer detectedenemies = GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 1000) 
 local integer enemiesatfountain = GetLocationNonCreepStrength(GetUnitX(fountain), GetUnitY(fountain), 1000)
 local boolean creepsawake = IsCreepsAwake(GetUnitX(fountain), GetUnitY(fountain), 1000)
 
   call DisplayToAllJobDebug("MANA_FOUNTAIN Start")
+  if fountain == null then
+    set fountain = nearest_neutral[NEUTRAL_MANA_FOUNTAIN]
+   endif  
   call RemoveGuardPosition(u)
   if GetUnitState(u, UNIT_STATE_LIFE) <= 0 then
     call TQAddUnitJob(2, RESET_GUARD_POSITION, p, u)
-	return
+    set fountain = null
+    return
   elseif (DistanceBetweenUnits(u, fountain) <= 600 and (detectedenemies >= GetUnitStrength(u) or creepsawake)) or (MeleeDifficulty() == MELEE_INSANE and (enemiesatfountain >= GetUnitStrength(u) or creepsawake)) then
     call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
     call TQAddUnitJob(8, RESET_GUARD_POSITION, p, u)
   elseif GetUnitState(u, UNIT_STATE_MANA) >= GetUnitState(u, UNIT_STATE_MAX_MANA) * (I2R(p)/100) then
     call TQAddUnitJob(2, RESET_GUARD_POSITION, p, u)
-	return
+    set fountain = null
+    return
   else
-     set distance = DistanceBetweenUnits(u, fountain)
+    set distance = DistanceBetweenUnits(u, fountain)
     if distance >= buy_distance then
-	if GetUnitAbilityLevel(u, 'Ashm') > 0 and GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 800) > 0 and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) <= 6) then
-		call IssueImmediateOrder(u, "ambush")
-	else	
-		if GetUnitCurrentOrder(u) != OrderId("move") then
-			call IssuePointOrder(u, "move", GetUnitX(fountain), GetUnitY(fountain))
-		endif
-	endif
+      if GetUnitAbilityLevel(u, 'Ashm') > 0 and GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 800) > 0 and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) <= 6) then
+        call IssueImmediateOrder(u, "ambush")
+      else
+        if GetUnitCurrentOrder(u) != OrderId("move") then
+          call IssuePointOrder(u, "move", GetUnitX(fountain), GetUnitY(fountain))
+        endif
+      endif
     elseif GetUnitAbilityLevel(u, 'Ashm') > 0 then
       call IssueImmediateOrder(u, "ambush")
     endif
     call TQAddUnitJob(8, MANA_FOUNTAIN, p, u)
   endif
-
+  set fountain = null
 endfunction
 #ENDIF

@@ -1,22 +1,22 @@
 #IFDEF GLOBAL
-	unit nearest_moon_well = null
+  unit nearest_moon_well = null
+  unit ru_getmoonwell = null
 
 #ELSE
 
 function GetMoonWell takes player p, integer id returns unit
-   local unit u = null
    local group g = CreateGroup()     
    call GroupEnumUnitsOfPlayer(g, p, null)
    set g = SelectByAlive(g, true)
    loop
-     set u = FirstOfGroup(g)
-     exitwhen u == null
-     if GetUnitTypeId(u) == id and GetUnitState(u, UNIT_STATE_MANA) >= 30 then
+     set ru_getmoonwell = FirstOfGroup(g)
+     exitwhen ru_getmoonwell == null
+     if GetUnitTypeId(ru_getmoonwell) == id and GetUnitState(ru_getmoonwell, UNIT_STATE_MANA) >= 30 then
        call DestroyGroup(g)
        set g = null
-       return u
+       return ru_getmoonwell
      endif
-     call GroupRemoveUnit(g, u )
+     call GroupRemoveUnit(g, ru_getmoonwell )
    endloop
    call DestroyGroup(g)
    set g = null
@@ -35,7 +35,7 @@ function HeadtoMoonWell takes unit u, integer p returns nothing
         call TQAddUnitJob(4, MOON_WELL_CONTROL, p, u)
     elseif dist >= 1000 and GetUnitAbilityLevel(u, 'Ashm') > 0 and enemystrength > 0 and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6) and not IsUnitType(u, UNIT_TYPE_HERO) then
         call IssueImmediateOrder(u, "ambush")
-        call TQAddUnitJob(4, MOON_WELL_CONTROL, p, u)				
+        call TQAddUnitJob(4, MOON_WELL_CONTROL, p, u)
     else
       call IssuePointOrder(u, "smart", GetUnitX(nearest_moon_well), GetUnitY(nearest_moon_well))
       call TQAddUnitJob(4, MOON_WELL_CONTROL, p, u)
@@ -57,9 +57,11 @@ function MoonWellJob takes unit u, integer p returns nothing
     return
   elseif nearest_moon_well == null or GetUnitState(nearest_moon_well, UNIT_STATE_MANA) < 30 then
     set nearest_moon_well = GetMoonWell(ai_player, old_id[racial_farm])
-    if nearest_moon_well == null then	  
+    if nearest_moon_well == null then
         set l = GetUnitLoc(u)
         set dist = DistanceBetweenPoints(l, home_location)
+        call RemoveLocation(l)
+        set l = null
         set enemystrength = GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 800)
         if dist >= 1000 and enemystrength > 0 and ((GetUnitState(u, UNIT_STATE_MANA) > 50 and GetUnitAbilityLevel(u, 'AEbl') == 1) or (GetUnitState(u, UNIT_STATE_MANA) > 10 and GetUnitAbilityLevel(u, 'AEbl') > 1)) then
             call IssuePointOrder(u, "blink", GetLocationX(home_location), GetLocationY(home_location))
@@ -76,8 +78,6 @@ function MoonWellJob takes unit u, integer p returns nothing
         else
           call TQAddUnitJob(2, RESET_GUARD_POSITION, p, u)
         endif
-        call RemoveLocation(l)
-        set l = null
     else
       call HeadtoMoonWell(u, p)
     endif

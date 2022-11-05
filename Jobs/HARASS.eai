@@ -3,7 +3,7 @@
     constant integer HARASS_TARGET_EXPANSION = 1
     constant integer HARASS_TARGET_LOCATION = 2
     constant integer HARASS_TARGET_MAIN_HALL = 3
-    
+    unit array ru_getharasspeon          // used to GetHarassPeonTarget , GetHarassExpansionTarget , GetHarassLocationTarget , GetHarassMainHallTarget , 
 
     integer array harass_time
     integer array harass_size
@@ -13,20 +13,19 @@ function GetHarassPeonTarget takes unit u returns unit
   local group g = CreateGroup()
   local location unitloc = GetUnitLoc(u)
   local player p = GetNearestEnemyToLoc_k(unitloc)
-  local unit tempu = null
-  
+
   call GroupEnumUnitsOfPlayer(g, p, null)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
   set g = SelectByAlive(g, true)
   set g = SelectByLoaded(g, false)
   set g = SelectByHidden(g, false) // Hopefully to get peons not currently building
-  set tempu = GetNearestOfGroup(g, unitloc)
+  set ru_getharasspeon[0] = GetNearestOfGroup(g, unitloc)
   call RemoveLocation(unitloc)
   call DestroyGroup(g)
   set unitloc = null
   set g = null
   set p = null
-  return tempu 
+  return ru_getharasspeon[0]
 endfunction
 
 function GetHarassExpansionTarget takes unit u returns unit
@@ -34,32 +33,29 @@ function GetHarassExpansionTarget takes unit u returns unit
   local location unitloc = GetUnitLoc(u)
   local player p = GetNearestEnemyToLoc_k(unitloc)  
   local location baseloc = GetPlayerStartLocationLoc(p)
-  local unit tempu = null
-  
   call GroupEnumUnitsOfPlayer(g, p, null)
   set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
   set g = SelectByLocation(g, baseloc, 1000, false)
   set g = SelectByAlive(g, true)
-  set tempu = GetNearestOfGroup(g, unitloc)
+  set ru_getharasspeon[1] = GetNearestOfGroup(g, unitloc)
   call RemoveLocation(unitloc)
   call RemoveLocation(baseloc)
   call DestroyGroup(g)
   set unitloc = null
+  set baseloc = null
   set g = null
   set p = null
-  set baseloc = null
-  return tempu 
+  return ru_getharasspeon[1]
 endfunction
 
 function GetHarassLocationTarget takes real x, real y returns unit
   local group g = CreateGroup()
-  local unit u = null
   call GroupEnumUnitsInRange(g, x, y, 1000, null)
   set g = SelectByEnemy(g, ai_player, true)
   set g = SelectByAlive(g, true)
-  set u = GetLeastHPUnitOfGroup(g)
+  set ru_getharasspeon[2] = GetLeastHPUnitOfGroup(g)
   set g = null
-  return u
+  return ru_getharasspeon[2]
 endfunction
 
 function GetHarassMainHallTarget takes unit u returns unit
@@ -67,21 +63,20 @@ function GetHarassMainHallTarget takes unit u returns unit
   local location unitloc = GetUnitLoc(u)
   local player p = GetNearestEnemyToLoc_k(unitloc)  
   local location baseloc = GetPlayerStartLocationLoc(p)
-  local unit tempu = null
-  
+
   call GroupEnumUnitsOfPlayer(g, p, null)
   set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
   set g = SelectByLocation(g, baseloc, 1000, true)
   set g = SelectByAlive(g, true)
-  set tempu = GetNearestOfGroup(g, unitloc)
+  set ru_getharasspeon[3] = GetNearestOfGroup(g, unitloc)
   call RemoveLocation(unitloc)
   call RemoveLocation(baseloc)
   call DestroyGroup(g)
   set unitloc = null
-  set g = null  
-  set p = null
   set baseloc = null
-  return tempu
+  set g = null
+  set p = null
+  return ru_getharasspeon[3]
 endfunction
 
 function GroupOrderWindWalkInstant_d takes group g returns nothing
@@ -96,6 +91,7 @@ function GroupOrderWindWalkInstant_d takes group g returns nothing
 		call GroupRemoveUnit(g, u)
 	endloop
 	call DestroyGroup(g)
+	set g = null
 endfunction
 
 function HarassJob takes integer ht, unit targ, group harasser returns nothing
@@ -120,51 +116,54 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
 
   call DisplayToAllJobDebug("HARASS JOB START")
   if not UnitAliveInGroup(harasser) then
+    set target = null
+    return
+  endif
+  if FirstOfGroup(harasser) == hero_unit[1] or FirstOfGroup(harasser) == hero_unit[2] then
+    //call Trace("HARASS WITH BLADEMASTER RAN")
+    set hero_harass = true
+  endif
+
+  if (town_threatened and not state_attacking) or (town_threatened and hero_harass) then
+    call TQAddGroupJob(5 * sleep_multiplier, HARASS, ht, target, harasser)
+    set target = null
     return
   endif
 
-  if FirstOfGroup(harasser) == hero_unit[1] or FirstOfGroup(harasser) == hero_unit[2] then
-//	call Trace("HARASS WITH BLADEMASTER RAN")
-	set hero_harass = true
-  endif
-  
-  if (town_threatened and not state_attacking) or (town_threatened and hero_harass) then
-    call TQAddGroupJob(5 * sleep_multiplier, HARASS, ht, target, harasser)
-	return
-  endif
-  
   set l = GetUnitLoc(FirstOfGroup(harasser))
   if state_retreat and DistanceBetweenPoints(l, home_location) > 1000 then
-	call GroupOrderWindWalkInstant_d(CopyGroup(harasser))
-	call GroupPointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
-	call TQAddGroupJob(3 * sleep_multiplier, HARASS, ht, target, harasser)
-	//call GroupRemoveUnit(unit_harassing, FirstOfGroup(harasser))
-	call RemoveLocation(l)
-	set l = null
-	return
+    call GroupOrderWindWalkInstant_d(CopyGroup(harasser))
+    call GroupPointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
+    call TQAddGroupJob(3 * sleep_multiplier, HARASS, ht, target, harasser)
+    //call GroupRemoveUnit(unit_harassing, FirstOfGroup(harasser))
+    call RemoveLocation(l)
+    set l = null
+    set target = null
+    return
   elseif state_retreat then
     call SaveBoolean(additional_info, key, STATE_RETREAT , false)
-	//call GroupRecycleGuardPositionInstant(harasser)
-	call GroupRecycleHarrassPositionInstant(harasser)
-	call RemoveLocation(l)
-	set l = null
-	return
+    //call GroupRecycleGuardPositionInstant(harasser)
+    call GroupRecycleHarrassPositionInstant(harasser)
+    call RemoveLocation(l)
+    set l = null
+    set target = null
+    return
   endif
-  	call RemoveLocation(l)
-	set l = null
-  
+  call RemoveLocation(l)
+  set l = null
+
   if target != null and (IsUnitHidden(target) or IsUnitLoaded(target) or IsUnitInvisible(target, ai_player)) then	// Checks to see if unit is not targetable and after small period will change to target it can hit
-	set hiddencount = hiddencount + 1
-	call SaveInteger(additional_info, key, INVISIBLE_COUNT , hiddencount)
+    set hiddencount = hiddencount + 1
+    call SaveInteger(additional_info, key, INVISIBLE_COUNT , hiddencount)
   else
-	set hiddencount = 0
-	call SaveInteger(additional_info, key, INVISIBLE_COUNT , hiddencount)
+    set hiddencount = 0
+    call SaveInteger(additional_info, key, INVISIBLE_COUNT , hiddencount)
   endif
-  
+
   if target == null or not UnitAlive(target) or hiddencount > 2 then
-  	if target != null then
-		call GroupOrderWindWalkInstant_d(CopyGroup(harasser))
-	endif
+    if target != null then
+      call GroupOrderWindWalkInstant_d(CopyGroup(harasser))
+    endif
     if ht == HARASS_TARGET_PEONS then
       set target = GetHarassPeonTarget(FirstOfGroup(harasser))
     elseif ht == HARASS_TARGET_EXPANSION then
@@ -175,26 +174,23 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
       set target = GetHarassMainHallTarget(FirstOfGroup(harasser))
     endif
   endif
-  
-  
-	//if not state_attacking then	// first run
-	    if avoiding_towers and GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_harass_tower_check_radius) > 0 then
-			set target = null
-	    else
-			//call GroupRemoveGuardPositionInstant(harasser)
-			
-		endif
-	//endif
-  
+
+  //if not state_attacking then	// first run
+  if avoiding_towers and GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_harass_tower_check_radius) > 0 then
+    set target = null
+  else
+    //call GroupRemoveGuardPositionInstant(harasser)
+  endif
+    //endif
+
   if target != null and UnitAlive(target) then
-  
     set g = CreateGroup()
     //if state_attacking then
     //  call GroupEnumUnitsInRange(g,GetUnitX(FirstOfGroup(harasser)),GetUnitY(FirstOfGroup(harasser)),harass_radius_attack_melee,null)
     //else
     //  call GroupEnumUnitsInRange(g,GetUnitX(FirstOfGroup(harasser)),GetUnitY(FirstOfGroup(harasser)),harass_radius_flee_melee,null)
     //endif
-	//set g = SelectByAlive(g, true)
+    //set g = SelectByAlive(g, true)
     //loop
     //  set u = FirstOfGroup(g)
     //  exitwhen u == null
@@ -203,45 +199,45 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
     //  endif
     //  call GroupRemoveUnit(g, u)
     //endloop
-    
+
     //call GroupClear(g)
     if state_attacking then
       call GroupEnumUnitsInRange(g,GetUnitX(FirstOfGroup(harasser)),GetUnitY(FirstOfGroup(harasser)),harass_radius_attack_ranged,null)
     else
       call GroupEnumUnitsInRange(g,GetUnitX(FirstOfGroup(harasser)),GetUnitY(FirstOfGroup(harasser)),harass_radius_flee_ranged,null)
     endif
-	set g = SelectByAlive(g, true)
+    set g = SelectByAlive(g, true)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-	  if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitTower(u) and avoiding_towers then
-		set towersdetected = true
-	  endif	  
+      if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitTower(u) and avoiding_towers then
+        set towersdetected = true
+      endif
       if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) and GetOwningPlayer(u) != Player(PLAYERAGGRESSIVE) and IsUnitType(u, UNIT_TYPE_PEON) == false then
         set strength_sum = strength_sum + GetUnitStrength(u)
       elseif IsUnitInGroup(u, harasser) then
-	     if ht == HARASS_TARGET_LOCATION then
-		 	call CreateDebugTag("Distraction: Harrasing Opponent Location", 10, u, 3.00, 1.50)
-		 else
-			call CreateDebugTag("Harassing Opponent", 10, u, 3.00, 1.50)
-		 endif
-		//if GetUnitState(u, UNIT_STATE_LIFE) <= GetUnitState(u, UNIT_STATE_MAX_LIFE) * flee_percent then
-		  
-		  if GetUnitState(u, UNIT_STATE_LIFE) <= RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) and not IsUnitInGroup(u, unit_healing) and IsUnitType(u, UNIT_TYPE_HERO) == false then // Not used on heroes as micro hero is in control of that
-		    call GroupAddUnit(unit_healing, u)
-			call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
-			call TQAddUnitJob(0.5, SEND_HOME, 50, u)
-			call GroupRemoveUnit(harasser, u)
-			call GroupRemoveUnit(unit_harassing, u)
-		  elseif IsUnitInGroup(u, unit_healing) then // Another system moved unit to healing
-			call GroupRemoveUnit(harasser, u)
-			call GroupRemoveUnit(unit_harassing, u)
-		  else
-		  	//call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
-			//call TQAddUnitJob(0.5, SEND_HOME, R2I(flee_percent * GetUnitState(u, UNIT_STATE_MAX_LIFE)), u)
-			set harass_num = harass_num + 1
-			set player_sum = player_sum + GetUnitStrength(u)
-		  endif
+        if ht == HARASS_TARGET_LOCATION then
+          call CreateDebugTag("Distraction: Harrasing Opponent Location", 10, u, 3.00, 1.50)
+        else
+          call CreateDebugTag("Harassing Opponent", 10, u, 3.00, 1.50)
+        endif
+        //if GetUnitState(u, UNIT_STATE_LIFE) <= GetUnitState(u, UNIT_STATE_MAX_LIFE) * flee_percent then
+
+        if GetUnitState(u, UNIT_STATE_LIFE) <= RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) and not IsUnitInGroup(u, unit_healing) and IsUnitType(u, UNIT_TYPE_HERO) == false then // Not used on heroes as micro hero is in control of that
+          call GroupAddUnit(unit_healing, u)
+          call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
+          call TQAddUnitJob(0.5, SEND_HOME, 50, u)
+          call GroupRemoveUnit(harasser, u)
+          call GroupRemoveUnit(unit_harassing, u)
+        elseif IsUnitInGroup(u, unit_healing) then // Another system moved unit to healing
+          call GroupRemoveUnit(harasser, u)
+          call GroupRemoveUnit(unit_harassing, u)
+        else
+          //call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
+          //call TQAddUnitJob(0.5, SEND_HOME, R2I(flee_percent * GetUnitState(u, UNIT_STATE_MAX_LIFE)), u)
+          set harass_num = harass_num + 1
+          set player_sum = player_sum + GetUnitStrength(u)
+        endif
         //else
 
         //endif
@@ -251,57 +247,57 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
 
     call DestroyGroup(g)
     set g = null
-    set u = null
     if harass_num <= LoadInteger(additional_info, key, FLEE_NUMBER) or towersdetected or (player_sum <= start_strength * flee_percent and not hero_harass) then
-	  call SaveBoolean(additional_info, key, STATE_RETREAT, true)
+      call SaveBoolean(additional_info, key, STATE_RETREAT, true)
       call GroupPointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
       //call GroupRecycleGuardPosition(harasser)
       //return
     elseif strength_sum < strength_limit then
       call SaveBoolean(additional_info, key, STATE_ATTACKING, true)
-	  if IsUnitInvisible(FirstOfGroup(harasser), Player(PLAYERAGGRESSIVE)) then
-		set timedelay = timedelay + 1
-		call SaveInteger(additional_info, key, WINDWALK_COUNT, timedelay)
-	  else
-		set timedelay = -1	// Not a windwalker harassing so attack immediatly
-		call SaveInteger(additional_info, key, WINDWALK_COUNT, 0)		
-	  endif
+      if IsUnitInvisible(FirstOfGroup(harasser), Player(PLAYERAGGRESSIVE)) then
+        set timedelay = timedelay + 1
+        call SaveInteger(additional_info, key, WINDWALK_COUNT, timedelay)
+      else
+        set timedelay = -1	// Not a windwalker harassing so attack immediatly
+        call SaveInteger(additional_info, key, WINDWALK_COUNT, 0)		
+      endif
       if DistanceBetweenUnits(FirstOfGroup(harasser), target) > 650 then
-	  	  	if DistanceBetweenUnits(FirstOfGroup(harasser), target) <= 5000 then
-				call GroupOrderWindWalkInstant_d(CopyGroup(harasser))
-			endif
-	    call CreateDebugTag("HARASS: Move to Target unit", 10, target, 3.00, 1.50)
+        if DistanceBetweenUnits(FirstOfGroup(harasser), target) <= 5000 then
+          call GroupOrderWindWalkInstant_d(CopyGroup(harasser))
+        endif
+        call CreateDebugTag("HARASS: Move to Target unit", 10, target, 3.00, 1.50)
         call GroupPointOrder(harasser, "move", GetUnitX(target), GetUnitY(target))
       else
-	  	if timedelay >= 5 or timedelay == -1 or IsUnitDetected(FirstOfGroup(harasser), GetOwningPlayer(target)) then
-			call GroupTargetOrder(harasser, "attack", target)
-			call IssueTargetOrder(FirstOfGroup(harasser), "attack", target)
-		endif
-		call CreateDebugTag("HARASS: Attack Target", 10, target, 3.00, 1.50)
-	    //call CreateDebugTag("HARASS: Changing Target", 10, FirstOfGroup(harasser), 3.00, 1.50)
+        if timedelay >= 5 or timedelay == -1 or IsUnitDetected(FirstOfGroup(harasser), GetOwningPlayer(target)) then
+          call GroupTargetOrder(harasser, "attack", target)
+          call IssueTargetOrder(FirstOfGroup(harasser), "attack", target)
+        endif
+        call CreateDebugTag("HARASS: Attack Target", 10, target, 3.00, 1.50)
+        //call CreateDebugTag("HARASS: Changing Target", 10, FirstOfGroup(harasser), 3.00, 1.50)
         //call HarassJob(ht, null, harasser)
         //return
       endif
     elseif strength_sum >= strength_limit*2 then
-	  call SaveBoolean(additional_info, key, STATE_RETREAT, true)
+      call SaveBoolean(additional_info, key, STATE_RETREAT, true)
       call GroupPointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
       call SaveBoolean(additional_info, key, STATE_ATTACKING, false)	
       //call GroupRecycleGuardPosition(harasser)	  
-	else
-	  call SaveBoolean(additional_info, key, STATE_RETREAT, true)
+    else
+      call SaveBoolean(additional_info, key, STATE_RETREAT, true)
       call GroupPointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
       call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
-	  //call TQAddGroupJob(30, HARASS, ht, target, harasser)
+      //call TQAddGroupJob(30, HARASS, ht, target, harasser)
     endif
   else
-//    call DisplayToAll("Target dead")
+    //call DisplayToAll("Target dead")
     call CreateDebugTag("HARASS: Target Dead", 10, target, 3.00, 1.50)
     call GroupPointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
-	call SaveBoolean(additional_info, key, STATE_RETREAT, true)
-	call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
+    call SaveBoolean(additional_info, key, STATE_RETREAT, true)
+    call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
     //call GroupRecycleGuardPositionDelay(harasser,GetTimeToReachLoc(u, home_location) + 1)
     //return
   endif
   call TQAddGroupJob(2, HARASS, ht, target, harasser)
+  set target = null
 endfunction
 #ENDIF
