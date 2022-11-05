@@ -3,32 +3,104 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [2.6.2] - 2022-09-04
+## [Unreleased]
 
-Jzy-chitong has provided various updates and ported features back to this older version of AMAI if you play on the older editions of warcraft 3. 
+## [2.6.2-cn] - 2022-10-31
+### core 
+- 3.2.2 master 96800f0 , include all job code
+
+### Added
+- New automatic Trigger can help AI hero learning skills , it can fix war3 1.31 AI hero can not  learning skills , olny run to war3 1.29+ and have 1 second delay to ensure that other versions are not affected
+- New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
+- Now the AI Attack Group will join non own racial units and heros (but excess heros may not be able to learn skills) , This function include adding mercenaries and dragons to the Attack Group( the function AttackGroupAddNeutrals no longer use) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
+- Note: the AI no longer sent  repeat report for B.eai command control C.eai
+- New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
+
+### Changed
+- Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
+   - Towerrush peon now have 4 , but UD have 2 ,  if Towerrush on , AI can compensate peon quantity(ELF compensate 6)  , include ghouls
+   - New set for item , race_tower_item_quantity , like IVORY_TOWER or SACRIFICIAL_SKULL(ROC none of these items)
+   - New set for tower , upgrade race_tower_upgrade2(ROC no race_tower_upgrade2)
+   - New set for tower , race_tower_idX(if the race_tower_id has Blig land (AbilityId 'Abgl'), set it ,cannot create Blig land)
+   - Now Towerrush no longer search Enemy Player StartLocationLoc , search all Enemy Player hall , if races is UD , will search the goldmine
+   - if Enemy Player is really human players , AI will build the tower closer to the enemy base
+   - Adjust the order of attack modes , town_threatened and towerrush code ahead
+   - Adjusted the logic of saving money , now open Towerrush no longer stop build
+   - Now AI can help ally Towerrush or rush Enemy , can call ally help too
+   - Now Towerrush max distance is 14000
+   - Now off Towerrush condition will judge AI have or have not heroes , prevent from off when the enemy creates heroes first
+   - Now AI will build race_simple_melee to help TR
+   - Perfect translation reports
+   - Fixed bug , AI no longer build tower on map centre
+   - Note: Because available_time too long , so AI TR donot buy NEUTRAL
+   - Note: The new pathfinder is not used to TR , Because the path finding direction is wrong (from home to home)
+   - Note: On ROC , This function is not enabled 
+- Synchronization  all function code to [master]
+   - include C.eai , B.eai , RECA.AI , but can still be used in the older version of Warcraft 3 , older version player should get more perfect AMAI
+   - available_time and regenerate_time not change
+   - Balance parameters have not changed
+   - Add war3_1.32 mercenaries adjustment , but no use , just add unit to StandardUnits.txt, if you war3 is 1.33+, please run AMAI 3.2.2+
+- Change GetPlayerAntiAirStrength returns form integer to real
+- BuyNeutralHero now judge AI hero count , if count == tier or nn != NEUTRAL_TAVERN, then return , Prevent AI from going to the store when the number of heroes reaches the maximum and there is no need to revive (only 3 hero , if have 4 hero or more , then the judge cannot normal operation)
+- BuyNeutral now judge NEUTRAL_TAVERN , if nn == NEUTRAL_TAVERN or buy_place == null, then return
+- Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
+- Optimized function XXXFountain code , no use local unit fountain
+- function CommonSleepUntilTargetDeadAM now judging target == null , improve operation efficiency
+- Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will smoothly(retain return bug)
+- Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1peon HarvestWood
+- Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
+- function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency(but the function no longer use)
+- Army track  CopyArmy  no longer copy same integer , hopes it can improve efficiency
+- Town track  CopyTown  no longer copy same integer , hopes it can improve efficiency
+- Comment out FOCUSFIRE_CONTROL  call FocusGroupRemoveGuard ，because FocusGroupRemoveGuard has been replaced and needs to improve efficiency
+- GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
+- Strategy additional Improvements
+   - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
+   - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
+   - Disturbance function global_init_strategy AddBlock
+   - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
+   - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)，fix ROC ELF race_has_moonwells to true
+   - Adjust UPG_BOMBS BuildAdvUpgr2 chance unitcount to 0.2 , Maximum to 35 , In the test, after building COPTER, the enemy has no AIR , the COPTER no research UPG_BOMBS not useful
+- Note: Synchronized ROCbuild Bat file code
+- Note:The installer of the old version of AMAI seems to have failed to work properly. Do not use the old installer
+
+###Fixed
+- Fixed some translation errors
+- Fixed some reports without translation
+- Fixed AI would not buy mercenaries and dragons 
+- Fixed BuildMovePeonZeppelin no longer at first set build_zeppelin = null
+- Fixed InitNeutralBuildings neutral_id[NEUTRAL_DRAGON_ROOST] use neutral_id[NEUTRAL_MERC_CAMP]'s number [i]
+- Fixed InitNeutralBuildings [NEUTRAL_DRAGON_ROOST] and [NEUTRAL_MERC_CAMP] search Error
+- Fixed ROC Resolve compilation errors, ROC Profile.txt add [Rare Profile]
+- Fixed B.eai playercreep num , now is 16/28
+- Fixed B2.j and B3.j bj_PLAYER_NEUTRAL_EXTRA and bj_MAX_PLAYER_SLOTS and bj_PLAYER_NEUTRAL_VICTIM not replaced with dynamic variable playercreep or playermax
+- Fixed part of set xxx = GetExpansionPeon() lack set xxx = GetExpansionPeon2() when xxx == null
+
+## [2.6.2] - 2022-09-04
+Jzy-chitong56 has provided various updates and ported features back to this older version of AMAI if you play on the older editions of warcraft 3.
 
 ### Added
 - Improved chinese language translations [jzy-chitong56]
 - Commander resource tributes are now translated (translated by google)
 - Commander player selection and strategy selections now have multiple pages with next and previous buttons. (from 2.6.x by jzy-chitong56)
 - Automatic support for more than 12 Players based on version you playing on.
-  - All 24 player colours are now supported by AMAI.(from [3.0.0]) 
-  - Various messaging and attack targeting will now work with more than 12 players.(from [3.0.0]) 
-  - Increased script delay on higher number of players to reduce performance impact.
+- All 24 player colours are now supported by AMAI.(from [3.0.0])
+- Various messaging and attack targeting will now work with more than 12 players.(from [3.0.0])
+- Increased script delay on higher number of players to reduce performance impact.
 - Commander now includes Zoom feature based from wc3champions. [jzy-chitong56]
-  - Input "-zoomxxxx" to adjust the sight distance, and XXXX is a number, such as "-zoom1000"，max zoom is 5000
-  - Observers start at an increased zoom level.
+- Input "-zoomxxxx" to adjust the sight distance, and XXXX is a number, such as "-zoom1000"，max zoom is 3000
+- Observers start at an increased zoom level.
 - A small chance for AMAI to pick the profile name of Legendary players. (from 2.6.x by jzy-chitong56)
-  - (DevTools) Also added ability to configure your own legendary profiles via new profile setting option "rare profile".
+- (DevTools) Also added ability to configure your own legendary profiles via new profile setting option "rare profile".
 - AMAI now can use power fountains if available on the map. (from 2.6.x by jzy-chitong56)
 - New Random Profile which is completely random on all personality traits. (from 2.6.x by jzy-chitong56)
 - Added ability to change the language of the commander interface and actions independently from other players (Using the All option in 2.6.x)
 
 ### Changed
 - Language dialog can now be set for first human observer if there is not any playing humans. (from 2.6.x by jzy-chitong56)
-- Computer skill level is now shown by default on AMAI players. (from [3.0.0]) 
-- Tweaked english grammatical errors for various strategy messages. (from [3.0.0]) 
-- Tweaks to Brewmaster and Alchemist skill picks. (Pixyy) (from [3.1.0]) 
+- Computer skill level is now shown by default on AMAI players. (from [3.0.0])
+- Tweaked english grammatical errors for various strategy messages. (from [3.0.0])
+- Tweaks to Brewmaster and Alchemist skill picks. (Pixyy) (from [3.1.0])
 - Creep building detection range slightly increased(Pixyy) (from [3.1.0])
 - Front base distance range increased(Pixyy) (from [3.1.0])
 - Reduced number of mines needed before going into high upkeep(Pixyy) (from [3.1.0])
@@ -42,16 +114,87 @@ Jzy-chitong has provided various updates and ported features back to this older 
 - Make sure AI leaves at least one ghoul to continue harvesting wood in any case. (from [master])
 - Reworked the strategy timer to fix various issues with changing strategies and to fix issues with counters changing way to frequently. (from [master])
 
-### Fixed
+###Fixed
 - Add missing requirement for UPG_SKEL_MASTERY.
 - Add missing UPG_SUN_BLADE UPGRADE.
+- Tweaked ranged units to avoid melee units only if damaged to 70% instead of 90% and reduced distance to trigger slightly. (Pixyy) (from [3.1.0])
+- Fixed an issue where healing totems are not cast correctly. (Pixyy) (from [3.1.0])
+- Front base distance range slightly increased again to help fix night elf troops getting stuck in base(now is 1100). (Pixyy) (from [3.1.0])
+- Heroes a little more likely to teleport to rescue a town regardless of the profiles aggression and smaller threat levels. (Pixyy) (from [3.1.0])
+- Fixed an issue where human upgrades magic sentry and flare could not be researched by the AI. (Pixyy) (from [3.1.0])
+- Fix Night Elf initial mining logic such that they build the starting buildings first before completely filling the gold mine. (Pixyy) (from [3.1.1])
+- Fix Night Elf and Undead 's race_tower_id(Settings.txt) (Including ROC Human, Elf and Undead)
+
+## [2.6.1-cn] - 2022-08-20
+### Added
+- Improved chinese language translations [jzy-chitong56]
+- Commander resource tributes are now translated (translated by google)
+- Added Next and Previous Page buttons to the commander.
+- Automatic support for more than 12 Players based on version you playing on.
+   - All 24 player colours are now supported by AMAI.(from [3.0.0])
+   - Various messaging and attack targeting will now work with more than 12 players.(from [3.0.0])
+   - Increased script delay on higher number of players to reduce performance impact.
+- With Commander installed if no Human is playing, the first Observer can choose the language.
+- Undead strategy add GargGhouls
+- Commander now includes Zoom feature based from wc3champions. [jzy-chitong56]
+   - Input "-zoomxxxx" to adjust the sight distance, and XXXX is a number, such as "-zoom1000"，max zoom is 3000 , recommended: 800 to 2000
+   - Observers start at an increased zoom level( increase 200 )
+- AMAI now can use power fountains if available on the map.
+- A small chance for AMAI to pick the profile of Legendary human players (Note not the skill of the real players)
+
+### Changed
+- Computer skill level is now shown by default on AMAI players. (from [3.0.0]) 
+- Tweaked english grammatical errors for various strategy messages. (from [3.0.0]) 
+- Tweaks to Brewmaster and Alchemist skill picks. (Pixyy) (from [3.1.0]) 
+- Balance pass to all racial hero selection, skill selection and strategy selection. Mostly minor but most noticeable changes include (consult Pixyy)  (from [3.1.0]) 
+   - Night Elf increased use of warden and keeper.
+   - Reduced use of mirror image skill.
+- Strategy tweaks and optimizations  (consult Pixyy)  (from [3.1.0])
+   - Removed non-useful units from harass attacks and fixed undead harassment group numbering.
+   - Improvements to human, orc, undead and night elf dynamic strategy adjustment.
+- Strategy additional Improvements
+   - Unreasonable build restrictions have been removed
+   - Main city upgrade priorities for all tactics have been rebalanced around 50 (Including ROC)
+   - Increased the number of training units for Tier1 of all races
+   - Adjusted the night elf training Hippo eagle command to reduce the occupied population of the Hippo eagle that can only be brought to the air
+   - Night Elf Talon now use FAERIE_DRAGON against the air , because AI won't become a bird , match the MOUNTAIN_GIANT at the same time
+   - Human Knight strategy now use COPTER , no STEAM_TANK , and Reduced GRYPHON quantity and priority
+   - All races tier1 no longer build shop, all strategy tier2 and tier3 build shop , because shop have AddBlock
+   - Synchronization DefendTownsDone(TOWER) (from [3.1.0])
+- Very minor balance tweak so less expensive units food wise are needed before AI starts to consider [all] armor or weapon upgrades for them.  (from [3.1.1])
+- Creep building detection range slightly increased(Pixyy) (from [3.1.0])
+- Front base distance range increased(Pixyy) (from [3.1.0])
+- Reduced number of mines needed before going into high upkeep(Pixyy) (from [3.1.0])
+- Tweaks to town portal so more likely to be used for lower threats(Pixyy) (from [3.1.0])
+- At the beginning of the game, HUMAN and ORC have two peon HarvestWood
+- Synchronization part function GetArmyHealthState change(from common.eai)
+- Synchronization function UpdateDebugPlayer and call UpdateDebugPlayer(from common.eai)
+- debug_player 1 → 0(from common.eai)
+- Adjust HUMAN, ORC and Night Elf number of peons for gold mines.
+- Non HUMAN _militia set now is empty
+- Add RESET_GUARD_POSITION_ONLY function (from [3.1.0])
+- Reduction Profiles can now be reused by AI players，now Profiles can't reused (if the Profiles Race same as AI Race)
+   - New Profiles RandomInt, some values are random
+- Original AI scripts have corrected form ID's (no playable impact) (Including ROC)
+- Calibration the Player name colors to match a little better.
+- Make sure AI leaves at least one ghoul to continue harvesting wood in any case. (from [master])
+- Reworked the strategy timer to fix various issues with changing strategies and to fix issues with counters changing way to frequently. (from [master])
+
+### Fixed
+- Add missing requirement for UPG_SKEL_MASTERY.( but AI cannot used )
+- Add missing UPG_SUN_BLADE UPGRADE.
+- Fix the chinese language encoding issues(from [3.0.1]) 
 - Tweaked ranged units to avoid melee units only if damaged to 70% instead of 90% and reduced distance to trigger slightly. (Pixyy) (from [3.1.0]) 
 - Fixed an issue where healing totems are not cast correctly. (Pixyy) (from [3.1.0]) 
 - Front base distance range slightly increased again to help fix night elf troops getting stuck in base(now is 1100). (Pixyy) (from [3.1.0]) 
 - Heroes a little more likely to teleport to rescue a town regardless of the profiles aggression and smaller threat levels. (Pixyy) (from [3.1.0]) 
 - Fixed an issue where human upgrades magic sentry and flare could not be researched by the AI. (Pixyy) (from [3.1.0]) 
+- Fixed the Commander Dialog only showing title at first.
+- Fixed issue with the Commander Dialog where you cannot change language.
+- Add welcome message and opening tactical report Time of report (try to fix the problem of using default language for the first two reports)
+- Fixed some strategy no hero3 or misspelled two hero2  (Including ROC)
 - Fix Night Elf initial mining logic such that they build the starting buildings first before completely filling the gold mine. (Pixyy) (from [3.1.1])
-- Fix Night Elf and Undead 's race_tower_id(Settings.txt)  (Including ROC  Human,  Elf and Undead)
+- Fix Night Elf and Undead 's race_tower_id(Settings.txt)  (Including ROC  Human,  Elf and Undead )
 
 ## [2.6.1] - 2021-01-13
 - Fixed support for pre-1.32 versions.
