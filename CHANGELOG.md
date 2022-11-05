@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Added
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join non own racial units and heros (but excess heros may not be able to learn skills) , This function include adding mercenaries and dragons to the Attack Group( the function AttackGroupAddNeutrals no longer use) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
-- Note: the AI no longer sent repeat report for B.J command control C.AI
+- Note: the AI no longer sent repeat report for B.eai command control C.eai
 - New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
 
 ### Changed
@@ -48,7 +48,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
 - Optimized function XXXFountain code , no use local unit fountain
 - function CommonSleepUntilTargetDeadAM now judging target == null , improve operation efficiency
-- Improved a small part of excretion (common.ai and B.j) , now 24 player map run will smoothly
+- Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will smoothly
 - Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1peon HarvestWood
 - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
 - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
