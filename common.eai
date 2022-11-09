@@ -378,11 +378,12 @@ globals
     integer race_manual_loading_wisp = 0 //
     integer race_manual_loading_mine = 0 //
     boolean race_towerrush_available = false  // does the race have a towerrush ?
-    integer race_tower_item = 0  //if the race_tower_id need Blig land (AbilityId 'Abgl'), Please set
-    integer race_tower_item_quantity = 0  //how many items at a time , if can buy
+    integer race_tower_item = 0  // if the race_tower_id need Blig land (AbilityId 'Abgl'), Please set
+    boolean race_tower_item_must = false  // the item is build towers is must?
+    integer race_tower_item_quantity = 0  // how many items at a time , if can buy
     integer race_towerrush_requirement = 0  // what is the building required to build towers ?
     integer race_tower_id = 0  // what is the id of the races towers?
-    integer race_tower_idX = 0  //if the race_tower_id has Blig land (AbilityId 'Abgl'), Please set, cannot create Blig land
+    integer race_tower_idX = 0  // if the race_tower_id has Blig land (AbilityId 'Abgl'), Please set, cannot create Blig land
     integer race_tower_upgrade1 = 0  //what is the id of the tower upgrade1 (core)?
     integer race_tower_upgrade2	= 0  //what is the id of the tower upgrade2 (secondary)?
     integer race_tower_peon	= 2  // how many peons will be used on build towers ?
@@ -5981,7 +5982,6 @@ local group g = CreateGroup()
 local location target_loc = null
 local unit u = null
 local unit tempu = null
-local race r = null
 //loop
 //    exitwhen i >= GetBJMaxPlayers()
 //    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerEnemy(Player(i), ai_player) then
@@ -5996,28 +5996,26 @@ local race r = null
 //    endif
 //    set i = i + 1
 //endloop
-call Sleep((GetPlayerId(ai_player)*0.02))  //prevent crashes , the cmd will control all allies simultaneous calculation
 
 loop
 	exitwhen i >= GetBJMaxPlayers()
 	if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerEnemy(Player(i), ai_player) then
 		call GroupClear(g)
 		call GroupEnumUnitsOfPlayer(g, Player(i), null)
-		set r = GetPlayerRace(Player(i))
-		if r != RACE_UNDEAD then
+		if GetPlayerRace(Player(i)) != RACE_UNDEAD then
 			set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
 		else
-			set g = SelectById(g, 'ugol', true)  //some human UD player donot build hall , hall and goldmine between distance will compensate
+			set g = SelectById(g, 'ugol', true)  //some human UD player donot build TOWNHALL , TOWNHALL to goldmine between distance will compensate
 		endif
 		set g = SelectByAlive(g, true)
 		loop
 			set u = FirstOfGroup(g)
 			exitwhen u == null
-			set target_loc = GetUnitLoc(u)
+      set target_loc = GetUnitLoc(u)
 			set dist = DistanceBetweenPoints_kd(home_location, target_loc)  //GetNearestEnemy base from all base, no longer GetPlayerStartLocationLoc
 			if dist < mindistance then
 				set mindistance = dist
-				set nearplayer = GetOwningPlayer(u)
+				set nearplayer = Player(i)
 				set tempu = u
 			endif
 			call GroupRemoveUnit(g, u)
@@ -6025,14 +6023,13 @@ loop
 	endif
 	set i = i + 1
 endloop
-set r = null
 set target_loc = null
 set builder[10] = tempu
 set rushedplayer = nearplayer
-set tempu = null
 call DestroyGroup(g)
 set g = null
 set nearplayer = null
+set tempu = null
 return mindistance
 endfunction
 
@@ -11743,7 +11740,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
    // tower rush attack
    //
 	if towerrush then
-		if ((race_towerrush_requirement != 0 and TownCountDone(race_towerrush_requirement) == 0) or race_towerrush_requirement == 0) and TownCountDone(race_simple_melee) < 2 and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) == 0 then
+		if ((race_towerrush_requirement != 0 and TownCountDone(race_towerrush_requirement) == 0) or race_towerrush_requirement == 0) and TownCountDone(race_simple_melee) < 2 and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) == 0 and (race_tower_item_must == true and builder[0] == null) then
 			return
 		endif
 		call Trace("A Tower Rush Attack")
@@ -11757,7 +11754,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
 	if militia_expanding then 
 		call Trace("A Militia Expansion")
 		call Militia_Expansion(6)
-    set militia_expanding = false
+		set militia_expanding = false
 		return
 	endif
 
