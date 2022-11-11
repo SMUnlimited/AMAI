@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## [2.6.2-cn] - 2022-10-31
 ### core 
 - 3.2.2 master 96800f0 , include all job code
+   - Note: 3.2.2cn include 2.6.1cn
 
 ### Added
 - New automatic Trigger can help AI hero learning skills , it can fix war3 1.31 AI hero can not  learning skills , olny run to war3 1.29+ and have 1 second delay to ensure that other versions are not affected
