@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
    - Towerrush peon now have 4 , but UD have 2 ,  if Towerrush on , AI can compensate peon quantity(ELF compensate 6)  , include ghouls
    - New set for item , race_tower_item_quantity , like IVORY_TOWER or SACRIFICIAL_SKULL(ROC none of these items)
+   - New set for tower , race_tower_item_must(if Towerrush  must used item , like UD SACRIFICIAL_SKULL, set true)
    - New set for tower , upgrade race_tower_upgrade2(ROC no race_tower_upgrade2)
    - New set for tower , race_tower_idX(if the race_tower_id has Blig land (AbilityId 'Abgl'), set it ,cannot create Blig land)
    - Now Towerrush no longer search Enemy Player StartLocationLoc , search all Enemy Player hall , if races is UD , will search the goldmine
@@ -55,6 +56,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Comment out FOCUSFIRE_CONTROL  call FocusGroupRemoveGuard ，because FocusGroupRemoveGuard has been replaced and needs to improve efficiency
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
 - Increase expansion_radius , expansion_radius now is 1500 , Prevent some maps creep to gold distance too far , Error caused ANCIENT_EXPANSION run
+- Array upper limit (JASS_MAX_ARRAY_SIZE) adjustment ，now is 8192 , if hope old war3 normal , then only set 8192
 - Strategy additional Improvements
    - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
    - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
