@@ -5702,7 +5702,6 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
         set exitloop = true
         //return rl_getlocationindistancefromLoc[0]
     elseif GetUnitState(u, UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u) == OrderId("stop") or GetUnitCurrentOrder(u) != OrderId("move") then
-        call RemoveLocation(rl_getlocationindistancefromLoc[0])
         set exitloop = true
         //return null
     else
@@ -11210,8 +11209,13 @@ function AttackMoveTowerRush takes nothing returns nothing
 		exitwhen town_threatened and town_threat[most_threatened_town] >= teleport_low_threat + 60
 		exitwhen break_attack
 		exitwhen CaptainIsEmpty()       // all units died
-		call SetCaptainHome(BOTH_CAPTAINS, R2I(enemy_point_x), R2I(enemy_point_y))
-		call AttackMoveXY(R2I(enemy_point_x),R2I(enemy_point_y))
+		if towers_built <= 4 then
+			call SetCaptainHome(BOTH_CAPTAINS, R2I(((enemy_point_x - first_tower_point_x)/ 4) + first_tower_point_x), R2I(((enemy_point_y - first_tower_point_y)/ 4) + first_tower_point_y))
+			call AttackMoveXY(R2I(((enemy_point_x - first_tower_point_x)/ 4) + first_tower_point_x), R2I(((enemy_point_y - first_tower_point_y)/ 4) + first_tower_point_y))
+		else
+			call SetCaptainHome(BOTH_CAPTAINS, R2I(enemy_point_x), R2I(enemy_point_y))
+			call AttackMoveXY(R2I(enemy_point_x),R2I(enemy_point_y))
+		endif
 		//call AttackMoveKill(builder[20])
 		//if towers_built == 0 then
 			//call CreateDebugTag("Reform protect peon", 10, builder[1], 2.00, 1.50)
@@ -11959,11 +11963,11 @@ endif
     endif
 
 	if not creeping_only then	// Do the normal attack sequence
-	
+
    // tower rush attack
    //
 	if towerrush then
-		if ((race_towerrush_requirement != 0 and TownCountDone(race_towerrush_requirement) == 0) or race_towerrush_requirement == 0) and TownCountDone(race_simple_melee) < 2 and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) == 0 and (race_tower_item_must == true and builder[0] == null) then
+		if (race_towerrush_requirement != 0 and TownCountDone(race_towerrush_requirement) == 0) and (race_tower_item_must == true and builder[0] == null) and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) == 0 then
 			return
 		endif
 		call Trace("A Tower Rush Attack")
@@ -11977,51 +11981,51 @@ endif
 	if militia_expanding then 
 		call Trace("A Militia Expansion")
 		call Militia_Expansion(6)
-    	set militia_expanding = false
+		set militia_expanding = false
 		return
 	endif
 
     // ancient expansion attack
     //
-       if ancient_expanding then
-		if ancient_exp_state == 2 or ancient_exp_state == 3 then
-            call Trace("An Ancient Expansion Attack")
-            //call FormGroupAM(3)
-			//call AddAssault(1, old_id[racial_hall[1]])
-			call SetCaptainHome(BOTH_CAPTAINS,GetUnitX(ancient_exp_unit),GetUnitY(ancient_exp_unit))
-			//call AttackMoveKillXYAAM(R2I(GetUnitX(ancient_exp_unit)), R2I(GetUnitY(ancient_exp_unit)))
-            return
-            elseif ancient_exp_state == 4 then
-				set ancient_attack_running = true
-                call Trace("An Ancient Expansion - Final stage")
-                call FormGroupAM(3)
-				//call AddAssault(1, old_id[racial_hall[1]])
-				call SetCaptainHome(BOTH_CAPTAINS,GetUnitX(ancient_exp_unit),GetUnitY(ancient_exp_unit))
-				//if DistanceBetweenUnits(ancient_exp_unit, GetExpFoe()) <= 500 then
-					call AttackMoveKillCreep(GetExpFoe())
-				//else
-				//call AttackMoveKillXYAAM(R2I(GetUnitX(ancient_exp_unit)), R2I(GetUnitY(ancient_exp_unit)))
-				//endif
-				set ancient_attack_running = false
-                return
-            endif
-       endif
-	   
-	   
+  if ancient_expanding then
+    if ancient_exp_state == 2 or ancient_exp_state == 3 then
+      call Trace("An Ancient Expansion Attack")
+      //call FormGroupAM(3)
+      //call AddAssault(1, old_id[racial_hall[1]])
+      call SetCaptainHome(BOTH_CAPTAINS,GetUnitX(ancient_exp_unit),GetUnitY(ancient_exp_unit))
+      //call AttackMoveKillXYAAM(R2I(GetUnitX(ancient_exp_unit)), R2I(GetUnitY(ancient_exp_unit)))
+      return
+    elseif ancient_exp_state == 4 then
+      set ancient_attack_running = true
+      call Trace("An Ancient Expansion - Final stage")
+      call FormGroupAM(3)
+      //call AddAssault(1, old_id[racial_hall[1]])
+      call SetCaptainHome(BOTH_CAPTAINS,GetUnitX(ancient_exp_unit),GetUnitY(ancient_exp_unit))
+      //if DistanceBetweenUnits(ancient_exp_unit, GetExpFoe()) <= 500 then
+      call AttackMoveKillCreep(GetExpFoe())
+      //else
+      //call AttackMoveKillXYAAM(R2I(GetUnitX(ancient_exp_unit)), R2I(GetUnitY(ancient_exp_unit)))
+      //endif
+      set ancient_attack_running = false
+      return
+    endif
+  endif
+
+
     // defend expansion from other expansion
     //
 
     if double_expansion_target != null and IsTargetGood(double_expansion_target, 10) then
       call Trace("Double Expansion Attack")
-	  call SetAllianceTarget(double_expansion_target)
-	  call FormGroupAM(3)
+      call SetAllianceTarget(double_expansion_target)
+      call FormGroupAM(3)
       call AttackMoveKillAAM(double_expansion_target)
       if not UnitAlive(double_expansion_target) then
         set double_expansion_target = null
       endif
       return
     endif
-    
+
     if not (no_creep_attack or ai_no_creep) then
 
       // take expansions as needed
