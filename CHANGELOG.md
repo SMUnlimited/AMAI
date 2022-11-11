@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
    - Towerrush peon now have 4 , but UD have 2 , if Towerrush on , AI can compensate peon quantity(ELF compensate 6) , include ghouls
    - New set for item , race_tower_item_quantity , like IVORY_TOWER or SACRIFICIAL_SKULL
+   - New set for tower , race_tower_item_must(if Towerrush  must used item , like UD SACRIFICIAL_SKULL, set true)
    - New set for tower , upgrade race_tower_upgrade2(ROC no race_tower_upgrade2)
    - New set for tower , race_tower_idX(if the race_tower_id has Blig land (AbilityId 'Abgl'), set it ,cannot create Blig land)
    - Now Towerrush no longer search Enemy Player StartLocationLoc , search all Enemy Player hall , if races is UD , will search the goldmine
@@ -42,6 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Note: On ROC , This function is not enabled 
 - Synchronization  all function code to [master]
    - 3.2.2 master 96800f0
+   - Note: 3.2.2cn include 3.1.1-cn
 - Change GetPlayerAntiAirStrength returns form integer to real
 - BuyNeutralHero now judge AI hero count , if count == tier or nn != NEUTRAL_TAVERN, then return , Prevent AI from going to the store when the number of heroes reaches the maximum and there is no need to revive (only 3 hero , if have 4 hero or more , then the judge cannot normal operation)
 - BuyNeutral now judge NEUTRAL_TAVERN , if nn == NEUTRAL_TAVERN or buy_place == null, then return
