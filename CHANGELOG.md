@@ -36,7 +36,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Fixed bug , AI no longer build tower on map centre
    - Note: Because available_time too long , so AI TR donot buy NEUTRAL
    - Note: The new pathfinder is not used to TR , Because the path finding direction is wrong (from home to home)
-   - Note: human have powerbuild , so AI will automatically pull all peon go to the front build tower , and this time AI no income , I cannot close automatically powerbuild , If only could change the unit race
    - Note: On ROC , This function is not enabled 
 - Synchronization  all function code to [master]
    - include C.eai , B.eai , RECA.AI , but can still be used in the older version of Warcraft 3 , older version player should get more perfect AMAI
@@ -59,6 +58,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
 - Increase expansion_radius , expansion_radius now is 1500 , Prevent some maps creep to gold distance too far , Error caused ANCIENT_EXPANSION run
 - Array upper limit (JASS_MAX_ARRAY_SIZE) adjustment ，now is 8192 , if hope old war3 normal , then only set 8192
+- Add ELF harvest_gold(i) , i is 2~5
 - Strategy additional Improvements
    - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
    - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
