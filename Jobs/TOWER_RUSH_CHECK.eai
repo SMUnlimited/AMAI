@@ -27,24 +27,16 @@ local real distance = 0.0
 local real buildrange = 700  //DistanceBetweenPoints the toweringplayerloc and first_tower_point
 local group g = null
 
-	if (c_ally_total + c_enemy_total) > 5 then  //Limit the player number to avoid crashes, and TR usually on 1V1 OR 2V2 map use
-		call Trace("the map unsuited tower rush")
-		if delay == 1 then
-			call DisplayToAllies(chat_unsuited_towerrush)
-		endif
-		return
-	endif
 	set distance = GetNearestEnemyDistance()
-	if distance > 14000 or distance == 0 then  //Distance to too far
+	if distance > 14000 or distance == 0 or builder[10] == null or (c_ally_total + c_enemy_total) > 5 then  //Distance to too far , builder[10] from the GetNearestEnemyDistance , Limit the player number to avoid crashes, and TR usually on 1V1 OR 2V2 map use
 		call Trace("the map unsuited tower rush")
 		if delay == 1 then
 			call DisplayToAllies(chat_unsuited_towerrush)
 		endif
 		return
 	endif
-
 	//set rushedplayer = GetNearestEnemy()  // no longer needed as is set from the GetNearestEnemyDistance function 
-	set toweringplayerloc = GetUnitLoc(builder[10])  // builder[10] from the GetNearestEnemyDistance
+	set toweringplayerloc = GetUnitLoc(builder[10])
 
 	set u = GetAllianceTarget()
 	if u != null and race_tower_alliancetarget == false and ai_time <= 96 and towers_built == 0 then  //coordinate towertush with allies , 480 second
@@ -65,13 +57,22 @@ local group g = null
 		set g = CreateGroup()
 		call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1600, null)
 		set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
-		if FirstOfGroup(g) != null and GetOwningPlayer(FirstOfGroup(g)) == rushedplayer then
+		if FirstOfGroup(g) == null or GetOwningPlayer(FirstOfGroup(g)) != rushedplayer then
 			set buildrange = buildrange + 600  //compensate TOWNHALL to goldmine between distance
+		else
+			call RemoveLocation(toweringplayerloc)
+			set toweringplayerloc = GetUnitLoc(FirstOfGroup(g))
 		endif
 		call DestroyGroup(g)
 		set g = null
 	endif
 	set tower_target_loc = GetLocationInDistanceFromLoc(toweringplayerloc, buildrange)
+	if tower_target_loc == null then
+		if delay == 1 then
+			call DisplayToAllies(chat_unsuited_towerrush)
+		endif
+		return
+	endif
 	// if GetLocationNonCreepStrength(enemy_point_x, enemy_point_y, 2000) == 0 and ai_time >= 80 then  //no longer needed as is set from the GetNearestEnemyDistance, and now will set other Base
 		// call StartGetEnemyBase()
 		// loop
