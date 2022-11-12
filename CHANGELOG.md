@@ -40,6 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Fixed bug , AI no longer build tower on map centre
    - Note: Because available_time too long , so AI TR donot buy NEUTRAL
    - Note: The new pathfinder is not used to TR , Because the path finding direction is wrong (from home to home)
+   - Note: human have powerbuild , so AI will automatically pull all peon go to the front build tower , and this time AI no income , I cannot close automatically powerbuild , If only could change the unit race
    - Note: On ROC , This function is not enabled 
 - Synchronization  all function code to [master]
    - 3.2.2 master 96800f0
