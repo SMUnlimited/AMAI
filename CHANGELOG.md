@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Now the AI Attack Group will join non own racial units and heros (but excess heros may not be able to learn skills) , This function include adding mercenaries and dragons to the Attack Group( the function AttackGroupAddNeutrals no longer use) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
 - Note: the AI no longer sent  repeat report for B.eai command control C.eai
 - New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
+- ELF now can use BR build to creepcamp , and have one build on outside , hope can can reduce the chance of being stuck at home
+   - CreepAttack Priority attack the tree current creep
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
@@ -28,9 +30,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - if Enemy Player is really human players , AI will build the tower closer to the enemy base
    - Adjust the order of attack modes , town_threatened and towerrush code ahead
    - Adjusted the logic of saving money , now open Towerrush no longer stop build
+   - Race can define some detailed instructions
    - Now AI can help ally Towerrush or rush Enemy , can call ally help too
    - Now Towerrush max distance is 14000
-   - Now off Towerrush condition will judge AI have or have not heroes , prevent from off when the enemy creates heroes first
+   - Now off Towerrush condition will judge AI have or have not heroes
    - Now AI will build race_simple_melee to help TR
    - Perfect translation reports
    - Fixed bug , AI no longer build tower on map centre
@@ -59,6 +62,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Increase expansion_radius , expansion_radius now is 1500 , Prevent some maps creep to gold distance too far , Error caused ANCIENT_EXPANSION run
 - Array upper limit (JASS_MAX_ARRAY_SIZE) adjustment ，now is 8192 , if hope old war3 normal , then only set 8192
 - Add ELF harvest_gold(i) , i is 2~5
+- GetExpansionPeon2 Add Adjust not IsUnitLoaded , because ELF peon harvest gold
+- BuildLumberMillAtBase  now use  TownCount(racial_lumber)  , no  TownCountDone(racial_lumber) , hope  Prevent AI building many cemeteries
+- GetExpFoe GroupEnumUnitsInRange distance now is 1500 , map  like (4)Avalanche_LV , the creep and gold distance > 650
 - Strategy additional Improvements
    - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
    - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
