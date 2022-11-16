@@ -5648,7 +5648,8 @@ function BuildRushCreepAtBase takes nothing returns nothing
   local unit array ua
   local unit array uc
   local location loc = null
-  local boolean exitloop = false
+  local boolean canbuild = false
+  set rushcreep_build = true
   call GroupEnumUnitsOfPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), null)
   set g = SelectByAlive(g,true)
   set tempg = GetNearestSubGroupOfGroup(g, home_location, 7)  // 7 shoul have 2 creepcamp
@@ -5676,12 +5677,12 @@ function BuildRushCreepAtBase takes nothing returns nothing
   set ru = i
   set i = 0
   loop
-    exitwhen exitloop == true or id > ru
+    exitwhen canbuild == true or id > ru
     if DistanceBetweenUnits(ua[i], uc[i]) < 600 and GetUnitState(uc[i], UNIT_STATE_LIFE) > 0 then
       call RemoveLocation(loc)
       set loc = GetUnitLoc(ua[i])
       set rushcreep_target = uc[i]
-      set exitloop = true
+      set canbuild = true
     elseif GetUnitState(ua[i], UNIT_STATE_LIFE) <= 0 or GetUnitState(uc[i], UNIT_STATE_LIFE) <= 0 then
       set id = id + 1
     endif
@@ -5712,7 +5713,7 @@ function BuildRushCreepAtBase takes nothing returns nothing
   set loc = GetUnitLoc(u)
   call RemoveUnit(u)
   set u = null
-  set rushcreep_build = IssuePointOrderByIdLoc(peon, old_id[racial_rushcreep], loc)
+  set canbuild = IssuePointOrderByIdLoc(peon, old_id[racial_rushcreep], loc)
   call RemoveLocation(loc)
   set loc = null
   set peon = null
@@ -9790,9 +9791,11 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       endif
     endif
   #ENDINCLUDE
-    if unitid == racial_rushcreep and TownCount(racial_rushcreep) == 0 then
-      call BuildRushCreepAtBase()
-      return BUILT_ALL  //Whatever BuildRushCreepAtBase outcome, build
+    if rushcreep_build != true then
+      if unitid == racial_rushcreep and TownCount(racial_rushcreep) == 0 then
+        call BuildRushCreepAtBase()
+        return BUILT_ALL  //Whatever BuildRushCreepAtBase outcome, build
+      endif
     endif
 
     if buy_type[unitid] == BT_NEUTRAL_HERO then
@@ -11852,7 +11855,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
    // tower rush attack
    //
 	if towerrush then
-		if town_threatened or (race_towerrush_requirement != 0 and TownCountDone(race_towerrush_requirement) == 0) or (race_tower_item_must == true and builder[0] == null) or (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) == 0 then
+		if (town_threatened and tower_attack_run != true) or (race_towerrush_requirement != 0 and TownCountDone(race_towerrush_requirement) == 0) or (race_tower_item_must == true and builder[0] == null) or (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) == 0 then
 			return
 		endif
 		set tower_attack_run = true
