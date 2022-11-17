@@ -1,41 +1,41 @@
 #IFDEF GLOBAL
     integer ancient_exp_state = 0
-	integer ancient_exp_count = 0
+    integer ancient_exp_count = 0
     location ancient_exp_loc = null
     unit ancient_exp_wisp = null
     unit ancient_exp_unit = null
     group ancient_exp_group = CreateGroup()
-	boolean ancient_attack_running = false
+    boolean ancient_attack_running = false
 
 #ELSE
 
 function AncientExpansionJob takes nothing returns nothing
-  local unit u = null
-  local location exp_loc = null
-  local location wisp_loc = null
-  local unit temp = null 
-  local boolean isstrong = GetOwnStrength() > GetExpansionStrength()
-  call DisplayToAllJobDebug("ANCIENT_EXPANSION JOB STARTED")
+local unit u = null
+local location exp_loc = null
+local location wisp_loc = null
+local unit temp = null 
+local boolean isstrong = GetOwnStrength() > GetExpansionStrength()
+call DisplayToAllJobDebug("ANCIENT_EXPANSION JOB STARTED")
 
-  set exp_time_count = ai_time
-  if current_expansion == null then
-//	set current_expansion = ExpNearestMin()
-      call ChooseExpansion()
-  endif
-  set not_taken_expansion = current_expansion
+set exp_time_count = ai_time
+if current_expansion == null then
+	//	set current_expansion = ExpNearestMin()
+	call ChooseExpansion()
+endif
+set not_taken_expansion = current_expansion
 
-  set u = GetExpFoe()
+set u = GetExpFoe()
 
 if ancient_exp_unit != null and GetUnitState(ancient_exp_unit, UNIT_STATE_LIFE) <= 0 then
-		// Found out so no point trying ancient expansion again
-		set ancient_exp_state = 0
-		set ancient_exp_unit = null
-		call SetCaptainHome(BOTH_CAPTAINS,GetLocationX(home_location),GetLocationY(home_location))
-		call GroupRecycleGuardPositionInstant(ancient_exp_group)
-		set gold_buffer = 0
-		set wood_buffer = 0
-		set u = null
-		return
+	// Found out so no point trying ancient expansion again
+	set ancient_exp_state = 0
+	set ancient_exp_unit = null
+	call SetCaptainHome(BOTH_CAPTAINS,GetLocationX(home_location),GetLocationY(home_location))
+	call GroupRecycleGuardPositionInstant(ancient_exp_group)
+	set gold_buffer = 0
+	set wood_buffer = 0
+	set u = null
+	return
 endif
 
 if ancient_exp_state == 0 then
@@ -45,88 +45,92 @@ if ancient_exp_state == 0 then
 		return
 	endif
 	call Trace("Expansion Distance: " + Int2Str(R2I(GetExpansionDistance())))
-     call Trace("Expansion state 0: Get the Wisp and Location")
-      set gold_buffer = GetUnitGoldCost2(racial_expansion)
-      set wood_buffer = GetUnitWoodCost2(racial_expansion)
-	  set ancient_exp_count = 0
-	 
-    if GetGold() < GetUnitGoldCost2(racial_expansion) or GetWood() < GetUnitWoodCost2(racial_expansion) then
+	call Trace("Expansion state 0: Get the Wisp and Location")
+	set gold_buffer = GetUnitGoldCost2(racial_expansion)
+	set wood_buffer = GetUnitWoodCost2(racial_expansion)
+	set ancient_exp_count = 0
 
-    else
-	  if ancient_exp_wisp == null or not UnitAlive(ancient_exp_wisp) then
-		set ancient_exp_wisp = GetExpansionPeon()
-		if ancient_exp_wisp == null then
-			set ancient_exp_wisp = GetExpansionPeon2()
+	if GetGold() < GetUnitGoldCost2(racial_expansion) or GetWood() < GetUnitWoodCost2(racial_expansion) then
+
+	else
+		if ancient_exp_wisp == null or not UnitAlive(ancient_exp_wisp) then
+			set ancient_exp_wisp = GetExpansionPeon()
+			if ancient_exp_wisp == null then
+				set ancient_exp_wisp = GetExpansionPeon2()
+			endif
 		endif
-      endif
-	  if u != null then
-	    if ancient_exp_loc != null then
+		if u != null then
+			if GetOwningPlayer(u) == Player(PLAYERAGGRESSIVE) then
+				set ancient_exp_state == 4
+			else
+				if ancient_exp_loc != null then
+					call RemoveGuardPosition(ancient_exp_wisp)
+					set exp_loc = GetUnitLoc(current_expansion)
+					//call RemoveLocation(ancient_exp_loc)
+					//set ancient_exp_loc = GetBuildLocationInDistanceFromLoc(old_id[racial_expansion], exp_loc, ver_creeps_attack_buildings_dist + 500)
+					call IssuePointOrderByIdLoc(ancient_exp_wisp, old_id[racial_expansion], ancient_exp_loc)
+					set ancient_exp_state = 1
+					call RemoveLocation(exp_loc)
+					set exp_loc = null
+				endif
+			endif
+		else
 			call RemoveGuardPosition(ancient_exp_wisp)
 			set exp_loc = GetUnitLoc(current_expansion)
 			//call RemoveLocation(ancient_exp_loc)
-			//set ancient_exp_loc = GetBuildLocationInDistanceFromLoc(old_id[racial_expansion], exp_loc, ver_creeps_attack_buildings_dist + 500)
-			call IssuePointOrderByIdLoc(ancient_exp_wisp, old_id[racial_expansion], ancient_exp_loc)
-			set ancient_exp_state = 1
+			set temp = CreateUnit(Player(PLAYERPASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
+			set ancient_exp_loc = GetUnitLoc(temp)
+			call RemoveUnit(temp)
+			set temp = null
+			call IssuePointOrderByIdLoc(ancient_exp_wisp,old_id[racial_expansion], ancient_exp_loc)
+			set ancient_exp_state = 5
 			call RemoveLocation(exp_loc)
 			set exp_loc = null
 		endif
-	  else
-	  	call RemoveGuardPosition(ancient_exp_wisp)
-		set exp_loc = GetUnitLoc(current_expansion)
-      	//call RemoveLocation(ancient_exp_loc)
-    	set temp = CreateUnit(Player(PLAYERPASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
- 		set ancient_exp_loc = GetUnitLoc(temp)
-    	call RemoveUnit(temp)
-    	set temp = null
-	    call IssuePointOrderByIdLoc(ancient_exp_wisp,old_id[racial_expansion], ancient_exp_loc)
-		set ancient_exp_state = 5
-		call RemoveLocation(exp_loc)
-		set exp_loc = null
-	  endif
-    endif
-    call TQAddJob(5, ANCIENT_EXPANSION, 0)
+	endif
+	call TQAddJob(5, ANCIENT_EXPANSION, 0)
 
-  elseif ancient_exp_state == 1 then
-	 call CreateDebugTag("Expansion State 1 - Ordering wisp", 10, ancient_exp_wisp, 3.00, 1.50)
-	 set wisp_loc = GetUnitLoc(ancient_exp_wisp)
-	 if gold_buffer != 0 and DistanceBetweenPoints(wisp_loc, ancient_exp_loc) <= 400 then
+elseif ancient_exp_state == 1 then
+	call CreateDebugTag("Expansion State 1 - Ordering wisp", 10, ancient_exp_wisp, 3.00, 1.50)
+	set wisp_loc = GetUnitLoc(ancient_exp_wisp)
+	if gold_buffer != 0 and DistanceBetweenPoints(wisp_loc, ancient_exp_loc) <= 400 then
 		set gold_buffer = 0
 		set wood_buffer = 0
-	 endif
-	 if wisp_loc != null then
+	endif
+	if wisp_loc != null then
 		call RemoveLocation(wisp_loc)
 		set wisp_loc = null
-	 endif
-    if GetUnitState(ancient_exp_wisp, UNIT_STATE_LIFE) > 0 then
-      call IssuePointOrderByIdLoc(ancient_exp_wisp, old_id[racial_expansion], ancient_exp_loc)
-      call TQAddJob(5, ANCIENT_EXPANSION, 0)
-    else
-      set ancient_exp_unit = GetOneOfIdNearLoc(ai_player, old_id[racial_expansion], ancient_exp_loc, 400)
-      if ancient_exp_unit == null then
-        set ancient_exp_state = 0
-        call AncientExpansionJob()
-      else
-	    if GetLocationNonCreepStrength(GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit), 800) <= 0 then
-        set ancient_exp_state = 2
-        call RemoveGuardPosition(ancient_exp_unit)
-		call IssueImmediateOrderById(ancient_exp_unit, OrderIdCancel)
-        call IssueImmediateOrder(ancient_exp_unit, "unroot")
+	endif
+	if GetUnitState(ancient_exp_wisp, UNIT_STATE_LIFE) > 0 then
+		call IssuePointOrderByIdLoc(ancient_exp_wisp, old_id[racial_expansion], ancient_exp_loc)
+		call TQAddJob(5, ANCIENT_EXPANSION, 0)
+	else
+		set ancient_exp_unit = GetOneOfIdNearLoc(ai_player, old_id[racial_expansion], ancient_exp_loc, 400)
+		if ancient_exp_unit == null then
+			set ancient_exp_state = 0
+			call AncientExpansionJob()
+		else
+			if GetLocationNonCreepStrength(GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit), 1500) <= 0 then
+				set ancient_exp_state = 2
+				call RemoveGuardPosition(ancient_exp_unit)
+				call IssueImmediateOrderById(ancient_exp_unit, OrderIdCancel)
+				call IssueImmediateOrder(ancient_exp_unit, "unroot")
+			endif
+			//set no_attack_allowed = true
+			call TQAddJob(1, ANCIENT_EXPANSION, 0)
 		endif
-        //set no_attack_allowed = true
-        call TQAddJob(1, ANCIENT_EXPANSION, 0)
-      endif
-    endif
-  elseif ancient_exp_state == 2 then
+	endif
+elseif ancient_exp_state == 2 then
 	if GetUnitMoveSpeed(ancient_exp_unit) == 0 then
-	    call CreateDebugTag("Expansion State 2: Uproot Tree", 10, ancient_exp_unit, 3.00, 1.50)
-	    call IssueImmediateOrderById(ancient_exp_unit, OrderIdCancel)
+		call CreateDebugTag("Expansion State 2: Uproot Tree", 10, ancient_exp_unit, 3.00, 1.50)
+		call IssueImmediateOrderById(ancient_exp_unit, OrderIdCancel)
 		call IssueImmediateOrder(ancient_exp_unit, "unroot")
 	else
 
 		if hero_built[1] then
 			set ancient_exp_state = 3
-		  //call RemoveGuardPosition(hero_unit[1])
-		  //call IssuePointOrder(hero_unit[1], "move", GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))	
+			//call RemoveGuardPosition(hero_unit[1])
+			//call IssuePointOrder(hero_unit[1], "move", GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))
 			//call GroupClear(ancient_exp_group)
 			//call GroupEnumUnitsOfPlayer(ancient_exp_group, ai_player, null)
 			//set ancient_exp_group = SelectByAlive(ancient_exp_group, true)
@@ -134,14 +138,14 @@ if ancient_exp_state == 0 then
 			//set ancient_exp_group = SelectUnittype(ancient_exp_group, UNIT_TYPE_PEON, false)
 			//set ancient_exp_group = SelectByUnitStandard(ancient_exp_group, true)
 			//call GroupRemoveGuardPositionInstant(ancient_exp_group)
-			//call GroupPointOrder(ancient_exp_group, "smart", GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))		
+			//call GroupPointOrder(ancient_exp_group, "smart", GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))
 		endif
 	endif
-    call TQAddJob(3, ANCIENT_EXPANSION, 0)
-  elseif ancient_exp_state == 3 then
+	call TQAddJob(3, ANCIENT_EXPANSION, 0)
+elseif ancient_exp_state == 3 then
 	call CreateDebugTag("Expansion State 3: Awaiting Hero", 10, ancient_exp_unit, 3.00, 1.50)
 	call SetCaptainHome(BOTH_CAPTAINS,R2I(GetUnitX(ancient_exp_unit)),R2I(GetUnitY(ancient_exp_unit)))
-    if DistanceBetweenUnits(ancient_exp_unit, hero_unit[1]) <= 750 or u == null or isstrong then
+	if DistanceBetweenUnits(ancient_exp_unit, hero_unit[1]) <= 750 or u == null or isstrong then
 		if ancient_exp_count > 0 then
 			call GroupEnumUnitsInRange(ancient_exp_group, GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit), 1000, null)
 			set ancient_exp_group = SelectByPlayer(ancient_exp_group, ai_player, true)
@@ -151,15 +155,15 @@ if ancient_exp_state == 0 then
 			set ancient_exp_group = SelectByUnitStandard(ancient_exp_group, true)
 			if not isstrong then
 				call GroupAddUnit(ancient_exp_group, ancient_exp_unit)
-	        endif
+			endif
 			////call GroupAddTypeAndRemoveGuard(ancient_exp_group, race_ancient_expansion_help_id, ai_player)
-	        //call GroupPointOrder(ancient_exp_group, "smart", GetUnitX(u), GetUnitY(u))
-	        set ancient_exp_state = 4
+			//call GroupPointOrder(ancient_exp_group, "smart", GetUnitX(u), GetUnitY(u))
+			set ancient_exp_state = 4
 		else
 			set ancient_exp_count = ancient_exp_count + 1
 		endif
-    else
-	    if ancient_exp_count > 0 then
+	else
+		if ancient_exp_count > 0 then
 			set ancient_exp_count = ancient_exp_count - 1
 		endif
 		//call GroupEnumUnitsOfPlayer(ancient_exp_group, ai_player, null)
@@ -168,13 +172,13 @@ if ancient_exp_state == 0 then
 		//set ancient_exp_group = SelectUnittype(ancient_exp_group, UNIT_TYPE_PEON, false)
 		//set ancient_exp_group = SelectByUnitStandard(ancient_exp_group, true)
 		//call GroupRemoveGuardPositionInstant(ancient_exp_group)
-		//call GroupPointOrder(ancient_exp_group, "smart", GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))		
-    endif
-    call TQAddJob(5, ANCIENT_EXPANSION, 0)
-  elseif ancient_exp_state == 4 then
+		//call GroupPointOrder(ancient_exp_group, "smart", GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))
+	endif
+	call TQAddJob(5, ANCIENT_EXPANSION, 0)
+elseif ancient_exp_state == 4 then
 	call CreateDebugTag("Expansion State 4: Attacking and taking expansion", 10, ancient_exp_unit, 3.00, 1.50)
-	call SetCaptainHome(BOTH_CAPTAINS,R2I(GetUnitX(ancient_exp_unit)),R2I(GetUnitY(ancient_exp_unit))) 
-    if u == null then
+	call SetCaptainHome(BOTH_CAPTAINS,R2I(GetUnitX(ancient_exp_unit)),R2I(GetUnitY(ancient_exp_unit)))
+	if u == null then
 		call GroupRemoveUnit(ancient_exp_group, ancient_exp_unit)
 		call IssueTargetOrder(ancient_exp_unit, "entangle", current_expansion)
 		call TQAddUnitJob(R2I(GetTimeToReachUnit(ancient_exp_unit, current_expansion)*2 + 5), RESET_GUARD_POSITION, 0, ancient_exp_unit)
@@ -185,9 +189,9 @@ if ancient_exp_state == 0 then
 		set not_taken_expansion = null
 		set ancient_expanding = false
 		set ancient_attack_running = false
-		call SetCaptainHome(BOTH_CAPTAINS,GetLocationX(home_location),GetLocationY(home_location))	  
+		call SetCaptainHome(BOTH_CAPTAINS,GetLocationX(home_location),GetLocationY(home_location))
 		return
-    else
+	else
 		//call GroupAddTypeAndRemoveGuard(ancient_exp_group, race_ancient_expansion_help_id, ai_player)
 		if GetUnitState(ancient_exp_unit, UNIT_STATE_LIFE) <= GetUnitState(ancient_exp_unit, UNIT_STATE_MAX_LIFE) * 0.40 then
 			call IssueImmediateOrderById(ancient_exp_unit, OrderId("eattree"))
@@ -199,15 +203,15 @@ if ancient_exp_state == 0 then
 			endif
 		endif
 		call TQAddJob(2, ANCIENT_EXPANSION, 0)
-    endif
-  elseif ancient_exp_state == 5 then
+	endif
+elseif ancient_exp_state == 5 then
 	call CreateDebugTag("Expansion State 5: Fast Expand as camp clear", 10, ancient_exp_wisp, 3.00, 1.50)
-    if GetUnitState(ancient_exp_wisp, UNIT_STATE_LIFE) > 0 and CheckExpansionTaken(current_expansion) == false then
+	if GetUnitState(ancient_exp_wisp, UNIT_STATE_LIFE) > 0 and CheckExpansionTaken(current_expansion) == false then
 		if GetUnitCurrentOrder(ancient_exp_wisp) != old_id[racial_expansion] then
 				call IssuePointOrderByIdLoc(ancient_exp_wisp, old_id[racial_expansion], ancient_exp_loc)
 		endif
 		call TQAddJob(5, ANCIENT_EXPANSION, 0)
-    else
+	else
 		set gold_buffer = 0
 		set wood_buffer = 0
 		//call RemoveLocation(ancient_exp_loc)
@@ -216,7 +220,7 @@ if ancient_exp_state == 0 then
 		set not_taken_expansion = null
 		set ancient_expanding = false
 	endif
-  endif
-  set u = null
+endif
+set u = null
 endfunction
 #ENDIF
