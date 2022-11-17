@@ -65,11 +65,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Town track  town_num now according to TrackTown(town_num)  to increase
 - Comment out FOCUSFIRE_CONTROL  call FocusGroupRemoveGuard ，because FocusGroupRemoveGuard has been replaced and needs to improve efficiency
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
-- Increase expansion_radius , expansion_radius now is 1500 , Prevent some maps creep to gold distance too far , Error caused ANCIENT_EXPANSION run
 - Add ELF harvest_gold(i) , i is 2~5
 - GetExpansionPeon2 Add Adjust not IsUnitLoaded , because ELF peon harvest gold
 - BuildLumberMillAtBase  now use  TownCount(racial_lumber)  , no  TownCountDone(racial_lumber) , hope  Prevent AI building many cemeteries
-- GetExpFoeGroup GroupEnumUnitsInRange distance now is 1500 , map  like (4)Avalanche_LV , the creep and gold distance > 650
+- ANCIENT EXPANSION add judgment , if cannot find creep unit , GroupEnumUnitsInRange distance 1500 search again , map  like (4)Avalanche_LV , the creep and gold distance > 650
 - ANCIENT_EXPANSION add judgment , when expansion location have unit  , judgment the unit OwningPlayer , if player is AGGRESSIVE ,just set ancient_exp_state to 4 , else build
 - Strategy additional Improvements
    - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
