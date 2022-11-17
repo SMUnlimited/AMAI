@@ -69,7 +69,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Add ELF harvest_gold(i) , i is 2~5
 - GetExpansionPeon2 Add Adjust not IsUnitLoaded , because ELF peon harvest gold
 - BuildLumberMillAtBase  now use  TownCount(racial_lumber)  , no  TownCountDone(racial_lumber) , hope  Prevent AI building many cemeteries
-- GetExpFoe GroupEnumUnitsInRange distance now is 1500 , map  like (4)Avalanche_LV , the creep and gold distance > 650
+- GetExpFoeGroup GroupEnumUnitsInRange distance now is 1500 , map  like (4)Avalanche_LV , the creep and gold distance > 650
+- ANCIENT_EXPANSION add judgment , when expansion location have unit  , judgment the unit OwningPlayer , if player is AGGRESSIVE ,just set ancient_exp_state to 4 , else build
 - Strategy additional Improvements
    - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
    - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
