@@ -5641,6 +5641,7 @@ function BuildRushCreepAtBase takes nothing returns nothing
   local integer i = 0
   local integer id = 0
   local integer ru = 0
+  local real distance = 3200
   local group g = CreateGroup()
   local group tempg = null
   local unit u = null
@@ -5657,7 +5658,7 @@ function BuildRushCreepAtBase takes nothing returns nothing
     set u = FirstOfGroup(tempg)
     exitwhen u == null
     set loc = GetUnitLoc(u)
-    if DistanceBetweenPoints(loc, home_location) <= 3200 and GetUnitLevel(u) < 5 and not IsUnitType(u, UNIT_TYPE_FLYING) and ((ua[0] != null and DistanceBetweenUnits(u, ua[0]) > 600) or ua[0] == null or (ua[1] != null and DistanceBetweenUnits(u, ua[1]) > 600)) then  //maybe have same camp creep unit not cleaned up
+    if DistanceBetweenPoints(loc, home_location) <= distance and GetUnitLevel(u) < 5 and not IsUnitType(u, UNIT_TYPE_FLYING) and ((ua[0] != null and DistanceBetweenUnits(u, ua[0]) > 600) or ua[0] == null or (ua[1] != null and DistanceBetweenUnits(u, ua[1]) > 600)) then  //maybe have same camp creep unit not cleaned up
       set ua[i] = CreatePathingUnit(ua[i])
       set uc[i] = u
       call IssuePointOrder(ua[i], "move", GetUnitX(u), GetUnitY(u))
@@ -5670,14 +5671,17 @@ function BuildRushCreepAtBase takes nothing returns nothing
   set g = null
   call DestroyGroup(tempg)
   set tempg = null
-  if uc[0] == null then
+  if ua[0] == null then
     set loc = null
     return
   endif
   set ru = i
   set i = 0
   loop
-    exitwhen canbuild == true or id > ru
+    exitwhen canbuild == true or id == ru
+    if i == ru then
+      set i = 0
+    endif
     if DistanceBetweenUnits(ua[i], uc[i]) < 600 and GetUnitState(uc[i], UNIT_STATE_LIFE) > 0 then
       call RemoveLocation(loc)
       set loc = GetUnitLoc(ua[i])
@@ -5687,9 +5691,6 @@ function BuildRushCreepAtBase takes nothing returns nothing
       set id = id + 1
     endif
     set i = i + 1
-    if i == ru then
-      set i = 0
-    endif
     call Sleep(0.02)
   endloop
   set i = 0
@@ -5700,9 +5701,7 @@ function BuildRushCreepAtBase takes nothing returns nothing
     set uc[i] = null
     set i = i + 1
   endloop
-  set peon = GetExpansionPeon2()
-  if id == ru or loc == null or peon == null then
-    set peon = null
+  if id == ru or loc == null then
     call RemoveLocation(loc)
     set loc = null
     return
@@ -5711,7 +5710,7 @@ function BuildRushCreepAtBase takes nothing returns nothing
   call RemoveLocation(loc)
   set loc = GetUnitLoc(u)
   call RemoveUnit(u)
-  if DistanceBetweenPoints(loc, home_location) < 2000 then
+  if loc != null and DistanceBetweenPoints(loc, home_location) < distance then
     set g = CreateGroup()
     call GroupEnumUnitsInRangeOfLoc(g, loc, 510, null)
     loop
@@ -5723,22 +5722,22 @@ function BuildRushCreepAtBase takes nothing returns nothing
     endloop
     call DestroyGroup(g)
     set g = null
-    if i != - 1 then
-      call IssuePointOrderLoc(peon, "move", loc)
-      set canbuild = IssuePointOrderByIdLoc(peon, old_id[racial_rushcreep], loc)
+    set peon = GetExpansionPeon2()
+    if i != - 1 and peon != null then
+      call IssuePointOrderByIdLoc(peon, old_id[racial_rushcreep], loc)
     endif
+    set peon = null
   endif
   set u = null
   call RemoveLocation(loc)
   set loc = null
-  set peon = null
 endfunction
 
 //=============================================================================
 //  Gets the groups of creeps guarding the specified mine (or other structure)
 function GetExpFoeGroup takes unit mine returns group
   set rg_getexpfoegroup = CreateGroup()
-  call GroupEnumUnitsInRange(rg_getexpfoegroup, GetUnitX(mine), GetUnitY(mine), expansion_radius, null)
+  call GroupEnumUnitsInRange(rg_getexpfoegroup, GetUnitX(mine), GetUnitY(mine), 1500, null)
   set rg_getexpfoegroup = SelectByPlayer(rg_getexpfoegroup, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set rg_getexpfoegroup = SelectByAlive(rg_getexpfoegroup, true)
   return rg_getexpfoegroup
@@ -6359,7 +6358,7 @@ function GetExpFoe takes nothing returns unit
   endif
   if ru_exp[2] == null then
     call GroupClear(g)
-    call GroupEnumUnitsInRange(g, GetUnitX(current_expansion), GetUnitY(current_expansion), 1500, null)
+    call GroupEnumUnitsInRange(g, GetUnitX(current_expansion), GetUnitY(current_expansion), expansion_radius, null)
     set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
     set g = SelectByAlive(g, true)
     set ru_exp[2] = FirstOfGroup(g)
