@@ -729,6 +729,7 @@ globals
 
     boolean attacking_expansion = false
     boolean recalculate_heros = false // Tavern heros cannot be trained so get a normal hero
+    integer recalculate_heros_count = 0 // Prevent constant recalculation
 
     integer tier = 0
     integer own_strength	= 0
@@ -4579,10 +4580,10 @@ function GetNearestNeutral takes integer id returns unit
   set i = 0
   loop
     exitwhen i == totalneutrals
-    if pather[i] != null and ru_distraction[1] != pather[i] then
-        call RemoveUnit(pather[i])
-    endif
+    if pather[i] != null then
+      call RemoveUnit(pather[i])
       set pather[i] = null
+    endif
     set i = i + 1
   endloop
   return ru_distraction[1]
@@ -5803,7 +5804,6 @@ function BuildLumberMillAtBase takes nothing returns boolean
   local location buildloc = GetLumberLocationAtBase()
   local unit u = null
   local unit peon = GetExpansionPeon()
-  local boolean b = false
   if peon == null then
     set peon = GetExpansionPeon2()
   endif
@@ -5813,11 +5813,11 @@ function BuildLumberMillAtBase takes nothing returns boolean
     set buildloc = GetUnitLoc(u)
     call RemoveUnit(u)
     set u = null
-    set b = IssuePointOrderByIdLoc(peon, old_id[racial_lumber], buildloc)
+    call IssuePointOrderByIdLoc(peon, old_id[racial_lumber], buildloc)
     call RemoveLocation(buildloc)
     set buildloc = null
     set peon = null
-    return b
+    return true
   endif
   set peon = null
   return false
@@ -5899,7 +5899,7 @@ function BuildRushCreepAtBase takes nothing returns nothing
   call RemoveLocation(loc)
   set loc = GetUnitLoc(u)
   call RemoveUnit(u)
-  if loc != null and DistanceBetweenPoints(loc, home_location) < distance then
+  if loc != null and DistanceBetweenPoints(loc, home_location) < distance then  //Prevent some islands/shallow water terrain from creating u on the other side of the map
     set g = CreateGroup()
     call GroupEnumUnitsInRangeOfLoc(g, loc, 510, null)
     loop
@@ -6561,7 +6561,6 @@ endfunction
 
 function GetNeutralGuard takes integer nn returns unit
   local group g = null
-  local group t = null
   local location l = null
 
   if nearest_neutral[nn] == null then
@@ -6573,23 +6572,20 @@ function GetNeutralGuard takes integer nn returns unit
   set ru_distraction[5] = GetNearestOfGroup(g, l)
   call RemoveLocation(l)
   set l = null
+  if ru_distraction[5] == null then
+    call GroupClear(g)
+    call GroupEnumUnitsInRange(g, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), expansion_radius, null)
+    set g = SelectByPlayer(g, Player(PLAYERAGGRESSIVE), true)
+    set g = SelectByAlive(g, true)
+    set ru_distraction[5] = FirstOfGroup(g)
+  endif
   call DestroyGroup(g)
   set g = null
-  if ru_distraction[5] == null then
-    set t = CreateGroup()
-    call GroupEnumUnitsInRange(t, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), expansion_radius, null)
-    set t = SelectByPlayer(t, Player(PLAYERAGGRESSIVE), true)
-    set t = SelectByAlive(t, true)
-    set ru_distraction[5] = FirstOfGroup(t)
-    call DestroyGroup(t)
-    set t = null
-  endif
   return ru_distraction[5]
 endfunction
 
 function CanCreepGuardsSleep takes integer nn returns boolean
   local group g = null
-  local group t = null
   local unit u = null
 
   if nearest_neutral[nn] == null then
@@ -6602,22 +6598,20 @@ function CanCreepGuardsSleep takes integer nn returns boolean
     exitwhen not UnitCanSleep(u)
     call GroupRemoveUnit(g, u)
   endloop
-  call DestroyGroup(g)
-  set g = null
   if u == null then
-    set t = CreateGroup()
-    call GroupEnumUnitsInRange(t, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), 750, null)
-    set t = SelectByPlayer(t, Player(PLAYERAGGRESSIVE), true)
-    set t = SelectByAlive(t, true)
+    call GroupClear(g)
+    call GroupEnumUnitsInRange(g, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), 750, null)
+    set g = SelectByPlayer(g, Player(PLAYERAGGRESSIVE), true)
+    set g = SelectByAlive(g, true)
     loop
-      set u = FirstOfGroup(t)
+      set u = FirstOfGroup(g)
       exitwhen u == null
       exitwhen not UnitCanSleep(u)
-      call GroupRemoveUnit(t, u)
+      call GroupRemoveUnit(g, u)
     endloop
-    call DestroyGroup(t)
-    set t = null
   endif
+  call DestroyGroup(g)
+  set g = null
   if u == null then
     return true
   endif
@@ -10029,6 +10023,21 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     endif
   #ENDINCLUDE
 
+    if neutral_guarded[NEUTRAL_TAVERN] and recalculate_heros_count != 3 then  // tier1 tier2 tier3 , respectively only recalculate once , guarantee to train Ownrace hero at the first time
+      if not hero_built[1] and recalculate_heros_count < 1 then
+        set recalculate_heros = true
+        set recalculate_heros_count = 1
+      elseif (recalculate_heros_count < 2 and tier == 2) or tier == 3 then
+        if GetLocationCreepStrength(GetUnitX(nearest_neutral[NEUTRAL_TAVERN]), GetUnitY(nearest_neutral[NEUTRAL_TAVERN]), 750) > GetOwnStrength() then
+          set recalculate_heros = true
+          if not hero_built[2] and recalculate_heros_count < 2 then
+            set recalculate_heros_count = 2
+          elseif not hero_built[3] and tier == 3 then
+            set recalculate_heros_count = 3
+          endif
+        endif
+      endif
+    endif
     if buy_type[unitid] == BT_NEUTRAL_HERO then
       return GetNeutralHero(unitid)
     endif
