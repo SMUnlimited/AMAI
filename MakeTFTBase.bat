@@ -1,5 +1,4 @@
 @ECHO OFF
-SET VSAI=%1
 ECHO Making AMAI
 ECHO _____________________________
 ECHO creating \Scripts\TFT\common.ai
@@ -38,5 +37,4 @@ perl ejass.pl Blizzard.eai TFT VER:TFT > Scripts\Blizzard.j
 ECHO \Scripts\Blizzard.j created
 pjass common.j Scripts\Blizzard.j
 jassparser common.j Scripts\Blizzard.j
-ECHO _____________________________
 ECHO _____________________________
