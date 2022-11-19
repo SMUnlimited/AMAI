@@ -58,7 +58,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency(but the function no longer use)
 - Army track  CopyArmy  no longer copy same integer , hopes it can improve efficiency
 - Town track  CopyTown  no longer copy same integer , hopes it can improve efficiency
-- Comment out FOCUSFIRE_CONTROL  call FocusGroupRemoveGuard ，because FocusGroupRemoveGuard has been replaced and needs to improve efficiency
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
 - Array upper limit (JASS_MAX_ARRAY_SIZE) adjustment ，now is 8192 , if hope old war3 normal , then only set 8192
 - Add ELF harvest_gold(i) , i is 2~5
