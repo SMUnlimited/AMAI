@@ -10042,7 +10042,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       return GetNeutralHero(unitid)
     endif
 
-    if rushcreep_build != true and unitid == racial_rushcreep and TownCount(racial_rushcreep) == 0 and not towerrush then
+    if not towerrush and unitid == racial_rushcreep and TownCount(racial_rushcreep) == 0 then
       call BuildRushCreepAtBase()
       return BUILT_ALL  //Whatever BuildRushCreepAtBase outcome, build
     endif
@@ -10172,6 +10172,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   local unit    peon = null
   local integer gold_cost = 0
   local integer wood_cost = 0
+  local group g = null
 
   if countdone >= qty then
     return BUILT_ALL
@@ -10179,13 +10180,12 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   if (count > countdone) or town_threatened then
     return BUILT_SOME
   endif
-  
 
   if CheckExpansionTaken(current_expansion) then
     set current_expansion = null
   endif
-  
- // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Taken Checked")
+
+  // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Taken Checked")
 
   if current_expansion == null then
     call ChooseExpansion()
@@ -10195,12 +10195,22 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     endif
   endif
 
- // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion choosen")
+  // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion choosen")
 
   if GetExpFoe() != null then
-      set take_exp = true
+    set take_exp = true
   else
-	  set take_exp = false
+    set g = CreateGroup()
+    call GroupEnumUnitsInRange(g, GetUnitX(current_expansion), GetUnitY(current_expansion), 1500, null)  //Prevent some maps creep too far away
+    set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
+    set g = SelectByAlive(g, true)
+    if FirstOfGroup(g) != null then
+      set take_exp = true
+    else
+      set take_exp = false
+    endif
+    call DestroyGroup(g)
+    set g = null
   endif
 
   set gold_cost = GetUnitGoldCost2(hall)
@@ -10228,12 +10238,12 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     return BUILT_SOME
   endif
 
- // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion rescources sorted")
+  // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion rescources sorted")
 
-    set peon = GetExpansionPeon()
-	if peon == null then
-		set peon = GetExpansionPeon2()
-	endif
+  set peon = GetExpansionPeon()
+  if peon == null then
+    set peon = GetExpansionPeon2()
+  endif
 
 //  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Peon Got")
 
@@ -10247,7 +10257,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     endif
     set exp_time_count = ai_time	// This sets time to next expansion to current time so it waits enough time before starting another expansion 
     if race_uses_mine_expansion then
-	  call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon)
+      call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon)
       call IssueTargetOrderById(peon, old_id[hall], current_expansion)
     else
       call ConstructExpansion(peon,old_id[hall])
@@ -11454,7 +11464,7 @@ function CreepAttack takes integer str returns nothing
 // Creep camp small is level 1 - 9
 // Creep camp medium is level 10 - 19
 // Creep camp strong is level 20 - 100
-    if rushcreep_build == true and (rushcreep_target != null or DistanceBetweenUnits(rushcreep_target, target) < 500) then
+    if rushcreep_target != null or DistanceBetweenUnits(rushcreep_target, target) < 500 then
       set target = rushcreep_target
     endif
 
