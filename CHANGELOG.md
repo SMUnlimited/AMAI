@@ -175,7 +175,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Fixed issue where profiles were being re-used all the time instead of when running out of applicable profiles.
 - Undead strategy add GargGhouls
 - Add shop towerrush report
-- Add SkyModel and TerrainFogEx (form Quenching ,if not close Quenching blizzard , usd Quenching will change AMAI blizzard.j, the Quenching  function can give convenient for people who shoot movies without the sky , Keep both sides aligned so that you can still experience 100% of the Quenching )
 - AI now can use power fountain (if map have power fountain)
 
 ### Changed
