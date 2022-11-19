@@ -65,7 +65,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Army track  CopyArmy  no longer copy same integer , hopes it can improve efficiency
 - Town track  CopyTown  no longer copy same integer , hopes it can improve efficiency
 - Town track  town_num now according to TrackTown(town_num)  to increase
-- Comment out FOCUSFIRE_CONTROL  call FocusGroupRemoveGuard ，because FocusGroupRemoveGuard has been replaced and needs to improve efficiency
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
 - Add ELF harvest_gold(i) , i is 2~5
 - GetExpansionPeon2 Add Adjust not IsUnitLoaded , because ELF peon harvest gold
