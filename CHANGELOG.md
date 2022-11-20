@@ -66,9 +66,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Town track  CopyTown  no longer copy same integer , hopes it can improve efficiency
 - Town track  town_num now according to TrackTown(town_num)  to increase
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
-- Add ELF harvest_gold(i) , i is 2~5
 - GetExpansionPeon2 Add Adjust not IsUnitLoaded , because ELF peon harvest gold
-- BuildLumberMillAtBase  now use  TownCount(racial_lumber)  , no  TownCountDone(racial_lumber) , hope  Prevent AI building many cemeteries
+- BuildLumberMillAtBase  now use TownCount(racial_lumber)  , no  TownCountDone(racial_lumber) , hope  Prevent AI building many cemeteries
 - ANCIENT EXPANSION add judgment , if cannot find creep unit , GroupEnumUnitsInRange distance 1500 search again , map  like (4)Avalanche_LV , the creep and gold distance > 650
 - ANCIENT_EXPANSION add judgment , when expansion location have unit  , judgment the unit OwningPlayer , if player is AGGRESSIVE ,just set ancient_exp_state to 4 , else build
 - StartExpansionAM added judgment  search creep  in mine range 1500 ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION , The problem is not ANCIENT_EXPANSION
