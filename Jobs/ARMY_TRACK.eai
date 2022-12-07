@@ -17,11 +17,25 @@
 
 function CopyArmy takes integer from, integer to returns nothing
   set army_owner[to] = army_owner[from]
-  set army_loc[to] = army_loc[from]
-  set army_dir[to] = army_dir[from]
-  set army_future[to] = army_future[from]
+  if army_loc[to] != null then
+    call RemoveLocation(army_loc[to])
+  endif
+  set army_loc[to] = Location(GetLocationX(army_loc[from]), GetLocationY(army_loc[from]))
+  if army_dir[to] != null then
+    call RemoveLocation(army_dir[to])
+  endif
+  set army_dir[to] = Location(GetLocationX(army_dir[from]), GetLocationY(army_dir[from]))
+  if army_future[to] != null then
+    call RemoveLocation(army_future[to])
+  endif
+  set army_future[to] = Location(GetLocationX(army_future[from]), GetLocationY(army_future[from]))
   set army_strength[to] = army_strength[from]
-  set army_group[to] = army_group[from]
+  if army_group[to] != null then
+    call GroupClear(army_group[to])
+    call BlzGroupAddGroupFast(army_group[from], army_group[to])
+  else
+    set army_group[to] = army_group[from]
+  endif
   set army_count[to] = army_count[from]
 endfunction
 
@@ -60,9 +74,13 @@ function TrackArmy takes integer num returns boolean
 
   if army_strength[num] == 0 then
     call DestroyGroup(army_group[num])
+    set army_group[num] = null
     call RemoveLocation(army_loc[num])
+    set army_loc[num] = null
     call RemoveLocation(army_dir[num])
+    set army_dir[num] = null
     call RemoveLocation(army_future[num])
+    set army_future[num] = null
     call RemoveLocation(l)
     set l = null
     return false
@@ -102,9 +120,21 @@ endfunction
 
 function SeedNewArmyAtLoc takes location l, integer p returns nothing
   set army_owner[army_num] = p
+  if army_loc[army_num] != null then
+    call RemoveLocation(army_loc[army_num])
+  endif
   set army_loc[army_num] = l
+  if army_dir[army_num] != null then
+    call RemoveLocation(army_dir[army_num])
+  endif
   set army_dir[army_num] = Location(0,0)
+  if army_future[army_num] != null then
+    call RemoveLocation(army_future[army_num])
+  endif
   set army_future[army_num] = Location(0,0)
+  if army_group[army_num] != null then
+    call DestroyGroup(army_group[army_num])
+  endif
   set army_group[army_num] = CreateGroup()
   if TrackArmy(army_num) then
     set army_num = army_num + 1
@@ -189,6 +219,7 @@ endfunction
 function UpdateTownThreat takes nothing returns nothing
   local integer i = 0
   local real accepted_threat_level = LinearInterpolation(atl_time_start, atl_time_end, atl_time_start_val, atl_time_end_val, TimerGetElapsed(tq_timer)) * LinearInterpolation(atl_enemy_start, atl_enemy_end, atl_enemy_start_mult, atl_enemy_end_mult, c_enemy_total)
+  local location loc = null
   set town_threatened = false
   //call Trace("ARMY_TRACK: Town threat update")
   set most_threatened_town = -1
@@ -202,7 +233,10 @@ function UpdateTownThreat takes nothing returns nothing
     set town_threatened = true
   endif
   if town_threatened then
-    call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))	
+    set loc = SetLandingLoc_k(town_loc[most_threatened_town])
+    call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(loc), GetLocationY(loc))
+    call RemoveLocation(loc)
+    set loc =null
   endif
 endfunction
 
