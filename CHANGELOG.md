@@ -20,10 +20,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join non own racial units and heros (but excess heros may not be able to learn skills) , This function include adding mercenaries and dragons to the Attack Group( the function AttackGroupAddNeutrals no longer use) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
 - Note: the AI no longer sent repeat report for B.eai command control C.eai
-- New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
 - Buy NEUTRAL HERO add judge , some map the NEUTRAL TAVERN near have creep , maybe the creep no guarded , like creep on second floor ,  NEUTRAL TAVERN on first floor , but AI will considered as they are guarded , cause cannot buy neutral heroes at the first time , even no longer buy neutral heroes , when this time , AI cannot call GetNeutralHero , endless loop , so if NEUTRAL TAVERN near have creep (neutral_guarded[NEUTRAL_TAVERN]), just immediately recalculate heros , guarantee to change train ownrace hero at the first time
-- ELF now can use BR build to creepcamp , and have one build on outside , hope can can reduce the chance of being stuck at home
+- Water_expansion now record creeps guard , and ChooseExpansion returns the creeps , Water_expansion returns expansion_ancient now is null
+- RALLY_POINT reform to STRUCTURE_CONTROL , conteol all build
+   - front2_loc , help ELF and no wood harvest race handle build blocking , if home_location the number of buildings in the range is more than a certain value, use front_loc ,  if front_loc the number of buildings in the range is more than a certain value , use front2_loc
+   - if ELF and no wood harvest race  have shredder , now adjust shredder loc , if shredder order is harvest , then when shredder harvest far enough the loc maybe can build
+   - Rallypoint now is front2_loc[Random] further rallyloc, home_location may cause the unit to be avoid being stuck at home , but within front_loc build rallyloc still home_location 
+   - Regular burrow disarm , fix ORC cannot disarm
+   - New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
+- ELF now can use BR build to creepcamp(rushcreep) , and have one build on outside , hope can can reduce the chance of being stuck at home
    - CreepAttack Priority attack the tree current creep
+   - Note: the build will let ELF build tree to later , but seems unable to improve , even if when tree quantity greater than 1 build the rushcreep tree
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
@@ -56,20 +63,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
 - Optimized function XXXFountain code , no use local unit fountain
 - function CommonSleepUntilTargetDeadAM now judging target == null , improve operation efficiency
-- Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will smoothly
+- Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will smoothly , but 8V8V7(1 human player is Observer) still stuck
 - Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1peon HarvestWood
 - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
 - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
 - function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency(but the function no longer use)
-- Army track  CopyArmy  no longer copy same integer , hopes it can improve efficiency
-- Town track  CopyTown  no longer copy same integer , hopes it can improve efficiency
+- TQUpHeap call TQExchange no longer copy same integer , hopes it can improve efficiency
+- Army track CopyArmy  no longer copy same integer , hopes it can improve efficiency
+- Town track CopyTown  no longer copy same integer , hopes it can improve efficiency
+- Town track SeedNewTownAtLoc town_num incremental now need TrackTown(town_num) return true
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
 - GetExpansionPeon2 Add Adjust not IsUnitLoaded , because ELF peon harvest gold
 - BuildLumberMillAtBase  now use TownCount(racial_lumber)  , no  TownCountDone(racial_lumber) , hope  Prevent AI building many cemeteries
 - ANCIENT EXPANSION add judgment , if cannot find creep unit , GroupEnumUnitsInRange distance 1500 search again , map  like (4)Avalanche_LV , the creep and gold distance > 650
 - ANCIENT_EXPANSION add judgment , when expansion location have unit  , judgment the unit OwningPlayer , if player is AGGRESSIVE ,just set ancient_exp_state to 4 , else build
-- StartExpansionAM added judgment  search creep  in mine range 1500 ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION , The problem is not ANCIENT_EXPANSION
+- StartExpansionAM added judgment search creep  in mine range 1500 ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION , The problem is not ANCIENT_EXPANSION
 - Strategy additional Improvements
    - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
    - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
@@ -87,6 +96,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed InitNeutralBuildings neutral_id[NEUTRAL_DRAGON_ROOST] use neutral_id[NEUTRAL_MERC_CAMP]'s number [i]
 - Fixed InitNeutralBuildings [NEUTRAL_DRAGON_ROOST] and [NEUTRAL_MERC_CAMP] search Error
 - Fixed part of set xxx = GetExpansionPeon() lack set xxx = GetExpansionPeon2() when xxx == null
+- Fixed a when AI have too many ally , game stuck or crashed
 
 ## [3.2.2] - 2022-10-05
 
