@@ -1,0 +1,94 @@
+#IFDEF GLOBAL
+    boolean homebuild = true
+    boolean frontbuild = true
+    boolean shredderbuild = false
+    location rally_point = null
+#ELSE
+
+function Checkburrow takes group g , integer id returns nothing
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectById(g, id, true)
+  set g = SelectByAlive(g, true)
+  call GroupImmediateOrder( g, "standdown" )  //fix orc peon go battlestations , but can not standdown
+  call GroupClear(g)
+endfunction
+
+function Checktower takes group g returns nothing
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectById(g, old_id[race_tower_id], true)
+  set g = SelectByAlive(g,true)
+  if FirstOfGroup(g) != null then
+    if race_tower_upgrade2 != 0 and GetRandomInt(0,4) == 4 then
+      call IssueImmediateOrderById(FirstOfGroup(g), old_id[race_tower_upgrade2])
+    endif
+    call IssueImmediateOrderById(FirstOfGroup(g), old_id[race_tower_upgrade1])
+  endif
+  call GroupClear(g)
+endfunction
+
+function Checkbuildloc takes group g , boolean bool , location loc , real range , integer num returns nothing
+  call GroupEnumUnitsInRangeOfLoc(g, loc, range, null)
+  set g = SelectByPlayer(g, ai_player, true)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  set g = SelectByAlive(g, true)
+  if BlzGroupGetSize(g) >= num then
+    set bool = false
+  else
+    set bool = true
+  endif
+  call GroupClear(g)
+endfunction
+
+function Checkshredderloc takes group g returns nothing
+  local unit u = null
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectById(g, neutral_shredder, true)
+  set u = FirstOfGroup(g)
+  if u != null and GetUnitCurrentOrder(u) == OrderId("harvest") and DistanceBetweenPoints_kd(home_location , GetUnitLoc(u)) >= 1100 then
+    set shredderbuild = true
+  else
+    set shredderbuild = false
+  endif
+  call GroupClear(g)
+  set u = null
+endfunction
+
+function Checkrallypoint takes group g , location loc , real range returns nothing
+  if rally_point == null and front_loc[0] != null then
+    set rally_point = AIGetProjectedLoc(front_loc[0], home_location, -1200, 0)
+  endif
+  if loc == null then
+    return
+  endif
+  call GroupEnumUnitsInRangeOfLoc(g, home_location, range, null)  // ohter town no need set
+  set g = SelectByPlayer(g, ai_player, true)
+  set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, false)  //avoid peon go to rallypoint
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  set g = SelectByAlive(g, true)
+  call GroupPointOrderLoc(g, "setrally",loc)
+  call GroupClear(g)
+endfunction
+
+function StructurecontrolJob takes nothing returns nothing
+  local group g = CreateGroup()
+  call DisplayToAllJobDebug("STRUCTURE_CONTROL JOB START")
+  call Checkrallypoint(g,rally_point,1600)
+  call Checkrallypoint(g,home_location,1100)  //avoid being blocked by front_loc build
+  if racial_lumber == 0 or race_no_wood_harvest then  //help fix ELF build blocking
+    call Checkbuildloc(g,homebuild,home_location,800,5)
+    call Checkbuildloc(g,frontbuild,front_loc[0],850,4)
+    if TownCountDone(neutral_shredder) > 0 then
+      call Checkshredderloc(g)  // harvest wood will have new loc can build
+    endif
+  endif
+  if TownCountDone(BURROW) > 0 and not TownThreatened() then
+    call Checkburrow(g,BURROW)
+  endif
+  if race_tower_upgrade1 != 0 and TownCountDone(race_tower_id) != 0 and GetWood() >= 850 and GetGold() >= 1200 then
+    call Checktower(g)
+  endif
+  call DestroyGroup(g)
+  set g = null
+  call TQAddJob(60, STRUCTURE_CONTROL, 0)
+endfunction
+#ENDIF
