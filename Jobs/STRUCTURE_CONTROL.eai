@@ -1,6 +1,7 @@
 #IFDEF GLOBAL
     boolean homebuild = true
     boolean frontbuild = true
+    boolean minebuild = false
     boolean shredderbuild = false
     location rally_point = null
 #ELSE
@@ -34,7 +35,7 @@ function Checkbuildloc takes group g , boolean bool , location loc , real range 
   if BlzGroupGetSize(g) >= num then
     set bool = false
   else
-    set bool = true
+    set bool = true  //build may be dismantled after being attacked
   endif
   call GroupClear(g)
 endfunction
@@ -70,6 +71,7 @@ function Checkrallypoint takes group g , location loc , real range returns nothi
 endfunction
 
 function StructurecontrolJob takes nothing returns nothing
+  local location loc = null
   local group g = CreateGroup()
   call DisplayToAllJobDebug("STRUCTURE_CONTROL JOB START")
   call Checkrallypoint(g,rally_point,1600)
@@ -77,6 +79,12 @@ function StructurecontrolJob takes nothing returns nothing
   if racial_lumber == 0 or race_no_wood_harvest then  //help fix ELF build blocking
     call Checkbuildloc(g,homebuild,home_location,800,5)
     call Checkbuildloc(g,frontbuild,front_loc[0],850,4)
+    if own_town_mine[0] != null and GetResourceAmount(own_town_mine[0]) == 0 then
+      set loc = GetUnitLoc(own_town_mine[0])
+      call Checkbuildloc(g,minebuild,loc,700,4)
+      call RemoveLocation(loc)
+      set loc = null
+    endif
     if TownCountDone(neutral_shredder) > 0 then
       call Checkshredderloc(g)  // harvest wood will have new loc can build
     endif
