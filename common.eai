@@ -142,6 +142,7 @@ globals
     constant integer BLOC_STD = 1
     constant integer BLOC_FRONT = 2
     constant integer BLOC_MINE = 3
+    constant integer BLOC_FRONT2 = 4
 
     constant integer NOT_ENOUGH_RES = 1
     constant integer CANNOT_BUILD = 2
@@ -6048,9 +6049,9 @@ function ChooseExp takes nothing returns integer
     endif
     set i = i + 1
   endloop
-  if (exp_roll <= 80) then 
+  if (exp_roll <= 80) then
     return first  // The closest expansion choice
-  elseif (exp_roll <= 100) then 
+  elseif (exp_roll <= 100) then
     return second // The second closest expansion choice
   else
     return riskyexp  // Complete Random choice (effectively disabled at the moment)
@@ -6490,7 +6491,7 @@ function AddFrontPoint takes location l returns nothing
   if DistanceBetweenPoints(loc, l) <= 200 then
     call CreateDebugTagLoc("Front Point Added", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
     set front_loc[front_loc_num] = Location(GetLocationX(l),GetLocationY(l))
-    set front2_loc[front_loc_num] = AIGetProjectedLoc(l, home_location, -1100, 0)
+    set front2_loc[front_loc_num] = AIGetProjectedLoc(l, home_location, -1200, 0)
     set front_loc_num = front_loc_num + 1
   //else
     //call CreateDebugTagLoc("Front Point : Not Buildable", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
@@ -6991,7 +6992,7 @@ function GetHeroHealingItem takes nothing returns integer
 #INCLUDETABLE <$VER$\HealingItems.txt> #EFR #COND "%3" eq "HEALINGITEM_HERO"
 	elseif %2 and available_time[%1] <= ai_time then
 		return %1
-#ENDINCLUDE	
+#ENDINCLUDE
 	elseif GetHealingItem() != 0 then
 		return GetHealingItem()
 	elseif GetGlobalHealingItem() != 0 then
@@ -7438,23 +7439,23 @@ endfunction
 function cmd_attack takes integer cmd, integer data returns nothing
   local group gr = null
   if cmd == 10 then	// Stop the current attack
-    set break_attack	= true
-    set go_home		= true
-    set queue_running	= false
-    set attack_player	= false
-    set attack_point	= false
+    set break_attack = true
+    set go_home = true
+    set queue_running = false
+    set attack_player = false
+    set attack_point = false
     call Trace("Stop Attack Command" )
 
   elseif cmd == 11 then	// Start no attacks
-    set break_attack	= true
-    set no_attack		= true
+    set break_attack = true
+    set no_attack = true
     call Trace("No Attacks Command" )
   elseif cmd == 12 then	// Attack specific player
-    set break_attack	= true
-    set go_home		= false
+    set break_attack = true
+    set go_home = false
     set attack_target_p = data
-    set attack_player	= true
-    set attack_point	= false
+    set attack_player = true
+    set attack_point = false
     call Trace("Attack Player Command" )
 
   elseif cmd == 13 then	// Attack specific point
@@ -7463,17 +7464,17 @@ function cmd_attack takes integer cmd, integer data returns nothing
       exitwhen CommandsWaiting()!=0
       call Sleep(0.5)
     endloop
-    set attack_target_x	= GetLastCommand()
-    set attack_target_y	= GetLastData()
-    set break_attack	= true
-    set go_home		= false
-    set attack_point	= true
-    set attack_player	= false
+    set attack_target_x = GetLastCommand()
+    set attack_target_y = GetLastData()
+    set break_attack = true
+    set go_home = false
+    set attack_point = true
+    set attack_player = false
     call PopLastCommand()
     call Trace("Attack Coordinates received" )
 
   elseif cmd == 14 then	// No attacks on creeps
-    set no_creep_attack	= true
+    set no_creep_attack = true
     call Trace("Attack No Creeps" )
 
   elseif cmd == 15 then	// No attack on players
@@ -7489,11 +7490,11 @@ function cmd_attack takes integer cmd, integer data returns nothing
     if target_unit == null then
       call DisplayToAllies(chat_no_unit_selected)
     endif
-    set attack_point	= false
-    set attack_player	= false
-    set attack_unit	= true
-    set break_attack	= true
-    set go_home		= false
+    set attack_point = false
+    set attack_player = false
+    set attack_unit = true
+    set break_attack = true
+    set go_home = false
     call DisplayToAllies(chat_confirm_attack_unit)
 
   elseif cmd == 17 then // Towerrush
@@ -7523,7 +7524,7 @@ function cmd_queue takes integer cmd, integer data returns nothing
   local group gr = null
   if cmd == 30 then	// Cancel queue
     call QueueReset()
-    set queue_running 	= false
+    set queue_running = false
     call Trace("Cancel Queue Command" )
 
   elseif cmd == 31 then	// Queue Attack specific point
@@ -7552,7 +7553,7 @@ function cmd_queue takes integer cmd, integer data returns nothing
     call QueueRestart()
     if QueueGetNextCommand() then
       set queue_running = true
-      set no_attack	= false
+      set no_attack = false
       call Trace("Queue started" )
     else
       call Trace("Queue is empty" )
@@ -8236,7 +8237,7 @@ function choose_strategy takes nothing returns integer
     exitwhen strategy_roll <= sum_rp_strat(i)
     set i = i + 1
   endloop
-  
+
   return i - 1
 endfunction
 
@@ -8832,8 +8833,8 @@ endfunction
 //============================================================================
 function BuildUnit takes integer qty, integer unitid, integer prio returns nothing
   local integer i = BLOC_STD
-  if not homebuild and not shredderbuild and buy_type[unitid] == BT_BUILDING then
-    set i = BLOC_FRONT
+  if not homebuild and (not shredderbuild or minebuild) and buy_type[unitid] == BT_BUILDING then
+    set i = BLOC_FRONT2
   endif
   call SetBuildAllAM(BUILD_UNIT,qty,unitid,-1, i, prio)
 endfunction
@@ -8936,7 +8937,11 @@ endfunction
 
 //============================================================================
 function BuildFront takes integer qty, integer unitid, integer prio returns nothing
-  call SetBuildAllAM(BUILD_UNIT, qty, unitid, -1, BLOC_FRONT, prio)
+  local integer i = BLOC_FRONT
+  if not frontbuild then
+    set i = BLOC_FRONT2
+  endif
+  call SetBuildAllAM(BUILD_UNIT, qty, unitid, -1, i, prio)
 endfunction
 
 //============================================================================
@@ -9480,10 +9485,10 @@ function GetBuildLocation takes integer bloc returns location
   if bloc == BLOC_MINE then
     return mine_loc
   endif
-  if not frontbuild then
-    return front2_loc[GetRandomInt(4, front_loc_num - 1)]  //retain 0 ~ 3 , although it doesn't make sens
+  if bloc == BLOC_FRONT then
+    return front_loc[GetRandomInt(0, front_loc_num - 1)]
   endif
-  return front_loc[GetRandomInt(4, front_loc_num - 1)]
+  return front2_loc[GetRandomInt(0, front_loc_num - 1)]
 endfunction
 
 //============================================================================
@@ -9581,9 +9586,8 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
   local unit peon = GetExpansionPeon()
   local location loc = GetBuildLocation(bloc)
   local unit utemp1 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), 'eaom', home_location, 270.0)  //utemp is seat, leave a passage , unit can ensure correct position
-  local unit utemp2 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), 'eaom', front_loc[0], 270.0)
-  local unit utemp3 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), 'emtg', front_loc[0], 270.0)
-  local unit utemp4 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), 'eaom', front2_loc[0], 270.0)
+  local unit utemp2 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), unitid, front_loc[0], 270.0)
+  local unit utemp3 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), unitid, front2_loc[0], 270.0)
   local unit u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], loc, 270.0)
   local location l = GetUnitLoc(u)
   call RemoveUnit(utemp1)
@@ -9592,8 +9596,6 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
   set utemp2 = null
   call RemoveUnit(utemp3)
   set utemp3 = null
-  call RemoveUnit(utemp4)
-  set utemp4 = null
   call RemoveUnit(u)
   set u = null
   set loc = null
@@ -9850,7 +9852,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       if not CanBuildUnit(unitid) then
         return CANNOT_BUILD
       endif
-      if bloc == BLOC_FRONT and not front_locs_computed and frontbuild then
+      if bloc == BLOC_FRONT and not front_locs_computed then
         return BUILT_SOME
       endif
       if BuildAtSpecialLoc(unitid, town, bloc) != CANNOT_BUILD then   // This only occurs if no peon could be obtained
@@ -10802,13 +10804,13 @@ function SleepInCombatAM takes nothing returns nothing
       exitwhen break_attack
         loop
             exitwhen not CaptainInCombat(true)  // goal is cleared
-            exitwhen CaptainIsEmpty()			// duh
+            exitwhen CaptainIsEmpty()  // duh
             //exitwhen captain_flee and CaptainRetreating()
             //exitwhen isfleeing and CaptainRetreating()
 //            call CaptainAttack(GetLocationX(last_ally_loc), GetLocationY(last_ally_loc))
             call Sleep(1 * sleep_multiplier)
             exitwhen town_threat_break and town_threatened
-            exitwhen break_attack			
+            exitwhen break_attack
             //set attack_length_counter = attack_length_counter + 1
             //if attack_length_counter > attack_reform_length then
             //  set attack_length_counter = 0
