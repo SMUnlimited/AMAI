@@ -5,24 +5,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
-## [2.6.2-cn] - 2022-11-19
+## [2.6.2-cn] - 2022-12-15
 ### core 
 - 3.2.2 master 96800f0 , include all job code
-   - Note: 2.6.2cn include 2.6.1cn
+   - Note: 2.6.2cn include 2.6.1cn and 3.1.1cn
 
 ### Added
 - New automatic Trigger can help AI hero learning skills , it can fix war3 1.31 AI hero can not  learning skills , olny run to war3 1.29+ and have 1 second delay to ensure that other versions are not affected
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join non own racial units and heros (but excess heros may not be able to learn skills) , This function include adding mercenaries and dragons to the Attack Group( the function AttackGroupAddNeutrals no longer use) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
-- Note: the AI no longer sent  repeat report for B.eai command control C.eai
-- New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
-- Buy NEUTRAL HERO add judge , some map the NEUTRAL TAVERN near have creep , maybe the creep no guarded , like creep on second floor ,  NEUTRAL TAVERN on first floor , but AI will considered as they are guarded , cause cannot buy neutral heroes at the first time , even no longer buy neutral heroes , when this time , AI cannot call GetNeutralHero , endless loop , so if NEUTRAL TAVERN near have creep (neutral_guarded[NEUTRAL_TAVERN]), just immediately recalculate heros , guarantee to change train ownrace hero at the first time
-- ELF now can use BR build to creepcamp , and have one build on outside , hope can can reduce the chance of being stuck at home
+- Note: the AI no longer sent repeat report for B.eai command control C.eai
+- Buy NEUTRAL HERO add judge , some map the NEUTRAL TAVERN near have creep , maybe the creep no guarded , like creep on second floor , NEUTRAL TAVERN on first floor , but AI will considered as they are guarded , cause cannot buy neutral heroes at the first time , even no longer buy neutral heroes , when this time , AI cannot call GetNeutralHero , endless loop , so if NEUTRAL TAVERN near have creep (neutral_guarded[NEUTRAL_TAVERN]), just immediately recalculate heros , guarantee to change train ownrace hero at the first time
+- Water_expansion now record creeps guard , and ChooseExpansion returns the creeps , Water_expansion returns expansion_ancient now is null
+- RALLY_POINT reform to STRUCTURE_CONTROL , conteol all build
+   - if ELF or no wood harvest race , now Adjust home_location nearby buildings , if buildings quantity exceeds 4 , buildunit no use BLOC_STD , will use BLOC_FRONT
+   - if ELF or no wood harvest race , now Adjust own_town_mine[0]_location nearby buildings , if the mine Resource Amount is 0 ,buildunit no use BLOC_STD , will use BLOC_MINE , if buildings quantity exceeds 4 , buildunit will use BLOC_FRONT
+   - if ELF or no wood harvest race have shredder , now adjust shredder loc , if shredder order is harvest , then when shredder harvest far enough the loc maybe can build
+   - Rallypoint now is front_loc[0] further rallyloc, home_location may cause the unit to be avoid being stuck at home , but within front_loc build rallyloc still home_location
+   - Regular burrow disarm , fix ORC cannot disarm
+   - New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
+- ELF now can use BR build to creepcamp(rushcreep) , and have one build on outside , hope can can reduce the chance of being stuck at home
    - CreepAttack Priority attack the tree current creep
+   - Note: the build will let ELF build tree to later , but seems unable to improve , even if when tree quantity greater than 1 build the rushcreep tree
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
-   - Towerrush peon now have 4 , but UD have 2 ,  if Towerrush on , AI can compensate peon quantity(ELF compensate 6)  , include ghouls
+   - Towerrush peon now have 4 , but UD have 2 , if Towerrush on , AI can compensate peon quantity(ELF compensate 6) , include ghouls
    - New set for item , race_tower_item_quantity , like IVORY_TOWER or SACRIFICIAL_SKULL(ROC none of these items)
    - New set for tower , race_tower_item_must(if Towerrush  must used item , like UD SACRIFICIAL_SKULL, set true)
    - New set for tower , upgrade race_tower_upgrade2(ROC no race_tower_upgrade2)
@@ -40,35 +48,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Fixed bug , AI no longer build tower on map centre
    - Note: Because available_time too long , so AI TR donot buy NEUTRAL
    - Note: The new pathfinder is not used to TR , Because the path finding direction is wrong (from home to home)
-   - Note: On ROC , This function is not enabled 
+   - Note: human have powerbuild , so AI will automatically pull all peon go to the front build tower , and this time AI no income , I cannot close automatically powerbuild , If only could change the unit race
+   - Note: On ROC , This function is not enabled
 - Synchronization  all function code to [master]
    - include C.eai , B.eai , RECA.AI , but can still be used in the older version of Warcraft 3 , older version player should get more perfect AMAI
    - available_time and regenerate_time not change
    - Balance parameters have not changed
    - Add war3_1.32 mercenaries adjustment , but no use , just add unit to StandardUnits.txt, if you war3 is 1.33+, please run AMAI 3.2.2+
+- Optimize 24 player judgment conditions
 - Change GetPlayerAntiAirStrength returns form integer to real
 - BuyNeutralHero now judge AI hero count , if count == tier or nn != NEUTRAL_TAVERN, then return , Prevent AI from going to the store when the number of heroes reaches the maximum and there is no need to revive (only 3 hero , if have 4 hero or more , then the judge cannot normal operation)
 - BuyNeutral now judge NEUTRAL_TAVERN , if nn == NEUTRAL_TAVERN or buy_place == null, then return
 - Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
 - Optimized function XXXFountain code , no use local unit fountain
 - function CommonSleepUntilTargetDeadAM now judging target == null , improve operation efficiency
-- Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will smoothly(retain return bug)
+- Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will smoothly , but 8V8V7(1 human player is Observer) still stuck
 - Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1peon HarvestWood
+- Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
+- Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
 - function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency(but the function no longer use)
-- Army track  CopyArmy  no longer copy same integer , hopes it can improve efficiency
-- Town track  CopyTown  no longer copy same integer , hopes it can improve efficiency
+- Army track CopyArmy no longer copy same integer , hopes it can improve efficiency
+- Town track CopyTown no longer copy same integer , hopes it can improve efficiency
+- Town track SeedNewTownAtLoc town_num incremental now need TrackTown(town_num) return true
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
 - Array upper limit (JASS_MAX_ARRAY_SIZE) adjustment ，now is 8192 , if hope old war3 normal , then only set 8192
 - GetExpansionPeon2 Add Adjust not IsUnitLoaded , because ELF peon harvest gold
 - BuildLumberMillAtBase  now use TownCount(racial_lumber)  , no  TownCountDone(racial_lumber) , hope  Prevent AI building many cemeteries
 - ANCIENT EXPANSION add judgment , if cannot find creep unit , GroupEnumUnitsInRange distance 1500 search again , map  like (4)Avalanche_LV , the creep and gold distance > 650
 - ANCIENT_EXPANSION add judgment , when expansion location have unit  , judgment the unit OwningPlayer , if player is AGGRESSIVE ,just set ancient_exp_state to 4 , else build
-- StartExpansionAM added judgment  search creep  in mine range 1500 ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION , The problem is not ANCIENT_EXPANSION
+- StartExpansionAM added judgment search creep  in mine range 1500 ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION , The problem is not ANCIENT_EXPANSION
+- front_base_distance now is 1100 , and increase according to AI difficulty , front_base_distance = difficulty * 50 + front_base_distance
+   - if race no use racial_lumber or race no harvest wood , front_base_distance additional additions 100
+- BuildAtSpecialLoc generate a new placeholder ，home_location always produce war_tree
 - Strategy additional Improvements
    - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
    - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
    - Disturbance function global_init_strategy AddBlock
+      - Reorganized AddBlock
    - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
    - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)，fix ROC ELF race_has_moonwells to true
    - Adjust UPG_BOMBS BuildAdvUpgr2 chance unitcount to 0.2 , Maximum to 35 , In the test, after building COPTER, the enemy has no AIR , the COPTER no research UPG_BOMBS not useful
@@ -86,6 +103,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed B.eai playercreep num , now is 16/28
 - Fixed B2.j and B3.j bj_PLAYER_NEUTRAL_EXTRA and bj_MAX_PLAYER_SLOTS and bj_PLAYER_NEUTRAL_VICTIM not replaced with dynamic variable playercreep or playermax
 - Fixed part of set xxx = GetExpansionPeon() lack set xxx = GetExpansionPeon2() when xxx == null
+- Fixed a when AI have too many ally , game stuck or crashed
 
 ## [2.6.2] - 2022-09-04
 Jzy-chitong56 has provided various updates and ported features back to this older version of AMAI if you play on the older editions of warcraft 3.
