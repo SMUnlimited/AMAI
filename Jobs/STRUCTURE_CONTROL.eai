@@ -1,9 +1,8 @@
 #IFDEF GLOBAL
+    location rally_point = null
     boolean homebuild = true
-    boolean frontbuild = true
     boolean minebuild = false
     boolean shredderbuild = false
-    location rally_point = null
 #ELSE
 
 function Checkburrow takes group g , integer id returns nothing
@@ -41,15 +40,25 @@ function Checkbuildloc takes group g , boolean bool , location loc , real range 
 endfunction
 
 function Checkshredderloc takes group g returns nothing
+  local location loc = null
   local unit u = null
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectById(g, neutral_shredder, true)
   set u = FirstOfGroup(g)
-  if u != null and GetUnitCurrentOrder(u) == OrderId("harvest") and DistanceBetweenPoints_kd(home_location , GetUnitLoc(u)) >= 1100 then
-    set shredderbuild = true
-  else
-    set shredderbuild = false
+  set loc = GetUnitLoc(u)
+  if u != null and GetUnitCurrentOrder(u) == OrderId("harvest") and DistanceBetweenPoints(home_location , loc) >= 1000 then
+    call GroupEnumUnitsInRangeOfLoc(g, loc, 800, null)
+    set g = SelectByPlayer(g, ai_player, true)
+    set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+    set g = SelectByAlive(g, true)
+    if BlzGroupGetSize(g) >= 5 then
+      set shredderbuild = false
+    else
+      set shredderbuild = true
+    endif
   endif
+  call RemoveLocation(loc)
+  set loc = null
   call GroupClear(g)
   set u = null
 endfunction
@@ -78,7 +87,6 @@ function StructurecontrolJob takes nothing returns nothing
   call Checkrallypoint(g,home_location,1100)  //avoid being blocked by front_loc build
   if racial_lumber == 0 or race_no_wood_harvest then  //help fix ELF build blocking
     call Checkbuildloc(g,homebuild,home_location,800,5)
-    call Checkbuildloc(g,frontbuild,front_loc[0],850,4)
     if own_town_mine[0] != null and GetResourceAmount(own_town_mine[0]) == 0 then
       set loc = GetUnitLoc(own_town_mine[0])
       call Checkbuildloc(g,minebuild,loc,700,4)
