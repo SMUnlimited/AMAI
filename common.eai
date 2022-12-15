@@ -142,7 +142,6 @@ globals
     constant integer BLOC_STD = 1
     constant integer BLOC_FRONT = 2
     constant integer BLOC_MINE = 3
-    constant integer BLOC_FRONT2 = 4
 
     constant integer NOT_ENOUGH_RES = 1
     constant integer CANNOT_BUILD = 2
@@ -1010,7 +1009,6 @@ globals
 
     location mine_loc = null
     location array front_loc   // the locations along the frontier of the main base (on the way to the enemies and a certain distance from the base)
-    location array front2_loc
     integer front_loc_num = 0  // the number of front locations
     boolean front_locs_computed = false  // are the front points computed ?
 
@@ -6491,7 +6489,6 @@ function AddFrontPoint takes location l returns nothing
   if DistanceBetweenPoints(loc, l) <= 200 then
     call CreateDebugTagLoc("Front Point Added", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
     set front_loc[front_loc_num] = Location(GetLocationX(l),GetLocationY(l))
-    set front2_loc[front_loc_num] = AIGetProjectedLoc(l, home_location, -1200, 0)
     set front_loc_num = front_loc_num + 1
   //else
     //call CreateDebugTagLoc("Front Point : Not Buildable", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
@@ -7874,6 +7871,9 @@ function InitGlobalSettings takes nothing returns nothing
 #INCLUDETABLE <$VER$\GlobalSettings.txt> #EFR
   set %1 = %2
 #ENDINCLUDE
+  if racial_lumber == 0 or race_no_wood_harvest then
+    set front_base_distance = front_base_distance + 100
+  endif
 endfunction
 
 //===========================================================================
@@ -8833,8 +8833,11 @@ endfunction
 //============================================================================
 function BuildUnit takes integer qty, integer unitid, integer prio returns nothing
   local integer i = BLOC_STD
-  if not homebuild and (not shredderbuild or minebuild) and buy_type[unitid] == BT_BUILDING then
-    set i = BLOC_FRONT2
+  if not homebuild and not shredderbuild and buy_type[unitid] == BT_BUILDING then
+    set i = BLOC_FRONT
+  endif
+  if minebuild then
+    set i = BLOC_MINE
   endif
   call SetBuildAllAM(BUILD_UNIT,qty,unitid,-1, i, prio)
 endfunction
@@ -8937,11 +8940,7 @@ endfunction
 
 //============================================================================
 function BuildFront takes integer qty, integer unitid, integer prio returns nothing
-  local integer i = BLOC_FRONT
-  if not frontbuild then
-    set i = BLOC_FRONT2
-  endif
-  call SetBuildAllAM(BUILD_UNIT, qty, unitid, -1, i, prio)
+  call SetBuildAllAM(BUILD_UNIT, qty, unitid, -1, BLOC_FRONT, prio)
 endfunction
 
 //============================================================================
@@ -9485,10 +9484,7 @@ function GetBuildLocation takes integer bloc returns location
   if bloc == BLOC_MINE then
     return mine_loc
   endif
-  if bloc == BLOC_FRONT then
-    return front_loc[GetRandomInt(0, front_loc_num - 1)]
-  endif
-  return front2_loc[GetRandomInt(0, front_loc_num - 1)]
+  return front_loc[GetRandomInt(0, front_loc_num - 1)]
 endfunction
 
 //============================================================================
@@ -9587,15 +9583,12 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
   local location loc = GetBuildLocation(bloc)
   local unit utemp1 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), 'eaom', home_location, 270.0)  //utemp is seat, leave a passage , unit can ensure correct position
   local unit utemp2 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), unitid, front_loc[0], 270.0)
-  local unit utemp3 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), unitid, front2_loc[0], 270.0)
   local unit u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], loc, 270.0)
   local location l = GetUnitLoc(u)
   call RemoveUnit(utemp1)
   set utemp1 = null
   call RemoveUnit(utemp2)
   set utemp2 = null
-  call RemoveUnit(utemp3)
-  set utemp3 = null
   call RemoveUnit(u)
   set u = null
   set loc = null
