@@ -23,9 +23,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Buy NEUTRAL HERO add judge , some map the NEUTRAL TAVERN near have creep , maybe the creep no guarded , like creep on second floor ,  NEUTRAL TAVERN on first floor , but AI will considered as they are guarded , cause cannot buy neutral heroes at the first time , even no longer buy neutral heroes , when this time , AI cannot call GetNeutralHero , endless loop , so if NEUTRAL TAVERN near have creep (neutral_guarded[NEUTRAL_TAVERN]), just immediately recalculate heros , guarantee to change train ownrace hero at the first time
 - Water_expansion now record creeps guard , and ChooseExpansion returns the creeps , Water_expansion returns expansion_ancient now is null
 - RALLY_POINT reform to STRUCTURE_CONTROL , conteol all build
-   - front2_loc , help ELF and no wood harvest race handle build blocking , if home_location the number of buildings in the range is more than a certain value, use front_loc ,  if front_loc the number of buildings in the range is more than a certain value , use front2_loc
-   - if ELF and no wood harvest race  have shredder , now adjust shredder loc , if shredder order is harvest , then when shredder harvest far enough the loc maybe can build
-   - Rallypoint now is front2_loc[Random] further rallyloc, home_location may cause the unit to be avoid being stuck at home , but within front_loc build rallyloc still home_location 
+   - if ELF or no wood harvest race , now Adjust home_location nearby buildings , if buildings quantity exceeds 4 , buildunit no use BLOC_STD , will use BLOC_FRONT
+   - if ELF or no wood harvest race , now Adjust own_town_mine[0]_location nearby buildings , if the mine Resource Amount is 0 ,buildunit no use BLOC_STD , will use BLOC_MINE , if buildings quantity exceeds 4 , buildunit will use BLOC_FRONT
+   - if ELF or no wood harvest race have shredder , now adjust shredder loc , if shredder order is harvest , then when shredder harvest far enough the loc maybe can build
+   - Rallypoint now is front_loc[0] further rallyloc, home_location may cause the unit to be avoid being stuck at home , but within front_loc build rallyloc still home_location 
    - Regular burrow disarm , fix ORC cannot disarm
    - New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
 - ELF now can use BR build to creepcamp(rushcreep) , and have one build on outside , hope can can reduce the chance of being stuck at home
@@ -35,7 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
    - Towerrush peon now have 4 , but UD have 2 , if Towerrush on , AI can compensate peon quantity(ELF compensate 6) , include ghouls
-   - New set for item , race_tower_item_quantity , like IVORY_TOWER or SACRIFICIAL_SKULL
+   - New set for item , race_tower_item_quantity , like IVORY_TOWER or SACRIFICIAL_SKULL(ROC none of these items)
    - New set for tower , race_tower_item_must(if Towerrush  must used item , like UD SACRIFICIAL_SKULL, set true)
    - New set for tower , upgrade race_tower_upgrade2(ROC no race_tower_upgrade2)
    - New set for tower , race_tower_idX(if the race_tower_id has Blig land (AbilityId 'Abgl'), set it ,cannot create Blig land)
@@ -53,7 +54,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Note: Because available_time too long , so AI TR donot buy NEUTRAL
    - Note: The new pathfinder is not used to TR , Because the path finding direction is wrong (from home to home)
    - Note: human have powerbuild , so AI will automatically pull all peon go to the front build tower , and this time AI no income , I cannot close automatically powerbuild , If only could change the unit race
-   - Note: On ROC , This function is not enabled 
+   - Note: On ROC , This function is not enabled
 - Synchronization  all function code to [master]
    - 3.2.2 master 96800f0
    - Note: 3.2.2cn include 3.1.1-cn
@@ -79,6 +80,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - ANCIENT EXPANSION add judgment , if cannot find creep unit , GroupEnumUnitsInRange distance 1500 search again , map  like (4)Avalanche_LV , the creep and gold distance > 650
 - ANCIENT_EXPANSION add judgment , when expansion location have unit  , judgment the unit OwningPlayer , if player is AGGRESSIVE ,just set ancient_exp_state to 4 , else build
 - StartExpansionAM added judgment search creep  in mine range 1500 ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION , The problem is not ANCIENT_EXPANSION
+- front_base_distance now is 1100 , and increase according to AI difficulty , front_base_distance = difficulty * 50 + front_base_distance
+   - if race no use racial_lumber or race no harvest wood , front_base_distance additional additions 100
 - Strategy additional Improvements
    - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
    - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
