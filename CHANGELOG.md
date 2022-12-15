@@ -13,14 +13,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
-## [3.2.2-cn] - 2022-11-19
+## [3.2.2-cn] - 2022-12-15
 
 ### Added
 - (DevTools) Add MakeROC.bat , Although it's useless
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join non own racial units and heros (but excess heros may not be able to learn skills) , This function include adding mercenaries and dragons to the Attack Group( the function AttackGroupAddNeutrals no longer use) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
 - Note: the AI no longer sent repeat report for B.eai command control C.eai
-- Buy NEUTRAL HERO add judge , some map the NEUTRAL TAVERN near have creep , maybe the creep no guarded , like creep on second floor ,  NEUTRAL TAVERN on first floor , but AI will considered as they are guarded , cause cannot buy neutral heroes at the first time , even no longer buy neutral heroes , when this time , AI cannot call GetNeutralHero , endless loop , so if NEUTRAL TAVERN near have creep (neutral_guarded[NEUTRAL_TAVERN]), just immediately recalculate heros , guarantee to change train ownrace hero at the first time
+- Buy NEUTRAL HERO add judge , some map the NEUTRAL TAVERN near have creep , maybe the creep no guarded , like creep on second floor , NEUTRAL TAVERN on first floor , but AI will considered as they are guarded , cause cannot buy neutral heroes at the first time , even no longer buy neutral heroes , when this time , AI cannot call GetNeutralHero , endless loop , so if NEUTRAL TAVERN near have creep (neutral_guarded[NEUTRAL_TAVERN]), just immediately recalculate heros , guarantee to change train ownrace hero at the first time
 - Water_expansion now record creeps guard , and ChooseExpansion returns the creeps , Water_expansion returns expansion_ancient now is null
 - RALLY_POINT reform to STRUCTURE_CONTROL , conteol all build
    - if ELF or no wood harvest race , now Adjust home_location nearby buildings , if buildings quantity exceeds 4 , buildunit no use BLOC_STD , will use BLOC_FRONT
@@ -81,6 +81,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - StartExpansionAM added judgment search creep  in mine range 1500 ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION , The problem is not ANCIENT_EXPANSION
 - front_base_distance now is 1100 , and increase according to AI difficulty , front_base_distance = difficulty * 50 + front_base_distance
    - if race no use racial_lumber or race no harvest wood , front_base_distance additional additions 100
+- BuildAtSpecialLoc generate a new placeholder ，home_location always produce war_tree
 - Strategy additional Improvements
    - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
    - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
