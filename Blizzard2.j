@@ -8997,7 +8997,7 @@ endfunction
 function CheckInitPlayerSlotAvailability takes nothing returns nothing
     local integer index
 
-    if GetPlayerController(Player(14)) != MAP_CONTROL_CREEP and GetPlayerController(Player(14)) != MAP_CONTROL_NEUTRAL and GetPlayerController(Player(14)) != MAP_CONTROL_RESCUABLE then
+    if GetPlayerController(Player(12)) != MAP_CONTROL_CREEP then
         set playercreep = 26
         set playermax = 24
         set PLAYER_COLOR_MAROONX             = ConvertPlayerColor(12)
