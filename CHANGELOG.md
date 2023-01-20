@@ -5,8 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
-## [2.6.2-cn] - 2022-12-15
-### core 
+## [2.6.2-cn] - 2023-1-21
+### core
 - 3.2.2 master 96800f0 , include all job code
    - Note: 2.6.2cn include 2.6.1cn and 3.1.1cn
 
@@ -81,6 +81,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - front_base_distance now is 1100 , and increase according to AI difficulty , front_base_distance = difficulty * 50 + front_base_distance
    - if race no use racial_lumber or race no harvest wood , front_base_distance additional additions 100
 - BuildAtSpecialLoc generate a new placeholder ，home_location always produce war_tree
+- HeroAbilities adjustment
+   - FAR SEER will reduce the repetition rate of the Ability scheme , now have wolf core Ability scheme , this adjustment includes ROC
+   - ROC BLADE MASTER now havenot MIRROR core
 - Strategy additional Improvements
    - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
    - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
