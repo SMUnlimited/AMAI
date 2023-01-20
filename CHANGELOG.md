@@ -13,9 +13,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
-## [3.2.2-cn] - 2022-12-15
+## [3.2.2-cn] - 2023-1-21
 
 ### Added
+- Adaptation war3 1.35
+   - 1.35 blizzard.j and common.j and Natives.j no change , same as 1.33
+   - The item price of technology tree and goods has been adjusted
+- HeroAbilities adjustment
+   - FAR SEER will reduce the repetition rate of the Ability scheme , now have wolf core Ability scheme , this adjustment includes ROC
+   - TFT BLADE MASTER now have MIRROR core , again
+   - ROC BLADE MASTER now havenot MIRROR core
 - (DevTools) Add MakeROC.bat , Although it's useless
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join non own racial units and heros (but excess heros may not be able to learn skills) , This function include adding mercenaries and dragons to the Attack Group( the function AttackGroupAddNeutrals no longer use) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
@@ -26,7 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - if ELF or no wood harvest race , now Adjust home_location nearby buildings , if buildings quantity exceeds 4 , buildunit no use BLOC_STD , will use BLOC_FRONT
    - if ELF or no wood harvest race , now Adjust own_town_mine[0]_location nearby buildings , if the mine Resource Amount is 0 ,buildunit no use BLOC_STD , will use BLOC_MINE , if buildings quantity exceeds 4 , buildunit will use BLOC_FRONT
    - if ELF or no wood harvest race have shredder , now adjust shredder loc , if shredder order is harvest , then when shredder harvest far enough the loc maybe can build
-   - Rallypoint now is front_loc[0] further rallyloc, home_location may cause the unit to be avoid being stuck at home , but within front_loc build rallyloc still home_location 
+   - Rallypoint now is front_loc[0] further rallyloc, home_location may cause the unit to be avoid being stuck at home , but within front_loc build rallyloc still home_location
    - Regular burrow disarm , fix ORC cannot disarm
    - New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
 - ELF now can use BR build to creepcamp(rushcreep) , and have one build on outside , hope can can reduce the chance of being stuck at home
