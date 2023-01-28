@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
-## [2.6.2-cn] - 2023-1-21
+## [2.6.2-cn] - 2023-1-29
 ### core
 - 3.2.2 master 96800f0 , include all job code
    - Note: 2.6.2cn include 2.6.1cn and 3.1.1cn
@@ -27,6 +27,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - ELF now can use BR build to creepcamp(rushcreep) , and have one build on outside , hope can can reduce the chance of being stuck at home
    - CreepAttack Priority attack the tree current creep
    - Note: the build will let ELF build tree to later , but seems unable to improve , even if when tree quantity greater than 1 build the rushcreep tree
+- When BJ debugging is on , If the first human player is Observer, system will set all AI Alliance and share control with the Observer , that Observer can view the build construction location and the learning of hero skills
+   - Strategy report not send to the alliance Observer , to avoid repeated display
+   - Note: In fact , I would prefer the first human player (even not Observer) to directly control AI , convenient testing
+- Add item ORB_OF_FIRE(ofr2)
+- Add again item ORB_OF_LIGHTNING(olig)
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
