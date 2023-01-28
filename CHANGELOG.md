@@ -13,18 +13,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
-## [3.2.2-cn] - 2023-1-21
+## [3.2.2-cn] - 2023-1-27
 
 ### Added
 - Adaptation war3 1.35
    - 1.35 blizzard.j and common.j and Natives.j no change , same as 1.33
    - The item price of technology tree and goods has been adjusted
+   - Add item ORB_OF_FIRE(ofr2)
+   - Add again item ORB_OF_LIGHTNING(olig)
 - HeroAbilities adjustment
    - FAR SEER will reduce the repetition rate of the Ability scheme , now have wolf core Ability scheme , this adjustment includes ROC
    - TFT BLADE MASTER now have MIRROR core , again
    - ROC BLADE MASTER now havenot MIRROR core
    - TFT Demon Hunters will now be more active in learning to IMMOLATION
 - (DevTools) Add MakeROC.bat , Although it's useless
+- When BJ debugging is on , If the first human player is Observer, system will set all AI Alliance and share control with the Observer , that Observer can view the build construction location and the learning of hero skills
+   - Strategy report not send to the alliance Observer , to avoid repeated display
+   - Note: In fact , I would prefer the first human player (even not Observer) to directly control AI , convenient testing
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join non own racial units and heros (but excess heros may not be able to learn skills) , This function include adding mercenaries and dragons to the Attack Group( the function AttackGroupAddNeutrals no longer use) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
 - Note: the AI no longer sent repeat report for B.eai command control C.eai
