@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
-## [3.2.2-cn] - 2023-1-27
+## [3.2.2-cn] - 2023-1-29
 
 ### Added
 - Adaptation war3 1.35
@@ -113,6 +113,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed InitNeutralBuildings [NEUTRAL_DRAGON_ROOST] and [NEUTRAL_MERC_CAMP] search Error
 - Fixed part of set xxx = GetExpansionPeon() lack set xxx = GetExpansionPeon2() when xxx == null
 - Fixed a when AI have too many ally , game stuck or crashed
+- Fixed Blizzard3VAI.eai player num， 12 to 24
 
 ## [3.2.2] - 2022-10-05
 
