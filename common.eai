@@ -472,6 +472,8 @@ globals
 
     string array digit_map
 
+    integer mapattackdelayed = 8  //used for the attack delay of the big map , prevent AI from losing targets when attacking in the big map
+
     integer array player_race
     integer array player_race_pref
     string array race_name
@@ -1037,7 +1039,7 @@ globals
     #ENDINCLUDE
 
 //==============================================================
-// (AMAI) globals tetuns variables to eliminate tetuns local unit , group and location variables 
+// (AMAI) globals tetuns variables to eliminate tetuns local unit , group and location variables
 //==============================================================
 unit ru_peon2 = null               // used to GetExpansionPeon2
 unit ru_oneofid = null             // used to GetOneOfId,GetOneOfIdNearLoc
@@ -2468,10 +2470,13 @@ function InitMapSizeVars takes nothing returns nothing
     call SetChatVar("MapSize", "small")
   elseif a < 380 then
     call SetChatVar("MapSize", "medium")
+    set mapattackdelayed = 12
   elseif a < 540 then
     call SetChatVar("MapSize", "large")
+    set mapattackdelayed = 24
   else
     call SetChatVar("MapSize", "huge")
+    set mapattackdelayed = 32
   endif
 endfunction
 
@@ -10803,7 +10808,7 @@ function SleepInCombatAM takes nothing returns nothing
         endloop
         //call Sleep(1)
         set count = count + 1
-        exitwhen count >= 8
+        exitwhen count >= mapattackdelayed
     endloop
     call Trace("exit SleepInCombat")
 endfunction
@@ -11349,6 +11354,28 @@ function GetWeakAndNearEnemy takes nothing returns player
 endfunction
 
 //============================================================================
+function GetNearHumanPlayerEnemy takes nothing returns player
+  local integer i = 0
+  local integer t = 0
+  local real dist = 0
+  local real mindistance = 100000000  // use to big map - 12 or 24 player map
+  local player nearhumanplayer = null
+  loop
+      exitwhen i >= GetBJMaxPlayers()
+      if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerEnemy(Player(i), ai_player) and GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER and not IsPlayerObserver(Player(i)) then
+        set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(Player(i)))
+        if dist < mindistance then
+          set mindistance = dist
+          set nearhumanplayer = Player(i)
+        endif
+        set t = t + 1
+      endif
+      set i = i + 1
+  endloop
+  set c_enemy_user_total = t  // update c_enemy_user_total
+  return nearhumanplayer
+endfunction
+
 function GetNearestEnemy takes nothing returns player
 local integer i = 0
 local real dist = 0
@@ -11358,11 +11385,11 @@ local player nearplayer = null
 loop
     exitwhen i >= GetBJMaxPlayers()
     if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerEnemy(Player(i), ai_player) then
-	    set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(Player(i)))
-		if dist < mindistance then
-			set mindistance = dist
-			set nearplayer = Player(i)
-		endif
+      set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(Player(i)))
+      if dist < mindistance then
+        set mindistance = dist
+        set nearplayer = Player(i)
+      endif
     endif
     set i = i + 1
 endloop
@@ -11523,16 +11550,21 @@ function ChooseAnEnemyTarget takes nothing returns unit
 
   if attacking_strategy == 1 or attacking_strategy == 3 then
     set target_enemy = GetWeakestEnemy()
-  //call Trace("Chooing Weakest Enemy")
+    //call Trace("Chooing Weakest Enemy")
   elseif attacking_strategy == 2 then
     set target_enemy = GetStrongestEnemy()
-  //call Trace("Choosing Strongest Enemy")
+    //call Trace("Choosing Strongest Enemy")
   elseif attacking_strategy == 5 then
     set target_enemy = GetFFAEnemy()
-  //call Trace("Choosing FFA Enemy")
+    //call Trace("Choosing FFA Enemy")
   else
     set target_enemy = GetWeakAndNearEnemy()
-  //call Trace("Choosing weakest closest Enemy")
+    //call Trace("Choosing weakest closest Enemy")
+  endif
+  if (c_ai_total + c_enemy_total >= 10 or mapattackdelayed > 8) and c_enemy_user_total > 0 and GetPlayerController(target_enemy) == MAP_CONTROL_COMPUTER then  // big map , attack strategy is first attack HumanPlayer
+    if GetRandomInt(0 , 100) >= 20 then
+      set target_enemy = GetNearHumanPlayerEnemy()
+    endif
   endif
   call GroupEnumUnitsOfPlayer(g, target_enemy, null)
   set enemy_base = GetPlayerStartLocationLoc(target_enemy)
