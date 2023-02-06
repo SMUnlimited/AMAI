@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
-## [2.6.2-cn] - 2023-1-29
+## [2.6.2-cn] - 2023-2-6
 ### core
 - 3.2.2 master 96800f0 , include all job code
    - Note: 2.6.2cn include 2.6.1cn and 3.1.1cn
@@ -32,6 +32,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Note: In fact , I would prefer the first human player (even not Observer) to directly control AI , convenient testing
 - Add item ORB_OF_FIRE(ofr2)
 - Add again item ORB_OF_LIGHTNING(olig)
+- Add SleepInCombatAM Maximum number of loop , to avoid when AI moveing army in large map , easily change target , but AI no go to the target
+- On maps with more than 10 people and human players ，or big map  , AI has a chance to attack human players first when attacking players , to avoid china call 【内卷】  -- AI internal conflict , no attack human player
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
