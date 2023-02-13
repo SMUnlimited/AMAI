@@ -3,33 +3,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-### Added
+## [Unreleased]
 
-### Changed
-- Chinese Translation improvements.
-
-### Removed
-- (DevTools) Old non-working installer has now been removed now we have new version in place.
-
-### Fixed
-
-## [3.2.2-cn] - 2023-2-6
+## [2.6.2-cn] - 2023-2-6
+### core
+- 3.2.2 master 96800f0 , include all job code
+   - Note: 2.6.2cn include 2.6.1cn and 3.1.1cn
 
 ### Added
-- Adaptation war3 1.35
-   - 1.35 blizzard.j and common.j and Natives.j no change , same as 1.33
-   - The item price of technology tree and goods has been adjusted
-   - Add item ORB_OF_FIRE(ofr2)
-   - Add again item ORB_OF_LIGHTNING(olig)
-- HeroAbilities adjustment
-   - FAR SEER will reduce the repetition rate of the Ability scheme , now have wolf core Ability scheme , this adjustment includes ROC
-   - TFT BLADE MASTER now have MIRROR core , again
-   - ROC BLADE MASTER now havenot MIRROR core
-   - TFT Demon Hunters will now be more active in learning to IMMOLATION
-- (DevTools) Add MakeROC.bat , Although it's useless
-- When BJ debugging is on , If the first human player is Observer, system will set all AI Alliance and share control with the Observer , that Observer can view the build construction location and the learning of hero skills
-   - Strategy report not send to the alliance Observer , to avoid repeated display
-   - Note: In fact , I would prefer the first human player (even not Observer) to directly control AI , convenient testing
+- New automatic Trigger can help AI hero learning skills , it can fix war3 1.31 AI hero can not  learning skills , olny run to war3 1.29+ and have 1 second delay to ensure that other versions are not affected
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join non own racial units and heros (but excess heros may not be able to learn skills) , This function include adding mercenaries and dragons to the Attack Group( the function AttackGroupAddNeutrals no longer use) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
 - Note: the AI no longer sent repeat report for B.eai command control C.eai
@@ -45,9 +27,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - ELF now can use BR build to creepcamp(rushcreep) , and have one build on outside , hope can can reduce the chance of being stuck at home
    - CreepAttack Priority attack the tree current creep
    - Note: the build will let ELF build tree to later , but seems unable to improve , even if when tree quantity greater than 1 build the rushcreep tree
+- When BJ debugging is on , If the first human player is Observer, system will set all AI Alliance and share control with the Observer , that Observer can view the build construction location and the learning of hero skills
+   - Strategy report not send to the alliance Observer , to avoid repeated display
+   - Note: In fact , I would prefer the first human player (even not Observer) to directly control AI , convenient testing
+- Add item ORB_OF_FIRE(ofr2)
+- Add again item ORB_OF_LIGHTNING(olig)
 - Add SleepInCombatAM Maximum number of loop , to avoid when AI moveing army in large map , easily change target , but AI no go to the target(add variables mapattackdelayed)
-- On maps with more than 10 people and human players , or big map , AI has a chance to attack human players first when attacking players , to avoid china call 【内卷】  -- AI internal conflict , no attack human player(function ChooseAnEnemyTarget)
-- Add GetNearHumanPlayerEnemy , used to search and attack human players preferentially in too many players or large maps to reduce AI internal consumption(hope)
+- On maps with more than 10 people and human players , or big map , AI has a chance to attack human players first when attacking players , to avoid china call 【内卷】  -- AI internal conflict , no attack human player(function ChooseAnEnemyTarget Add GetNearHumanPlayerEnemy)
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
@@ -72,25 +58,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Note: human have powerbuild , so AI will automatically pull all peon go to the front build tower , and this time AI no income , I cannot close automatically powerbuild , If only could change the unit race
    - Note: On ROC , This function is not enabled
 - Synchronization  all function code to [master]
-   - 3.2.2 master 96800f0
-   - Note: 3.2.2cn include 3.1.1-cn
+   - include C.eai , B.eai , RECA.AI , but can still be used in the older version of Warcraft 3 , older version player should get more perfect AMAI
+   - available_time and regenerate_time not change
+   - Balance parameters have not changed
+   - Add war3_1.32 mercenaries adjustment , but no use , just add unit to StandardUnits.txt, if you war3 is 1.33+, please run AMAI 3.2.2+
+- Optimize 24 player judgment conditions
 - Change GetPlayerAntiAirStrength returns form integer to real
 - BuyNeutralHero now judge AI hero count , if count == tier or nn != NEUTRAL_TAVERN, then return , Prevent AI from going to the store when the number of heroes reaches the maximum and there is no need to revive (only 3 hero , if have 4 hero or more , then the judge cannot normal operation)
 - BuyNeutral now judge NEUTRAL_TAVERN , if nn == NEUTRAL_TAVERN or buy_place == null, then return
 - Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
 - Optimized function XXXFountain code , no use local unit fountain
 - function CommonSleepUntilTargetDeadAM now judging target == null , improve operation efficiency
+- All search the enemy function no longer use GetBJMaxPlayers() , now use enemy_force[i] , to reduce the number of cycles
 - Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will smoothly , but 8V8V7(1 human player is Observer) still stuck
 - Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1peon HarvestWood
 - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
 - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
 - function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency(but the function no longer use)
-- All search the enemy function no longer use GetBJMaxPlayers() , now use enemy_force[i] , to reduce the number of cycles
 - Army track CopyArmy no longer copy same integer , hopes it can improve efficiency
 - Town track CopyTown no longer copy same integer , hopes it can improve efficiency
 - Town track SeedNewTownAtLoc town_num incremental now need TrackTown(town_num) return true
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
+- Array upper limit (JASS_MAX_ARRAY_SIZE) adjustment ，now is 8192 , if hope old war3 normal , then only set 8192
 - GetExpansionPeon2 Add Adjust not IsUnitLoaded , because ELF peon harvest gold
 - BuildLumberMillAtBase  now use TownCount(racial_lumber)  , no  TownCountDone(racial_lumber) , hope  Prevent AI building many cemeteries
 - ANCIENT EXPANSION add judgment , if cannot find creep unit , GroupEnumUnitsInRange distance 1500 search again , map  like (4)Avalanche_LV , the creep and gold distance > 650
@@ -99,14 +89,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - front_base_distance now is 1100 , and increase according to AI difficulty , front_base_distance = difficulty * 50 + front_base_distance
    - if race no use racial_lumber or race no harvest wood , front_base_distance additional additions 100
 - BuildAtSpecialLoc generate a new placeholder ，home_location always produce war_tree
+- HeroAbilities adjustment
+   - FAR SEER will reduce the repetition rate of the Ability scheme , now have wolf core Ability scheme , this adjustment includes ROC
+   - ROC BLADE MASTER now havenot MIRROR core
 - Strategy additional Improvements
    - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
    - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
    - Disturbance function global_init_strategy AddBlock
-   - Reorganized AddBlock
+      - Reorganized AddBlock
    - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
    - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)，fix ROC ELF race_has_moonwells to true
    - Adjust UPG_BOMBS BuildAdvUpgr2 chance unitcount to 0.2 , Maximum to 35 , In the test, after building COPTER, the enemy has no AIR , the COPTER no research UPG_BOMBS not useful
+- Note: Synchronized ROCbuild Bat file code
+- Note:The installer of the old version of AMAI seems to have failed to work properly. Do not use the old installer
 
 ###Fixed
 - Fixed some translation errors
@@ -115,230 +110,131 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed BuildMovePeonZeppelin no longer at first set build_zeppelin = null
 - Fixed InitNeutralBuildings neutral_id[NEUTRAL_DRAGON_ROOST] use neutral_id[NEUTRAL_MERC_CAMP]'s number [i]
 - Fixed InitNeutralBuildings [NEUTRAL_DRAGON_ROOST] and [NEUTRAL_MERC_CAMP] search Error
+- Fixed ROC Resolve compilation errors, ROC Profile.txt add [Rare Profile]
+- Fixed B.eai playercreep num , now is 16/28
+- Fixed B2.j and B3.j bj_PLAYER_NEUTRAL_EXTRA and bj_MAX_PLAYER_SLOTS and bj_PLAYER_NEUTRAL_VICTIM not replaced with dynamic variable playercreep or playermax
 - Fixed part of set xxx = GetExpansionPeon() lack set xxx = GetExpansionPeon2() when xxx == null
 - Fixed a when AI have too many ally , game stuck or crashed
-- Fixed Blizzard3VAI.eai player num， 12 to 24
 
-## [3.2.2] - 2022-10-05
-
-### Added
-- New AMAI installer (powered by Electron) for a user friendly way to install to maps or directories (Thanks paulo101977)
-- Commander is no longer installed by default if you use the bat scripts. You must use the new `InstallCommanderToMap.bat' file.
-- Added a script `DisableCommander.bat` if you want to disable the commander post install.
-- Counter strengths are now translated.
-
-### Changed
-- The install AMAI to a directory perl script supports passing an additional argument "false" to not install the commander.
-
-### Removed
-- (DevTools) Stopped AMAI.mpq being generated, it is an old leftover from the old ways to run AMAI.
-- (DevTools) Removed ancient AddToMPQ.exe and use MPQEditor for all operations under the hood.
-
-### Fixed
-- Re-installing AMAI should no longer increase map file size. Also maps file size after install appear to be about 40% smaller.
-- Fixed some memory leaks mainly with the commander, this was more of an issue now that dialogs are being regenerated.
-- Fixed Norwegian Commander caused by translating text to empty strings. Such behavior so should no longer break commander logic.
-- Fixed an issue where air creep strength was assumed to be 0 which could cause AI to attack air creeps without a way to attack them.
-- Fixed an issue where invisible pathing units were not moving on very large maps with lots of mines and neutral buildings and players.
-- Reduced lag impact that invisible pathing units have on game start for large amounts of players.
-- Fixed an issue where an ai could surrender and give all there buildings to Player 13.
-- Invalid strategy commander message is now translated.
-
-## [3.2.1] - 2022-09-07
-
-### Fixed
-- Port fix such that commander menu titles don't go missing in some cases (from 2.6.x by jzy-chitong56)
-- Fix translation issues with the commander and by using the commander language selection, also ensure english is the default for missing translations.
-- (DevTools) Language selection dialog message is now exposed for translation.
-
-## [3.2.0] - 2022-09-04
+## [2.6.2] - 2022-09-04
+Jzy-chitong56 has provided various updates and ported features back to this older version of AMAI if you play on the older editions of warcraft 3.
 
 ### Added
-- Min Support of Warcraft 3 increased to 1.33.
+- Improved chinese language translations [jzy-chitong56]
+- Commander resource tributes are now translated (translated by google)
+- Commander player selection and strategy selections now have multiple pages with next and previous buttons. (from 2.6.x by jzy-chitong56)
+- Automatic support for more than 12 Players based on version you playing on.
+- All 24 player colours are now supported by AMAI.(from [3.0.0])
+- Various messaging and attack targeting will now work with more than 12 players.(from [3.0.0])
+- Increased script delay on higher number of players to reduce performance impact.
+- Commander now includes Zoom feature based from wc3champions. [jzy-chitong56]
+- Input "-zoomxxxx" to adjust the sight distance, and XXXX is a number, such as "-zoom1000"，max zoom is 3000
+- Observers start at an increased zoom level.
 - A small chance for AMAI to pick the profile name of Legendary players. (from 2.6.x by jzy-chitong56)
-  - (DevTools) Also added ability to configure your own legendary profiles via new profile setting option "rare profile".
+- (DevTools) Also added ability to configure your own legendary profiles via new profile setting option "rare profile".
 - AMAI now can use power fountains if available on the map. (from 2.6.x by jzy-chitong56)
 - New Random Profile which is completely random on all personality traits. (from 2.6.x by jzy-chitong56)
-- Just typing -cmd without any options will now open the commander as well as the ESC key.
-- Commander player selection and strategy selections now have multiple pages with next and previous buttons. (from 2.6.x by jzy-chitong56)
-- Added ability to change the language of the commander interface and actions independently from other players.
-- Added a map pack that contains a few official maps with AMAI already installed for those that struggle to install or use an OS that cannot install AMAI.
+- Added ability to change the language of the commander interface and actions independently from other players (Using the All option in 2.6.x)
 
 ### Changed
-- Disabled a flee rule for heroes which means when stranded on there own they are more likely to use a town portal to save themselves.
-- Reworked the strategy timer to fix various issues with changing strategies and to fix issues with counters changing way to frequently.
-- Tier and insane difficulty has less of an effect on the strategy timer than before.
-- Make sure AI leaves at least one ghoul to continue harvesting wood in any case. (Pixxy)
-- (DevTools) Refactoring of the TFT bat files to re-use scripts instead of duplicating script lines.
-- Colour Balance on messages improved to be aligned with the players actual colour. (from 2.6.x by jzy-chitong56)
-- Changed keyboard shortcut for commander to "-cmd:" instead of cmd and you don't have to leave a space after the first ':' anymore.
 - Language dialog can now be set for first human observer if there is not any playing humans. (from 2.6.x by jzy-chitong56)
-- Commander only shows valid allies on the initial menu rather than include enemies that cannot be interacted with.
-- Commander enemy targeting will now highlight which players are allies so you don't confuse friend from foe.
+- Computer skill level is now shown by default on AMAI players. (from [3.0.0])
+- Tweaked english grammatical errors for various strategy messages. (from [3.0.0])
+- Tweaks to Brewmaster and Alchemist skill picks. (Pixyy) (from [3.1.0])
+- Creep building detection range slightly increased(Pixyy) (from [3.1.0])
+- Front base distance range increased(Pixyy) (from [3.1.0])
+- Reduced number of mines needed before going into high upkeep(Pixyy) (from [3.1.0])
+- Tweaks to town portal so more likely to be used for lower threats(Pixyy) (from [3.1.0])
+- At the beginning of the game, HUMAN and ORC have two peons Harvesting Wood.
+- Mechanical armies will not enter emergency healing state because the only non-mechnical unit/hero is damaged. (from [3.0.0])
+- When the debug player is killed we will now switch to a new player to debug. (from [3.0.0])
+- Adjust HUMAN, ORC and Night Elf number of peons for gold mines.
+- Original AI scripts have corrected form ID's (no playable impact) (Including ROC)
+- Colour Balance on messages improved to be aligned with the players actual colour. (from 2.6.x by jzy-chitong56)
+- Make sure AI leaves at least one ghoul to continue harvesting wood in any case. (from [master])
+- Reworked the strategy timer to fix various issues with changing strategies and to fix issues with counters changing way to frequently. (from [master])
 
-### Removed
-- (DevTools) The numbered blizzard.j files are now removed and instead generated from the full original blizzard.j. Saves time when updating for new versions.
-- Outdated links from the commander intro message.
+###Fixed
+- Add missing requirement for UPG_SKEL_MASTERY.
+- Add missing UPG_SUN_BLADE UPGRADE.
+- Tweaked ranged units to avoid melee units only if damaged to 70% instead of 90% and reduced distance to trigger slightly. (Pixyy) (from [3.1.0])
+- Fixed an issue where healing totems are not cast correctly. (Pixyy) (from [3.1.0])
+- Front base distance range slightly increased again to help fix night elf troops getting stuck in base(now is 1100). (Pixyy) (from [3.1.0])
+- Heroes a little more likely to teleport to rescue a town regardless of the profiles aggression and smaller threat levels. (Pixyy) (from [3.1.0])
+- Fixed an issue where human upgrades magic sentry and flare could not be researched by the AI. (Pixyy) (from [3.1.0])
+- Fix Night Elf initial mining logic such that they build the starting buildings first before completely filling the gold mine. (Pixyy) (from [3.1.1])
+- Fix Night Elf and Undead 's race_tower_id(Settings.txt) (Including ROC Human, Elf and Undead)
 
-### Fixed
-- Fixed a bug in 2 strategies regarding priority of hero and frost wryms for undead.
-- AMAI VS AI mode now makes use of the latest blizzard.j instead of a much older version.
-- Fixed issue where profiles were being re-used all the time instead of when running out of applicable profiles.
-- Fixed various unresolved issues on maps with more than 12 players. (from 2.6.x by jzy-chitong56)
-- Should be a little smoother performance wise when running with more than 12 players. (from 2.6.x by jzy-chitong56)
-
-
-## [3.1.1-cn] - 2022-07-15
+## [2.6.1-cn] - 2022-08-20
 ### Added
-- Support for warcraft 3 1.33 libraries.
-- New chinese language translation, include Blizzard.eai [function Tribute]
-   - translation add more sentence for all language(translate by google)
-- translation add  chat_dynamic_counter unit type for all language(translate by google)
-- Console add Page turning，adapted more than 12  AIPlayer and give more Strategy choose [Blizzard.eai]
-- if no HumanPlayer on game, the first Observer must choose language 
-- Add Undead Upgrade UPG_SKEL_MASTERY
-- Profiles adjustment
-   - New Random Profile which is completely random on all personality traits
-   - Also added ability to configure your own legendary profiles via new profile setting option "rare profile"
-   - A small chance for AMAI to pick the profile name of Legendary players
-   - Fixed issue where profiles were being re-used all the time instead of when running out of applicable profiles.
+- Improved chinese language translations [jzy-chitong56]
+- Commander resource tributes are now translated (translated by google)
+- Added Next and Previous Page buttons to the commander.
+- Automatic support for more than 12 Players based on version you playing on.
+   - All 24 player colours are now supported by AMAI.(from [3.0.0])
+   - Various messaging and attack targeting will now work with more than 12 players.(from [3.0.0])
+   - Increased script delay on higher number of players to reduce performance impact.
+- With Commander installed if no Human is playing, the first Observer can choose the language.
 - Undead strategy add GargGhouls
-- Add shop towerrush report
-- AI now can use power fountain (if map have power fountain)
+- Commander now includes Zoom feature based from wc3champions. [jzy-chitong56]
+   - Input "-zoomxxxx" to adjust the sight distance, and XXXX is a number, such as "-zoom1000"，max zoom is 3000 , recommended: 800 to 2000
+   - Observers start at an increased zoom level( increase 200 )
+- AMAI now can use power fountains if available on the map.
+- A small chance for AMAI to pick the profile of Legendary human players (Note not the skill of the real players)
 
 ### Changed
-- At the beginning of the game, HUMAN and ORC have two peon HarvestWood
+- Computer skill level is now shown by default on AMAI players. (from [3.0.0]) 
+- Tweaked english grammatical errors for various strategy messages. (from [3.0.0]) 
+- Tweaks to Brewmaster and Alchemist skill picks. (Pixyy) (from [3.1.0]) 
+- Balance pass to all racial hero selection, skill selection and strategy selection. Mostly minor but most noticeable changes include (consult Pixyy)  (from [3.1.0]) 
+   - Night Elf increased use of warden and keeper.
+   - Reduced use of mirror image skill.
+- Strategy tweaks and optimizations  (consult Pixyy)  (from [3.1.0])
+   - Removed non-useful units from harass attacks and fixed undead harassment group numbering.
+   - Improvements to human, orc, undead and night elf dynamic strategy adjustment.
 - Strategy additional Improvements
    - Unreasonable build restrictions have been removed
    - Main city upgrade priorities for all tactics have been rebalanced around 50 (Including ROC)
    - Increased the number of training units for Tier1 of all races
    - Adjusted the night elf training Hippo eagle command to reduce the occupied population of the Hippo eagle that can only be brought to the air
-   - Night elf Talon now use FAERIE_DRAGON against the air , because AI won't become a bird , match the MOUNTAIN_GIANT at the same time
+   - Night Elf Talon now use FAERIE_DRAGON against the air , because AI won't become a bird , match the MOUNTAIN_GIANT at the same time
    - Human Knight strategy now use COPTER , no STEAM_TANK , and Reduced GRYPHON quantity and priority
    - All races tier1 no longer build shop, all strategy tier2 and tier3 build shop , because shop have AddBlock
-   - AddUnitToAnti% no longer build hall
-- HUMAN UPGRADE UPG_SUN_BLADE UPGRADE need LUMBER_MILL,CASTLE,BLACKSMITH(on 1.32,UPG_SUN_BLADE no need UPGRADE)
-- Adjustment HUMAN and ORC and Night Elf number of peons for mines
+   - Synchronization DefendTownsDone(TOWER) (from [3.1.0])
+- Very minor balance tweak so less expensive units food wise are needed before AI starts to consider [all] armor or weapon upgrades for them.  (from [3.1.1])
+- Creep building detection range slightly increased(Pixyy) (from [3.1.0])
+- Front base distance range increased(Pixyy) (from [3.1.0])
+- Reduced number of mines needed before going into high upkeep(Pixyy) (from [3.1.0])
+- Tweaks to town portal so more likely to be used for lower threats(Pixyy) (from [3.1.0])
+- At the beginning of the game, HUMAN and ORC have two peon HarvestWood
+- Synchronization part function GetArmyHealthState change(from common.eai)
+- Synchronization function UpdateDebugPlayer and call UpdateDebugPlayer(from common.eai)
+- debug_player 1 → 0(from common.eai)
+- Adjust HUMAN, ORC and Night Elf number of peons for gold mines.
 - Non HUMAN _militia set now is empty
-- Official AI is replaced form 1.33 (although there is no change) (Including ROC)
-- No longer needed return bug , so notes part return null
-- Make sure AI leaves at least one ghoul to continue harvesting wood in any case. (Pixxy)
-- (DevTools) Refactoring of the TFT bat files to re-use scripts instead of duplicating script lines.
-
-### Removed
-- (DevTools) The numbered blizzard.j files are now removed and instead generated from the full original blizzard.j. Saves time when updating for new versions.
+- Add RESET_GUARD_POSITION_ONLY function (from [3.1.0])
+- Reduction Profiles can now be reused by AI players，now Profiles can't reused (if the Profiles Race same as AI Race)
+   - New Profiles RandomInt, some values are random
+- Original AI scripts have corrected form ID's (no playable impact) (Including ROC)
+- Calibration the Player name colors to match a little better.
+- Make sure AI leaves at least one ghoul to continue harvesting wood in any case. (from [master])
+- Reworked the strategy timer to fix various issues with changing strategies and to fix issues with counters changing way to frequently. (from [master])
 
 ### Fixed
-- Fixed support for 24 players.
-  - Blizzard.eai，Blizzard1~4.j，BlizzardVAI.eai，DETECT_DEFEAT.eai，REVEAL_ENEMY.eai，UPDATE_STRENGTH.eai，MICRO_HERO.eai，common.eai，TOWN_TRACK.eai, ARMY_TRACK.eai, RETREAT_CONTROL.eai, RESET_WINDWALKER.eai, MILITIA_EXPAND.eai, MICRO_UNITS.eai, HARASS.eai, FOCUSFIRE_CONTROL.eai,   ALL 12players→24players , 13players→23players, 15players→27players(self-adaption)
-  - common.eai，PlayerNeutralExtra 14players→26players （self-adaption）
-  - common.eai , sleep_multiplier , slm_start = 9, slm_end = 23, slm_end_mult = 3
-  - GlobalSettings.txt , sleep_multiplier , slm_start = 9 , slm_end = 23 ,  slm_end_mult = 3
-  - Other 12 Player→24players
-- Fixed some not chinese language translation
-- Fixed the Dialog only show title at first
-- Fixed the Dialog cannot change language
-- Colour Balance on messages improved to be aligned with the players actual colour.
+- Add missing requirement for UPG_SKEL_MASTERY.( but AI cannot used )
+- Add missing UPG_SUN_BLADE UPGRADE.
+- Fix the chinese language encoding issues(from [3.0.1]) 
+- Tweaked ranged units to avoid melee units only if damaged to 70% instead of 90% and reduced distance to trigger slightly. (Pixyy) (from [3.1.0]) 
+- Fixed an issue where healing totems are not cast correctly. (Pixyy) (from [3.1.0]) 
+- Front base distance range slightly increased again to help fix night elf troops getting stuck in base(now is 1100). (Pixyy) (from [3.1.0]) 
+- Heroes a little more likely to teleport to rescue a town regardless of the profiles aggression and smaller threat levels. (Pixyy) (from [3.1.0]) 
+- Fixed an issue where human upgrades magic sentry and flare could not be researched by the AI. (Pixyy) (from [3.1.0]) 
+- Fixed the Commander Dialog only showing title at first.
+- Fixed issue with the Commander Dialog where you cannot change language.
 - Add welcome message and opening tactical report Time of report (try to fix the problem of using default language for the first two reports)
-- Fixed some strategy no hero3 or misspelled two hero2 (Including ROC)
+- Fixed some strategy no hero3 or misspelled two hero2  (Including ROC)
+- Fix Night Elf initial mining logic such that they build the starting buildings first before completely filling the gold mine. (Pixyy) (from [3.1.1])
 - Fix Night Elf and Undead 's race_tower_id(Settings.txt)  (Including ROC  Human,  Elf and Undead )
-
-## [3.1.1] - 2022-01-10
-
-### Changed
-- Very minor balance tweak so less expensive units food wise are needed before AI starts to consider armor or weapon upgrades for them.
-
-### Fixed
-- Fixed an issue where dynamic counter calculations for team games made allied strength negate enemy strengths too much often resulting in an inappropriate counter choice.
-- Enemy and allied strength calculations for dynamic counters no longer watered down by the number of players in the game.
-- Strategy persistence profile setting now has an effect on the dynamic counters as it was supposed to.
-- If an AI re-evaluates counter type to the same existing counter while on the same strategy it will no longer spam the chat to allies with this fact.
-- Fix Night Elf initial mining logic such that they build the starting buildings first before completely filling the gold mine. (Pixyy)
-
-## [3.1.0] - 2022-01-05
-
-### Added
-- Support for warcraft 3 1.32.10 patch changes. (Pixyy)
-
-### Changed
-- To reduce spam from your allied AIs they now only sometimes report what they are countering instead of every single time its re-evaluated, unless debug mode is on.
-- At game start as there is nothing to counter yet the message to allies about what to counter will not be included.
-- Improved Chinese language translations and various issues fixed. (Pixyy)
-- Removed some explicit Chinese chat translations.
-- Goblin Shredders now count as more wood cutting workers. (Pixyy)
-- Creep building detection range slightly increased. (Pixyy)
-- Tweaks to Brewmaster and Alchemist skill picks. (Pixyy)
-- More resources (just over double) are now needed before the multi peasant fast builds can be used to avoid resource starvation. (Pixyy)
-- Balance pass to all racial hero selection, skill selection and strategy selection. Mostly minor but most noticeable changes include (Pixyy)
-   - Night Elf increased use of warden and keeper.
-   - Reduced use of mirror image skill.
-   - Reduced the appearance rate of Goblin Tinker
-- Strategy tweaks and optimizations (Pixyy)
-   - Improvements to human, orc, undead and night elf strategy compositions to make the pre-built strategies more effective when used.
-   - Removed non-useful units from harass attacks and fixed undead harassment group numbering.
-   - Hero priorities for building and resurrecting increased to ensure there are being built first.
-   - Tweaks to item buying priorities, town portals are more important, other items less so or no longer built.
-   - Improvements to base defense logic with more towers being built when spare funds available.
-   - Tweaks to the dynamic strategies to balance the counter units and correct some cases of invalid counter units being built.
-
-### Fixed
-- Tweaked ranged units to avoid melee units only if damaged to 70% instead of 90% and reduced distance to trigger slightly. (Pixyy)
-- Fixed an issue where healing totems are not cast correctly. (Pixyy)
-- Reduced number of mines needed before heading into high upkeep to help prevent dead time where AMAI doesn't appear to build anything. (Pixyy)
-- Front base distance range slightly increased again to help fix night elf troops getting stuck in base. (Pixyy)
-- Improved handling of the bug that the AI ​​hero will get stuck healing at home. They will now return to the battle when mostly healthy. (Pixyy)
-- Heroes a little more likely to teleport to rescue a town regardless of the profiles aggression and smaller threat levels. (Pixyy)
-- Militia max expansion range has been reduced as militia did not always last long enough to be useful. (Pixyy)
-- Ambush no longer used for hero units as its too easy to abuse and pick them off. (Pixyy)
-- Fixed an issue where no tier bonus was applying to the dynamic upgrade system.
-- Fixed an issue where human upgrades magic sentry and flare could not be researched by the AI. (Pixyy)
-
-## [3.0.1] - 2021-01-30
-
-### Changed
-- Moved the `AMAI.exe` to make it clearer which bat file to use to install the AI. This will avoid installing without the correct pre-requsites in place on the map.
-
-### Fixed
-- Fix the chinese language translation/encoding issues (Thanks keamspring)
-
-## [3.0.0] - 2020-06-21
-
-### Added
-- Dynamic strategies are now enabled and act as a fallback for **all** strategies.
-  - Hardcoded strategies still set the theme and initial build orders.
-  - But AMAI will now have an element of countering what the enemies have built and what it has already built.
-  - Dynamic strategies change more frequently than the chosen fixed strategy theme.
-  - Dynamic strategies pick the attack type they are countering and a unit to focus on building until its next check.
-- When AMAI is out of resources profiles with low surrender values, it will now do a last effort attack with all units including workers.
-- New `InstallTFTToDir` perl script which can be used to install AMAI to an entire directory of maps e.g `InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"`
-
-### Changed
-- Now requires a minimum warcraft 3 version of 1.32.
-- Computer skill level is now shown by default on AMAI players.
-- Reduced impact of summons on total caster strength as they are temporary units.
-- Moved template files to `Templates` folder.
-- All war fronts are now taken into consideration for focus fire which should improve behaviour no matter where battles are happening.
-- Halved front location distance from town center but now calculates an arc of locations to use. 
-- Tweaked english gramatical errors for various strategy messages.
-- Stock availability/regen times are no longer divided by 5 in `StandardUnits.txt`.
-
-### Removed
-- No longer a seperate AMAI vs AI installer batch script, installers now support both versions.
-
-### Fixed
-- Corrected tech tree to properly handle all changes since 1.24 to 1.32.6
-- Improved support for 24 players. 
-  - All 24 player colours are now supported by AMAI.
-  - Various messaging and attack targeting will now work with more than 12 players.
-  - Profiles can now be reused by AI players. This is useful for > 12 players in a game as there is not always enough profiles to set unique profiles.
-- When the debug player is killed we will now switch to a new player to debug.
-- The StrategyManager compile buttons now work again.
-- Fixed warning message during script compilation.
-- Ranged ground attackers will now try to avoid slower melee attackers that get too close.
-- Focus fire micro will no longer accidentily wake sleeping creeps.
-- Fixed an issue where AMAI would get stuck trying to attack its own base.
-- Mechanical armies will not enter emergency healing state because the only non-mechnical unit/hero is damaged.
-- Fixed some issues with the build logic where it would build the wrong priority units.
 
 ## [2.6.1] - 2021-01-13
 - Fixed support for pre-1.32 versions.
