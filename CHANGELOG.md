@@ -47,6 +47,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Note: the build will let ELF build tree to later , but seems unable to improve , even if when tree quantity greater than 1 build the rushcreep tree
 - Add SleepInCombatAM Maximum number of loop , to avoid when AI moveing army in large map , easily change target , but AI no go to the target(add variables mapattackdelayed)
 - On maps with more than 10 people and human players , or big map , AI has a chance to attack human players first when attacking players , to avoid china call 【内卷】  -- AI internal conflict , no attack human player(function ChooseAnEnemyTarget)
+- Add GetNearHumanPlayerEnemy , used to search and attack human players preferentially in too many players or large maps to reduce AI internal consumption(hope)
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
@@ -85,6 +86,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
 - function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency(but the function no longer use)
+- All search the enemy function no longer use GetBJMaxPlayers() , now use enemy_force[i] , to reduce the number of cycles
 - Army track CopyArmy no longer copy same integer , hopes it can improve efficiency
 - Town track CopyTown no longer copy same integer , hopes it can improve efficiency
 - Town track SeedNewTownAtLoc town_num incremental now need TrackTown(town_num) return true
