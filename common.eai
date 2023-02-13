@@ -3288,44 +3288,50 @@ endfunction
 //============================================================================
 function GetNearestEnemyToLoc_k takes location l returns player
   local integer i = 0
+  local integer min_p = -1
   local real nr = 0
   local real min_nr = 1000000
-  local player min_p = null
 
   loop
-    exitwhen i >= GetBJMaxPlayers()
-    if IsPlayerEnemy(Player(i), ai_player) and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(Player(i)) then
-      set nr = DistanceBetweenPoints_dk(GetPlayerStartLocationLoc(Player(i)), l)
+    exitwhen i >= c_enemy_total
+    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(enemy_force[i]) then
+      set nr = DistanceBetweenPoints_dk(GetPlayerStartLocationLoc(enemy_force[i]), l)
       if nr < min_nr then
         set min_nr = nr
-        set min_p = Player(i)
+        set min_p = i
       endif
     endif
     set i = i + 1
   endloop
-  return min_p
+  if min_p != -1 then
+    return enemy_force[min_p]
+  endif
+  return null
 endfunction
 
 function GetNearestEnemyToLoc_d takes location l returns player
   local integer i = 0
+  local integer min_p = -1
   local real nr = 0
   local real min_nr = 1000000
-  local player min_p = null
 
   loop
-    exitwhen i >= GetBJMaxPlayers()
-    if IsPlayerEnemy(Player(i), ai_player) and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(Player(i)) then
-      set nr = DistanceBetweenPoints_dk(GetPlayerStartLocationLoc(Player(i)), l)
+    exitwhen i >= c_enemy_total
+    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(enemy_force[i]) then
+      set nr = DistanceBetweenPoints_dk(GetPlayerStartLocationLoc(enemy_force[i]), l)
       if nr < min_nr then
         set min_nr = nr
-        set min_p = Player(i)
+        set min_p = i
       endif
     endif
     set i = i + 1
   endloop
   call RemoveLocation(l)
   set l = null
-  return min_p
+  if min_p != -1 then
+    return enemy_force[min_p]
+  endif
+  return null
 endfunction
 
 //============================================================================
@@ -3334,12 +3340,12 @@ function SetNearestEnemy takes nothing returns nothing
   local real nr = 0
 
   loop
-    exitwhen i >= GetBJMaxPlayers()
-    if IsPlayerEnemy(Player(i), ai_player) and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(Player(i)) then
-      set nr = DistanceBetweenPoints_dk(GetPlayerStartLocationLoc(Player(i)), home_location)
+    exitwhen i >= c_enemy_total
+    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(enemy_force[i]) then
+      set nr = DistanceBetweenPoints_dk(GetPlayerStartLocationLoc(enemy_force[i]), home_location)
       if nr < nearest_enemy_range then
         set nearest_enemy_range = nr
-        set nearest_enemy = Player(i)
+        set nearest_enemy = enemy_force[i]
       endif
     endif
     set i = i + 1
@@ -3394,6 +3400,7 @@ function countAllyEnemy takes nothing returns nothing
           set c_enemy_user_total = c_enemy_user_total + 1
         endif
         set c_enemy[player_race_pref[i]] = c_enemy[player_race_pref[i]] + 1
+        set enemy_force[c_enemy_total] = Player(i)
         set c_enemy_total = c_enemy_total + 1
       endif
     endif
@@ -4604,10 +4611,8 @@ function UnitAliveInGroup takes group g returns boolean
     endif
     call GroupRemoveUnit(g,u)
   endloop
-  if u == null then
-    call DestroyGroup(g)
-    set g = null
-  endif
+  call DestroyGroup(g)
+  set g = null
   set u = null
   return true // never reached
 endfunction
@@ -5056,6 +5061,7 @@ function GetPlayerStrength takes player p returns real
           set sum = sum + GetUnitStrength(u)
         endif
         call GroupRemoveUnit(g,u)
+        call Sleep(0.02)
     endloop
     call DestroyGroup(g)
     set g = null
@@ -5081,8 +5087,8 @@ function GetMaximumEnemyStrength takes nothing returns integer
   local integer max = 0
   local player p = null
   loop
-    exitwhen i >= GetBJMaxPlayers()
-    set p = Player(i)
+    exitwhen i >= c_enemy_total
+    set p = enemy_force[i]
     if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
       set max = Max(max, R2I(GetPlayerStrength(p)))
     endif
@@ -5370,6 +5376,7 @@ function GetOwnStrength takes nothing returns integer
       endif
     endif
     call GroupRemoveUnit(g, u)
+    call Sleep(0.02)
   endloop
   call DestroyGroup(g)
   set g = null
@@ -6085,9 +6092,9 @@ local group g = CreateGroup()
 local unit u = null
 local unit tempu = null
 //loop
-//    exitwhen i >= GetBJMaxPlayers()
-//    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerEnemy(Player(i), ai_player) then
-//    set loc = GetPlayerStartLocationLoc(Player(i))
+//    exitwhen i >= c_enemy_total
+//    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
+//    set loc = GetPlayerStartLocationLoc(enemy_force[i])
 //		set dist = DistanceBetweenPoints_kd(home_location, loc)
 //    call RemoveLocation(loc)
 //    set loc = null
@@ -6100,13 +6107,13 @@ local unit tempu = null
 //endloop
 
 loop
-	exitwhen i >= GetBJMaxPlayers()
-	if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerEnemy(Player(i), ai_player) then
-		call GroupEnumUnitsOfPlayer(g, Player(i), null)
+	exitwhen i >= c_enemy_total
+	if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
+		call GroupEnumUnitsOfPlayer(g, enemy_force[i], null)
 		set g = SelectById(g, 'ugol', true)  //some human UD player donot build TOWNHALL , TOWNHALL to goldmine between distance will compensate
 		if FirstOfGroup(g) == null then
 			call GroupClear(g)
-			call GroupEnumUnitsOfPlayer(g, Player(i), null)
+			call GroupEnumUnitsOfPlayer(g, enemy_force[i], null)
 			set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
 		endif
 		set g = SelectByAlive(g, true)
@@ -6116,7 +6123,7 @@ loop
 			set dist = DistanceBetweenPoints_kd(home_location, GetUnitLoc(u))  //GetNearestEnemy base from all base, no longer GetPlayerStartLocationLoc
 			if dist < mindistance then
 				set mindistance = dist
-				set nearplayer = Player(i)
+				set nearplayer = enemy_force[i]
 				set tempu = u
 			endif
 			call GroupRemoveUnit(g, u)
@@ -6141,9 +6148,9 @@ function MinRangeToEnemy takes location l returns real
   local real min_d = 1000000
 
   loop
-    exitwhen i >= GetBJMaxPlayers()
-    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerEnemy(Player(i), ai_player) then
-      set d = DistanceBetweenPoints_kd(l, GetPlayerStartLocationLoc(Player(i)))
+    exitwhen i >= c_enemy_total
+    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
+      set d = DistanceBetweenPoints_kd(l, GetPlayerStartLocationLoc(enemy_force[i]))
       if d < min_d then
         set min_d = d
       endif
@@ -6505,7 +6512,7 @@ function ComputeFrontPoints takes nothing returns nothing
   local unit array u
   local integer totalplayers = 0
   local location loc = null
-  local player mainplayer = Player(GetAiPlayer()) 
+  local player mainplayer = Player(GetAiPlayer())
   local boolean pathingdone = true
   local boolean array patherdone
   local location l = null
@@ -6513,9 +6520,9 @@ function ComputeFrontPoints takes nothing returns nothing
   local real distance = 0
   
   loop
-    exitwhen i >= GetBJMaxPlayers()
-    set p = Player(i)
-    if IsPlayerEnemy(mainplayer, p) and GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
+    exitwhen i >= c_enemy_total
+    set p = enemy_force[i]
+    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
       set loc = GetPlayerStartLocationLoc(p)
       set u[n] = CreatePathingUnit(u[n])
       call IssuePointOrder(u[n], "move", GetLocationX(loc), GetLocationY(loc))
@@ -6846,13 +6853,12 @@ endfunction
 //============================================================================
 function GetHealer takes nothing returns unit
   local integer id = 0
-  set ru_hp = FirstOfGroup(healer_group)
   loop
+    set ru_hp = FirstOfGroup(healer_group)
     exitwhen ru_hp == null
     set id = GetHealerId(GetUnitTypeId(ru_hp))
     exitwhen (GetUnitState(ru_hp, UNIT_STATE_MANA) >= healer_mana_cost[id]) and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id]))
     call GroupRemoveUnit(healer_group, ru_hp)
-    set ru_hp = FirstOfGroup(healer_group)
   endloop
   return ru_hp
 endfunction
@@ -7186,7 +7192,6 @@ function InitNeutralBuildings takes nothing returns nothing
         endif
         exitwhen roostfound or k >= m
       endloop
-    else
     endif
     call GroupRemoveUnit(g, u)
   endloop
@@ -11287,41 +11292,47 @@ endfunction
 //============================================================================
 function GetWeakestEnemy takes nothing returns player
     local integer i = 0
-    local integer pmin = 0
+    local integer pmin = -1
     local integer minstr = 1000
     local integer cstr = 0
     loop
-      exitwhen i == GetBJMaxPlayers()
-      if IsPlayerEnemy(Player(i),ai_player) and not IsPlayerObserver(Player(i)) then
-        set cstr = GetUnexactPlayerStrength(Player(i))
-        if cstr < minstr and GetBuilding(Player(i)) != null then
+      exitwhen i == c_enemy_total
+      if not IsPlayerObserver(enemy_force[i]) then
+        set cstr = GetUnexactPlayerStrength(enemy_force[i])
+        if cstr < minstr and GetBuilding(enemy_force[i]) != null then
           set pmin = i
           set minstr = cstr
         endif
       endif
     set i = i + 1
     endloop
-    return Player(pmin)
+    if pmin != -1 then
+      return enemy_force[pmin]
+    endif
+    return null
 endfunction
 
 //============================================================================
 function GetStrongestEnemy takes nothing returns player
     local integer i = 0
-    local integer pmax = 0
+    local integer pmax = -1
     local integer maxstr = 0
     local integer cstr = 0
     loop
-      exitwhen i == GetBJMaxPlayers()
-      if IsPlayerEnemy(Player(i),ai_player) and not IsPlayerObserver(Player(i)) then
-        set cstr = GetUnexactPlayerStrength(Player(i))
+      exitwhen i == c_enemy_total
+      if not IsPlayerObserver(enemy_force[i]) then
+        set cstr = GetUnexactPlayerStrength(enemy_force[i])
         if cstr > maxstr then
           set pmax = i
           set maxstr = cstr
         endif
       endif
-    set i = i + 1
+      set i = i + 1
     endloop
-    return Player(pmax)
+    if pmax != -1 then
+      return enemy_force[pmax]
+    endif
+    return null
 endfunction
 
 //============================================================================
@@ -11332,11 +11343,11 @@ function GetWeakAndNearEnemy takes nothing returns player
     local integer cstr = 0
     local unit cbuilding = null
     loop
-      exitwhen i == GetBJMaxPlayers()
-      if IsPlayerEnemy(Player(i),ai_player) and not IsPlayerObserver(Player(i)) then
-        set cbuilding = GetBuilding(Player(i))
+      exitwhen i == c_enemy_total
+      if not IsPlayerObserver(enemy_force[i]) then
+        set cbuilding = GetBuilding(enemy_force[i])
         if cbuilding != null and UnitAlive(cbuilding) then
-          set cstr = GetUnexactPlayerStrength(Player(i)) + GetRangePenalty(cbuilding)
+          set cstr = GetUnexactPlayerStrength(enemy_force[i]) + GetRangePenalty(cbuilding)
           if cstr < minstr then
             set pmin = i
             set minstr = cstr
@@ -11350,50 +11361,58 @@ function GetWeakAndNearEnemy takes nothing returns player
       set pmin = 0
     endif
     set cbuilding = null
-    return Player(pmin)
+    return enemy_force[pmin]
 endfunction
 
 //============================================================================
 function GetNearHumanPlayerEnemy takes nothing returns player
   local integer i = 0
-  local integer t = 0
+  local integer t = -1
+  local integer nearhumanplayer = -1
   local real dist = 0
   local real mindistance = 100000000  // use to big map - 12 or 24 player map
-  local player nearhumanplayer = null
   loop
-      exitwhen i >= GetBJMaxPlayers()
-      if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerEnemy(Player(i), ai_player) and GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER and not IsPlayerObserver(Player(i)) then
-        set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(Player(i)))
-        if dist < mindistance then
-          set mindistance = dist
-          set nearhumanplayer = Player(i)
-        endif
-        set t = t + 1
+    exitwhen i >= c_enemy_total
+    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(enemy_force[i]) != MAP_CONTROL_COMPUTER and not IsPlayerObserver(enemy_force[i]) then
+      set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(enemy_force[i]))
+      if dist < mindistance then
+        set mindistance = dist
+        set nearhumanplayer = i
       endif
-      set i = i + 1
+      set t = t + 1
+    endif
+    set i = i + 1
   endloop
-  set c_enemy_user_total = t  // update c_enemy_user_total
-  return nearhumanplayer
+  if t != -1 then
+    set c_enemy_user_total = t + 1  // update c_enemy_user_total
+  endif
+  if nearhumanplayer != -1 then
+    return enemy_force[nearhumanplayer]
+  endif
+  return null
 endfunction
 
 function GetNearestEnemy takes nothing returns player
 local integer i = 0
+local integer nearplayer = -1
 local real dist = 0
 local real mindistance = 1000000
-local player nearplayer = null
 
 loop
-    exitwhen i >= GetBJMaxPlayers()
-    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerEnemy(Player(i), ai_player) then
-      set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(Player(i)))
-      if dist < mindistance then
-        set mindistance = dist
-        set nearplayer = Player(i)
-      endif
+  exitwhen i >= c_enemy_total
+  if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
+    set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(enemy_force[i]))
+    if dist < mindistance then
+      set mindistance = dist
+      set nearplayer = i
     endif
-    set i = i + 1
+  endif
+  set i = i + 1
 endloop
-return nearplayer
+if nearplayer != -1 then
+  return enemy_force[nearplayer]
+endif
+return null
 endfunction
 
 //============================================================================
@@ -11406,9 +11425,9 @@ function GetSecondNearestEnemy takes nothing returns player
     local integer cstr = 0
     local unit cbuilding = null
     loop
-      exitwhen i == GetBJMaxPlayers()
-      if IsPlayerEnemy(Player(i),ai_player) and not IsPlayerObserver(Player(i)) then
-        set cbuilding = GetBuilding(Player(i))
+      exitwhen i == c_enemy_total
+      if not IsPlayerObserver(enemy_force[i]) then
+        set cbuilding = GetBuilding(enemy_force[i])
         if cbuilding != null and UnitAlive(cbuilding) then
           set cstr = GetRangePenalty(cbuilding)
           if cstr < minstr then
@@ -11429,7 +11448,7 @@ function GetSecondNearestEnemy takes nothing returns player
       set spmin = 0
     endif
     set cbuilding = null
-    return Player(spmin)
+    return enemy_force[spmin]
 endfunction
 
 //============================================================================
@@ -11561,7 +11580,7 @@ function ChooseAnEnemyTarget takes nothing returns unit
     set target_enemy = GetWeakAndNearEnemy()
     //call Trace("Choosing weakest closest Enemy")
   endif
-  if (c_ai_total + c_enemy_total >= 10 or mapattackdelayed > 8) and c_enemy_user_total > 0 and GetPlayerController(target_enemy) == MAP_CONTROL_COMPUTER then  // big map , attack strategy is first attack HumanPlayer
+  if (c_ai_total + c_enemy_total >= 10 or mapattackdelayed > 8) and c_enemy_user_total > 0 and GetPlayerController(target_enemy) != MAP_CONTROL_USER then  // big map , attack strategy is first attack HumanPlayer
     if GetRandomInt(0 , 100) <= (mapattackdelayed * 2 + c_ai_total + c_enemy_total) then
       set target_enemy = GetNearHumanPlayerEnemy()
     endif
@@ -11584,33 +11603,27 @@ function ChooseAnEnemyTarget takes nothing returns unit
 endfunction
 
 function ChooseAnyEnemyTarget takes nothing returns unit
-  set ru_target[4]= ChooseAnEnemyTarget()
-  if attacking_strategy == 3 then
-    if IsTargetGood(ru_target[4],0) then
-      set alli_target = GetBuilding(GetStrongestEnemy())
-      return ru_target[4]
-    endif
-  endif
-  if IsTargetGood(ru_target[4], 0) then
+  set ru_target[4] = ChooseAnEnemyTarget()
+  if IsTargetGood(ru_target[4],0) then
     call Trace("Enemy Advanced Target Chosen")
     set alli_target = ru_target[4]
+    if attacking_strategy == 3 then
+      set alli_target = GetBuilding(GetStrongestEnemy())
+    endif
     return ru_target[4]
-  else
-    set ru_target[4] = null
-    return null
   endif
+  set ru_target[4] = null
+  return null
 endfunction
 
 //============================================================================
 function ChooseAttackTarget takes nothing returns unit
     //call DisplayToAll("Choosing attack target")
     set ru_target[5] = null
-    if GetRandomReal(0.0,1.0) <= comp_chosen_target_rate then
-       set ru_target[5] = null
-    else
+    if GetRandomReal(0.0,1.0) > comp_chosen_target_rate then
       set ru_target[5] = ChooseEnemyExpansionTarget()
       if ru_target[5] == null then
-      //call DisplayToAll("Attack enemy Base")
+        //call DisplayToAll("Attack enemy Base")
         set ru_target[5] = ChooseEnemyBaseTarget()
       endif
       set alli_target = ru_target[5]
@@ -11807,17 +11820,17 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
 
   endif
 
-	if town_threatened then
-		set break_attack = false
-		set isfleeing = false
-		call FormGroupAM(1)
-		call SleepUntilTownDefended(ai_strength)
-		call SleepInCombatAM()
+  if town_threatened then
+    set break_attack = false
+    set isfleeing = false
+    call FormGroupAM(1)
+    call SleepUntilTownDefended(ai_strength)
+    call SleepInCombatAM()
   endif
 
     call Trace("===Single Melee Attack===" )
-	  call Trace("AI strength: " + Int2Str(ai_strength))	
-	
+    call Trace("AI strength: " + Int2Str(ai_strength))	
+
     set h_siege = has_siege
     set own_strength = ai_strength
 
@@ -11998,41 +12011,41 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
 
     // coordinate with allies
     //
-  if c_ally_total > 0 then
-  call SetLeadAlly()
-    if MeleeDifficulty() != MELEE_NEWBIE then
-      set common = GetAllianceTarget()
-      if common != null then
-      call Trace("Attack Alliance Target")
-        call Chat(C_Ally)
-        call FormGroupAM(3)
-        call AttackMoveKillAAM(common)
-        call Trace("Attack complete")
-        call SetAllianceTarget(null)
-        set common = null
-        return
+    if c_ally_total > 0 then
+      call SetLeadAlly()
+      if MeleeDifficulty() != MELEE_NEWBIE then
+        set common = GetAllianceTarget()
+        if common != null then
+        call Trace("Attack Alliance Target")
+          call Chat(C_Ally)
+          call FormGroupAM(3)
+          call AttackMoveKillAAM(common)
+          call Trace("Attack complete")
+          call SetAllianceTarget(null)
+          set common = null
+          return
+        endif
       endif
     endif
-  endif
 
     if not no_player_attack then
 
       // all-out attack if the player is weak
       //
-  if MeleeDifficulty() != MELEE_NEWBIE then
-      set mega = GetMegaTarget()
-      if mega != null and UnitAlive(mega) then
-        call Trace("Mega Attack Target")
-        call SetAllianceTarget(mega)
-        call SetChatVarsAttack(mega)
-        call Chat(C_Mega)
-        call Chat(C_Megatarget)
-        call FormGroupAM(3)
-        call AttackMoveKillAAM(mega)
-        set mega = null
-        return
+      if MeleeDifficulty() != MELEE_NEWBIE then
+        set mega = GetMegaTarget()
+        if mega != null and UnitAlive(mega) then
+          call Trace("Mega Attack Target")
+          call SetAllianceTarget(mega)
+          call SetChatVarsAttack(mega)
+          call Chat(C_Mega)
+          call Chat(C_Megatarget)
+          call FormGroupAM(3)
+          call AttackMoveKillAAM(mega)
+          set mega = null
+          return
+        endif
       endif
-  endif
 
       if GetHeroXP(hero_unit[1]) < GetRandomInt(50,150) or GetHeroXP(hero_unit[1]) > GetRandomInt(300,850) or GetHeroXP(hero_unit[2]) > 450 or FoodUsed() > GetRandomInt(40,60) then
 
@@ -12051,8 +12064,8 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
       endif
     endif
 
-	endif // if not creep only
-	
+  endif // if not creep only
+
     if no_creep_attack or ai_no_creep then
       call Trace("no creeping" )
       call Sleep(4 * sleep_multiplier)
@@ -12199,7 +12212,7 @@ function GetArmyHealthState takes nothing returns real
       if IsUnitType(u, UNIT_TYPE_MECHANICAL) or IsUnitType(u, UNIT_TYPE_SUMMONED) then
         set health_sum = health_sum + 1 // Because is not currently handled by healing and we don't want army to run away if only 1 human unit is hurt
         set uhs = 1
-      else 
+      else
         set health_sum = health_sum + uhs
       endif
       set count = count + 1
@@ -12219,6 +12232,7 @@ function GetArmyHealthState takes nothing returns real
       endif
     endif
     call GroupRemoveUnit(g,u)
+    call Sleep(0.02)
   endloop
   call DestroyGroup(g)
   set g = null
@@ -13830,7 +13844,6 @@ function GetAllyCount takes player whichPlayer returns integer
 
     loop
         set indexPlayer = Player(playerIndex)
-
         if whichPlayer != indexPlayer then
             if GetPlayerAlliance(whichPlayer,indexPlayer,ALLIANCE_PASSIVE) then
                 if GetPlayerAlliance(indexPlayer,whichPlayer,ALLIANCE_PASSIVE) then
@@ -13840,7 +13853,6 @@ function GetAllyCount takes player whichPlayer returns integer
                 endif
             endif
         endif
-         
         set playerIndex = playerIndex + 1
         exitwhen playerIndex == GetBJMaxPlayers()
     endloop
