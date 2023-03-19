@@ -84,8 +84,8 @@
     integer playermax = 12
     integer playercreep = 14
     trigger ZoomSetx = null
-    trigger HeroLearningSkillsx = null
-    triggeraction last_levelup_trigger_action
+    trigger AdjustZoomUp = null
+    trigger AdjustZoomDown = null
 
     dialog game_start_dialog = null
     trigger game_start_trigger = null
@@ -343,7 +343,7 @@ function ColorPlayer takes string CompC returns playercolor
   elseif (CompC == "Brown") then
     return PLAYER_COLOR_BROWN
    else
-    if  playermax != 12 then
+    if playermax != 12 then
       if (CompC == "MAROON") then
         return PLAYER_COLOR_MAROONX
       elseif (CompC == "Navy") then
@@ -399,7 +399,7 @@ function cs2s takes string s, playercolor c returns string
   elseif c == PLAYER_COLOR_AQUA then
     return "|Cff106247"+s+"|r"
   else
-    if  playermax != 12 then
+    if playermax != 12 then
       if c == PLAYER_COLOR_MAROONX then
         return "|Cff9C0000"+s+"|r"
       elseif c == PLAYER_COLOR_NAVYX then
@@ -627,16 +627,16 @@ function Convert2Player takes string Comp, boolean all_allowed returns player
 
   if Comp == "All" then
     if all_allowed then
-	  set theplayer = Player(playermax)
+      set theplayer = Player(playermax)
     else
       call DisplayToTP(all_not_allowed)
     endif
-	
+
   elseif (CColor == null) then
-   //Makes Sure color was typed Correctly  
+   //Makes Sure color was typed Correctly
     //Makes sure number is 0 or bigger and (11 or 23) or smaller
     if (S2I(Comp) >= 0) and (S2I(Comp) < playermax) then
-	  set theplayer = Player(S2I(Comp))
+      set theplayer = Player(S2I(Comp))
     else
       call DisplayToTP(player_id_mistyped)
     endif
@@ -649,9 +649,9 @@ function Convert2Player takes string Comp, boolean all_allowed returns player
       call DisplayToTP(color_word_mistyped)
     endif
   endloop
-	if j <= playermax then
-		set theplayer = Player(j)
-	endif
+  if j <= playermax then
+    set theplayer = Player(j)
+  endif
   endif
 
   set CColor = null
@@ -721,10 +721,10 @@ endfunction
 function ZoomSet takes nothing returns nothing
   local real Zoom = 0
   set Zoom = S2R(SubStringBJ(GetEventPlayerChatString(), 6, 9))
-  if Zoom < 3000 then
+  if Zoom < 2300 then
     call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_ZOFFSET, Zoom, 0 )
   else
-    call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_ZOFFSET, 3000, 0 )
+    call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_ZOFFSET, 2300, 0 )
   endif
 endfunction
 
@@ -749,6 +749,33 @@ function InitZoom takes nothing returns nothing
   call TriggerAddAction(ZoomSetx, function ZoomSet)
 endfunction
 
+function ZoomDown takes nothing returns nothing
+  call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_ZOFFSET, ( CameraSetupGetFieldSwap(CAMERA_FIELD_ZOFFSET, GetCurrentCameraSetup()) - 50 ), 0 )
+endfunction
+
+function ZoomUp takes nothing returns nothing
+  if CameraSetupGetFieldSwap(CAMERA_FIELD_ZOFFSET, GetCurrentCameraSetup()) < 2300 then
+    call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_ZOFFSET, ( CameraSetupGetFieldSwap(CAMERA_FIELD_ZOFFSET, GetCurrentCameraSetup()) + 50 ), 0 )
+  endif
+endfunction
+
+function AdjustZoom takes nothing returns nothing
+  local integer i = 0
+  if AdjustZoomUp == null then
+    set AdjustZoomUp = CreateTrigger()
+  endif
+  if AdjustZoomDown == null then
+    set AdjustZoomDown = CreateTrigger()
+  endif
+  loop
+    exitwhen i >= playermax
+    call TriggerRegisterPlayerKeyEventBJ( AdjustZoomUp, Player(i), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_UP )
+    call TriggerRegisterPlayerKeyEventBJ( AdjustZoomDown, Player(i), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_DOWN )
+    set i = i + 1
+  endloop
+  call TriggerAddAction(AdjustZoomUp , function ZoomUp)
+  call TriggerAddAction(AdjustZoomDown , function ZoomDown)
+endfunction
 //===========================================================================
 // Map Initialization (Runs all stuff needed to be run after map is loaded)
 //===========================================================================
@@ -981,38 +1008,6 @@ function ExecuteDialogCommand takes player Comp, integer number returns nothing
   else
     call ExecuteDlgCommand(Comp, number)
   endif
-endfunction
-
-
-//===========================================================================
-// help fix war3 1.31 Hero cannot Learning Skills
-//===========================================================================
-function AssistedHeroLearningSkills takes nothing returns nothing
-  local unit u = GetTriggerUnit()
-  local player Comp = GetOwningPlayer(u)
-  local integer level = GetHeroLevel(u)
-  set last_levelup_trigger_action = null
-  if IsUnitType(u, UNIT_TYPE_HERO) == true and GetPlayerController(Comp) == MAP_CONTROL_COMPUTER and GetPlayerSlotState(Comp) == PLAYER_SLOT_STATE_PLAYING then
-    call PolledWait( 1 )
-    if GetHeroSkillPoints(u) != 0 then
-      call CommandAI(Comp, 131, level)
-    endif
-  endif
-  call TriggerRemoveAction(HeroLearningSkillsx, last_levelup_trigger_action)
-  set Comp = null
-  set u =null
-endfunction
-
-function HeroLevelup takes nothing returns nothing
-  local rect r = GetPlayableMapRect()
-  if HeroLearningSkillsx == null then
-    set HeroLearningSkillsx = CreateTrigger()
-  endif
-  call TriggerRegisterEnterRectSimple( HeroLearningSkillsx, r )
-  call TriggerRegisterAnyUnitEventBJ( HeroLearningSkillsx, EVENT_PLAYER_HERO_LEVEL )
-  set last_levelup_trigger_action = TriggerAddAction(HeroLearningSkillsx, function AssistedHeroLearningSkills)
-  call RemoveRect( r )
-  set r = null
 endfunction
 
 //===========================================================================
@@ -1330,7 +1325,7 @@ function BuildNumberDialog takes player p, integer startnum returns dialog
   //call DisplayToAll("STRAT Max: " + I2S(maxCount) + " for player: " + I2S(GetPlayerId(p)) + " starting page at:" + I2S(i))
   call DestroyLastTrigger(last_number_trigger, last_number_trigger_action)
   set last_number_trigger = null
-  set last_number_trigger_action = null  
+  set last_number_trigger_action = null
   call DialogDestroy(last_number_dialog)
   set last_number_dialog = new_dialog
   call DialogSetMessage(new_dialog, dlghdr_choose_number)
@@ -1982,7 +1977,7 @@ endfunction
 
 function LanguageDlg takes nothing returns nothing
   local integer host = GetFirstHuman()
-  local integer  i = 0
+  local integer i = 0
   call DestroyTimer(last_timer)
   if debugging and host != -1 and IsPlayerObserver(Player(host)) then
     loop
@@ -2021,7 +2016,5 @@ endfunction
 #INCLUDE <Blizzard3.j>
     call InitCommander()
     call InitZoom()
-    if GetPlayerController(Player(12)) != MAP_CONTROL_CREEP then
-      call HeroLevelup()
-    endif
+    call AdjustZoom()
 #INCLUDE <Blizzard4.j>
