@@ -11,7 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Note: 2.6.2cn include 2.6.1cn and 3.1.1cn
 
 ### Added
-- New automatic Trigger can help AI hero learning skills , it can fix war3 1.31 AI hero can not  learning skills , olny run to war3 1.29+ and have 1 second delay to ensure that other versions are not affected
+- New code halp accurately identify the version , can identify 1.27b or low , 1.28 ~ 1.28f , 1.29 , 1.30.2 , 1.31 , 1.32 +
+- New automatic function can help AI hero learning skills , it can fix war3 1.31 AI hero can not learning skills , olny run to war3 1.30~1.31 , and the function can help VS AI
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join non own racial units and heros (but excess heros may not be able to learn skills) , This function include adding mercenaries and dragons to the Attack Group( the function AttackGroupAddNeutrals no longer use) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
 - Note: the AI no longer sent repeat report for B.eai command control C.eai
@@ -32,8 +33,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Note: In fact , I would prefer the first human player (even not Observer) to directly control AI , convenient testing
 - Add item ORB_OF_FIRE(ofr2)
 - Add again item ORB_OF_LIGHTNING(olig)
+- Add FOCUSFIRE unit , now AI will FOCUSFIRE Fire Phoenix and Soul of Revenge
+- Add save unit , now AI will save FOCUSFIRE and militiaman(just go home)
+- Add deny unit , now AI will try deny
 - Add SleepInCombatAM Maximum number of loop , to avoid when AI moveing army in large map , easily change target , but AI no go to the target(add variables mapattackdelayed)
 - On maps with more than 10 people and human players , or big map , AI has a chance to attack human players first when attacking players , to avoid china call 【内卷】  -- AI internal conflict , no attack human player(function ChooseAnEnemyTarget Add GetNearHumanPlayerEnemy)
+- Zoom can use up and down key change high , once 50
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
@@ -51,6 +56,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Now Towerrush max distance is 14000
    - Now off Towerrush condition will judge AI have or have not heroes
    - Now AI will build race_simple_melee to help TR
+   - Towerrush on , no run FAST BUILD
    - Perfect translation reports
    - Fixed bug , AI no longer build tower on map centre
    - Note: Because available_time too long , so AI TR donot buy NEUTRAL
@@ -62,6 +68,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - available_time and regenerate_time not change
    - Balance parameters have not changed
    - Add war3_1.32 mercenaries adjustment , but no use , just add unit to StandardUnits.txt, if you war3 is 1.33+, please run AMAI 3.2.2+
+- peon_check job update , now is HARVEST_CHECK job , can have all race , when AI Start location own multiple gold mines , the AI HARVEST will abnormal , then the job can help AI HARVEST
 - Optimize 24 player judgment conditions
 - Change GetPlayerAntiAirStrength returns form integer to real
 - BuyNeutralHero now judge AI hero count , if count == tier or nn != NEUTRAL_TAVERN, then return , Prevent AI from going to the store when the number of heroes reaches the maximum and there is no need to revive (only 3 hero , if have 4 hero or more , then the judge cannot normal operation)
@@ -102,6 +109,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Adjust UPG_BOMBS BuildAdvUpgr2 chance unitcount to 0.2 , Maximum to 35 , In the test, after building COPTER, the enemy has no AIR , the COPTER no research UPG_BOMBS not useful
 - Note: Synchronized ROCbuild Bat file code
 - Note:The installer of the old version of AMAI seems to have failed to work properly. Do not use the old installer
+- Zoom max high now is 2800
+- AMAI VS AI
+   - MakeVAIXX.bat Synchronize code for non VS AI scripts
+   - BlizzardVAI.eai Add zoom function
+   - BlizzardVAI.eai ai script file real race.txt 1% and 2%
 
 ###Fixed
 - Fixed some translation errors
@@ -115,6 +127,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed B2.j and B3.j bj_PLAYER_NEUTRAL_EXTRA and bj_MAX_PLAYER_SLOTS and bj_PLAYER_NEUTRAL_VICTIM not replaced with dynamic variable playercreep or playermax
 - Fixed part of set xxx = GetExpansionPeon() lack set xxx = GetExpansionPeon2() when xxx == null
 - Fixed a when AI have too many ally , game stuck or crashed
+- Fixed PickMeleeHero non VERSION_FROZEN_THRONE third hero num, now is i + 1
+
 
 ## [2.6.2] - 2022-09-04
 Jzy-chitong56 has provided various updates and ported features back to this older version of AMAI if you play on the older editions of warcraft 3.
