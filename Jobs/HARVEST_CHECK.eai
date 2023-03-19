@@ -1,0 +1,133 @@
+#IFDEF GLOBAL
+    unit secondmine = null
+#ELSE
+function PeonMineCheck takes unit mine returns boolean
+  local group g = CreateGroup()
+  local group tempg = null
+  local location unitloc = GetUnitLoc(mine)
+  local unit u = null
+  local integer i = 0
+  local integer delaywisps = ver_optimal_gold - 1
+  call DisplayToAllJobDebug("HARVEST CHECK Job Start")
+  if TownCountDone(racial_peon) > 6 then
+    set delaywisps = ver_optimal_gold
+  endif
+  if race_manual_loading then
+    call GroupEnumUnitsOfPlayer(g, ai_player, null)
+    set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
+    set g = SelectByAlive(g, true)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      if IsUnitInTransport(u, mine) then
+        set i = i + 1
+        //call RecycleGuardPosition(u)
+      elseif GetUnitCurrentOrder(u) == OrderId("") then
+        call IssueImmediateOrder(u, "autoharvestlumber")
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+    if i < delaywisps then
+      call GroupEnumUnitsOfPlayer(g, ai_player, null)
+      set g = SelectByLoaded(g, false)
+      set g = SelectNumberOfId(g, 100, old_id[race_manual_loading_wisp])
+      set tempg = CopyGroup(g)
+      call DestroyGroup(g)
+      set g = GetNearestSubGroupOfGroup(tempg, unitloc, delaywisps - i)
+      //call GroupRemoveGuardPositionInstant(g) // this gets wisps to come off the trees.
+      call GroupTargetOrder(g, "harvest", mine)
+    endif
+  elseif race_uses_mine_expansion then
+    if TownCountDone(racial_peon) >= 5 then
+      set delaywisps = ver_optimal_gold
+    endif
+    call GroupEnumUnitsOfPlayer(g, ai_player, null)
+    set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
+    set g = SelectByAlive(g, true)
+    set tempg = CopyGroup(g)
+    set g = GetNearestSubGroupOfGroup(tempg, home_location, TownCountDone(racial_peon))
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null or i == delaywisps
+      if GetUnitCurrentOrder(u) == OrderId("") and UnitAlive(u) then
+        call IssueTargetOrder(u, "harvest", mine)
+        set i = i + 1
+      elseif GetUnitCurrentOrder(u) == OrderId("harvest") then
+        set i = i + 1
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+  else  //human and orc
+    call GroupEnumUnitsOfPlayer(g, ai_player, null)
+    set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
+    set g = SelectByAlive(g, true)
+    set tempg = CopyGroup(g)
+    set g = GetNearestSubGroupOfGroup(tempg, home_location, 6 + delaywisps)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null or i == delaywisps
+      if UnitAlive(u) and (GetUnitCurrentOrder(u) == OrderId("") or GetUnitCurrentOrder(u) == OrderId("harvest")) then  // no get other order peon , maybe the peon go buy unit or build some
+        call IssueTargetOrder(u, "harvest", mine)
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+    set i = delaywisps  //human and orc no need full
+  endif
+  call RemoveLocation(unitloc)
+  set unitloc = null
+  call DestroyGroup(tempg)
+  set tempg = null
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+  return i < delaywisps
+endfunction
+
+function HarvestCheckJob takes nothing returns nothing
+  local group g = CreateGroup()
+  local unit u = null
+  local integer i = 0
+  local boolean mines_not_full = true
+  //  call DisplayToAll("Harvest Start")
+  if not race_manual_loading and first_town_mine == 0 then
+    return
+  endif
+  if race_manual_loading then
+    call GroupEnumUnitsOfPlayer(g, ai_player, null)
+    set g = SelectNumberOfId(g, 100,  old_id[race_manual_loading_mine])
+  elseif race_uses_mine_expansion and not TownThreatened() then
+    call GroupEnumUnitsInRangeOfLoc(g, home_location, 1500, null)
+    set g = SelectByPlayer(g, ai_player, true)
+    set g = SelectById(g, old_id[racial_expansion], true)
+  elseif GetResourceAmount(secondmine) <= 0 and not TownThreatened() and TownCountDone(racial_peon) > 8 then  //human and orc
+    call GroupEnumUnitsInRangeOfLoc(g, home_location, 1500, null)
+    set g = SelectById(g, old_id[GOLD_MINE], true)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      if GetResourceAmount(u) > i then
+        set i = GetResourceAmount(u)
+        set secondmine = u
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+    call GroupAddUnit(g, secondmine)
+  endif
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if UnitAlive(u) then
+      set mines_not_full = PeonMineCheck(u) and mines_not_full
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+  if mines_not_full then  //Prevention duplicate runs(Run when start game on races.eai)
+    call TQAddJob(20 - first_town_mine * 6, HARVEST_CHECK, 0)
+  else
+    call TQAddJob(80 - first_town_mine * 40, HARVEST_CHECK, 0)
+  endif
+endfunction
+#ENDIF
