@@ -16,6 +16,7 @@
     integer race_tower_shop = 0
     player rushedplayer = null
     location toweringplayerloc = null
+    location towerrushsubloc = null
 #ELSE
 
 // ######################## Tower Rush Check ##############################
@@ -28,7 +29,6 @@ function StartTowerRush takes integer delay returns nothing
 local unit u = null
 local real distance = 0.0
 local real buildrange = 700  //DistanceBetweenPoints the toweringplayerloc and first_tower_point
-local group g = null
 
 	set distance = GetNearestEnemyDistance()
 	if distance > 14000 or distance == 0 or builder[10] == null or (c_ally_total + c_enemy_total) > 5 then  //Distance to too far , builder[10] from the GetNearestEnemyDistance , Limit the player number to avoid crashes, and TR usually on 1V1 OR 2V2 map use
@@ -48,6 +48,7 @@ local group g = null
 			call RemoveLocation(toweringplayerloc)
 			set toweringplayerloc = GetStartLocationLoc(GetPlayerStartLocation(rushedplayer))
 			set race_tower_alliancetarget = true
+			set builder[10] = null
 		endif
 	endif
 
@@ -56,26 +57,21 @@ local group g = null
 	if GetPlayerController(rushedplayer) != MAP_CONTROL_COMPUTER then  //if Enemy is human player, need more rude
 		set buildrange = 400
 	endif
-	if GetUnitTypeId(builder[10]) == 'ugol' and race_tower_alliancetarget != true then
-		set g = CreateGroup()
-		call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1600, null)
-		set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
-		if FirstOfGroup(g) == null or GetOwningPlayer(FirstOfGroup(g)) != rushedplayer then
-			set buildrange = buildrange + 600  //compensate TOWNHALL to goldmine between distance
-		else
-			call RemoveLocation(toweringplayerloc)
-			set toweringplayerloc = GetUnitLoc(FirstOfGroup(g))
-		endif
-		call DestroyGroup(g)
-		set g = null
-	endif
 	set tower_target_loc = GetLocationInDistanceFromLoc(toweringplayerloc, buildrange)
 	if tower_target_loc == null then
 		if delay == 1 then
 			call DisplayToAllies(chat_unsuited_towerrush)
 		endif
+		set enemy_point_x = 0
+		set enemy_point_y = 0
+		set builder[10] = null
+		call RemoveLocation(toweringplayerloc)
+		set toweringplayerloc = null
+		call RemoveLocation(tower_target_loc)
+		set tower_target_loc = null
 		return
 	endif
+	set towerrushsubloc = GetSubtractionLoc(tower_target_loc, toweringplayerloc)
 	// if GetLocationNonCreepStrength(enemy_point_x, enemy_point_y, 2000) == 0 and ai_time >= 80 then  //no longer needed as is set from the GetNearestEnemyDistance, and now will set other Base
 		// call StartGetEnemyBase()
 		// loop
