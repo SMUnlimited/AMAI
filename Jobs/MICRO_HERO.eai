@@ -20,6 +20,18 @@
 
 #ELSE
 
+function Cooperatemove takes unit u , real a , real b returns nothing
+  local group g = CreateGroup()
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
+  set g = SelectByAlive(g, true)
+  set g = SelectByUnitStandard(g, true)
+  call GroupRemoveUnit(g, u)
+  call GroupPointOrder(g, "move", a , b )  // no to die
+  call DestroyGroup(g)
+  set g = null
+endfunction
+
 function TeleportHome takes integer hn returns nothing
 // Team Game improvements Added by Strategy Master 12/03/05
   local integer i = 0
@@ -35,7 +47,6 @@ function TeleportHome takes integer hn returns nothing
   set break_attack = attack_running
   set attack_running = false
   call ClearCaptainTargets()
-  call CaptainGoHome()
   set teleporting = true
   if c_ally_total > 1 and UnitAlive(major_hero) and major_hero != null then
     loop
@@ -59,10 +70,12 @@ function TeleportHome takes integer hn returns nothing
       endif
     endloop
     call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(teleport_loc), GetLocationY(teleport_loc))
+    call Cooperatemove(hero_unit[hn], GetLocationX(teleport_loc), GetLocationY(teleport_loc))
     call RemoveLocation(teleport_loc)
     set teleport_loc = null
   else
     call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(home_location), GetLocationY(home_location))
+    call CaptainGoHome()
   endif
   set start_loc = null
   //if hero_loc != null then
@@ -78,8 +91,8 @@ function TeleportToLoc takes unit u, location l returns nothing
   set attack_running = false
   set teleporting = true
   call ClearCaptainTargets()
-  call CaptainGoHome()
   call UnitUseItemPoint(u, GetItemOfTypeOnUnit(tp_item, u), GetLocationX(l), GetLocationY(l))
+  call Cooperatemove(u, GetLocationX(l), GetLocationY(l))
   call TQAddUnitJob(0.5, TELEPORT, 0, u)
 endfunction
 
@@ -198,7 +211,7 @@ function MicroHeroJob takes integer hn returns nothing
     endif
     //set hero_dir[hn] = GetSubtractionLoc_dd(GetUnitLoc(hero_unit[hn]), hero_loc[hn])
     set hero_dir[hn] = hero_loc[hn]
-    set hero_loc[hn] = GetUnitLoc(hero_unit[hn])
+    set hero_loc[hn] = Location(GetUnitX(hero_unit[hn]), GetUnitY(hero_unit[hn]))
     set hero_hp_loss[hn] = hero_hp[hn] - new_hp
     set hero_hp[hn] = new_hp
     call GetDensities(hero_loc[hn], ai_player, hero_radius)
