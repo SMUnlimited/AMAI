@@ -3415,7 +3415,7 @@ function GetTimeToReachLoc takes unit u, location target returns real
 	local real distance = 0
 	local real movespeed = 0
 	local real time = 0
-	local location l = GetUnitLoc(u)
+	local location l = Location(GetUnitX(u),GetUnitY(u))
 
 	set movespeed = GetUnitMoveSpeed(u)
 	set distance = DistanceBetweenPoints_kd(target, l)
@@ -5761,7 +5761,7 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
   call Sleep(0.05)
   loop
     exitwhen (exitloop == true)
-    set rl_getlocationindistancefromLoc[0] = GetUnitLoc(u)
+    set rl_getlocationindistancefromLoc[0] = Location(GetUnitX(u),GetUnitY(u))
     set distance = DistanceBetweenPoints(rl_getlocationindistancefromLoc[0], loc)
     if distance >= dist then
       //call DisplayToAll("loc found")
@@ -5795,7 +5795,7 @@ function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns l
     set checktime =  GetTimeToReachLoc(u, loc)
     call Sleep(0.3)
     loop
-      set rl_getlocationindistancefromLoc[1] = GetUnitLoc(u)
+      set rl_getlocationindistancefromLoc[1] = Location(GetUnitX(u),GetUnitY(u))
       set distance = DistanceBetweenPoints(rl_getlocationindistancefromLoc[1], home_location)
       if distance >= d then
 //        call DisplayToAll("loc found")
@@ -5830,7 +5830,7 @@ function GetBuildLocationInDistanceFromLoc_d takes integer id, location loc, rea
     set u = CreateUnit(Player(PLAYERPASSIVE), id, GetLocationX(buildloc), GetLocationY(buildloc), 270.0)
     call RemoveLocation(buildloc)
     set buildloc = null
-    set rl_getlocationindistancefromLoc[2] = GetUnitLoc(u)
+    set rl_getlocationindistancefromLoc[2] = Location(GetUnitX(u),GetUnitY(u))
     call RemoveUnit(u)
     set u = null
     return rl_getlocationindistancefromLoc[2]
@@ -5854,7 +5854,7 @@ function GetLumberLocationAtBase takes nothing returns location
   set u = CreatePathingUnitFull(u, Player(PLAYERPASSIVE), groundid, GetLocationX(home_location), GetLocationY(home_location))
   call IssueImmediateOrder(u, "autoharvestlumber")
   call Sleep(5.00)
-  set rl_getlumberlocationatBase = GetUnitLoc(u)
+  set rl_getlumberlocationatBase = Location(GetUnitX(u),GetUnitY(u))
   call RemoveUnit(u)
   set u = null
   return rl_getlumberlocationatBase
@@ -5870,7 +5870,7 @@ function BuildLumberMillAtBase takes nothing returns boolean
   if buildloc != null then
     set u = CreateUnitAtLoc(Player(PLAYERPASSIVE), old_id[racial_lumber], buildloc, 270.0)
     call RemoveLocation(buildloc)
-    set buildloc = GetUnitLoc(u)
+    set buildloc = Location(GetUnitX(u),GetUnitY(u))
     call RemoveUnit(u)
     set u = null
     call IssuePointOrderByIdLoc(peon, old_id[racial_lumber], buildloc)
@@ -5947,7 +5947,7 @@ function BuildRushCreepAtBase takes nothing returns nothing
     set loc = null
     return
   endif
-  set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_rushcreep], loc, 550)
+  set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_rushcreep], loc, 600)
   if loc != null and DistanceBetweenPoints(loc, home_location) < distance then  //Prevent some islands/shallow water terrain from creating u on the other side of the map
     set g = CreateGroup()
     call GroupEnumUnitsInRangeOfLoc(g, loc, 510, null)
@@ -8158,35 +8158,12 @@ function InitCreepStrengthArray takes nothing returns nothing
 endfunction
 
 //===========================================================================
-// function by https://www.hiveworkshop.com/threads/detect-game-version-getpatchlevel.308204/
 function GetPatchVersion takes nothing returns nothing
-  //CreateImage can potentially cause a crash in warcraft version 1.26 or low ("memory cannot be 'written' " fatal error, Possibly due to how CreateImage works. Crash is random)
-  local string tmp1 = GetLocalizedString("IGNORE")                 // IGNORE didn't exist until 1.28
-  local string tmp2 = GetLocalizedString("DOWNLOADING_MAP")        // DOWNLOADING_MAP didn't exist until 1.30.2
-  local string tmp3 = GetLocalizedString("UPDATE_REQUIRED")        // UPDATE_REQUIRED didn't exist until 1.30.0
-  local string tmp4 = GetLocalizedString("WINDOW_MODE_WINDOWED")   // WINDOW_MODE_WINDOWED didn't exist until 1.31
-  local string tmp5 = GetLocalizedString("REFORGED")               // REFORGED didn't exist until 1.32
-  local real Patch_Version 
-  // 1.30.2,1.30.3 no test , the ver cannot download
-  if (JASS_MAX_ARRAY_SIZE <= 8192) then  // The array size limit was increased in 1.29, so if it's the same
-      if tmp1 == "IGNORE" then
-          set Patch_Version = 127  // 1.27b or lower
-      else
-          set Patch_Version = 128  // 1.28 ， 1.28a~1.28f
-      endif
-  elseif tmp2 == "DOWNLOADING_MAP"  then
-      if tmp3 == "UPDATE_REQUIRED" then
-        set Patch_Version = 129
-      else
-        set Patch_Version = 130  // 1.30.0 or 1.30.1
-      endif
-  elseif tmp4 == "WINDOW_MODE_WINDOWED" then 
-      set Patch_Version = 130.2  // 1.30.2, 1.30.3, 1.30.4
-  elseif tmp5 == "REFORGED" then
-      set Patch_Version = 131 // 1.31
-  else
-      set Patch_Version = 132 // 1.32 or higher
+  local real Patch_Version = 129  //1.29 ~ 1.32 or higher
+  if (JASS_MAX_ARRAY_SIZE <= 8192) then
+    set Patch_Version = 128  // 1.28f or lower
   endif
+
   if GetPlayerController(Player(12)) != MAP_CONTROL_CREEP then  // old ver WE make map , the Player(12) is MAP_CONTROL_CREEP , Even running in higher war3
     set play24 = true
     set PLAYERPASSIVE = 27
@@ -8204,14 +8181,9 @@ function GetPatchVersion takes nothing returns nothing
     set PLAYER_COLOR_EMERALDX            = ConvertPlayerColor(22)
     set PLAYER_COLOR_PEANUTX             = ConvertPlayerColor(23)
   endif
-  if Patch_Version > 129 and Patch_Version < 132 then
+  if Patch_Version == 129 then
     set skillfix = true
   endif
-  set tmp1 = null
-  set tmp2 = null
-  set tmp3 = null
-  set tmp4 = null
-  set tmp5 = null
 endfunction
 
 function InitGlobalSettings takes nothing returns nothing
@@ -11443,7 +11415,6 @@ function BRRush takes nothing returns nothing
   if i != 1 and GetUnitState(utemp, UNIT_STATE_LIFE) >= GetUnitState(utemp, UNIT_STATE_MAX_LIFE) * 0.65 then
     set buildloc = Location(GetUnitX(utemp),GetUnitY(utemp))
     set attack_running = true
-    call RemoveGuardPosition(utemp)
     call IssueImmediateOrder(utemp, "unroot")  //try unroot
     call Sleep(2.8)  //unroot time
     set loc = GetUnitLoc(rushcreep_target)
@@ -11457,6 +11428,7 @@ function BRRush takes nothing returns nothing
     call Trace("===BR Finished===")
     set attack_running = false
     call IssuePointOrderLoc( utemp, "move", buildloc)  //prevent inability cannot root
+    call Sleep(0.02)
     call IssuePointOrderLoc( utemp, "root", buildloc)  //root tree
     call RemoveLocation(buildloc)
     set buildloc = null
@@ -11464,6 +11436,7 @@ function BRRush takes nothing returns nothing
   if not UnitAlive(rushcreep_target) then
     set rushcreep_target = null
   endif
+  set utemp = null
 endfunction
 
 //============================================================================
