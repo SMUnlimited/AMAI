@@ -1,5 +1,6 @@
 #IFDEF GLOBAL
     boolean teleporting = false
+    location teleportloc = null
 #ELSE
 function TeleportJob takes unit hu returns nothing
   local group g = null
@@ -8,18 +9,24 @@ function TeleportJob takes unit hu returns nothing
   call DisplayToAllJobDebug("TELEPORT JOB Start")
   if not UnitAlive(hu) or current_order < 852008 or current_order > 852013 then
     call TeleportCaptain(GetUnitX(hu), GetUnitY(hu))
+    call RemoveLocation(teleportloc)
     set teleporting = false
     return
   endif
   set g = CreateGroup()
-  call GroupEnumUnitsInRange(g, GetUnitX(hu), GetUnitY(hu), 2 * teleport_radius, null)
-  set g = SelectByPlayer(g, ai_player, true)
-  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
+  //call GroupEnumUnitsInRange(g, GetUnitX(hu), GetUnitY(hu), 2 * teleport_radius, null)
+  //set g = SelectByPlayer(g, ai_player, true)
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
   call GroupRemoveUnit(g, hu)
+  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
+  set g = SelectByAlive(g, true)
+  set g = SelectByUnitStandard(g, true)
+  call GroupPointOrder(g, "move", GetLocationX(teleportloc), GetLocationY(teleportloc))  // no to die
+  call RemoveLocation(teleportloc)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if DistanceBetweenUnits(hu, u) > teleport_radius then
+    if DistanceBetweenUnits(hu, u) < 2 * teleport_radius then
       call IssuePointOrder(u, "move", GetUnitX(hu), GetUnitY(hu))
     endif
     call GroupRemoveUnit(g, u)
