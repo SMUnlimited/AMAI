@@ -1096,7 +1096,9 @@ group rg_selectdetected = null            // used to SelectByDetected
 group rg_selectenemy = null               // used to SelectByEnemy
 group rg_selectunitstandard = null        // used to SelectByUnitStandard
 group rg_selectBunitfree = null           // used to SelectByUnitFree
-group rg_selectorder = null               // used to SelectByOrder,SelectByOrderOr and SelectByOrderOr2
+group rg_selectorder = null               // used to SelectByOrder
+group rg_selectorderor = null             // used to SelectByOrderOr
+group rg_selectorderor2 = null            // used to SelectByOrderOr2
 group rg_selectlocation = null            // used to SelectByLocation
 group rg_getnearestsubgroupofgroup = null // used to GetNearestSubGroupOfGroup
 group rg_getexpfoegroup = null            // used to GetExpFoeGroup
@@ -4005,34 +4007,34 @@ endfunction
 //============================================================================
 function SelectByOrderOr takes group g, integer my_order1, integer my_order2, boolean has_order returns group
      local unit u = null
-     set rg_selectorder = CreateGroup()
+     set rg_selectorderor = CreateGroup()
      loop
        set u = FirstOfGroup(g)
        exitwhen u == null
        if ((GetUnitCurrentOrder(u) == my_order1) or (GetUnitCurrentOrder(u) == my_order2)) == has_order then
-          call GroupAddUnit(rg_selectorder, u )
+          call GroupAddUnit(rg_selectorderor, u )
        endif
        call GroupRemoveUnit(g, u )
      endloop
      call DestroyGroup(g)
      set g = null
-     return rg_selectorder
+     return rg_selectorderor
 endfunction
 
 function SelectByOrderOr2 takes group g, integer my_order1, integer my_order2, integer my_order3, boolean has_order returns group
      local unit u = null
-     set rg_selectorder = CreateGroup()
+     set rg_selectorderor2 = CreateGroup()
      loop
        set u = FirstOfGroup(g)
        exitwhen u == null
        if ((GetUnitCurrentOrder(u) == my_order1) or (GetUnitCurrentOrder(u) == my_order2) or (GetUnitCurrentOrder(u) == my_order3)) == has_order then
-          call GroupAddUnit(rg_selectorder, u )
+          call GroupAddUnit(rg_selectorderor2, u )
        endif
        call GroupRemoveUnit(g, u )
      endloop
      call DestroyGroup(g)
      set g = null
-     return rg_selectorder
+     return rg_selectorderor2
 endfunction
 
 //==========================================================================
@@ -4459,8 +4461,7 @@ function CanPathToLoc takes location locA, location target, pathingtype path ret
     loop
     //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "pathing loop")
         set l = Location(GetUnitX(u), GetUnitY(u))
-        set distance = DistanceBetweenPoints(l,target)
-        call RemoveLocation(l)
+        set distance = DistanceBetweenPoints_dk(l,target)
         set l = null
         if distance <= buy_distance then
     //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Tavern is pathable")
@@ -4682,21 +4683,17 @@ function GetNearestOfGroup takes group g, location l returns unit
    local real d = 0
    local unit u = null
    local real sd = 1000000
-   local location unitloc = null
    set ru_distraction[2] = null
    loop
      set u = FirstOfGroup(g)
      exitwhen u == null
-     set unitloc = GetUnitLoc(u)
-     set d = DistanceBetweenPoints(unitloc, l)
-     call RemoveLocation(unitloc)
+     set d = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
      if d < sd then
         set sd = d
         set ru_distraction[2] = u
      endif
      call GroupRemoveUnit(g, u )
    endloop
-   set unitloc = null
    return ru_distraction[2]
 endfunction
 
@@ -4712,14 +4709,11 @@ function GetNearestSubGroupOfGroup takes group g, location l, integer n returns 
   local integer ru = 0
   local unit u = null
   local real d = 0
-  local location unitloc = null
   set rg_getnearestsubgroupofgroup = CreateGroup()
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set unitloc = GetUnitLoc(u)
-    set d = DistanceBetweenPoints(unitloc, l)
-    call RemoveLocation(unitloc)
+    set d = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
     set i = size - 1
     loop
       exitwhen i < 0 or da[i] >= d
@@ -4733,7 +4727,6 @@ function GetNearestSubGroupOfGroup takes group g, location l, integer n returns 
     set size = size + 1
     call GroupRemoveUnit(g,u)
   endloop
-  set unitloc = null
   set i = size - Min(n, size)
   loop
     exitwhen i >= size
@@ -4754,21 +4747,17 @@ function GetFarestOfGroup takes group g, location l returns unit
      local real d = 0
      local unit u = null
      local real sd = 0
-     local location unitloc = null
      set ru_distraction[3] = null
      loop
        set u = FirstOfGroup(g)
        exitwhen u == null
-       set unitloc = GetUnitLoc(u)
-       set d = DistanceBetweenPoints(unitloc, l)
-       call RemoveLocation(unitloc)
+       set d = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
        if d > sd then
           set sd = d
           set ru_distraction[3] = u
        endif
        call GroupRemoveUnit(g, u )
      endloop
-     set unitloc = null
      return ru_distraction[3]
 endfunction
 
@@ -4780,7 +4769,6 @@ function GetFastestToPointOfGroup takes group g, location l returns unit
      local unit u = null
      local real sd = 1000000
      local real ms = 0
-     local location unitloc = null
      set ru_distraction[4] = null
      loop
        set u = FirstOfGroup(g)
@@ -4789,16 +4777,13 @@ function GetFastestToPointOfGroup takes group g, location l returns unit
        if ms == 0 then
          set ms = 0.01
        endif
-       set unitloc = GetUnitLoc(u)
-       set d = DistanceBetweenPoints(unitloc, l) / ms
-       call RemoveLocation(unitloc)
+       set d = DistanceBetweenPoints_dk(GetUnitLoc(u), l) / ms
        if d < sd then
           set sd = d
           set ru_distraction[4] = u
        endif
        call GroupRemoveUnit(g, u )
      endloop
-     set unitloc = null
      return ru_distraction[4]
 endfunction
 
@@ -4889,7 +4874,7 @@ endfunction
 //==========================================================================
 function GetUnitOfTypeNearUnit takes integer ut, unit nu returns unit
   local group g = CreateGroup()
-  local location unitloc = GetUnitLoc(nu)
+  local location unitloc = Location(GetUnitX(nu),GetUnitY(nu))
 
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectById(g, ut, true)
@@ -4906,7 +4891,7 @@ endfunction
 //==========================================================================
 function GetUnusedZeppelinNearUnit takes unit nu returns unit
   local group g = CreateGroup()
-  local location unitloc = GetUnitLoc(nu)
+  local location unitloc = Location(GetUnitX(nu),GetUnitY(nu))
 
   call GroupEnumUnitsOfType(g, "goblinzeppelin", null)
   set g = SelectByPlayer(g, ai_player, true)
@@ -5213,7 +5198,7 @@ function GetPlayerHeroStrengthMod takes player p returns integer
   local unit u = null
   local integer sum = 0
   local integer i = 0
-  local boolean b = true
+
   call GroupEnumUnitsOfPlayer(g, p, null)
   set g = SelectUnittype(g, UNIT_TYPE_HERO, true)
   set g = SelectByAlive(g, true)
@@ -5221,23 +5206,13 @@ function GetPlayerHeroStrengthMod takes player p returns integer
     set u = FirstOfGroup(g)
     exitwhen u == null
     set sum = sum + R2I(GetHeroStrength(u) * GetPlayerStrengthHandicap(GetOwningPlayer(u)) * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)))
-    if GetUnitTypeId(u) != hero[1] and GetUnitTypeId(u) != hero[2] and GetUnitTypeId(u) != hero[3] then  //other hero
-      set i = 0
-      set b = true
-      loop
-        exitwhen i > ohter_race_heronumber or b == false
-        if GetUnitTypeId(u) == ohter_race_hero[i] then  //prevent repetition
-          set b = false
-        endif
-        set i = i + 1
-      endloop
-      if b == true then
-        set ohter_race_hero[ohter_race_heronumber] = GetUnitTypeId(u)
-        set ohter_race_heronumber = ohter_race_heronumber + 1
-      endif
+    if u != hero_unit[1] and u != hero_unit[2] and u != hero_unit[3] then  //other hero
+      set ohter_race_hero[i] = GetUnitTypeId(u)
+      set i = i + 1
     endif
     call GroupRemoveUnit(g,u)
   endloop
+  set ohter_race_heronumber = i
   set sum = sum + GetPlayerHeroBonusStrength(ai_player)
   call DestroyGroup(g)
   set g = null
@@ -5572,7 +5547,6 @@ function GetOwnStrength takes nothing returns integer
   local real airsum = 0
   local race r1 = null
   local race r2 = GetPlayerRace(ai_player)
-  local boolean b = true
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   loop
     set u = FirstOfGroup(g)
@@ -5592,25 +5566,15 @@ function GetOwnStrength takes nothing returns integer
       set r1 = GetUnitRace(u)
       if r1 != r2 then
         if GetUnitTypeId(u) != 'ngir' and GetUnitTypeId(u) != 'nzep' and not IsUnitType(u, UNIT_TYPE_SUMMONED) then
-          set b = true
-          set i = 0
-          loop
-            exitwhen i > ohter_race_unitnumber or b == false
-            if GetUnitTypeId(u) == ohter_race_unit[i] then  //prevent repetition
-              set b = false
-            endif
+            set ohter_race_unit[i] = GetUnitTypeId(u)
             set i = i + 1
-          endloop
-          if b == true then
-            set ohter_race_unit[ohter_race_unitnumber] = GetUnitTypeId(u)
-            set ohter_race_unitnumber = ohter_race_unitnumber + 1
-          endif
         endif
       endif
     endif
     call GroupRemoveUnit(g, u)
     call Sleep(0.02)
   endloop
+  set ohter_race_unitnumber = i
   call DestroyGroup(g)
   set g = null
   set r1 = null
@@ -5761,6 +5725,7 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
   call Sleep(0.05)
   loop
     exitwhen (exitloop == true)
+    call Sleep(0.3)
     set rl_getlocationindistancefromLoc[0] = Location(GetUnitX(u),GetUnitY(u))
     set distance = DistanceBetweenPoints(rl_getlocationindistancefromLoc[0], loc)
     if distance >= dist then
@@ -5769,12 +5734,11 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
       set u = null
       return rl_getlocationindistancefromLoc[0]
     elseif GetUnitState(u, UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u) == OrderId("stop") or GetUnitCurrentOrder(u) != OrderId("move") then
-      call RemoveLocation(rl_getlocationindistancefromLoc[0])
+      //call RemoveLocation(rl_getlocationindistancefromLoc[0])
       set exitloop = true
       //return null
     endif
     call RemoveLocation(rl_getlocationindistancefromLoc[0])
-    call Sleep(0.3)
   endloop
   call RemoveUnit(u)
   set u = null
@@ -5796,6 +5760,7 @@ function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns l
     call Sleep(0.3)
     loop
       set rl_getlocationindistancefromLoc[1] = Location(GetUnitX(u),GetUnitY(u))
+      call Sleep(0.3)
       set distance = DistanceBetweenPoints(rl_getlocationindistancefromLoc[1], home_location)
       if distance >= d then
 //        call DisplayToAll("loc found")
@@ -5811,7 +5776,6 @@ function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns l
           return null
       endif
       call RemoveLocation(rl_getlocationindistancefromLoc[1])
-      call Sleep(0.4)
     endloop
     set rl_getlocationindistancefromLoc[1] = null
     call RemoveUnit(u)
@@ -5834,9 +5798,8 @@ function GetBuildLocationInDistanceFromLoc_d takes integer id, location loc, rea
     call RemoveUnit(u)
     set u = null
     return rl_getlocationindistancefromLoc[2]
-  else
-    return null
   endif
+  return null
 endfunction
 
 //============================================================================
@@ -6774,11 +6737,9 @@ endfunction
 //============================================================================
 function AddFrontPoint takes location l returns nothing
   local unit pathable = null
-  local location loc = null
 
   set pathable = CreateUnit(Player(PLAYERPASSIVE), 'ewsp', GetLocationX(l), GetLocationY(l), 270.00)
-  set loc = GetUnitLoc(pathable)
-  if DistanceBetweenPoints(loc, l) <= 200 then
+  if DistanceBetweenPoints_dk(GetUnitLoc(pathable), l) <= 200 then
     call CreateDebugTagLoc("Front Point Added", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
     set front_loc[front_loc_num] = Location(GetLocationX(l),GetLocationY(l))
     set front_loc_num = front_loc_num + 1
@@ -6787,8 +6748,6 @@ function AddFrontPoint takes location l returns nothing
   endif
   call RemoveLocation(l)
   set l = null
-  call RemoveLocation(loc)
-  set loc = null
   call RemoveUnit(pathable)
   set pathable = null
 endfunction
@@ -6805,7 +6764,7 @@ function ComputeFrontPoints takes nothing returns nothing
   local boolean pathingdone = true
   local boolean array patherdone
   local location l = null
-  local location locpro = null
+  //local location locpro = null
   local real distance = 0
   
   loop
@@ -6836,16 +6795,11 @@ function ComputeFrontPoints takes nothing returns nothing
             call RemoveUnit(u[i])
             set u[i] = null
             set patherdone[i] = true
-            set locpro = Location(GetLocationX(l),GetLocationY(l))
-            call AddFrontPoint(locpro)
-            set locpro = AIGetProjectedLoc(l, home_location, 100, 90)
-            call AddFrontPoint(locpro)
-            set locpro = AIGetProjectedLoc(l, home_location, 100, -90)
-            call AddFrontPoint(locpro)
-            set locpro = AIGetProjectedLoc(l, home_location, 200, 80)
-            call AddFrontPoint(locpro)
-            set locpro = AIGetProjectedLoc(l, home_location, 200, -80)
-            call AddFrontPoint(locpro)
+            call AddFrontPoint(Location(GetLocationX(l),GetLocationY(l)))
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, 90))
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, -90))
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, 80))
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, -80))
           elseif GetUnitState(u[i], UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u[i]) == OrderId("stop") or GetUnitCurrentOrder(u[i]) != OrderId("move") then
             set patherdone[i] = true
             call RemoveUnit(u[i])
@@ -6876,7 +6830,7 @@ function ComputeFrontPoints takes nothing returns nothing
   set front_locs_computed = true
   set l = null
   set loc = null
-  set locpro = null
+  //set locpro = null
   set p = null
   set mainplayer = null
 
@@ -9831,15 +9785,11 @@ function UpgradeBuilding takes integer qty, integer unitid, integer town, intege
   local group g = CreateGroup()
   local integer current_town = town
   local integer num = 0
-  local location loc = null
   if town == -1 then
     set current_town = 0
   endif
   if bloc != BLOC_STD then
-    set loc = GetBuildLocation(bloc)
-    call GroupEnumUnitsInRangeOfLoc(g, loc, 800, null)
-    call RemoveLocation(loc)
-    set loc = null
+    call GroupEnumUnitsInRangeOfLoc(g, GetBuildLocation(bloc), 800, null)
     set g = SelectByPlayer(g, ai_player, true)
     set g = SelectByAlive(g, true)
     loop
@@ -9919,18 +9869,16 @@ endfunction
 //============================================================================
 function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc returns integer
   local unit peon = GetExpansionPeon()
-  local location loc = GetBuildLocation(bloc)
   local unit utemp1 = CreateUnitAtLoc(Player(PLAYERPASSIVE), 'eaom', home_location, 270.0)  //utemp is seat, leave a passage , unit can ensure correct position
   local unit utemp2 = CreateUnitAtLoc(Player(PLAYERPASSIVE), unitid, front_loc[0], 270.0)
-  local unit u = CreateUnitAtLoc(Player(PLAYERPASSIVE), old_id[unitid], loc, 270.0)
-  local location l = GetUnitLoc(u)
+  local unit u = CreateUnitAtLoc(Player(PLAYERPASSIVE), old_id[unitid], GetBuildLocation(bloc), 270.0)
+  local location l = Location(GetUnitX(u),GetUnitY(u))
   call RemoveUnit(utemp1)
   set utemp1 = null
   call RemoveUnit(utemp2)
   set utemp2 = null
   call RemoveUnit(u)
   set u = null
-  set loc = null
   if peon == null then
     set peon = GetExpansionPeon2()	// In case we can't get the expansion peon
   endif
@@ -10727,14 +10675,14 @@ endfunction
 //============================================================================
 function InitHeroInfo takes integer hn returns nothing
   if hero_loc[hn] != null then
-	call RemoveLocation(hero_loc[hn])
+    call RemoveLocation(hero_loc[hn])
   endif
-  set hero_loc[hn] = GetUnitLoc(hero_unit[hn])
+  set hero_loc[hn] = Location(GetUnitX(hero_unit[hn]), GetUnitY(hero_unit[hn]))
   if hero_enemy_loc[hn] != null then
-	call RemoveLocation(hero_enemy_loc[hn])
+    call RemoveLocation(hero_enemy_loc[hn])
   endif
   if hero_ally_loc[hn] != null then
-	call RemoveLocation(hero_ally_loc[hn])
+    call RemoveLocation(hero_ally_loc[hn])
   endif
   set hero_enemy_loc[hn] = Location(0,0)
   set hero_ally_loc[hn] = Location(0,0)
@@ -10791,15 +10739,17 @@ function LocalizeNewTown takes integer num returns nothing
   endloop
   call DestroyGroup(g)
   set g = null
+  if own_town_loc[num] != null then
+    call RemoveLocation(own_town_loc[num])
+    set own_town_loc[num] = null
+  endif
   if u == null then
 //    call DisplayToAll("Debug: New town not found")
-    call RemoveLocation(own_town_loc[num])  //Additional review required
-    set own_town_loc[num] = null
     set own_town_mine[num] = null
     set own_town_dist[num] = 0
     return
   endif
-  set own_town_loc[num] = GetUnitLoc(u)
+  set own_town_loc[num] = Location(GetUnitX(u),GetUnitY(u))
   set own_town_mine[num] = GetMineNearLoc(own_town_loc[num], 1500)
   set own_town_dist[num] = DistanceBetweenPoints(home_location, own_town_loc[num])
 //  call PingMinimap(GetUnitX(u), GetUnitY(u), 20)
@@ -11057,18 +11007,15 @@ endfunction
 //============================================================================
 function AttackGroupAddNeutrals takes nothing returns nothing
   local integer i = 0
-  local integer b = merc_number
-  if b < dragon_number then
-    set b = dragon_number
-  endif
   loop
-    exitwhen i > b
-    if i <= merc_number then
-      call SetAssaultGroupAM(1,60,merc_unit[i])
-    endif
-    if i + 1 <= dragon_number then
-      call SetAssaultGroupAM(1,60,dragons[i+1])
-    endif
+    exitwhen i >= merc_number
+    call SetAssaultGroupAM(1,60,merc_unit[i])
+    set i = i + 1
+  endloop
+  set i = 1
+  loop
+    exitwhen i >= dragon_number
+    call SetAssaultGroupAM(1,60,dragons[i])
     set i = i + 1
   endloop
 endfunction
@@ -12511,19 +12458,13 @@ endfunction
 function SkillArraysAM takes nothing returns integer
     local integer level = GetHeroLevelAI()
     local integer hn = GetHeroNumber(GetHeroId())
-    local integer i = 1
     if level > max_hero_level then
         set max_hero_level = level
     endif
     if skillfix == true then    //Assisted Hero Learning Skills , for war3 1.31 bug
-      loop
-        exitwhen i == 4
-        if hero_unit[i] == null then
-          set hero_unit[i] = GetOneOfId(ai_player, old_id[hero[i]])
-        endif
-        call SelectHeroSkill( hero_unit[i], skills[(i - 1) * HERO_LEVEL_NUMBER + GetHeroLevel(hero_unit[i])] )
-        set i = i + 1
-      endloop
+      call SelectHeroSkill( hero_unit[1], skills[ GetHeroLevel(hero_unit[1])] )
+      call SelectHeroSkill( hero_unit[2], skills[HERO_LEVEL_NUMBER + GetHeroLevel(hero_unit[2])] )
+      call SelectHeroSkill( hero_unit[3], skills[2 * HERO_LEVEL_NUMBER + GetHeroLevel(hero_unit[3])] )
     endif
     return skills[(hn - 1) * HERO_LEVEL_NUMBER + level]
 endfunction
