@@ -148,18 +148,18 @@ function FocusFire takes unit u returns nothing
   call GroupEnumUnitsInRange(t, GetUnitX(u), GetUnitY(u), focus_fire_ranged_dist, null)
   set t = SelectUnittype(t, UNIT_TYPE_RANGED_ATTACKER, true)
   set temp_focus = GroupAddGroup(temp_focus, t)
-  call DestroyGroup(t)
-  set t = CreateGroup()
+  call GroupClear(t)
+  // call DestroyGroup(t)
+  // set t = CreateGroup()
   call GroupEnumUnitsInRange(t, GetUnitX(u), GetUnitY(u), focus_fire_melee_dist, null)
   set t = SelectUnittype(t, UNIT_TYPE_MELEE_ATTACKER, true)
   set temp_focus = GroupAddGroup(temp_focus, t)
-  call DestroyGroup(t)
-  set t = CreateGroup()
+  call GroupClear(t)
+  // call DestroyGroup(t)
+  // set t = CreateGroup()
   call GroupEnumUnitsInRange(t, GetUnitX(u), GetUnitY(u), normal_battle_radius, null)
   set t = SelectByInvisible(t, GetOwningPlayer(u), true)
   set temp_focus = GroupAddGroup(temp_focus, t)
-  call DestroyGroup(t)
-  set t = null
   set temp_focus = SelectByPlayer(temp_focus, ai_player, true)
   if IsUnitType(u, UNIT_TYPE_FLYING) == true then
     set temp_focus = SelectUnittype(temp_focus, UNIT_TYPE_ATTACKS_FLYING, true)
@@ -191,11 +191,13 @@ function FocusFire takes unit u returns nothing
       set focus_fire_unit = u
     endif
     call CreateDebugTag("FF: here:" + Int2Str(BlzGroupGetSize(temp_focus)), 10, u, 1.00, 0.80)
-    call FocusGroupRemoveGuard(temp_focus)
+    //call FocusGroupRemoveGuard(temp_focus)
     call GroupTargetOrder(temp_focus, "attack", u)
     call GroupOrderAttack_d(CopyGroup(windwalk_group), u) // Forces Windwalking invisible units to attack directly as normal group order is ignored
     set focus_fire_group = GroupAddGroup(focus_fire_group, temp_focus) // Finally add units to group to say they have focus fired
   endif
+  call DestroyGroup(t)
+  set t = null
   call DestroyGroup(temp_focus)
   set temp_focus = null
 endfunction
@@ -210,6 +212,7 @@ function FocusEnemyUnitsNearGroup takes group g returns nothing
   local unit building_min_health_unit = null
   local real disabled_min_health = 100000
   local unit disabled_min_health_unit = null
+  local unit special_unit = null
   local real range_strength = 0
   local integer enemy_count = 0
   local real unit_life = 0
@@ -236,6 +239,8 @@ function FocusEnemyUnitsNearGroup takes group g returns nothing
             set hero_min_health = unit_life
             set hero_min_health_unit = u
           endif
+        elseif (GetUnitTypeId(u) == 'hpxe' or GetUnitTypeId(u) == 'espv') and UnitAlive(u) then
+          set special_unit = u
         else
           if unit_life < min_health and UnitAlive(u) and not UnitIsSleeping(u) and (unit_life < GetUnitState(u, UNIT_STATE_MAX_LIFE) or IsUnitType(u, UNIT_TYPE_MELEE_ATTACKER) or IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) or IsUnitType(u, UNIT_TYPE_TOWNHALL)) then
             set min_health = unit_life
@@ -267,7 +272,9 @@ function FocusEnemyUnitsNearGroup takes group g returns nothing
     call FocusFire(hero_min_health_unit)
   else
     call SetTargetHeroes(false)
-    if disabled_min_health_unit != null then
+    if special_unit != null then
+      call FocusFire(special_unit)
+    elseif disabled_min_health_unit != null then
       if min_health_unit != null then
         if min_health * 3 < disabled_min_health then
           call FocusFire(min_health_unit)
@@ -288,6 +295,7 @@ function FocusEnemyUnitsNearGroup takes group g returns nothing
   set min_health_unit = null
   set building_min_health_unit = null
   set disabled_min_health_unit = null
+  set special_unit = null
 endfunction
 
 //============================================================================
@@ -322,7 +330,7 @@ function FocusFireJob takes nothing returns nothing
       endif
       set i = i + 1
     endloop
-  else
+  //else
     //call GroupRecycleGuardPositionInstant(windwalk_group)
     //loop
     //	set u = FirstOfGroup(windwalk_group)
