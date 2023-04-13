@@ -5,7 +5,7 @@
     boolean shredderbuild = false
 #ELSE
 
-function Checkburrow takes group g , integer id returns nothing
+function CheckBurrow takes group g , integer id returns nothing
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectById(g, id, true)
   set g = SelectByAlive(g, true)
@@ -13,7 +13,7 @@ function Checkburrow takes group g , integer id returns nothing
   call GroupClear(g)
 endfunction
 
-function Checktower takes group g returns nothing
+function CheckTower takes group g returns nothing
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectById(g, old_id[race_tower_id], true)
   set g = SelectByAlive(g,true)
@@ -26,7 +26,7 @@ function Checktower takes group g returns nothing
   call GroupClear(g)
 endfunction
 
-function StatisticsUnitnum takes group g returns integer
+function StatisticsUnitNum takes group g returns integer
   local integer i = 0
   local unit u = null
   loop
@@ -38,12 +38,12 @@ function StatisticsUnitnum takes group g returns integer
   return i
 endfunction
 
-function Checkbuildloc takes group g , boolean bool , location loc , real range , integer num returns nothing
+function CheckBuildLoc takes group g , boolean bool , location loc , real range , integer num returns nothing
   call GroupEnumUnitsInRangeOfLoc(g, loc, range, null)
   set g = SelectByPlayer(g, ai_player, true)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   set g = SelectByAlive(g, true)
-  if StatisticsUnitnum(g) >= num then
+  if StatisticsUnitNum(g) >= num then
     set bool = false
   else
     set bool = true  //build may be dismantled after being attacked
@@ -51,7 +51,7 @@ function Checkbuildloc takes group g , boolean bool , location loc , real range 
   call GroupClear(g)
 endfunction
 
-function Checkshredderloc takes group g returns nothing
+function CheckShredderLoc takes group g returns nothing
   local location loc = null
   local unit u = null
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
@@ -63,7 +63,7 @@ function Checkshredderloc takes group g returns nothing
     set g = SelectByPlayer(g, ai_player, true)
     set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
     set g = SelectByAlive(g, true)
-    if StatisticsUnitnum(g) >= 5 then
+    if StatisticsUnitNum(g) >= 5 then
       set shredderbuild = false
     else
       set shredderbuild = true
@@ -75,7 +75,7 @@ function Checkshredderloc takes group g returns nothing
   set u = null
 endfunction
 
-function Checkrallypoint takes group g , location loc , real range returns nothing
+function CheckRallyPoint takes group g , location loc , real range returns nothing
   if rally_point == null and front_loc[0] != null then
     set rally_point = AIGetProjectedLoc(front_loc[0], home_location, -1200, 0)
   endif
@@ -101,10 +101,10 @@ function StructurecontrolJob takes nothing returns nothing
     set i = old_id[racial_expansion]
   endif
   call DisplayToAllJobDebug("STRUCTURE_CONTROL JOB START")
-  call Checkrallypoint(g,rally_point,1600)
-  call Checkrallypoint(g,home_location,1100)  //avoid being blocked by front_loc build
+  call CheckRallyPoint(g,rally_point,1600)
+  call CheckRallyPoint(g,home_location,1100)  //avoid being blocked by front_loc build
   if racial_lumber == 0 or race_no_wood_harvest then  //help fix ELF build blocking
-    call Checkbuildloc(g,homebuild,home_location,800,5)
+    call CheckBuildLoc(g,homebuild,home_location,800,5)
     call GroupEnumUnitsInRangeOfLoc(g, home_location, 1000, null)
     if race_manual_loading or race_uses_mine_expansion then
       set g = SelectByPlayer(g, ai_player, true)
@@ -112,19 +112,19 @@ function StructurecontrolJob takes nothing returns nothing
     set g = SelectById(g, i, true)
     if FirstOfGroup(g) == null or (FirstOfGroup(g) != null and GetResourceAmount(FirstOfGroup(g)) == 0) then
       set loc = GetUnitLoc(FirstOfGroup(g))
-      call Checkbuildloc(g,minebuild,loc,700,4)
+      call CheckBuildLoc(g,minebuild,loc,700,4)
       call RemoveLocation(loc)
       set loc = null
     endif
     if TownCountDone(neutral_shredder) > 0 then
-      call Checkshredderloc(g)  // harvest wood will have new loc can build
+      call CheckShredderLoc(g)  // harvest wood will have new loc can build
     endif
   endif
   if TownCountDone(BURROW) > 0 and not TownThreatened() then
-    call Checkburrow(g,old_id[BURROW])
+    call CheckBurrow(g,old_id[BURROW])
   endif
-  if race_tower_upgrade1 != 0 and TownCountDone(race_tower_id) != 0 and GetWood() >= 850 and GetGold() >= 1200 then
-    call Checktower(g)
+  if race_tower_upgrade1 != 0 and TownCountDone(race_tower_id) != 0 and GetWood() >= 850 and GetGold() >= 1200 and not towerrush then
+    call CheckTower(g)
   endif
   call DestroyGroup(g)
   set g = null
