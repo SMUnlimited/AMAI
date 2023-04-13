@@ -17,7 +17,7 @@
     location array hero_enemy_loc
     real array hero_ally_density
     location array hero_ally_loc
-
+    
 #ELSE
 
 function TeleportHome takes integer hn returns nothing
@@ -35,10 +35,11 @@ function TeleportHome takes integer hn returns nothing
   set break_attack = attack_running
   set attack_running = false
   call ClearCaptainTargets()
+  call CaptainGoHome()
   set teleporting = true
   if c_ally_total > 1 and UnitAlive(major_hero) and major_hero != null then
     loop
-      exitwhen i >= GetBJMaxPlayers()
+      exitwhen i >= PLAYERAGGRESSIVE
       set p = Player(i)
       set start_loc = GetPlayerStartLocationLoc(p)
       //set dx = GetLocationX(start_loc) - GetLocationX(hero_loc)
@@ -58,12 +59,10 @@ function TeleportHome takes integer hn returns nothing
       endif
     endloop
     call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(teleport_loc), GetLocationY(teleport_loc))
-    set teleportloc = Location(GetLocationX(teleport_loc), GetLocationY(teleport_loc))
     call RemoveLocation(teleport_loc)
     set teleport_loc = null
   else
     call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(home_location), GetLocationY(home_location))
-    call CaptainGoHome()
   endif
   set start_loc = null
   //if hero_loc != null then
@@ -79,8 +78,8 @@ function TeleportToLoc takes unit u, location l returns nothing
   set attack_running = false
   set teleporting = true
   call ClearCaptainTargets()
+  call CaptainGoHome()
   call UnitUseItemPoint(u, GetItemOfTypeOnUnit(tp_item, u), GetLocationX(l), GetLocationY(l))
-  set teleportloc = Location(GetLocationX(l), GetLocationY(l))
   call TQAddUnitJob(0.5, TELEPORT, 0, u)
 endfunction
 
@@ -94,7 +93,7 @@ function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothin
 
   if a != ACTION_DO_NOTHING and a != ACTION_TP then
     call RemoveGuardPosition(hero_unit[hn])
-    if not IsUnitInvisible(hero_unit[hn], Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+    if not IsUnitInvisible(hero_unit[hn], Player(PLAYERAGGRESSIVE)) then
       call IssueImmediateOrder(hero_unit[hn], "windwalk")
     endif
     if a != ACTION_HEALER and hero_unit[hn] == major_hero then
@@ -177,43 +176,43 @@ endfunction
 function MicroHeroJob takes integer hn returns nothing
   local real new_hp = 0.0
   local real teleportdistance = 0.0
-  local integer current_order = 0
+  local integer current_order = 0 
 
   call DisplayToAllJobDebug("MICRO_HERO Job start")
 
   // A Temporary Bug fix
-    if HeroBugFixHealthCheck(hn) then
-      call CreateDebugTag("HERO: Healing Bug Fix Job", 10, hero_unit[hn], 4.00, 2.00)
-      call RecycleGuardPosition(hero_unit[hn])
-      call GroupRemoveUnit(unit_healing, hero_unit[hn])
-    endif
+  if HeroBugFixHealthCheck(hn) then
+    call CreateDebugTag("HERO: Healing Bug Fix Job", 10, hero_unit[hn], 4.00, 2.00)
+    call RecycleGuardPosition(hero_unit[hn])
+    call GroupRemoveUnit(unit_healing, hero_unit[hn])
+   endif
   //
 
   set new_hp = GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) / GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE)
   set current_order = GetUnitCurrentOrder(hero_unit[hn])
 
   if UnitAlive(hero_unit[hn]) then
-  //  call DisplayToAll("MicroH Start")
-    if hero_dir[hn] != null then
-      call RemoveLocation(hero_dir[hn])
-    endif
-    //set hero_dir[hn] = GetSubtractionLoc_dd(GetUnitLoc(hero_unit[hn]), hero_loc[hn])
-    set hero_dir[hn] = hero_loc[hn]
-    set hero_loc[hn] = Location(GetUnitX(hero_unit[hn]), GetUnitY(hero_unit[hn]))
-    set hero_hp_loss[hn] = hero_hp[hn] - new_hp
-    set hero_hp[hn] = new_hp
-    call GetDensities(hero_loc[hn], ai_player, hero_radius)
-    set hero_enemy_density[hn] = enemy_density
-    call MoveLocation(hero_enemy_loc[hn], GetLocationX(enemy_density_loc), GetLocationY(enemy_density_loc))
-    set hero_ally_density[hn] = ally_density
-    call MoveLocation(hero_ally_loc[hn], GetLocationX(ally_density_loc), GetLocationY(ally_density_loc))
-
-    if not teleporting and current_order >= 852008 and current_order <= 852013 then
-      if GetItemTypeId(UnitItemInSlot(hero_unit[hn], current_order - 852008)) == old_id[tp_item] then
-        set teleporting = true
-        call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
+    //  call DisplayToAll("MicroH Start")
+      if hero_dir[hn] != null then
+        call RemoveLocation(hero_dir[hn])
       endif
-    endif
+      //set hero_dir[hn] = GetSubtractionLoc_dd(GetUnitLoc(hero_unit[hn]), hero_loc[hn])
+      set hero_dir[hn] = hero_loc[hn]
+      set hero_loc[hn] = Location(GetUnitX(hero_unit[hn]), GetUnitY(hero_unit[hn]))
+      set hero_hp_loss[hn] = hero_hp[hn] - new_hp
+      set hero_hp[hn] = new_hp
+      call GetDensities(hero_loc[hn], ai_player, hero_radius)
+      set hero_enemy_density[hn] = enemy_density
+      call MoveLocation(hero_enemy_loc[hn], GetLocationX(enemy_density_loc), GetLocationY(enemy_density_loc))
+      set hero_ally_density[hn] = ally_density
+      call MoveLocation(hero_ally_loc[hn], GetLocationX(ally_density_loc), GetLocationY(ally_density_loc))
+
+      if not teleporting and current_order >= 852008 and current_order <= 852013 then
+        if GetItemTypeId(UnitItemInSlot(hero_unit[hn], current_order - 852008)) == old_id[tp_item] then
+          set teleporting = true
+          call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
+        endif
+      endif
 
   //  call DisplayToAll("Hero Order: "+Int2Str(GetUnitCurrentOrder(hero_unit[hn])))
 
