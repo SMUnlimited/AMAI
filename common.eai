@@ -1001,8 +1001,6 @@ globals
     group array expansion_creeps
     integer expansion_list_length = 0
 
-    unit home_second_expansion
-
     unit array water_expansion_list
     integer water_expansion_list_length = 0
     group water_expansion = CreateGroup()
@@ -2660,13 +2658,13 @@ function InitMapSizeVars takes nothing returns nothing
     call SetChatVar("MapSize", "small")
   elseif a < 380 then
     call SetChatVar("MapSize", "medium")
-    set mapattackdelayed = 6
+    set mapattackdelayed = 8 - MeleeDifficulty()
   elseif a < 540 then
     call SetChatVar("MapSize", "large")
-    set mapattackdelayed = 4
+    set mapattackdelayed = 7 - MeleeDifficulty()
   else
     call SetChatVar("MapSize", "huge")
-    set mapattackdelayed = 2
+    set mapattackdelayed = 6 - MeleeDifficulty()
   endif
 endfunction
 
@@ -3478,7 +3476,7 @@ endfunction
 //============================================================================
 function GetNearestEnemyToLoc_k takes location l returns player
   local integer i = 0
-  local integer min_p = -1
+  local integer min_p = 30
   local real nr = 0
   local real min_nr = 1000000
 
@@ -3493,15 +3491,12 @@ function GetNearestEnemyToLoc_k takes location l returns player
     endif
     set i = i + 1
   endloop
-  if min_p != -1 then
-    return enemy_force[min_p]
-  endif
-  return null
+  return enemy_force[min_p]
 endfunction
 
 function GetNearestEnemyToLoc_d takes location l returns player
   local integer i = 0
-  local integer min_p = -1
+  local integer min_p = 30
   local real nr = 0
   local real min_nr = 1000000
 
@@ -3518,10 +3513,7 @@ function GetNearestEnemyToLoc_d takes location l returns player
   endloop
   call RemoveLocation(l)
   set l = null
-  if min_p != -1 then
-    return enemy_force[min_p]
-  endif
-  return null
+  return enemy_force[min_p]
 endfunction
 
 //============================================================================
@@ -4235,23 +4227,22 @@ function GetMineNearLoc takes location l, real dist returns unit
   local unit u = null
   local integer i = GOLD_MINE
   local real distance = 1500
-  call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
-  //set g = SelectByAlive(g, true)
   if DistanceBetweenPoints(l , home_location) < 500 then  // when home_location gold mine more than 1 , ELF and UD may not harvest gold , so check home_location near all mine
+    if own_town_mine[0] != null and GetResourceAmount(own_town_mine[0]) > 0 then
+      call DestroyGroup(g)
+      set g = null
+      return own_town_mine[0]
+    endif
+    if race_manual_loading then
+      set i = race_manual_loading_mine
+    elseif race_uses_mine_expansion then
+      set i = racial_expansion
+    endif
+    call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
     set g = SelectById(g, old_id[i], true)
-    set g = SelectByAlive(g, true)
-    call GroupRemoveUnit(g, FirstOfGroup(g))  // remove one mine
-    if FirstOfGroup(g) != null then
+    set ru_mine = FirstOfGroup(g)
+    if ru_mine != null then
       set first_town_mine = 1
-      call GroupClear(g)
-      call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
-      if race_manual_loading then
-        set i = race_manual_loading_mine
-      elseif race_uses_mine_expansion then
-        set i = racial_expansion
-      endif
-      set g = SelectById(g, old_id[i], true)
-      set ru_mine = FirstOfGroup(g)
       if i == GOLD_MINE then  //human and orc need find closest mine
         loop
           set u = FirstOfGroup(g)
@@ -4266,15 +4257,12 @@ function GetMineNearLoc takes location l, real dist returns unit
       endif
       call DestroyGroup(g)
       set g = null
-      if own_town_mine[0] == null or GetResourceAmount(own_town_mine[0]) <= 0 then
-        return ru_mine
-      else
-        return own_town_mine[0]
-      endif
+      return ru_mine
     endif
     call GroupClear(g)
-    call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
   endif
+  call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
+  //set g = SelectByAlive(g, true)
   loop
     if minearray == 0 then
       call DisplayToAll("Warning - No standard gold mine set in standardunits.slk")
@@ -4287,7 +4275,7 @@ function GetMineNearLoc takes location l, real dist returns unit
       exitwhen i >= minearray
       if GetUnitTypeId(ru_mine) == racial_goldmine[i] and GetResourceAmount(ru_mine) > 0 then
         //if SetHasEntry(ver_gold_mines, GetUnitTypeId(ru_mine)) then
-        call Trace("GetMineNearLOC: A Mine match found , found all mine")
+        call Trace("GetMineNearLOC: A Mine match found")
         call DestroyGroup(g)
         set g = null
         return ru_mine
@@ -4396,7 +4384,7 @@ endfunction
 // endfunction
 
 function CreatePathingUnitFull takes unit u, player p, integer id, real x, real y returns unit
-  set u = CreateUnit(ai_player, id, GetLocationX(home_location), GetLocationY(home_location), 270.00) 
+  set u = CreateUnit(ai_player, id, x, y, 270.00) 
   call SetUnitInvulnerable(u, true)
   if (not debugging) then
     call ShowUnit(u, false)
@@ -4431,7 +4419,7 @@ function CanPathToLoc takes location locA, location target, pathingtype path ret
     local integer flyid = 'hgyr'
     local unit u = null
     local real distance = 0
-    local location l = null
+    //local location l = null
     local real checktime = 0
     local real totaltime = 0
     //local location prev_loc = null
@@ -4460,9 +4448,7 @@ function CanPathToLoc takes location locA, location target, pathingtype path ret
 
     loop
     //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "pathing loop")
-        set l = Location(GetUnitX(u), GetUnitY(u))
-        set distance = DistanceBetweenPoints_dk(l,target)
-        set l = null
+        set distance = DistanceBetweenPoints_dk(GetUnitLoc(u),target)
         if distance <= buy_distance then
     //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Tavern is pathable")
             call CreateDebugTag("Target Destination is pathable", 10, u, 3.00, 1.50)
@@ -4488,7 +4474,7 @@ function CanPathToLoc takes location locA, location target, pathingtype path ret
           set checks = 0	// means unit is moving and not standing still
           call CreateDebugTag("Invisible Path Unit Here", 10, u, 3.00, 1.50)	
         endif
-        set totaltime = totaltime + checktime	
+        set totaltime = totaltime + checktime
         call Sleep(checktime)
     endloop
     return (totaltime * -1)
@@ -4504,25 +4490,21 @@ function GetNearestNeutralQuick takes integer id returns unit
   local group g = CreateGroup()
   local unit u = null
   local real distance = 10000000
-  local real newdistance = 0	
-  local location l = null
+  local real newdistance = 0
   set ru_distraction[0] = null
   call GroupEnumUnitsOfPlayer(g, Player(PLAYERPASSIVE), null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set l = GetUnitLoc(u)
     if GetUnitTypeId(u) == id then
-      set newdistance = DistanceBetweenPoints(home_location, l )
+      set newdistance = DistanceBetweenPoints_kd(home_location, GetUnitLoc(u))
       if newdistance < distance then
         set distance = newdistance
         set ru_distraction[0] = u
       endif
     endif
     call GroupRemoveUnit(g, u)
-    call RemoveLocation(l)
   endloop
-  set l = null
   call DestroyGroup(g)
   set g = null
   return ru_distraction[0]
@@ -5713,12 +5695,7 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
   local real checktime = 0
   local boolean exitloop = false
 
-  set u = CreateUnit(Player(PLAYERPASSIVE), groundid, GetLocationX(loc),GetLocationY(loc), 270.00)
-  call ShowUnit(u, false)
-  call SetUnitInvulnerable( u, true )
-  call SetUnitUseFood(u, false)
-  call SetUnitMoveSpeed(u, 522)
-  call RemoveGuardPosition(u)
+  set u = CreatePathingUnitFull(u,Player(PLAYERPASSIVE), groundid, GetLocationX(loc),GetLocationY(loc))
   call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
   set checktime =  GetTimeToReachLoc(u, home_location)
   call UnitApplyTimedLife(u, 'BTLF', checktime)
@@ -5756,7 +5733,7 @@ function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns l
  // call PingMinimap(GetLocationX(start_loc), GetLocationY(start_loc), 20)
     set u = CreatePathingUnit(u)
     call IssuePointOrderLoc(u, "move", loc)
-    set checktime =  GetTimeToReachLoc(u, loc)
+    set checktime = GetTimeToReachLoc(u, loc)
     call Sleep(0.3)
     loop
       set rl_getlocationindistancefromLoc[1] = Location(GetUnitX(u),GetUnitY(u))
@@ -5843,6 +5820,9 @@ function BuildLumberMillAtBase takes nothing returns boolean
     return true
   endif
   set peon = null
+  if TownCount(racial_hall[2]) > 0 and GetUnitCount(racial_lumber) == 0 then
+    set racial_lumber = 0  //Prevent always cannot build
+  endif
   return false
 endfunction
 
@@ -6359,13 +6339,13 @@ loop
 	exitwhen i >= c_enemy_total
 	if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
 		call GroupEnumUnitsOfPlayer(g, enemy_force[i], null)
-    set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
-    set g = SelectByAlive(g, true)
+		set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+		set g = SelectByAlive(g, true)
 		if FirstOfGroup(g) == null then
 			call GroupClear(g)
 			call GroupEnumUnitsOfPlayer(g, enemy_force[i], null)
-      set g = SelectById(g, 'ugol', true)  //some human UD player donot build TOWNHALL
-      set g = SelectByAlive(g, true)
+			set g = SelectById(g, 'ugol', true)  //some human UD player donot build TOWNHALL
+			set g = SelectByAlive(g, true)
 		endif
 		loop
 			set u = FirstOfGroup(g)
@@ -6577,7 +6557,8 @@ function ChooseExpansion takes nothing returns nothing
     endif
     set i = i + 1
   endloop
-  if TownCountDone(neutral_zeppelin) > 0 and i < 3 then  //first taken normal mine
+  set exp_chosen = i
+  if TownCountDone(neutral_zeppelin) > 0 and exp_chosen < 3 then  //first taken normal mine
     set i = 0
     loop
       exitwhen i >= water_expansion_list_length
@@ -6606,10 +6587,9 @@ endfunction
 
 //============================================================================
 function GetExpFoe takes nothing returns unit
-  local group g = null
+  local group g = CopyGroup(current_expansion_creeps)
   local location l = GetUnitLoc(current_expansion)
   //call Trace("Copy group")
-  set g = CopyGroup(current_expansion_creeps)
   set g = SelectByAlive(g, true)
   set ru_exp[2] = GetNearestOfGroup(g, l)
   if l != null then
@@ -11009,13 +10989,13 @@ function AttackGroupAddNeutrals takes nothing returns nothing
   local integer i = 0
   loop
     exitwhen i >= merc_number
-    call SetAssaultGroupAM(1,60,merc_unit[i])
+    call SetMeleeGroupAM(merc_unit[i])
     set i = i + 1
   endloop
   set i = 1
   loop
     exitwhen i >= dragon_number
-    call SetAssaultGroupAM(1,60,dragons[i])
+    call SetMeleeGroupAM(dragons[i])
     set i = i + 1
   endloop
 endfunction
@@ -11641,7 +11621,7 @@ endfunction
 //============================================================================
 function GetWeakestEnemy takes nothing returns player
     local integer i = 0
-    local integer pmin = -1
+    local integer pmin = 30
     local integer minstr = 1000
     local integer cstr = 0
     loop
@@ -11655,16 +11635,13 @@ function GetWeakestEnemy takes nothing returns player
       endif
     set i = i + 1
     endloop
-    if pmin != -1 then
-      return enemy_force[pmin]
-    endif
-    return null
+    return enemy_force[pmin]
 endfunction
 
 //============================================================================
 function GetStrongestEnemy takes nothing returns player
     local integer i = 0
-    local integer pmax = -1
+    local integer pmax = 30
     local integer maxstr = 0
     local integer cstr = 0
     loop
@@ -11678,10 +11655,7 @@ function GetStrongestEnemy takes nothing returns player
       endif
     set i = i + 1
     endloop
-    if pmax != -1 then
-      return enemy_force[pmax]
-    endif
-    return null
+    return enemy_force[pmax]
 endfunction
 
 //============================================================================
@@ -11717,7 +11691,7 @@ endfunction
 function GetNearHumanPlayerEnemy takes nothing returns player
   local integer i = 0
   local integer t = 0
-  local integer nearhumanplayer = -1
+  local integer nearhumanplayer = 30
   local real dist = 0
   local real mindistance = 100000000  // use to big map - 12 or 24 player map
   loop
@@ -11733,15 +11707,12 @@ function GetNearHumanPlayerEnemy takes nothing returns player
     set i = i + 1
   endloop
   set c_enemy_user_total = t  // update c_enemy_user_total
-  if nearhumanplayer != -1 then
-    return enemy_force[nearhumanplayer]
-  endif
-  return null
+  return enemy_force[nearhumanplayer]
 endfunction
 
 function GetNearestEnemy takes nothing returns player
 local integer i = 0
-local integer nearplayer = -1
+local integer nearplayer = 30
 local real dist = 0
 local real mindistance = 1000000
 
@@ -11756,10 +11727,7 @@ loop
   endif
   set i = i + 1
 endloop
-if nearplayer != -1 then
-  return enemy_force[nearplayer]
-endif
-return null
+return enemy_force[nearplayer]
 endfunction
 
 //============================================================================
