@@ -9868,9 +9868,8 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
     call RemoveLocation(l)
     set l = null
     return CANNOT_BUILD
-  elseif bloc == BLOC_FRONT and DistanceBetweenPoints(l,home_location) >= front_base_distance + 400 and unitid == race_tower_id then
+  elseif bloc == BLOC_FRONT and DistanceBetweenPoints_dk(l,home_location) >= front_base_distance + 400 and unitid == race_tower_id then
     call Trace("BuildatspecialLoc: Build loc too far , fix build loc")
-    call RemoveLocation(l)
     set l = AIGetProjectedLoc(front_loc[GetRandomInt(0, front_loc_num - 1)], home_location, 200, 0)
     call IssuePointOrderByIdLoc(peon, old_id[unitid], l)
   elseif not IssuePointOrderByIdLoc(peon, old_id[unitid], l) then
@@ -10063,7 +10062,6 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
   #ENDINCLUDE
 
     if neutral_guarded[NEUTRAL_TAVERN] and recalculate_heros_count != 3 then  // tier1 tier2 tier3 , respectively only recalculate once , guarantee to train Ownrace hero at the first time
-      set recalculate_heros = false
       if not hero_built[1] and recalculate_heros_count < 1 then
         set recalculate_heros = true
         set recalculate_heros_count = 1
@@ -11120,7 +11118,7 @@ endfunction
 function GetNearAlliedStrength takes unit target returns real
   local integer i = 0
   local real sum = 0
-  local location unitloc = GetUnitLoc(target)
+  local location unitloc = Location(GetUnitX(target),GetUnitY(target))
   local real dist = DistanceBetweenPoints(unitloc, ally_loc) + 600
   loop
     exitwhen i >= army_num
@@ -11194,7 +11192,6 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
   local integer attack_length_counter = 0
   local integer combat_length_counter = 0
   local group g = null
-  local location unitloc = null
   if target == null then
     return
   endif
@@ -11228,11 +11225,9 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
 		//	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationEnemyStructures(unitx, unity, battle_radius) <= 0 // enemies are dead and target dead
 		//else
 			//call Trace("Units, Creeps: " + Int2Str(GetLocationNonCreepStrength(unitx, unity, battle_radius)) + "," + Int2Str(GetLocationCreepStrength(unitx, unity, 500)))
-		//	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationCreepStrength(unitx, unity, 500) <= 0			
+		//	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationCreepStrength(unitx, unity, 500) <= 0
     //endif
-    set unitloc = GetUnitLoc(target)
-    set dist = DistanceBetweenPoints(ally_loc, unitloc)
-    call RemoveLocation(unitloc)
+    set dist = DistanceBetweenPoints_kd(ally_loc, GetUnitLoc(target))
     if c_ally_total > 0 and dist > 1300 and dist < 2500 then
       if CheckAttackWait(target) then
         call AttackMoveXY(R2I(GetLocationX(ally_loc)), R2I(GetLocationY(ally_loc)))
@@ -11279,7 +11274,6 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     endif
   endloop
   set g = null
-  set unitloc = null
 endfunction
 
 //============================================================================
@@ -11341,7 +11335,8 @@ function BRRush takes nothing returns nothing
     call IssueImmediateOrder(utemp, "unroot")  //try unroot
     call Sleep(2.8)  //unroot time
     set loc = GetUnitLoc(rushcreep_target)
-    call IssueTargetOrderById(utemp, 851983, rushcreep_target )
+    call IssuePointOrderLoc(utemp, "attack", loc)
+    //call IssueTargetOrderById(utemp, 851983, rushcreep_target )
     call RemoveLocation(loc)
     set loc = null
     call AttackMoveKill(rushcreep_target)
