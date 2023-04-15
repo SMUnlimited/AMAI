@@ -10,7 +10,10 @@ function GetZTargetLocation takes integer target returns location
   elseif target == ZTARGET_MOONWELLS then
     return Location(GetLocationX(home_location), GetLocationY(home_location))
   else
-    return GetUnitLoc(nearest_neutral[NEUTRAL_HEALING_FOUNTAIN])
+    if nearest_neutral[NEUTRAL_POWER_FOUNTAIN] == null then
+      return GetUnitLoc(nearest_neutral[NEUTRAL_HEALING_FOUNTAIN])
+    endif
+    return GetUnitLoc(nearest_neutral[NEUTRAL_POWER_FOUNTAIN])
   endif
 endfunction
 
@@ -30,7 +33,6 @@ function ZeppelinMoveJob takes integer target, unit hu, group z returns nothing
   local location zeploc = null
   local location heroloc = null
   local integer clearvars = 0  //=1.. Zepplin system can now finish so return
-
   if GetUnitState(hu, UNIT_STATE_LIFE) <= 0 then
     call GroupRemoveUnit(unit_rescueing, zep)
     call DestroyGroup(z)
@@ -38,7 +40,6 @@ function ZeppelinMoveJob takes integer target, unit hu, group z returns nothing
     set zep = null
     return
   endif
-
   call DisplayToAllJobDebug("ZEPPELIN_MOVE Start")
   if not UnitAlive(zep) then
     call AddZepFinishingJob(target, 1,hu)
@@ -47,9 +48,8 @@ function ZeppelinMoveJob takes integer target, unit hu, group z returns nothing
     set zep = null
     return
   endif
-
-  set zeploc = GetUnitLoc(zep)
-  set heroloc = GetUnitLoc(hu)
+  set zeploc = Location(GetUnitX(zep),GetUnitY(zep))
+  set heroloc = Location(GetUnitX(hu),GetUnitY(hu))
   set tl = GetZTargetLocation(target)
   if IsUnitInTransport(hu, zep) then
     if DistanceBetweenPoints(zeploc, tl) > 1000 and not zepdropping then  // and DistanceBetweenPoints(zeploc, ally_loc) < 1500 then
@@ -80,19 +80,13 @@ function ZeppelinMoveJob takes integer target, unit hu, group z returns nothing
       call IssueTargetOrder(hu, "smart", zep)
     endif
   endif
-
-  if tl != null then
-    call RemoveLocation(tl)
-    set tl = null
-  endif
-  if zeploc != null then
-    call RemoveLocation(zeploc)
-    set zeploc = null
-  endif
-  if heroloc != null then
-    call RemoveLocation(heroloc)
-    set heroloc = null
-  endif
+  call RemoveLocation(tl)
+  set tl = null
+  call RemoveLocation(zeploc)
+  set zeploc = null
+  call RemoveLocation(heroloc)
+  set heroloc = null
+  set zep = null
   if clearvars == 1 then
     call DestroyGroup(z)
     set z = null
