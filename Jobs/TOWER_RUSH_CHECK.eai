@@ -1,14 +1,22 @@
 #IFDEF GLOBAL
     boolean towerrush = false
-    unit array builder
+    boolean race_tower_alliancetarget = false  // alliance have tower rush target?
+    boolean tower_used_item = false  // tower rush item used done?
+    boolean tower_attack_run = false  // tower rush attack team has left home?
+    boolean tower_peon_run = false  // tower rush peon team has left home? just first left
+    unit array builder  // hero and peon go to enemy home
     location tower_target_loc = null
     real first_tower_point_x = 0
     real first_tower_point_y = 0
+    real second_attack_point_x = 0
+    real second_attack_point_y = 0
     real enemy_point_x = 0
     real enemy_point_y = 0
     integer towers_built = 0
+    integer race_tower_shop = 0
     player rushedplayer = null
-	location toweringplayerloc = null
+    location toweringplayerloc = null
+	location towerrushsubloc = null
 #ELSE
 
 // ######################## Tower Rush Check ##############################
@@ -17,26 +25,85 @@
 // #######################################################################
 
 function StartTowerRush takes integer delay returns nothing
-  set toweringplayerloc = GetStartLocationLoc(GetPlayerStartLocation(rushedplayer))
+//local location target_loc = null
+local unit u = null
+local real distance = 0.0
+local real buildrange = 700  //DistanceBetweenPoints the toweringplayerloc and first_tower_point
 
-  call Trace("Starting the tower rush")
-  set towerrush = true
-  call SetPeonsRepair(false)
-  set towers_built = 0
-  call DisplayToAllies(chat_towerrush)
-//  set rushedplayer = GetNearestEnemy()  // no longer needed as is set from the GetNearestEnemyDistance function 
-  set tower_target_loc = GetLocationInDistanceFromLoc(toweringplayerloc,front_base_distance)
+	set distance = GetNearestEnemyDistance()
+	if distance > 14000 or distance == 0 or builder[10] == null or (c_ally_total + c_enemy_total) > 5 or (c_ally_total - c_enemy_total < -1) then  //Distance to too far , Limit the player number to avoid crashes, and TR usually on 1V1 OR 2V2 map use
+		call Trace("the map unsuited tower rush")
+		if delay == 1 then
+			call DisplayToAllies(chat_unsuited_towerrush)
+		endif
+		set builder[10] = null
+		return
+	endif
+	//set rushedplayer = GetNearestEnemy()  // no longer needed as is set from the GetNearestEnemyDistance function
+	set toweringplayerloc = Location(GetUnitX(builder[10]),GetUnitY(builder[10]))  // builder[10] from the GetNearestEnemyDistance
 
-  call TQAddJob(delay , TOWER_RUSH, 0)
+	set u = GetAllianceTarget()
+	if u != null and race_tower_alliancetarget == false and ai_time <= 96 and towers_built == 0 then  //coordinate towertush with allies , 480 second
+		if IsPlayerEnemy(GetOwningPlayer(u), ai_player) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then
+			set rushedplayer = GetOwningPlayer(u)
+			call RemoveLocation(toweringplayerloc)
+			set toweringplayerloc = GetStartLocationLoc(GetPlayerStartLocation(rushedplayer))
+			set race_tower_alliancetarget = true
+			set builder[10] = null
+		endif
+	endif
 
+	set enemy_point_x = GetLocationX(toweringplayerloc)
+	set enemy_point_y = GetLocationY(toweringplayerloc)
+	if GetPlayerController(rushedplayer) != MAP_CONTROL_COMPUTER then  //if Enemy is human player, need more rude
+		set buildrange = 400
+	endif
+	set tower_target_loc = GetLocationInDistanceFromLoc(toweringplayerloc, buildrange)
+	if tower_target_loc == null then
+		if delay == 1 then
+			call DisplayToAllies(chat_unsuited_towerrush)
+		endif
+		set enemy_point_x = 0
+		set enemy_point_y = 0
+		set builder[10] = null
+		call RemoveLocation(toweringplayerloc)
+		set toweringplayerloc = null
+		call RemoveLocation(tower_target_loc)
+		set tower_target_loc = null
+		return
+	endif
+	set towerrushsubloc = GetSubtractionLoc(tower_target_loc, toweringplayerloc)
+	// if GetLocationNonCreepStrength(enemy_point_x, enemy_point_y, 2000) == 0 and ai_time >= 80 then  //no longer needed as is set from the GetNearestEnemyDistance, and now will set other Base
+		// call StartGetEnemyBase()
+		// loop
+		// exitwhen not WaitGetEnemyBase()
+			// call Sleep(1)
+		// endloop
+		// set u = GetEnemyBase()
+		// set target_loc = GetUnitLoc(u)
+		// set enemy_point_x = GetLocationX(target_loc)
+		// set enemy_point_y = GetLocationY(target_loc)
+		// set toweringplayerloc = Location(enemy_point_x ,enemy_point_y)
+	// endif
+	set racial_rushcreep = 0  // TowerRush BR , waste time
+	call SetPeonsRepair(false)
+	call DisplayToAllies(chat_towerrush)
+	if not IsPlayerAlly(ai_player,GetLocalPlayer()) then
+		call DisplayToObserversImportant( chat_towerrush )
+	endif
+	set towers_built = 0
+	call Trace("Starting the tower rush")
+	set towerrush = true
+	set u = null
+	call TQAddJob(RMax(delay,5), TOWER_RUSH, 0)
 endfunction
 
 function TowerRushCheck takes nothing returns nothing
-local integer i = GetRandomInt(1,100)
+//local integer i = GetRandomInt(1,100)
   call DisplayToAllJobDebug("TOWER_RUSH_CHECK JOB START")
 
-	if not towerrush then
-	 if hero_rush_bonus[hero[1]] >= race_towerrush_hero_rush_level then
+	//if not towerrush then
+	 //if hero_rush_bonus[hero[1]] >= race_towerrush_hero_rush_level then
 	//	if ai_time > 60 then     // 5 mins
 	//		set towerrush = false
 	//		//call Trace("Tower Rush - Out of Time")
@@ -48,8 +115,8 @@ local integer i = GetRandomInt(1,100)
 	//		call StartTowerRush()
 	//	elseif i <= 20 and GetNearestEnemyDistance() < 16000 then // Total percentage to be choosen is 7%
 	//	endif
-	  endif
-	endif
+	  //endif
+	//endif
 //    call TQAddJob(90, TOWER_RUSH_CHECK, 0)
 endfunction
 
