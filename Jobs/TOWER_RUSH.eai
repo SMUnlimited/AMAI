@@ -25,8 +25,8 @@ function TowerRushBuilderFirstControl_d takes unit u, location l returns nothing
 		call IssueImmediateOrder( u, "returnresources" )
 		call Sleep(0.01)
 	endif
-	if DistanceBetweenPoints(l, home_location) < 1000 and race_militia_available then
-		call IssueImmediateOrder( u, "militia" )
+	if DistanceBetweenPoints(l, home_location) < 1000 and race_militia_available and DistanceBetweenPoints(toweringplayerloc, home_location) > 6500 then
+		call IssueImmediateOrder( u, race_militia_unitstring )
 	endif
 	call RemoveLocation(l)
 	set l = null
@@ -52,14 +52,12 @@ function TowerRushBuilderControl_dk takes unit u, location l, location t returns
 			else
 				set loccheck = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[race_tower_id_replace], GetLocationX(unitloc), GetLocationY(unitloc), 270.0)
 			endif
-			call SetUnitPathing( loccheck, false )
 			set loc = GetUnitLoc(loccheck)
 			set builder_x = GetLocationX(loc)
 			set builder_y = GetLocationY(loc)
 			call RemoveLocation(unitloc)
 			call RemoveLocation(loc)
 			call RemoveUnit(loccheck)
-			set loc = null
 			if not IsTerrainPathable(builder_x, builder_y, PATHING_TYPE_BUILDABILITY) then
 				if GetGold() > (GetUnitGoldCost2(racial_shop)) and GetWood() > (GetUnitWoodCost2(racial_shop)) then
 					call IssueBuildOrderById(u, old_id[racial_shop], builder_x, builder_y)
@@ -73,12 +71,17 @@ function TowerRushBuilderControl_dk takes unit u, location l, location t returns
 				set l = null
 				return  // like ELF , no need all peon build , try give one repair
 			endif
+			if towers_built <= 6 then
+				set loc = AIGetProjectedLoc(t,toweringplayerloc,GetRandomInt(220,230),GetRandomInt(-90,-80))
+			else
+				set loc = Location(GetLocationX(t),GetLocationY(t))
+			endif
 			if race_tower_id_replace == 0 then
 				set loccheck = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[race_tower_id], GetLocationX(t), GetLocationY(t), 270.0)
 			else
 				set loccheck = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[race_tower_id_replace], GetLocationX(t), GetLocationY(t), 270.0)
 			endif
-			call SetUnitPathing( loccheck, false )
+			call RemoveLocation(loc)
 			set unitloc = GetUnitLoc(loccheck)
 			set builder_x = GetLocationX(unitloc)
 			set builder_y = GetLocationY(unitloc)
@@ -99,6 +102,7 @@ function TowerRushBuilderControl_dk takes unit u, location l, location t returns
 	endif
 	call RemoveLocation(l)
 	set l = null
+	set loc = null
 	set loccheck = null
 	set unitloc = null
 endfunction
@@ -115,9 +119,8 @@ function TowerRushTowerMoveControl_dk takes unit u, location l, location t retur
 			else
 				set loccheck = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[race_tower_id_replace], GetLocationX(unitloc), GetLocationY(unitloc), 270.0)
 			endif
-			call SetUnitPathing( loccheck, false )
 			call RemoveLocation(unitloc)
-			set unitloc = GetUnitLoc(loccheck)
+			set unitloc = Location(GetUnitX(loccheck),GetUnitY(loccheck))
 			call RemoveUnit(loccheck)
 			if not IsTerrainPathable(GetLocationX(unitloc), GetLocationY(unitloc), PATHING_TYPE_BUILDABILITY) then
 				call IssueImmediateOrder( u, race_tower_moveendstring )
@@ -136,27 +139,19 @@ function TowerRushTowerMoveControl_dk takes unit u, location l, location t retur
 	set unitloc = null
 endfunction
 
-function TowerRushBuilderRetreat takes unit u returns nothing
-	call RecycleGuardPosition(u)
-	call IssuePointOrderLoc(u, "move", home_location)
-endfunction
-
-function TowerRushSetBuilder takes group g, integer i returns nothing
-	if IsUnitLoaded(FirstOfGroup(g)) then  // the peon harvest gold , like ELF
-		call GroupRemoveUnit(g,FirstOfGroup(g))
+function TowerRushSetBuilder takes unit u, integer i returns nothing
+	if IsUnitLoaded(u) or IsUnitType(u, UNIT_TYPE_STRUCTURE) or UnitAlive(u)  == false then  // the peon harvest gold or build by peon become, like ELF
 		return
-	endif
-	if (builder[i] == null or GetUnitState(builder[i], UNIT_STATE_LIFE) <= 0 or IsUnitLoaded(builder[i])) and GetUnitCountDone(old_id[racial_peon]) >= (i + 4) and not IsUnitType(builder[i], UNIT_TYPE_STRUCTURE) then  //WISP peon will harvest mine or build by peon become, need judge
-		set builder[i] = FirstOfGroup(g)
+	elseif builder[i] == null or UnitAlive(builder[i]) == false or IsUnitType(builder[i], UNIT_TYPE_STRUCTURE) then
+		set builder[i] = u
 		if race_tower_repair_ability == 'Arst' then         //open automatic repair
-			call IssueImmediateOrderById(builder[i], 852203)
+			call IssueImmediateOrderById(u, 852203)
 		elseif race_tower_repair_ability == 'Aren' then
-			call IssueImmediateOrderById(builder[i], 852162)
+			call IssueImmediateOrderById(u, 852162)
 		else
-			call IssueImmediateOrderById(builder[i], 852025)  // human('Ahrp') , orc('Arep') , or other race
+			call IssueImmediateOrderById(u, 852025)  // human('Ahrp') , orc('Arep') , or other race
 		endif
 	endif
-	call GroupRemoveUnit(g,builder[i])
 endfunction
 
 function TowerRushJob takes nothing returns nothing
@@ -170,7 +165,6 @@ function TowerRushJob takes nothing returns nothing
 	local integer buildtries = 10
 	local real time_next_try = 5
 	local location t = null
-	local location tt = null
 	call DisplayToAllJobDebug("TOWER_RUSH Job START")
 	if race_tower_move then
 		set buildtries = 8  //the tower can move
@@ -182,7 +176,7 @@ function TowerRushJob takes nothing returns nothing
 		if GetOwningPlayer(u) == ai_player and GetUnitState(u, UNIT_STATE_LIFE) > 0 and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
 			set randomnum = GetRandomInt(1, 4)
 			if GetUnitTypeId(u) == old_id[race_tower_id] then
-				if randomnum == 4 and TownCount(race_tower_upgrade2) < 2 and race_tower_upgrade2 != 0 then
+				if (randomnum == 4 or GetUnitCountDone(old_id[race_towerrush_requirement]) == 0) and TownCount(race_tower_upgrade2) < 2 and race_tower_upgrade2 != 0 then
 					call IssueImmediateOrderById(u, old_id[race_tower_upgrade2])
 				elseif race_tower_upgrade1 != 0 then
 					call IssueImmediateOrderById(u, old_id[race_tower_upgrade1])
@@ -214,7 +208,7 @@ function TowerRushJob takes nothing returns nothing
 	endif
 
 	//call Trace("Getting ready to tower rush")
-	if GetPlayerSlotState(rushedplayer) != PLAYER_SLOT_STATE_PLAYING or GetPlayerUnitCount(rushedplayer,true) <= 0 or (towers_built == 0 and not (first_tower_point_x == 0 and first_tower_point_y == 0) and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) != 0 and ((GetLocationNonCreepStrength(first_tower_point_x, first_tower_point_y, 1200) > (GetOwnStrength() * 4)))) then    //or (builder[1] != null and (GetUnitState(builder[1], UNIT_STATE_LIFE) <= 0  and GetUnitState(builder[3], UNIT_STATE_LIFE) <= 0 and GetUnitState(builder[2], UNIT_STATE_LIFE) <= 0)) then
+	if GetPlayerSlotState(rushedplayer) != PLAYER_SLOT_STATE_PLAYING or GetPlayerUnitCount(rushedplayer,true) <= 0 or (towers_built == 0 and not (first_tower_point_x == 0 and first_tower_point_y == 0) and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) != 0 and (GetLocationNonCreepStrength(first_tower_point_x, first_tower_point_y, 1200) > (GetOwnStrength() * 4))) or (tower_attack_run == false and town_threatened) then    //or (builder[1] != null and (GetUnitState(builder[1], UNIT_STATE_LIFE) <= 0  and GetUnitState(builder[3], UNIT_STATE_LIFE) <= 0 and GetUnitState(builder[2], UNIT_STATE_LIFE) <= 0)) then
 		//maybe enemy give up the Location,so temporary no need built
 		call Trace("I have finished the tower rush")
 		set gold_buffer = 0
@@ -223,33 +217,33 @@ function TowerRushJob takes nothing returns nothing
 		set tower_used_item = false
 		set tower_attack_run = false
 		set tower_peon_run = false
+		call CaptainGoHome()
 		if first_tower_point_x != 0 and first_tower_point_y != 0 then
 			call GroupClear(g)
-			call GroupEnumUnitsInRange(g, first_tower_point_x, first_tower_point_y, 1200, null)
+			call GroupEnumUnitsInRange(g, first_tower_point_x, first_tower_point_y, 2200, null)
 			loop
 				set u = FirstOfGroup(g)
 				exitwhen u == null
 				if GetOwningPlayer(u) == ai_player then
-					call IssueImmediateOrderById( u, 851976 )  //Cancel can recycling resources and prevent AI run FAST_BUILD job, judge id is prevent two players PlayerStartLocation too close(some Customize Maps)
+					call IssueImmediateOrderById( u, 851976 )  //Cancel can recycling resources and prevent AI run FAST BUILD
 					if race_tower_bypeon == true then
-						call Sleep(0.01)
-						call TowerRushBuilderRetreat(u)  // if the build is like ELF , then the peon need retreat too
+						call Sleep(0.01)  // if the build is like ELF , then the peon need retreat too , so need wait cancel
 					endif
+					call RecycleGuardPosition(u)
+					call IssuePointOrderLoc(u, "move", home_location)
 				endif
 				call GroupRemoveUnit(g,u)
 			endloop
 		endif
 		set towerrush = false
 		call DisplayToAllies(chat_stop_towerrush)
-		call TowerRushBuilderRetreat(builder[0])
+		if not IsPlayerAlly(ai_player,GetLocalPlayer()) then
+			call DisplayToObserversImportant( chat_no_towerrush )
+		  endif
 		if builder[0] != null and GetItemOfTypeOnUnit(race_tower_item, builder[0]) != null then
 			call SetItemPawnable( GetItemOfTypeOnUnit(race_tower_item, builder[0]), true )  //can selling
 			call SetItemDroppable( GetItemOfTypeOnUnit(race_tower_item, builder[0]), true )  //droppable
 		endif
-		call TowerRushBuilderRetreat(builder[1])
-		call TowerRushBuilderRetreat(builder[2])
-		call TowerRushBuilderRetreat(builder[3])
-		call TowerRushBuilderRetreat(builder[4])
 		set builder[0] = null
 		set builder[1] = null
 		set builder[2] = null
@@ -260,9 +254,11 @@ function TowerRushJob takes nothing returns nothing
 		set rushedplayer = null
 		call RemoveLocation(toweringplayerloc)
 		call RemoveLocation(tower_target_loc)
+		call RemoveLocation(towerrushsubloc)
 		call RemoveLocation(t)
 		set toweringplayerloc = null
 		set tower_target_loc = null
+		set towerrushsubloc = null
 		set t = null
 		call DestroyGroup(g)
 		set g = null
@@ -302,28 +298,28 @@ function TowerRushJob takes nothing returns nothing
 		endif
 	endif
 
-	set tt = GetSubtractionLoc(tower_target_loc, toweringplayerloc)
 	if towers_built <= 4 then
 		if GetLocationCreepStrength(GetLocationX(tower_target_loc), GetLocationY(tower_target_loc), 500) > 0 then
-			set t = GetProjectedLoc(tower_target_loc, tt, 600)
+			set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 600)
 		else
-			set t = GetProjectedLoc(tower_target_loc, tt, 660)
+			set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 660)
 		endif
 		if towers_built == 0 then
 			set first_tower_point_x = GetLocationX(t)
 			set first_tower_point_y = GetLocationY(t)
 		endif
 	elseif towers_built <= 6 then
-		set t = GetProjectedLoc(tower_target_loc, tt, 300)
-		set second_attack_point_x = GetLocationX(t)
-		set second_attack_point_y = GetLocationY(t)
+		set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 200)
+		set second_attack_point_x = GetLocationX(tower_target_loc)
+		set second_attack_point_y = GetLocationY(tower_target_loc)
 	else
-		set t = Location(GetLocationX(tower_target_loc),GetLocationY(tower_target_loc))
+		set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, -200)
 	endif
+
 	if towermove != 30 then
 		loop
 			exitwhen towermove < 30
-			call TowerRushTowerMoveControl_dk(builder[towermove], GetUnitLoc(builder[towermove]), t)
+			call TowerRushTowerMoveControl_dk(builder[towermove], Location(GetUnitX(builder[towermove]),GetUnitY(builder[towermove])), t)
 			set builder[towermove] = null
 			set towermove = towermove - 1
 		endloop
@@ -331,31 +327,31 @@ function TowerRushJob takes nothing returns nothing
 
 	call GroupClear(g)
 	call GroupEnumUnitsOfPlayer(g, ai_player, null)
-	set g = SelectByAlive(g,true)
 	set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
 	set tempg = CopyGroup(g)
 	call DestroyGroup(g)
 	set g = GetNearestSubGroupOfGroup(tempg, tower_target_loc, race_tower_peon)
 	set i = 1
 	loop
-		exitwhen i > race_tower_peon
-		call TowerRushSetBuilder(g, i)
+		set u = FirstOfGroup(g)
+		exitwhen i > race_tower_peon or u == null
+		call TowerRushSetBuilder(u, i)
 		set i = i + 1
+		call GroupRemoveUnit(g,u)
 	endloop
 
 	if towers_built < buildtries and tower_attack_run == true then
 		if GetItemNumberOnUnit(race_tower_item, builder[0]) > 0 then
-			call TowerRushHeroControl_dk(builder[0], GetUnitLoc(builder[0]), t)
+			call TowerRushHeroControl_dk(builder[0], Location(GetUnitX(builder[0]),GetUnitY(builder[0])), t)
 		endif
 		if IsPointBlighted(GetLocationX(t), GetLocationY(t)) and tower_used_item == false and IsPointBlighted(GetLocationX(home_location), GetLocationY(home_location)) then
-			set tower_used_item = true  //item used success
+			set tower_used_item = true  //UD item used success
 		endif
-		call RecycleGuardPosition(builder[0])
 		set i = 1
 		if tower_peon_run != true then
 			loop
 				exitwhen i > race_tower_peon
-				call TowerRushBuilderFirstControl_d(builder[i], GetUnitLoc(builder[i]))
+				call TowerRushBuilderFirstControl_d(builder[i], Location(GetUnitX(builder[i]),GetUnitY(builder[i])))
 				set i = i + 1
 			endloop
 			set tower_peon_run = true
@@ -363,7 +359,7 @@ function TowerRushJob takes nothing returns nothing
 		else
 			loop
 				exitwhen i > race_tower_peon
-				call TowerRushBuilderControl_dk(builder[i], GetUnitLoc(builder[i]), t)
+				call TowerRushBuilderControl_dk(builder[i], Location(GetUnitX(builder[i]),GetUnitY(builder[i])), t)
 				set i = i + 1
 			endloop
 		endif
@@ -374,10 +370,9 @@ function TowerRushJob takes nothing returns nothing
 	set tempg = null
 	call DestroyGroup(g)
 	set g = null
-	call RemoveLocation(tt)
-	set tt =null
 	call RemoveLocation(t)
 	set t = null
+	set u = null
 	call TQAddJob(RMax(time_next_try,1), TOWER_RUSH, 0)
 endfunction
 
