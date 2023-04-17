@@ -57,12 +57,15 @@ endfunction
 //============================================================================
 function DenyUnit takes unit u returns nothing
   local group g = null
-  if GetUnitTypeId(u) != 'ugrm' and not IsUnitType(u, UNIT_TYPE_ETHEREAL) and not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+  if GetUnitTypeId(u) != 'ugrm' and not IsUnitType(u, UNIT_TYPE_ETHEREAL) and not IsUnitInvisible(u, Player(PLAYERAGGRESSIVE)) then
     set g = CreateGroup()
-    call GroupEnumUnitsInRange(g, GetUnitX(u), GetUnitY(u), 650, null)
+    call GroupEnumUnitsInRange(g, GetUnitX(u), GetUnitY(u), 500, null)
+    call GroupRemoveUnit(g,u)
     set g = SelectByPlayer(g, ai_player, true)
     set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
     set g = SelectUnittype(g,UNIT_TYPE_STRUCTURE,false)
+    set g = SelectUnittype(g,UNIT_TYPE_HERO,false)
+    set g = SelectByUnitStandard(g, true)
     call GroupTargetOrder(g, "attack", u)
     call DestroyGroup(g)
     set g = null
@@ -79,19 +82,18 @@ function SaveUnit takes unit u returns nothing
   local location temploc = null
   local integer hFountainID = GetHealthFountainID()
 
-  if GetUnitTypeId(u) == 'hphx' or GetUnitTypeId(u) == old_id[racial_militia] then
-    call RemoveGuardPosition(u)
-    call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
-    return
-  endif
   if IsUnitType(u, UNIT_TYPE_SUMMONED) or IsUnitType(u, UNIT_TYPE_HERO) then
     return
   endif
-  set healer = GetHealer()
   call RemoveGuardPosition(u)
-  if not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+  if GetUnitTypeId(u) == 'hphx' or GetUnitTypeId(u) == old_id[racial_militia] then
+    call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
+    return
+  endif
+  if not IsUnitInvisible(u, Player(PLAYERAGGRESSIVE)) then
     call IssueImmediateOrder(u, "windwalk")
   endif
+  set healer = GetHealer()
   //  call SetUnitUserData(u, UNIT_GOING_HOME)
   if healer != null then  //and not IsUnitType(u, UNIT_TYPE_MECHANICAL) then  //Repetitive judgment
     call CreateDebugTag("Going to Healer", 10, u, 3.00, 1.50)
@@ -125,9 +127,9 @@ function SaveUnit takes unit u returns nothing
       set g = null
     else
       call GroupAddUnit(unit_healing, u)
-    call CreateDebugTag("Going to Fountain", 10, u, 3.00, 1.50)
+      call CreateDebugTag("Going to Fountain", 10, u, 3.00, 1.50)
       call TQAddUnitJob(0, HEALTH_FOUNTAIN, 80, u)
-      call IssuePointOrder(u, "move", GetUnitX(nearest_neutral[hFountainID]), GetUnitY(nearest_neutral[hFountainID]))
+     	call IssuePointOrder(u, "move", GetUnitX(nearest_neutral[hFountainID]), GetUnitY(nearest_neutral[hFountainID]))
     endif
   elseif race_has_moonwells and TownCountDone(racial_farm) > 0 then  //and not IsUnitType(u, UNIT_TYPE_SUMMONED) then  //Repetitive judgment
     if follow_zeppelin != null and not IsUnitInGroup(follow_zeppelin, unit_rescueing) and not IsUnitType(u, UNIT_TYPE_FLYING) then
@@ -197,7 +199,7 @@ function MicroUnitsJob takes nothing returns nothing
   if (GetGold() > 600 and GetWood() > 400) or GetGoldOwned() > 3000 then
     set deny = true
   endif
-  //call DisplayToAllJobDebug("MICRO_UNITS Job Started") 
+  //call DisplayToAllJobDebug("MICRO_UNITS Job Started")
 
   //call GroupEnumUnitsInRange(g,GetUnitX(major_hero),GetUnitY(major_hero),battle_radius,null)
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
@@ -225,56 +227,57 @@ function MicroUnitsJob takes nothing returns nothing
     if not IsUnitIllusion(u) and IsStandardUnit(u) and unit_life < 24 and deny == true and not IsUnitType(u, UNIT_TYPE_HERO) then
       call DenyUnit(u)
     endif
-    if not IsUnitType(u, UNIT_TYPE_MECHANICAL) and not IsUnitIllusion(u) and (GetUnitFoodUsed(u) > 0 or GetUnitTypeId(u) == 'hphx') and unit_life < RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) then
-      call SaveUnit(u)
-    elseif not IsUnitType(u, UNIT_TYPE_SUMMONED) then
-#INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%4" =~ /\bstatue\b/
-      if GetUnitTypeId(u) == o%1 then
-        //call DisplayToAllJobDebug("MICRO_UNITS: Statue Control")
-        if attack_running and GetLocationX(last_enemy_loc) != 0 and GetLocationY(last_enemy_loc) != 0 then
-          call StatueControl(u)
+    if UnitAlive(u) then
+      if not IsUnitType(u, UNIT_TYPE_MECHANICAL) and not IsUnitIllusion(u) and (GetUnitFoodUsed(u) > 0 or GetUnitTypeId(u) == 'hphx') and unit_life < RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) then
+        call SaveUnit(u)
+      elseif not IsUnitType(u, UNIT_TYPE_SUMMONED) then
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%4" =~ /\bstatue\b/
+        if GetUnitTypeId(u) == o%1 then
+          //call DisplayToAllJobDebug("MICRO_UNITS: Statue Control")
+          if attack_running and GetLocationX(last_enemy_loc) != 0 and GetLocationY(last_enemy_loc) != 0 then
+            call StatueControl(u)
+          endif
+          //call DisplayToAllJobDebug("MICRO_UNITS: Statue Control end")
         endif
-        //call DisplayToAllJobDebug("MICRO_UNITS: Statue Control end")
+  #ENDINCLUDE
+        if IsUnitHealer(u) then
+          call GroupAddUnit(new_healer_group, u)
+        endif
+        //if GetUnitFoodUsed(u) > 0 and unit_mana < RMax(0.35 * GetUnitState(u, UNIT_STATE_MAX_MANA), 50) then
+          //call GetMana(u)
+        //endif
       endif
-#ENDINCLUDE
-      if IsUnitHealer(u) then
-        call GroupAddUnit(new_healer_group, u)
-      endif
-      //if GetUnitFoodUsed(u) > 0 and unit_mana < RMax(0.35 * GetUnitState(u, UNIT_STATE_MAX_MANA), 50) then
-        //call GetMana(u)
+        //else
+        //endif
+      //else
+        // HEAL ARMY CODE
+        //INCONSISTENCY  - NOT MODDABLE DETECTED HERE
+        //if GetUnitTypeId(u) == 'ohwd' then
+          //set ward_cast = true
+        //endif
+        // ///////////////////////////////////
+        //if not (IsUnitType(u, UNIT_TYPE_MECHANICAL)) then
+          //	set unit_health_ratio = unit_life / GetUnitState(u, UNIT_STATE_MAX_LIFE)
+          //	set health_sum = health_sum + unit_health_ratio
+          //	set count = count + 1
+
+
+          //	if GetHealerId(GetUnitTypeId(u)) != -1 and GetUnitState(u, UNIT_STATE_MANA) >= (healer_mana_cost[GetHealerId(GetUnitTypeId(u))] * 2) / 3 and ((healer_upg_id[GetHealerId(GetUnitTypeId(u))] == 0) or (GetUpgradeLevel(healer_upg_id[GetHealerId(GetUnitTypeId(u))]) >= healer_upg_level[GetHealerId(GetUnitTypeId(u))])) then
+            //		call GroupAddUnit(new_healer_group, u)
+          //	endif
+
+          //	if not IsUnitInGroup(u, unit_healing) then
+            //		if unit_life < RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) then
+              //		    //call DisplayToAllJobDebug("MICRO_UNITS Special Extra Save")
+              //			call SaveUnit(u)
+            //		elseif unit_health_ratio <= 0.5 then
+              //		    //call DisplayToAllJobDebug("MICRO_UNITS Make Unit Heal")
+              //			call MakeUnitHeal(u) 
+            //		endif
+          //	endif
+        //endif
       //endif
     endif
-      //else
-      //endif
-    //else
-      // HEAL ARMY CODE
-      //INCONSISTENCY  - NOT MODDABLE DETECTED HERE
-      //if GetUnitTypeId(u) == 'ohwd' then
-        //set ward_cast = true
-      //endif
-      // ///////////////////////////////////
-      //if not (IsUnitType(u, UNIT_TYPE_MECHANICAL)) then
-        //	set unit_health_ratio = unit_life / GetUnitState(u, UNIT_STATE_MAX_LIFE)
-        //	set health_sum = health_sum + unit_health_ratio
-        //	set count = count + 1
-
-
-        //	if GetHealerId(GetUnitTypeId(u)) != -1 and GetUnitState(u, UNIT_STATE_MANA) >= (healer_mana_cost[GetHealerId(GetUnitTypeId(u))] * 2) / 3 and ((healer_upg_id[GetHealerId(GetUnitTypeId(u))] == 0) or (GetUpgradeLevel(healer_upg_id[GetHealerId(GetUnitTypeId(u))]) >= healer_upg_level[GetHealerId(GetUnitTypeId(u))])) then
-          //		call GroupAddUnit(new_healer_group, u)
-        //	endif
-
-        //	if not IsUnitInGroup(u, unit_healing) then
-          //		if unit_life < RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) then
-            //		    //call DisplayToAllJobDebug("MICRO_UNITS Special Extra Save")
-            //			call SaveUnit(u)
-          //		elseif unit_health_ratio <= 0.5 then
-            //		    //call DisplayToAllJobDebug("MICRO_UNITS Make Unit Heal")
-            //			call MakeUnitHeal(u) 
-          //		endif
-        //	endif
-      //endif
-    //endif
-
     call GroupRemoveUnit(g,u)
     //call RemoveLocation(unitloc)
   endloop
