@@ -126,10 +126,10 @@ function initRacialUnits takes nothing returns nothing
 #ENDINCLUDE
 #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bexpansion\b/
     set racial_expansion = %1
-	if race_uses_mine_expansion then	// To get undead type mine systems
-		set racial_goldmine[minearray] = old_id[racial_expansion]
-		set minearray = minearray + 1
-	endif	
+    if race_uses_mine_expansion then	// To get undead type mine systems
+      set racial_goldmine[minearray] = old_id[racial_expansion]
+      set minearray = minearray + 1
+    endif
 #ENDINCLUDE
 #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\baltar\b/
     set racial_altar = %1
@@ -138,7 +138,9 @@ function initRacialUnits takes nothing returns nothing
     set racial_lumber = %1
 #ENDINCLUDE
 #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\brushcreep\b/
-    set racial_rushcreep = %1
+    if MeleeDifficulty() != EASY then
+      set racial_rushcreep = %1  // EASY build one , Impact Development
+    endif
 #ENDINCLUDE
 
 #INCLUDETABLE <$VER$\$RACE$\Tiers.txt>
@@ -213,7 +215,7 @@ endfunction
 function CanTowerRush takes nothing returns nothing
 	local integer i = GetRandomInt(1,100)
 
-	if game_is_ffa then
+	if c_ally_total - c_enemy_total < -1 or c_enemy_total + c_ally_total > 5 then
 		return  // in ffa no tower rush
 	endif
 	if ((i - c_ally_total + c_ally_user_total * 2 - c_enemy_user_total *2 - c_enemy_total) <= race_towerrush_probability) or (game_is_1on1 and (i - c_enemy_user_total * 6) <= (race_towerrush_probability - 10)) then
@@ -489,10 +491,6 @@ endfunction
 //============================================================================
 function setup_force takes boolean inj returns nothing
     local integer i = 0
-    local integer b = ohter_race_unitnumber
-    if b < ohter_race_heronumber then
-      set b = ohter_race_heronumber
-    endif
 
     set wave = wave + 1
 
@@ -502,30 +500,27 @@ function setup_force takes boolean inj returns nothing
       call RemoveInjuries()
     endif
 
-    call SetMeleeGroupAM( hero[1]    )
-    call SetMeleeGroupAM( hero[2]   )
-    call SetMeleeGroupAM( hero[3]   )
+    call SetMeleeGroupAM( hero[1] )
+    call SetMeleeGroupAM( hero[2] )
+    call SetMeleeGroupAM( hero[3] )
 //	if race_has_ghouls and race_ghouls_attack then
 //		call SetAssaultGroupAM(attacking_ghouls, attacking_ghouls, racial_ghoul)
 //	endif
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%3" =~ /\b$RACE$\b/ and "%11" eq "true"
-    call SetMeleeGroupAM( %1      )
+    call SetMeleeGroupAM( %1 )
 #ENDINCLUDE
     loop
-      exitwhen i > b
-      if ohter_race_unit[i] != 0 and ohter_race_unit[i] != null then
-        call AddAssault(60,ohter_race_unit[i])
-      endif
-      if ohter_race_hero[i] != 0 and ohter_race_hero[i] != null then
-        call AddAssault(60,ohter_race_hero[i])
-      endif
+      exitwhen i >= other_race_unitnumber
+      call AddAssault(60,other_race_unit[i])
+      set i = i + 1
+    endloop
+    set i = 0
+    loop
+      exitwhen i >= other_race_heronumber
+      call AddAssault(60,other_race_hero[i])
       set i = i + 1
     endloop
     //call AttackGroupAddNeutrals()  //other race unit cannot use SetAssaultGroupAM
-    if ohter_race_unitnumber > 1 and TownCountDone(ohter_race_unit[ohter_race_unitnumber - 1]) == 0 then  //prevent infinite increase
-      set ohter_race_unit[ohter_race_unitnumber - 1] = 0
-      set ohter_race_unitnumber = ohter_race_unitnumber - 1
-    endif
 
 endfunction
 
@@ -548,11 +543,7 @@ endfunction
 function setup_ghouls takes nothing returns nothing
   local integer gn = TownCountDone(racial_ghoul)
   local integer wood = GetWood()
-  local integer tr_p = 0
 
-  if towerrush then  // towerrush peons compensate
-    set tr_p = 1
-  endif
   if wood > minimum_peon_wood then
     set take_all_ghouls_along = true
   elseif wood < minimum_peon_wood then
@@ -560,10 +551,10 @@ function setup_ghouls takes nothing returns nothing
   endif
   if take_all_ghouls_along then
     set attacking_ghouls = gn - Max(1 - (R2I(shredder_peon_count/2) * TownCountDone(neutral_shredder)), 0)
-    set harvesting_ghouls = 0 + tr_p
+    set harvesting_ghouls = 0
   elseif wave <= 4 then
     set attacking_ghouls = Max(6, gn - 2)
-    set harvesting_ghouls = 1 + tr_p
+    set harvesting_ghouls = 1
   //elseif wave==2 then
     //set attacking_ghouls = Max(6, gn - 2)
   //elseif wood < maximum_peon_wood then
@@ -574,10 +565,16 @@ function setup_ghouls takes nothing returns nothing
     //set attacking_ghouls = gn - Max(2 - (4 * TownCountDone(neutral_shredder)), 0)
   else
     //set harvesting_ghouls = Max(0,Min(5 - wood / R2I(maximum_peon_wood*1),gn) - (R2I(shredder_peon_count/2) * TownCountDone(neutral_shredder)))
-    set harvesting_ghouls = Max(1 ,Min(5 - wood / R2I(maximum_peon_wood*1),gn) + tr_p - (R2I(shredder_peon_count/2) * TownCountDone(neutral_shredder)))
+    set harvesting_ghouls = Max(1,Min(5 - wood / R2I(maximum_peon_wood*1),gn) - (R2I(shredder_peon_count/2) * TownCountDone(neutral_shredder)))
     set attacking_ghouls = gn - harvesting_ghouls
   endif
-  set attacking_ghouls = Min(Max(attacking_ghouls, 0), gn)
+  set attacking_ghouls = Min(Max(attacking_ghouls, 1), gn)
+  if towerrush then  // towerrush compensate
+    if harvesting_ghouls < 2 then
+      set harvesting_ghouls = 2
+    endif
+    set attacking_ghouls = gn - harvesting_ghouls
+  endif
 endfunction
 
 #INCLUDE <$VER$\$RACE$\BuildSequence.ai>
@@ -605,7 +602,9 @@ function build_sequence takes nothing returns nothing
     if TownCount(race_towerrush_requirement) == 0 and race_towerrush_requirement != 0 and TownCount(racial_altar) > 0 and TownCount(needed1[race_simple_melee]) > 0 then
       call BuildUnit(1, race_towerrush_requirement, 180)
     endif
-    call BuildUnit(1, race_simple_melee, 140)  //if gold_buffer != 0 , AI cann't built, so need BuildUnit , if no gold_buffer then BuildUnit give to strategy
+    if TownCount(race_simple_melee) < 8 then
+      call BuildUnit(1, race_simple_melee, 140)  //if gold_buffer != 0 , AI cann't built, so need BuildUnit , when gold_buffer == 0 then BuildUnit give to strategy
+    endif
     if race_tower_item != 0 then
       if TownCount(racial_shop) == 0 and TownCount(racial_altar) > 0 and race_tower_item_must == true then
         call BuildUnit(1, racial_shop, 160)
@@ -762,7 +761,6 @@ function peon_assignment_all takes nothing returns nothing
   else
     call universal_peon_assignment()
   endif
-
 endfunction
 
 function calculate_strat_timer_seconds takes integer seconds returns integer
@@ -843,7 +841,7 @@ function build_sequence_all takes nothing returns nothing
       if reportStrategy then
         set reportStrategy = false
         call DisplayToAlliesImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
-        call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
+        //call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
       endif
 
       set new_tier = GetTier()
@@ -926,9 +924,9 @@ function main takes nothing returns nothing
   call Trace("hero skills set")
   call SetRaceAggression()
   call init_strategy()
-  call Trace("Strategy init")	
+  call Trace("Strategy init")
   call AMAI(function SkillArraysAM, function build_sequence_all, function attack_sequence_all)
-  call Trace("Playing Game")	
+  call Trace("Playing Game")
   call PlayGameAM()
 
 
