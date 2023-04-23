@@ -387,7 +387,7 @@ globals
     integer race_tower_upgrade1 = 0  //what is the id of the tower upgrade1 (core)?
     integer race_tower_upgrade2	= 0  //what is the id of the tower upgrade2 (secondary)?
     boolean race_tower_move = false  //tower can move , like ELF tree or StarCraft human build fly?
-    string race_tower_movestartstring = ""  //what is the unitstring/name of tower start move?
+    string race_tower_movestartstring = ""  //what is the unitstring/name of tower start move? -- like use root to loc move
     string race_tower_moveendstring = ""  //what is the unitstring/name of tower end move?
     boolean race_tower_bypeon = false  //tower is peon become , like ELF? AI will compensate more 2 peon
     integer race_tower_repair_ability = 'Ahrp'  //what is peons repair ability ?
@@ -495,16 +495,15 @@ globals
     integer minearray = 0
     integer array racial_zigg
     integer ziggarray = 0
-    integer racial_expansion	= 0
-    integer racial_altar	= 0
+    integer racial_expansion = 0
+    integer racial_altar = 0
     integer racial_shop = 0
     integer racial_militia = 0
     integer racial_militiahero = 0
     integer racial_ghoul = 0
     integer racial_lumber = 0
     integer racial_rushcreep = 0
-    boolean rushcreepdone = false
-    unit rushcreep_build = null
+    unit rushcreep_target = null
     integer neutral_shredder = 0
     integer neutral_zeppelin = 0
     integer tp_item = 0
@@ -642,12 +641,12 @@ globals
     boolean no_sleep = false
     integer array dragons
     integer array merc_unit
-    integer array ohter_race_hero
-    integer array ohter_race_unit
+    integer array other_race_hero
+    integer array other_race_unit
     integer merc_number = 0
     integer dragon_number = 0
-    integer ohter_race_heronumber = 0
-    integer ohter_race_unitnumber = 0
+    integer other_race_heronumber = 0
+    integer other_race_unitnumber = 0
 #INCLUDETABLE <$VER$\MercTypes.txt>
     integer merc_%1 = 0
 #ENDINCLUDE
@@ -784,11 +783,13 @@ globals
 #ENDINCLUDE
 
     unit build_zeppelin = null
+    unit zeppelin_peon = null
 
     boolean array town_built
     location array own_town_loc
     real array own_town_dist
     unit array own_town_mine
+    real first_town_mine = 0
 
     integer attacking_ghouls = 0
     integer harvesting_ghouls = 0
@@ -984,7 +985,10 @@ globals
 
     unit array water_expansion_list
     integer water_expansion_list_length = 0
+    group water_expansion = CreateGroup()
     group array water_expansion_creeps
+
+    boolean positive_expansion = false
 
     unit expansion_peon = null
     location exp_loc_cache = Location(0,0)
@@ -1049,9 +1053,7 @@ unit ru_hp = null                  // used to GetLeastHPUnitOfGroup,GetHealer
 unit ru_buy = null                 // used to GetUnitToBuy
 unit ru_typenear = null            // used to GetUnitOfTypeNearUnit
 unit ru_zep = null                 // used to GetUnusedZeppelinNearUnit
-unit ru_hero = null                // used to GetUnitHero
-unit ru_heroreplacement = null     // used to GetUnitHeroReplacement
-unit ru_heroreplacement_d = null   // used to GetMajorHeroReplacement_d
+unit ru_hero = null                // used to GetUnitHero,GetUnitHeroReplacement and GetMajorHeroReplacement_d
 unit array ru_exp                  // used to GetExpNearestMin,GetExpFoe
 unit ru_getfittingcreep = null     // used to GetFittingCreep
 unit array ru_target               // used to GetDistractionTarget,ChooseEnemyExpansionTarget,ChooseEnemyBaseTarget,ChooseAnEnemyTarget,ChooseAnyEnemyTarget,ChooseAttackTarget
@@ -1081,11 +1083,10 @@ group rg_selectlocation = null            // used to SelectByLocation
 group rg_getnearestsubgroupofgroup = null // used to GetNearestSubGroupOfGroup
 group rg_getexpfoegroup = null            // used to GetExpFoeGroup
 group rg_getcreepguardgroup = null        // used to GetCreepGuardGroup
-group rg_addharassunittype = null         // used to AddHarassUnittype
 
 location array rl_getlocationbetweenLoc                // used to GetLocationBetweenLoc,GetLocationBetweenUnits
 location array rl_getlocationindistancefromLoc         // used to GetLocationInDistanceFromLoc,GetBuildLocationInDistanceFromLoc_d,GetLocationInDistanceFromBaseToLoc
-location rl_getlumberlocationatBase  = null            // used to GetLumberLocationAtBase
+location rl_getlumberlocationatBase = null             // used to GetLumberLocationAtBase
 
 item rl_itemtype = null                                // used to GetItemOfType
 endglobals
@@ -2338,7 +2339,7 @@ endfunction
 function InitAssaultGroup takes nothing returns nothing
   if IsAMAI then
     set attack_length = 0
-  elseif (ohter_race_unit[0] != 0 and ohter_race_unit[0] != null) or not IsAMAI then
+  else
     set harass_length = 0
   endif
 endfunction
@@ -2464,19 +2465,26 @@ function InitMapSizeVars takes nothing returns nothing
   local real a = (x/1000)*(y/1000)
   call SetChatVarR("MapSizeX", x)
   call SetChatVarR("MapSizeY", y)
-  if a < 120 then
+  if a < 90 then
+    call SetChatVar("MapSize", "extrasmall")
+  elseif a < 120 then
     call SetChatVar("MapSize", "tiny")
   elseif a < 240 then
     call SetChatVar("MapSize", "small")
   elseif a < 380 then
     call SetChatVar("MapSize", "medium")
-    set mapattackdelayed = 12
   elseif a < 540 then
     call SetChatVar("MapSize", "large")
-    set mapattackdelayed = 24
-  else
+    set mapattackdelayed = 8 - MeleeDifficulty()
+  elseif a < 960 then
+    call SetChatVar("MapSize", "extralarge")
+    set mapattackdelayed = 7 - MeleeDifficulty()
+  elseif a < 2048 then
     call SetChatVar("MapSize", "huge")
-    set mapattackdelayed = 32
+    set mapattackdelayed = 6 - MeleeDifficulty()
+  else
+    call SetChatVar("MapSize", "legendary")
+    set mapattackdelayed = 5 - MeleeDifficulty()
   endif
 endfunction
 
@@ -3224,19 +3232,12 @@ endfunction
 //   This is based only on distance between two respective points
 //============================================================================
 function GetTimeToReachLoc takes unit u, location target returns real
-	local real distance = 0
-	local real movespeed = 0
-	local real time = 0
-	local location l = GetUnitLoc(u)
-
-	set movespeed = GetUnitMoveSpeed(u)
-	set distance = DistanceBetweenPoints_kd(target, l)
-	set l = null
+	local real movespeed = GetUnitMoveSpeed(u)
+	local real time = 15
+	local real distance =  DistanceBetweenPoints_kd(target, GetUnitLoc(u))
 	//call DisplayToAllJobDebug("gettime: before")
 	if movespeed != 0 then
 		set time = distance / movespeed
-	else
-		set time = 15
 	endif
 	//call DisplayToAllJobDebug("gettime: after")
 	return time
@@ -3244,18 +3245,12 @@ endfunction
 
 //============================================================================
 function EstimatedTimeToReachUnit_d takes location locA, unit target, real movespeed returns real
+  local real time = 15
+  local real distance = DistanceBetweenPoints_dd(locA, GetUnitLoc(target))
 
-  local real distance = 0
-  local real time = 0
-  local location l = GetUnitLoc(target)
-
-  set distance = DistanceBetweenPoints_dd(locA, l)
   if movespeed != 0 then
     set time = distance / movespeed
-  else
-    set time = 15
   endif
-  set l = null
   set locA = null
   return time
 
@@ -3288,7 +3283,7 @@ endfunction
 //============================================================================
 function GetNearestEnemyToLoc_k takes location l returns player
   local integer i = 0
-  local integer min_p = -1
+  local integer min_p = 30
   local real nr = 0
   local real min_nr = 1000000
 
@@ -3303,15 +3298,12 @@ function GetNearestEnemyToLoc_k takes location l returns player
     endif
     set i = i + 1
   endloop
-  if min_p != -1 then
-    return enemy_force[min_p]
-  endif
-  return null
+  return enemy_force[min_p]
 endfunction
 
 function GetNearestEnemyToLoc_d takes location l returns player
   local integer i = 0
-  local integer min_p = -1
+  local integer min_p = 30
   local real nr = 0
   local real min_nr = 1000000
 
@@ -3328,10 +3320,7 @@ function GetNearestEnemyToLoc_d takes location l returns player
   endloop
   call RemoveLocation(l)
   set l = null
-  if min_p != -1 then
-    return enemy_force[min_p]
-  endif
-  return null
+  return enemy_force[min_p]
 endfunction
 
 //============================================================================
@@ -3368,7 +3357,7 @@ function countAllyEnemy takes nothing returns nothing
   set i = 0
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING then
+    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(Player(i)) then
       if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER then
         set c_ai_total = c_ai_total + 1
       endif
@@ -3395,7 +3384,7 @@ function countAllyEnemy takes nothing returns nothing
           set c_ally[player_race[i]] = c_ally[player_race[i]] + 1
           set c_ally_total = c_ally_total + 1
         endif
-      elseif IsPlayerEnemy(ai_player,Player(i)) and not IsPlayerObserver(Player(i)) then
+      elseif IsPlayerEnemy(ai_player,Player(i)) then
         if GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER then
           set c_enemy_user_total = c_enemy_user_total + 1
         endif
@@ -3886,7 +3875,7 @@ function GroupAddType takes group g, integer id, player p returns nothing
   local group ag = CreateGroup()
   call GroupEnumUnitsOfPlayer(ag, p, null)
   set ag = SelectNumberOfId(ag, 100, id)
-  set g = GroupAddGroup(g, ag)
+  call GroupAddGroup(g, ag)
   call DestroyGroup(ag)
   set ag = null
 endfunction
@@ -4036,7 +4025,45 @@ endfunction
 //==========================================================================
 function GetMineNearLoc takes location l, real dist returns unit
   local group g = CreateGroup()
-  local integer i = 0
+  local unit u = null
+  local integer i = GOLD_MINE
+  local real distance = 1500
+  if DistanceBetweenPoints(l , home_location) < 500 then  // when home_location gold mine more than 1 , ELF and UD may not harvest gold , so check home_location near all mine
+    if own_town_mine[0] != null and GetResourceAmount(own_town_mine[0]) > 0 then
+      call DestroyGroup(g)
+      set g = null
+      return own_town_mine[0]
+    endif
+    if race_manual_loading then
+      set i = race_manual_loading_mine
+    elseif race_uses_mine_expansion then
+      set i = racial_expansion
+    endif
+    call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
+    set g = SelectById(g, old_id[GOLD_MINE], true)
+    call GroupRemoveUnit(g, FirstOfGroup(g))
+    if FirstOfGroup(g) != null then  //human and orc need find closest mine
+      set first_town_mine = 1
+      loop
+        set u = FirstOfGroup(g)
+        exitwhen u == null
+        set i = R2I(DistanceBetweenPoints_kd(home_location,GetUnitLoc(u)))
+        if GetResourceAmount(u) > 0 and i <= distance then
+          set distance = i
+          set ru_mine = u
+        endif
+        call GroupRemoveUnit(g, u)
+      endloop
+    else
+      call GroupClear(g)
+      call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
+      set g = SelectById(g, old_id[i], true)
+      set ru_mine = FirstOfGroup(g)
+    endif
+    call DestroyGroup(g)
+    set g = null
+    return ru_mine
+  endif
   call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
   //set g = SelectByAlive(g, true)
   loop
@@ -4049,9 +4076,8 @@ function GetMineNearLoc takes location l, real dist returns unit
     set i = 0
     loop
       exitwhen i >= minearray
-      if GetUnitTypeId(ru_mine) == racial_goldmine[i] then
+      if GetUnitTypeId(ru_mine) == racial_goldmine[i] and GetResourceAmount(ru_mine) > 0 then
         //if SetHasEntry(ver_gold_mines, GetUnitTypeId(ru_mine)) then
-        //if GetUnitTypeId(ru_mine) =='ngol' or GetUnitTypeId(ru_mine) =='egol' or GetUnitTypeId(ru_mine) == 'ugol' then
         call Trace("GetMineNearLOC: A Mine match found")
         call DestroyGroup(g)
         set g = null
@@ -4161,7 +4187,7 @@ endfunction
 // endfunction
 
 function CreatePathingUnitFull takes unit u, player p, integer id, real x, real y returns unit
-  set u = CreateUnit(ai_player, id, GetLocationX(home_location), GetLocationY(home_location), 270.00)
+  set u = CreateUnit(ai_player, id, x, y, 270.00)
   call SetUnitInvulnerable(u, true)
   if (not debugging) then
     call ShowUnit(u, false)
@@ -4196,7 +4222,7 @@ function CanPathToLoc takes location locA, location target, pathingtype path ret
     local integer flyid = 'hgyr'
     local unit u = null
     local real distance = 0
-    local location l = null
+    //local location l = null
     local real checktime = 0
     local real totaltime = 0
     //local location prev_loc = null
@@ -4211,7 +4237,7 @@ function CanPathToLoc takes location locA, location target, pathingtype path ret
     elseif path == PATHING_TYPE_FLYABILITY then
       set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), flyid, GetLocationX(locA), GetLocationY(locA))
     else
-        return -1.0
+      return -1.0
     endif
 
     call IssuePointOrder(u, "move", GetLocationX(target), GetLocationY(target))
@@ -4225,10 +4251,7 @@ function CanPathToLoc takes location locA, location target, pathingtype path ret
 
     loop
     //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "pathing loop")
-        set l = Location(GetUnitX(u), GetUnitY(u))
-        set distance = DistanceBetweenPoints(l,target)
-        call RemoveLocation(l)
-        set l = null
+        set distance = DistanceBetweenPoints_dk(GetUnitLoc(u),target)
         if distance <= buy_distance then
     //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Tavern is pathable")
             call CreateDebugTag("Target Destination is pathable", 10, u, 3.00, 1.50)
@@ -4271,24 +4294,20 @@ function GetNearestNeutralQuick takes integer id returns unit
   local unit u = null
   local real distance = 10000000
   local real newdistance = 0
-  local location l = null
   set ru_distraction[0] = null
   call GroupEnumUnitsOfPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set l = GetUnitLoc(u)
     if GetUnitTypeId(u) == id then
-      set newdistance = DistanceBetweenPoints(home_location, l )
+      set newdistance = DistanceBetweenPoints_kd(home_location, GetUnitLoc(u))
       if newdistance < distance then
         set distance = newdistance
         set ru_distraction[0] = u
       endif
     endif
     call GroupRemoveUnit(g, u)
-    call RemoveLocation(l)
   endloop
-  set l = null
   call DestroyGroup(g)
   set g = null
   return ru_distraction[0]
@@ -4449,21 +4468,17 @@ function GetNearestOfGroup takes group g, location l returns unit
    local real d = 0
    local unit u = null
    local real sd = 1000000
-   local location unitloc = null
    set ru_distraction[2] = null
    loop
      set u = FirstOfGroup(g)
      exitwhen u == null
-     set unitloc = GetUnitLoc(u)
-     set d = DistanceBetweenPoints(unitloc, l)
-     call RemoveLocation(unitloc)
+     set d = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
      if d < sd then
         set sd = d
         set ru_distraction[2] = u
      endif
      call GroupRemoveUnit(g, u )
    endloop
-   set unitloc = null
    return ru_distraction[2]
 endfunction
 
@@ -4479,14 +4494,11 @@ function GetNearestSubGroupOfGroup takes group g, location l, integer n returns 
   local integer ru = 0
   local unit u = null
   local real d = 0
-  local location unitloc = null
   set rg_getnearestsubgroupofgroup = CreateGroup()
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set unitloc = GetUnitLoc(u)
-    set d = DistanceBetweenPoints(unitloc, l)
-    call RemoveLocation(unitloc)
+    set d = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
     set i = size - 1
     loop
       exitwhen i < 0 or da[i] >= d
@@ -4500,7 +4512,6 @@ function GetNearestSubGroupOfGroup takes group g, location l, integer n returns 
     set size = size + 1
     call GroupRemoveUnit(g,u)
   endloop
-  set unitloc = null
   set i = size - Min(n, size)
   loop
     exitwhen i >= size
@@ -4521,21 +4532,17 @@ function GetFarestOfGroup takes group g, location l returns unit
      local real d = 0
      local unit u = null
      local real sd = 0
-     local location unitloc = null
      set ru_distraction[3] = null
      loop
        set u = FirstOfGroup(g)
        exitwhen u == null
-       set unitloc = GetUnitLoc(u)
-       set d = DistanceBetweenPoints(unitloc, l)
-       call RemoveLocation(unitloc)
+       set d = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
        if d > sd then
           set sd = d
           set ru_distraction[3] = u
        endif
        call GroupRemoveUnit(g, u )
      endloop
-     set unitloc = null
      return ru_distraction[3]
 endfunction
 
@@ -4547,7 +4554,6 @@ function GetFastestToPointOfGroup takes group g, location l returns unit
      local unit u = null
      local real sd = 1000000
      local real ms = 0
-     local location unitloc = null
      set ru_distraction[4] = null
      loop
        set u = FirstOfGroup(g)
@@ -4556,16 +4562,13 @@ function GetFastestToPointOfGroup takes group g, location l returns unit
        if ms == 0 then
          set ms = 0.01
        endif
-       set unitloc = GetUnitLoc(u)
-       set d = DistanceBetweenPoints(unitloc, l) / ms
-       call RemoveLocation(unitloc)
+       set d = DistanceBetweenPoints_dk(GetUnitLoc(u), l) / ms
        if d < sd then
           set sd = d
           set ru_distraction[4] = u
        endif
        call GroupRemoveUnit(g, u )
      endloop
-     set unitloc = null
      return ru_distraction[4]
 endfunction
 
@@ -4656,7 +4659,7 @@ endfunction
 //==========================================================================
 function GetUnitOfTypeNearUnit takes integer ut, unit nu returns unit
   local group g = CreateGroup()
-  local location unitloc = GetUnitLoc(nu)
+  local location unitloc = Location(GetUnitX(nu),GetUnitY(nu))
 
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectById(g, ut, true)
@@ -4673,7 +4676,7 @@ endfunction
 //==========================================================================
 function GetUnusedZeppelinNearUnit takes unit nu returns unit
   local group g = CreateGroup()
-  local location unitloc = GetUnitLoc(nu)
+  local location unitloc = Location(GetUnitX(nu),GetUnitY(nu))
 
   call GroupEnumUnitsOfType(g, "goblinzeppelin", null)
   set g = SelectByPlayer(g, ai_player, true)
@@ -4765,14 +4768,14 @@ function GetUnitHeroReplacement takes location l returns unit
   set g = SelectByAlive(g, true)
   set g = SelectByUnitStandard(g, true)
   loop
-    set ru_heroreplacement = FirstOfGroup(g)
-    exitwhen ru_heroreplacement == null
-    if IsUnitType(ru_heroreplacement, UNIT_TYPE_STRUCTURE) == false and IsUnitType(ru_heroreplacement, UNIT_TYPE_PEON) == false and IsUnitInRangeLoc(ru_heroreplacement, l, battle_radius) then
+    set ru_hero = FirstOfGroup(g)
+    exitwhen ru_hero == null
+    if IsUnitType(ru_hero, UNIT_TYPE_STRUCTURE) == false and IsUnitType(ru_hero, UNIT_TYPE_PEON) == false and IsUnitInRangeLoc(ru_hero, l, battle_radius) then
       call DestroyGroup(g)
       set g = null
-      return ru_heroreplacement
+      return ru_hero
     endif
-    call GroupRemoveUnit(g,ru_heroreplacement)
+    call GroupRemoveUnit(g,ru_hero)
   endloop
  call DestroyGroup(g)
   set g = null
@@ -4805,10 +4808,10 @@ function GetMajorHeroReplacement_d takes location l returns unit
     endif
     set i = i + 1
   endloop
-  set ru_heroreplacement_d = GetUnitHeroReplacement(l)
+  set ru_hero = GetUnitHeroReplacement(l)
   call RemoveLocation(l)
   set l = null
-  return ru_heroreplacement_d
+  return ru_hero
   //return null
 endfunction
 
@@ -4980,7 +4983,6 @@ function GetPlayerHeroStrengthMod takes player p returns integer
   local unit u = null
   local integer sum = 0
   local integer i = 0
-  local boolean b = true
   call GroupEnumUnitsOfPlayer(g, p, null)
   set g = SelectUnittype(g, UNIT_TYPE_HERO, true)
   set g = SelectByAlive(g, true)
@@ -4988,23 +4990,13 @@ function GetPlayerHeroStrengthMod takes player p returns integer
     set u = FirstOfGroup(g)
     exitwhen u == null
     set sum = sum + R2I(GetHeroStrength(u) * GetPlayerStrengthHandicap(GetOwningPlayer(u)) * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)))
-    if GetUnitTypeId(u) != hero[1] and GetUnitTypeId(u) != hero[2] and GetUnitTypeId(u) != hero[3] then  //other hero
-      set i = 0
-      set b = true
-      loop
-        exitwhen i > ohter_race_heronumber or b == false
-        if GetUnitTypeId(u) == ohter_race_hero[i] then  //prevent repetition
-          set b = false
-        endif
-        set i = i + 1
-      endloop
-      if b == true then
-        set ohter_race_hero[ohter_race_heronumber] = GetUnitTypeId(u)
-        set ohter_race_heronumber = ohter_race_heronumber + 1
-      endif
+    if u != hero_unit[1] and u != hero_unit[2] and u != hero_unit[3] then  //other hero
+      set other_race_hero[i] = GetUnitTypeId(u)
+      set i = i + 1
     endif
     call GroupRemoveUnit(g,u)
   endloop
+  set other_race_heronumber = i
   set sum = sum + GetPlayerHeroBonusStrength(ai_player)
   call DestroyGroup(g)
   set g = null
@@ -5021,11 +5013,11 @@ function GetUnitStrengthEx takes unit u returns integer
       return R2I((GetUnitFoodUsed(u) + f) / 2 + 0.5)
     endif
   else
-  if f >= ver_hero_ultimate_level then
-    return R2I((GetUnitFoodUsed(u)+ f + ver_hero_ultimate_value) / 2 + 0.5)
-  else
-    return R2I((GetUnitFoodUsed(u) + f)/2 + 0.5)
-  endif
+    if f >= ver_hero_ultimate_level then
+      return R2I((GetUnitFoodUsed(u)+ f + ver_hero_ultimate_value) / 2 + 0.5)
+    else
+      return R2I((GetUnitFoodUsed(u) + f)/2 + 0.5)
+    endif
   endif
   return 0
 endfunction
@@ -5061,7 +5053,6 @@ function GetPlayerStrength takes player p returns real
           set sum = sum + GetUnitStrength(u)
         endif
         call GroupRemoveUnit(g,u)
-        call Sleep(0.02)
     endloop
     call DestroyGroup(g)
     set g = null
@@ -5339,7 +5330,6 @@ function GetOwnStrength takes nothing returns integer
   local real airsum = 0
   local race r1 = null
   local race r2 = GetPlayerRace(ai_player)
-  local boolean b = true
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   loop
     set u = FirstOfGroup(g)
@@ -5359,25 +5349,14 @@ function GetOwnStrength takes nothing returns integer
       set r1 = GetUnitRace(u)
       if r1 != r2 then
         if GetUnitTypeId(u) != 'ngir' and GetUnitTypeId(u) != 'nzep' and not IsUnitType(u, UNIT_TYPE_SUMMONED) then
-          set b = true
-          set i = 0
-          loop
-            exitwhen i > ohter_race_unitnumber or b == false
-            if GetUnitTypeId(u) == ohter_race_unit[i] then  //prevent repetition
-              set b = false
-            endif
-            set i = i + 1
-          endloop
-          if b == true then
-            set ohter_race_unit[ohter_race_unitnumber] = GetUnitTypeId(u)
-            set ohter_race_unitnumber = ohter_race_unitnumber + 1
-          endif
+          set other_race_unit[i] = GetUnitTypeId(u)
+          set i = i + 1
         endif
       endif
     endif
     call GroupRemoveUnit(g, u)
-    call Sleep(0.02)
   endloop
+  set other_race_unitnumber = i
   call DestroyGroup(g)
   set g = null
   set r1 = null
@@ -5516,19 +5495,14 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
   local real checktime = 0
   local boolean exitloop = false
 
-  set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(loc),GetLocationY(loc), 270.00)
-  call ShowUnit(u, false)
-  call SetUnitInvulnerable( u, true )
-  call SetUnitUseFood(u, false)
-  call SetUnitMoveSpeed(u, 522)
-  call RemoveGuardPosition(u)
+  set u = CreatePathingUnitFull(u,Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(loc),GetLocationY(loc))
   call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
   set checktime =  GetTimeToReachLoc(u, home_location)
   call UnitApplyTimedLife(u, 'BTLF', checktime)
-  call Sleep(0.05)
   loop
     exitwhen (exitloop == true)
-    set rl_getlocationindistancefromLoc[0] = GetUnitLoc(u)
+    call Sleep(0.3)
+    set rl_getlocationindistancefromLoc[0] = Location(GetUnitX(u),GetUnitY(u))
     set distance = DistanceBetweenPoints(rl_getlocationindistancefromLoc[0], loc)
     if distance >= dist then
       //call DisplayToAll("loc found")
@@ -5536,12 +5510,11 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
       set u = null
       return rl_getlocationindistancefromLoc[0]
     elseif GetUnitState(u, UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u) == OrderId("stop") or GetUnitCurrentOrder(u) != OrderId("move") then
-      call RemoveLocation(rl_getlocationindistancefromLoc[0])
+      //call RemoveLocation(rl_getlocationindistancefromLoc[0])
       set exitloop = true
       //return null
     endif
     call RemoveLocation(rl_getlocationindistancefromLoc[0])
-    call Sleep(0.3)
   endloop
   call RemoveUnit(u)
   set u = null
@@ -5559,10 +5532,10 @@ function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns l
  // call PingMinimap(GetLocationX(start_loc), GetLocationY(start_loc), 20)
     set u = CreatePathingUnit(u)
     call IssuePointOrderLoc(u, "move", loc)
-    set checktime =  GetTimeToReachLoc(u, loc)
-    call Sleep(0.3)
+    set checktime = GetTimeToReachLoc(u, loc)
     loop
-      set rl_getlocationindistancefromLoc[1] = GetUnitLoc(u)
+      set rl_getlocationindistancefromLoc[1] = Location(GetUnitX(u),GetUnitY(u))
+      call Sleep(0.3)
       set distance = DistanceBetweenPoints(rl_getlocationindistancefromLoc[1], home_location)
       if distance >= d then
 //        call DisplayToAll("loc found")
@@ -5578,7 +5551,6 @@ function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns l
           return null
       endif
       call RemoveLocation(rl_getlocationindistancefromLoc[1])
-      call Sleep(0.4)
     endloop
     set rl_getlocationindistancefromLoc[1] = null
     call RemoveUnit(u)
@@ -5597,13 +5569,12 @@ function GetBuildLocationInDistanceFromLoc_d takes integer id, location loc, rea
     set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), id, GetLocationX(buildloc), GetLocationY(buildloc), 270.0)
     call RemoveLocation(buildloc)
     set buildloc = null
-    set rl_getlocationindistancefromLoc[2] = GetUnitLoc(u)
+    set rl_getlocationindistancefromLoc[2] = Location(GetUnitX(u),GetUnitY(u))
     call RemoveUnit(u)
     set u = null
     return rl_getlocationindistancefromLoc[2]
-  else
-    return null
   endif
+  return null
 endfunction
 
 //============================================================================
@@ -5621,7 +5592,7 @@ function GetLumberLocationAtBase takes nothing returns location
   set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(home_location), GetLocationY(home_location))
   call IssueImmediateOrder(u, "autoharvestlumber")
   call Sleep(5.00)
-  set rl_getlumberlocationatBase = GetUnitLoc(u)
+  set rl_getlumberlocationatBase = Location(GetUnitX(u),GetUnitY(u))
   call RemoveUnit(u)
   set u = null
   return rl_getlumberlocationatBase
@@ -5647,6 +5618,9 @@ function BuildLumberMillAtBase takes nothing returns boolean
     return true
   endif
   set peon = null
+  if TownCount(racial_hall[2]) > 0 and GetUnitCount(racial_lumber) == 0 then
+    set racial_lumber = 0  //Prevent always cannot build
+  endif
   return false
 endfunction
 
@@ -5659,49 +5633,47 @@ function BuildRushCreepAtBase takes nothing returns nothing
   local integer ru = 0
   local real distance = 3200
   local group g = CreateGroup()
-  local group tempg = null
   local unit u = null
   local unit array ua
   local unit array uc
   local location loc = null
-  call GroupEnumUnitsOfPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), null)
+  call GroupEnumUnitsInRange(g,GetLocationX(home_location), GetLocationY(home_location),distance,null)
+  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set g = SelectByAlive(g,true)
-  set tempg = GetNearestSubGroupOfGroup(g, home_location, 7)  // 7 shoul have 2 creepcamp
+  if FirstOfGroup(g) == null then
+    call DestroyGroup(g)
+    set g = null
+    return
+  endif
   loop
-    set u = FirstOfGroup(tempg)
-    exitwhen u == null
-    set loc = GetUnitLoc(u)
-    if DistanceBetweenPoints(loc, home_location) <= distance and GetUnitLevel(u) < 5 and not IsUnitType(u, UNIT_TYPE_FLYING) and ((ua[0] != null and DistanceBetweenUnits(u, ua[0]) > 600) or ua[0] == null or (ua[1] != null and DistanceBetweenUnits(u, ua[1]) > 600)) then  //maybe have same camp creep unit not cleaned up
+    set u = FirstOfGroup(g)
+    exitwhen u == null or i >= 7  //7 shoul have 2 creepcamp
+    if GetUnitLevel(u) < 5 and not IsUnitType(u, UNIT_TYPE_FLYING) and (uc[0] == null or (uc[0] != null and DistanceBetweenUnits(u, uc[0]) > 600) or (uc[1] != null and DistanceBetweenUnits(u, uc[1]) > 600)) then  //maybe have same camp creep unit not cleaned up
       set ua[i] = CreatePathingUnit(ua[i])
-      set uc[i] = u
       call IssuePointOrder(ua[i], "move", GetUnitX(u), GetUnitY(u))
+      set uc[i] = u
       set i = i + 1
     endif
-    call RemoveLocation(loc)
-    call GroupRemoveUnit(tempg,u)
+    call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
   set g = null
-  call DestroyGroup(tempg)
-  set tempg = null
-  set loc = null
-  if i == 0 then
-    return
-  endif
+  set u = null
   set ru = i
   loop
     if i == ru then
       set i = 0
     endif
     exitwhen id == -1 or id == ru
+    call Sleep(0.1)
     if DistanceBetweenUnits(ua[i], uc[i]) < 600 and GetUnitState(uc[i], UNIT_STATE_LIFE) > 0 then
-      set loc = GetUnitLoc(uc[i])
+      set loc = Location(GetUnitX(uc[i]),GetUnitY(uc[i]))
       set id = -1
+      set rushcreep_target = uc[i]
     elseif GetUnitState(ua[i], UNIT_STATE_LIFE) <= 0 or GetUnitState(uc[i], UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(ua[i]) == OrderId("stop") or GetUnitCurrentOrder(ua[i]) != OrderId("move") or DistanceBetweenPoints_kd(home_location,GetUnitLoc(ua[i])) > 3200 then
       set id = id + 1
     endif
     set i = i + 1
-    call Sleep(0.3)
   endloop
   set i = 0
   loop
@@ -5716,27 +5688,83 @@ function BuildRushCreepAtBase takes nothing returns nothing
     set loc = null
     return
   endif
-  set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_rushcreep], loc, 550)
+  set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_rushcreep], loc, 600)
   if loc != null and DistanceBetweenPoints(loc, home_location) < distance then  //Prevent some islands/shallow water terrain from creating u on the other side of the map
     set g = CreateGroup()
     call GroupEnumUnitsInRangeOfLoc(g, loc, 510, null)
     loop
       set u = FirstOfGroup(g)
-      exitwhen u == null
-      if IsPlayerEnemy(GetOwningPlayer(u), ai_player) then  //if have enemy , cannot build , use getlocationstrength need judge twice - creep and player
+      exitwhen u == null or id == -2
+      if IsPlayerEnemy(GetOwningPlayer(u), ai_player) then  //if have enemy , cannot build (if use getlocationstrength need judge twice -- creep and player)
         set id = -2
       endif
       call GroupRemoveUnit(g,u)
     endloop
+    set u = GetExpansionPeon()
+    if u == null then
+      set u = GetExpansionPeon2()
+    endif
+    if id != -2 and u != null then
+      call IssuePointOrderByIdLoc(u, old_id[racial_rushcreep], loc)
+    endif
     call DestroyGroup(g)
     set g = null
-    set rushcreep_build = GetExpansionPeon2()
-    if id != -2 and rushcreep_build != null then
-      call IssuePointOrderByIdLoc(rushcreep_build, old_id[racial_rushcreep], loc)
-    endif
+    set u = null
   endif
   call RemoveLocation(loc)
   set loc = null
+endfunction
+
+//home_location have multiple mine
+function MultipleMinefix takes nothing returns boolean
+  local real i = 0
+  local real c = 0
+  local real distance = 1500
+  local group g = null
+  local unit mine = null
+  local unit u = null
+  local boolean b = true
+  if TownThreatened() or not hero_built[1] or (GetGold() < 600 and GetWood() < 400) or (not race_manual_loading and not race_uses_mine_expansion) or (race_manual_loading and TownCount(race_manual_loading_mine) > 1) or (race_uses_mine_expansion and TownCount(racial_expansion) > 1) then  // no first hero , first build army
+    return b
+  endif
+  set g = CreateGroup()
+  call GroupEnumUnitsInRangeOfLoc(g, home_location, 1500, null)
+  set g = SelectById(g, old_id[GOLD_MINE], true)
+  set g = SelectByAlive(g, true)
+  call GroupRemoveUnit(g, FirstOfGroup(g))  //remove one mine
+  if FirstOfGroup(g) == null then
+    call DestroyGroup(g)
+    set g = null
+    set first_town_mine = 0  //StartLocation be left one mine
+    return false
+  endif
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if GetResourceAmount(u) > 0 then
+      set i = DistanceBetweenPoints_kd(home_location,GetUnitLoc(u))
+      if i <= distance then
+        set distance = i
+        set mine = u
+      endif
+      set c = c + 1
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  if c > 2 then
+    set current_expansion = mine  //expansion mine
+    set b = false
+  elseif race_manual_loading and TownCount(race_manual_loading_mine) < 1 then
+    call GroupClear(g)
+    call GroupEnumUnitsInRangeOfLoc(g, home_location, 1500, null)
+    set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+    set g = SelectByAlive(g, true)
+    call IssueTargetOrder(FirstOfGroup(g), "entangle", mine)
+  endif
+  call DestroyGroup(g)
+  set g = null
+  set mine = null
+  return b  //human and orc just harvest
 endfunction
 
 //=============================================================================
@@ -5762,14 +5790,11 @@ endfunction
 
 //==============================================================
 function AddExpansion takes unit u, real d returns nothing
-  local location exp_loc = null
 
   set expansion_list[expansion_list_length] = u
   set expansion_dist[expansion_list_length] = d
   if race_ancient_expansion_available then
-    set exp_loc = GetUnitLoc(u)
-    set expansion_ancient[expansion_list_length] = GetBuildLocationInDistanceFromLoc_d(old_id[racial_expansion], exp_loc, ver_creeps_attack_buildings_dist + 500)
-    set exp_loc = null
+    set expansion_ancient[expansion_list_length] = GetBuildLocationInDistanceFromLoc_d(old_id[racial_expansion], GetUnitLoc(u), ver_creeps_attack_buildings_dist + 500)
   else
     set expansion_ancient[expansion_list_length] = null
   endif
@@ -5780,6 +5805,7 @@ endfunction
 //==============================================================
 function AddWaterExpansion takes unit u returns nothing
   set water_expansion_list[water_expansion_list_length] = u
+  call GroupAddUnit(water_expansion, u)
   set water_expansion_creeps[water_expansion_list_length] = GetExpFoeGroup(u)  // group of the the creeps that guard this mine
   set water_expansion_list_length = water_expansion_list_length + 1
 endfunction
@@ -5798,11 +5824,7 @@ function CheckExpansionTaken takes unit expa returns boolean
   set g = SelectByAlive(g, true)
   set g = SelectByAlive2(g, true)
   call GroupRemoveUnit(g, expa)
-  if FirstOfGroup(g) == null then
-    call DestroyGroup(g)
-    set g = null
-    return false
-  else
+  if FirstOfGroup(g) != null then
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null 
@@ -5819,10 +5841,10 @@ function CheckExpansionTaken takes unit expa returns boolean
       endif
       call GroupRemoveUnit(g, u)
     endloop
-    call DestroyGroup(g)
-    set g = null
-    return false
   endif
+  call DestroyGroup(g)
+  set g = null
+  return false
 endfunction
 
 //==============================================================
@@ -5943,7 +5965,7 @@ function MakeExpansionList takes nothing returns nothing
             call RemoveUnit(pather[i])
             set pather[i] = null
             set patherdone[i] = true
-            //call AddWaterExpansion(u)
+            call AddWaterExpansion(u)
           endif
         else
           set checks = 0	// means unit is moving and not standing still
@@ -5971,7 +5993,9 @@ function MakeExpansionList takes nothing returns nothing
     endif
     set i = i + 1
   endloop
-
+  if water_expansion_list_length + expansion_list_length > c_enemy_total + c_ally_total then  // have more mine , should positive Expansion
+    set positive_expansion = true
+  endif
   call Trace("Expansion number: " + Int2Str(expansion_list_length))
 
 //  loop
@@ -6065,7 +6089,7 @@ function remove_exp takes integer h returns nothing
   local integer i = h
   set exp_number = exp_number - 1
   loop
-    exitwhen i  >= exp_number
+    exitwhen i >= exp_number
     set exp_rp[i] = exp_rp[i + 1]
     set exp_unit[i] = exp_unit[i + 1]
     set exp_dist[i] = exp_dist[i + 1]
@@ -6110,13 +6134,14 @@ loop
 	exitwhen i >= c_enemy_total
 	if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
 		call GroupEnumUnitsOfPlayer(g, enemy_force[i], null)
-		set g = SelectById(g, 'ugol', true)  //some human UD player donot build TOWNHALL , TOWNHALL to goldmine between distance will compensate
+		set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+		set g = SelectByAlive(g, true)
 		if FirstOfGroup(g) == null then
 			call GroupClear(g)
 			call GroupEnumUnitsOfPlayer(g, enemy_force[i], null)
-			set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+			set g = SelectById(g, 'ugol', true)  //some human UD player donot build TOWNHALL
+			set g = SelectByAlive(g, true)
 		endif
-		set g = SelectByAlive(g, true)
 		loop
 			set u = FirstOfGroup(g)
 			exitwhen u == null
@@ -6322,12 +6347,13 @@ function ChooseExpansion takes nothing returns nothing
   set first_expansion_chosen = true
   loop
     exitwhen i >= expansion_list_length
-    if GetResourceAmount(expansion_list[i]) > 2 * GetUnitGoldCost2(racial_expansion) and not CheckExpansionTaken(expansion_list[i]) then
+    if GetResourceAmount(expansion_list[i]) > 2 * GetUnitGoldCost2(racial_expansion) and not CheckExpansionTaken(expansion_list[i]) and DistanceBetweenPoints_kd(home_location,GetUnitLoc(expansion_list[i])) > 1500 then
       call add_exp(expansion_list[i], expansion_dist[i], expansion_ancient[i], expansion_creeps[i])
     endif
     set i = i + 1
   endloop
-  if TownCountDone(neutral_zeppelin) > 0 then
+  set exp_chosen = i
+  if TownCountDone(neutral_zeppelin) > 0 and exp_chosen < 3 then  //first taken normal mine
     set i = 0
     loop
       exitwhen i >= water_expansion_list_length
@@ -6336,6 +6362,9 @@ function ChooseExpansion takes nothing returns nothing
       endif
       set i = i + 1
     endloop
+  endif
+  if positive_expansion and exp_number < c_enemy_total + c_ally_total then
+    set positive_expansion = false
   endif
   call add_exp_rp()
 //  call make_exp_rp_positive()
@@ -6353,10 +6382,9 @@ endfunction
 
 //============================================================================
 function GetExpFoe takes nothing returns unit
-  local group g = null
+  local group g = CopyGroup(current_expansion_creeps)
   local location l = GetUnitLoc(current_expansion)
   //call Trace("Copy group")
-  set g = CopyGroup(current_expansion_creeps)
   set g = SelectByAlive(g, true)
   set ru_exp[2] = GetNearestOfGroup(g, l)
   if l != null then
@@ -6374,7 +6402,6 @@ function GetExpFoe takes nothing returns unit
   set g = null
   //call Trace("Have a foe")
   return ru_exp[2]
-
 endfunction
 
 function GetNeutralGuard takes integer nn returns unit
@@ -6485,11 +6512,9 @@ endfunction
 //============================================================================
 function AddFrontPoint takes location l returns nothing
   local unit pathable = null
-  local location loc = null
 
   set pathable = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), 'ewsp', GetLocationX(l), GetLocationY(l), 270.00)
-  set loc = GetUnitLoc(pathable)
-  if DistanceBetweenPoints(loc, l) <= 200 then
+  if DistanceBetweenPoints_dk(GetUnitLoc(pathable), l) <= 200 then
     call CreateDebugTagLoc("Front Point Added", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
     set front_loc[front_loc_num] = Location(GetLocationX(l),GetLocationY(l))
     set front_loc_num = front_loc_num + 1
@@ -6498,8 +6523,6 @@ function AddFrontPoint takes location l returns nothing
   endif
   call RemoveLocation(l)
   set l = null
-  call RemoveLocation(loc)
-  set loc = null
   call RemoveUnit(pathable)
   set pathable = null
 endfunction
@@ -6516,7 +6539,7 @@ function ComputeFrontPoints takes nothing returns nothing
   local boolean pathingdone = true
   local boolean array patherdone
   local location l = null
-  local location locpro = null
+  //local location locpro = null
   local real distance = 0
   
   loop
@@ -6547,16 +6570,11 @@ function ComputeFrontPoints takes nothing returns nothing
             call RemoveUnit(u[i])
             set u[i] = null
             set patherdone[i] = true
-            set locpro = Location(GetLocationX(l),GetLocationY(l))
-            call AddFrontPoint(locpro)
-            set locpro = AIGetProjectedLoc(l, home_location, 100, 90)
-            call AddFrontPoint(locpro)
-            set locpro = AIGetProjectedLoc(l, home_location, 100, -90)
-            call AddFrontPoint(locpro)
-            set locpro = AIGetProjectedLoc(l, home_location, 200, 80)
-            call AddFrontPoint(locpro)
-            set locpro = AIGetProjectedLoc(l, home_location, 200, -80)
-            call AddFrontPoint(locpro)
+            call AddFrontPoint(Location(GetLocationX(l),GetLocationY(l)))
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, 90))
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, -90))
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, 80))
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, -80))
           elseif GetUnitState(u[i], UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u[i]) == OrderId("stop") or GetUnitCurrentOrder(u[i]) != OrderId("move") then
             set patherdone[i] = true
             call RemoveUnit(u[i])
@@ -6587,7 +6605,7 @@ function ComputeFrontPoints takes nothing returns nothing
   set front_locs_computed = true
   set l = null
   set loc = null
-  set locpro = null
+  //set locpro = null
   set p = null
   set mainplayer = null
 
@@ -7041,7 +7059,6 @@ endfunction
 function TQInitJobs takes nothing returns nothing
   call TQAddJob(GetRandomReal(20, 35), TIMED_CHAT, C_Greet)
   call TQAddJob(GetRandomReal(40, 60), TIMED_CHAT, C_STRATEGY)
-  
 #INCLUDETABLE <Jobs.txt> #EFR #COND '%4' eq 'true'
   call TQAddJob(GetRandomReal(%5, %6), %1, 0)
 #ENDINCLUDE
@@ -7501,6 +7518,9 @@ function cmd_attack takes integer cmd, integer data returns nothing
       //call DisplayToAllies(chat_towerrush)
     else
       call DisplayToAllies(chat_no_towerrush)
+      if not IsPlayerAlly(ai_player,GetLocalPlayer()) then
+        call DisplayToObserversImportant( chat_no_towerrush )
+      endif
     endif
 
   endif
@@ -7605,7 +7625,6 @@ function cmd_misc takes integer cmd, integer data returns nothing
   #ENDINCLUDE
     endif
     call InitChatArrays()
-
   endif
 endfunction
 
@@ -8063,7 +8082,7 @@ endfunction
 function AMAI takes code heroes, code peons, code attacks returns nothing
     local boolean isNewbie = (MeleeDifficulty() == EASY)
 
-//    call sendToNextAI()
+    // call sendToNextAI()
     call SaveBoolean(com, TEAM_STATEGY_INUSE, strategy_type[chosen_strategy], true)
     set last_strategy = strategy
 
@@ -8074,19 +8093,19 @@ function AMAI takes code heroes, code peons, code attacks returns nothing
 #ENDINCLUDE
 
     call CreateCaptains()
-call Trace("Setting hero levels")
+    call Trace("Setting hero levels")
     call SetHeroLevels(heroes)
-	call Trace("heros set")
+    call Trace("heros set")
     call Sleep(0.1)
-// Job Thread
+    // Job Thread
     call StartThread(function TQLoop)
-	//call Trace("TQLoop")
+    //call Trace("TQLoop")
     call StartThread(peons)
-	//call Trace("peons")
+    //call Trace("peons")
     call StartThread(attacks)
-	//call Trace("attacks")
+    //call Trace("attacks")
     call StartThread(function cmd_loop)
-	//call Trace("cmd_loop")
+    //call Trace("cmd_loop")
 
 endfunction
 
@@ -8578,12 +8597,20 @@ function GetMinesHarvested takes nothing returns integer
   local integer twm = TownWithMine()
   local integer i = twm
   local integer sum = 0
+  local integer mine = racial_expansion
+  if race_manual_loading then
+    set mine = race_manual_loading_mine
+  endif
+  if first_town_mine > 0 then  //home_location have multiple mine
+    set twm = TownCount(mine)
+    set i = twm
+  endif
   if twm < 0 then
     return 0
   endif
   loop
     exitwhen i > twm + 3
-    if TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then
+    if TownHasMine(i) and TownCountEx(mine,true,i) > 0 then
       set sum = sum + 1
     endif
     set i = i + 1
@@ -8706,7 +8733,7 @@ function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer
     local integer i = 0
     local integer j = 0
 
-    if unitid == 0 then
+    if unitid == 0 or qty == 0 then
       return
     endif
 
@@ -8814,9 +8841,8 @@ function RefreshNeeded takes integer t, integer qty, integer unitid, integer tow
 endfunction
 
 function SetBuildAllAM takes integer t, integer mqty, integer unitid, integer town, integer bloc, integer prio returns nothing
-  local integer qty = BlockListCheck(mqty, unitid)
-  call SetBuildAllAMCore(t, qty, unitid, town, bloc, prio)
-  call RefreshNeeded(t, qty, unitid, town, bloc, prio)
+  call SetBuildAllAMCore(t, mqty, unitid, town, bloc, prio)
+  call RefreshNeeded(t, mqty, unitid, town, bloc, prio)
 endfunction
 
 //============================================================================
@@ -8834,11 +8860,12 @@ endfunction
 //============================================================================
 function BuildUnit takes integer qty, integer unitid, integer prio returns nothing
   local integer i = BLOC_STD
-  if minebuild then
-    set i = BLOC_MINE
-  endif
-  if not homebuild and not shredderbuild and buy_type[unitid] == BT_BUILDING then
-    set i = BLOC_FRONT
+  if buy_type[unitid] == BT_BUILDING and not IsRacialHallId(unitid , 1) then
+    if minebuild then
+      set i = BLOC_MINE
+    elseif not homebuild and not shredderbuild then
+      set i = BLOC_FRONT
+    endif
   endif
   call SetBuildAllAM(BUILD_UNIT,qty,unitid,-1, i, prio)
 endfunction
@@ -9324,6 +9351,9 @@ endfunction
 
 //============================================================================
 function DefendTownsDone takes integer qty, integer unitid, integer prio returns nothing
+  if TownWithMine() < 1 then
+    return
+  endif
   call DefendTownsEx(true, qty, unitid, prio)
 endfunction
 
@@ -9331,6 +9361,9 @@ endfunction
 function DefendTownsCond takes integer qty, integer unitid, integer min_dist, integer max_dist, integer min_gold, integer prio returns nothing
   local integer twm = Max(TownWithMine(),1)
   local integer i = twm
+  if TownWithMine() < 1 then
+    return
+  endif
   loop
     exitwhen i > twm + 2
     if TownHasMine(i) and town_built[i] and own_town_dist[i] >= min_dist and own_town_dist[i] <= max_dist and GetResourceAmount(own_town_mine[i]) >= min_gold then
@@ -9370,7 +9403,7 @@ endfunction
 
 function MeleeTownHallAM takes integer townid, integer unitid, integer prio returns nothing
     if TownHasMine(townid) and not TownHasHall(townid) then
-        call SecondaryTownAM ( townid, 1, unitid, prio )
+        call SecondaryTownAM( townid, 1, unitid, prio )
     endif
 endfunction
 
@@ -9494,14 +9527,11 @@ function UpgradeBuilding takes integer qty, integer unitid, integer town, intege
   local group g = CreateGroup()
   local integer current_town = town
   local integer num = 0
-  local location loc = null
   if town == -1 then
     set current_town = 0
   endif
   if bloc != BLOC_STD then
-    set loc = GetBuildLocation(bloc)
-    call GroupEnumUnitsInRangeOfLoc(g, loc, 800, null)
-    set loc = null
+    call GroupEnumUnitsInRangeOfLoc(g, GetBuildLocation(bloc), 800, null)
     set g = SelectByPlayer(g, ai_player, true)
     set g = SelectByAlive(g, true)
     loop
@@ -9581,18 +9611,16 @@ endfunction
 //============================================================================
 function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc returns integer
   local unit peon = GetExpansionPeon()
-  local location loc = GetBuildLocation(bloc)
   local unit utemp1 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), 'eaom', home_location, 270.0)  //utemp is seat, leave a passage , unit can ensure correct position
   local unit utemp2 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), unitid, front_loc[0], 270.0)
-  local unit u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], loc, 270.0)
-  local location l = GetUnitLoc(u)
+  local unit u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], GetBuildLocation(bloc), 270.0)
+  local location l = Location(GetUnitX(u),GetUnitY(u))
   call RemoveUnit(utemp1)
   set utemp1 = null
   call RemoveUnit(utemp2)
   set utemp2 = null
   call RemoveUnit(u)
   set u = null
-  set loc = null
   if peon == null then
     set peon = GetExpansionPeon2()	// In case we can't get the expansion peon
   endif
@@ -9607,6 +9635,10 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
     call RemoveLocation(l)
     set l = null
     return CANNOT_BUILD
+  elseif bloc == BLOC_FRONT and DistanceBetweenPoints(l,home_location) >= front_base_distance + 400 and unitid == race_tower_id then
+    call Trace("BuildatspecialLoc: Build loc too far , fix build loc")
+    set l = AIGetProjectedLoc(front_loc[GetRandomInt(0, front_loc_num - 1)], home_location, 200, 0)
+    call IssuePointOrderByIdLoc(peon, old_id[unitid], l)
   elseif not IssuePointOrderByIdLoc(peon, old_id[unitid], l) then
     //call Trace("Building at special point")
     //else
@@ -9815,10 +9847,12 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       return GetNeutralHero(unitid)
     endif
 
-    if not towerrush and unitid == racial_rushcreep and not rushcreepdone and CreepsOnMap() then
-      set rushcreepdone = true
-      call BuildRushCreepAtBase()
-      return BUILT_ALL  //Whatever BuildRushCreepAtBase outcome, build
+    if unitid == racial_rushcreep then
+      if CreepsOnMap() then
+        call BuildRushCreepAtBase()
+      endif
+      set racial_rushcreep = 0  //just run once
+      return BUILT_SOME
     endif
 
     if buy_type[unitid] > BT_RACIAL_ITEM and buy_type[unitid] <= BT_MERCHANT_ITEM then
@@ -9898,44 +9932,51 @@ endfunction
 
 //============================================================================
 function IsWaterExpansion takes unit u returns boolean
-  local integer i = 0
-  loop
-    exitwhen i == water_expansion_list_length
-    if water_expansion_list[i] == u then
-      return true
-    endif
-    set i = i + 1
-  endloop
+  //local integer i = 0
+  // loop
+  //   exitwhen i == water_expansion_list_length
+  //   if water_expansion_list[i] == u then
+  //     return true
+  //   endif
+  //   set i = i + 1
+  // endloop
+  if IsUnitInGroup(u,water_expansion) then
+    return true
+  endif
   return false
 endfunction
 
 //============================================================================
 function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
-  if build_zeppelin == null or not UnitAlive(build_zeppelin) then
-    set build_zeppelin = GetUnusedZeppelinNearUnit(peon)
+  if zeppelin_peon == null or not UnitAlive(zeppelin_peon) then
+    set zeppelin_peon = peon
+  endif
 	// Disabled just in case
+  if build_zeppelin == null or not UnitAlive(build_zeppelin) then
+    set build_zeppelin = GetUnusedZeppelinNearUnit(zeppelin_peon)
     if build_zeppelin == null then
       call Trace("No Zeppelin found for transporting peon")
       return false
     endif
     call GroupAddUnit(unit_zepplin_move, build_zeppelin)
   endif
-  if IsUnitInTransport(peon, build_zeppelin) then
+  if IsUnitInTransport(zeppelin_peon, build_zeppelin) then
     if DistanceBetweenUnits(build_zeppelin, target) > 300 then
       call IssuePointOrder(build_zeppelin, "move", GetUnitX(target), GetUnitY(target))
     else
-      call IssueTargetOrder(build_zeppelin, "unload", peon)
+      call IssueTargetOrder(build_zeppelin, "unload", zeppelin_peon)
+      call Sleep(1.2)  //unload time
+      return true
     endif
   else
-    if DistanceBetweenUnits(peon, target) < 400 then
+    if DistanceBetweenUnits(zeppelin_peon, target) < 400 then
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       set build_zeppelin = null
       return true
     else
-      call IssueTargetOrder(peon, "smart", build_zeppelin)
+      call IssueTargetOrder(zeppelin_peon, "smart", build_zeppelin)
     endif
   endif
-  set build_zeppelin = null
   return false
 endfunction
 
@@ -9958,7 +9999,11 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   if CheckExpansionTaken(current_expansion) then
     set current_expansion = null
   endif
-
+  if first_town_mine != 0 then
+    if MultipleMinefix() then
+      return BUILT_ALL
+    endif
+  endif
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Taken Checked")
 
   if current_expansion == null then
@@ -9968,7 +10013,6 @@ function StartExpansionAM takes integer qty, integer hall returns integer
       return BUILT_ALL
     endif
   endif
-
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion choosen")
 
   if GetExpFoe() != null then
@@ -10028,6 +10072,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
         set peon = null
         return BUILT_SOME
       endif
+      set peon = zeppelin_peon
     endif
     set exp_time_count = ai_time	// This sets time to next expansion to current time so it waits enough time before starting another expansion 
     if race_uses_mine_expansion then
@@ -10038,7 +10083,6 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     endif
     set peon = null
   endif
-
 //  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Finished")
   return BUILT_SOME
 endfunction
@@ -10212,10 +10256,23 @@ endfunction
 
 //============================================================================
 function BuildPeons takes integer number returns nothing
+  if towerrush and (TownCount(hero[1]) + TownCount(hero[2]) + TownCount(hero[3])) != 0 then  // towerrush compensate
+    if not race_has_ghouls and TownCount(racial_peon) < 14 then
+      set number = number + race_tower_peon
+    elseif race_has_ghouls and TownCount(racial_peon) < 5 + race_tower_peon then
+      set number = number + race_tower_peon
+    endif
+    if race_tower_bypeon == true then
+      set number = number + 2
+    endif
+  endif
   call BuildUnit(number, racial_peon, peon_prio)
 endfunction
 
 function BuildGhouls takes integer number returns nothing
+  if towerrush and TownCount(racial_ghoul) < 8 then  // towerrush compensate
+    set number = number + 1
+  endif
   call BuildUnit(number, racial_ghoul, ghoul_prio)
 endfunction
 
@@ -10223,14 +10280,12 @@ endfunction
 function PeonBuilder takes nothing returns nothing
   local integer mo = GetMinesHarvested()
   local integer sc = TownCount(neutral_shredder)
-  local integer tr_p = 0
   local real w = GetWood()
   if race_uses_shredder then
     call ShredderBuilder()
   else
     set sc = 0
   endif
-   
   //if w <= maximum_peon_wood then 
   /// call BuildPeons( peon_1_mine_number * mo + Max(max_lumber_peons - shredder_peon_count*sc, 1 )  )  // number of peons per mine + wood peons
   //elseif w >= minimum_peon_wood then
@@ -10239,38 +10294,28 @@ function PeonBuilder takes nothing returns nothing
  //  call BuildPeons( peon_1_mine_number * mo + Max(Max(min_lumber_peons, R2I(I2R(max_lumber_peons) / 2)) - shredder_peon_count*sc, 1 )  )
  // endif
 
-  if towerrush and (TownCount(hero[1]) + TownCount(hero[2]) + TownCount(hero[3])) != 0 then// towerrush peons compensate
-    set tr_p = race_tower_peon
-    if race_tower_bypeon == true then
-      set tr_p = race_tower_peon + 2
-    endif
-  endif
-
   if race_has_ghouls then
     if mo <= 1 then
-      call BuildPeons(min_peon_number_single_mine + tr_p)
+      call BuildPeons(min_peon_number_single_mine)
     elseif mo <= 2 then
-      call BuildPeons(min_peon_number_double_mine + tr_p)
+      call BuildPeons(min_peon_number_double_mine)
     else
-      call BuildPeons(min_peon_number_multi_mine + tr_p)
+      call BuildPeons(min_peon_number_multi_mine)
     endif
   else
     if mo <= 1 then
       // call BuildPeons(Max(min_peon_number_single_mine, R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_1_mine_number, 5, w)) - shredder_peon_count*sc))
-      call BuildPeons(Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_1_mine_number, min_peon_number_single_mine, w) + tr_p - shredder_peon_count*sc),min_peon_number_single_mine + tr_p))  // the Max condition prevents having loads of shredders stoping amai getting peons for gold
+      call BuildPeons(Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_1_mine_number, min_peon_number_single_mine, w) - shredder_peon_count*sc),min_peon_number_single_mine))  // the Max condition prevents having loads of shredders stoping amai getting peons for gold
     elseif mo <= 2 then
       // call BuildPeons(Max(min_peon_number_double_mine, R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_2_mines_number, 10, w)) - shredder_peon_count*sc))
-      call BuildPeons(Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_2_mines_number, min_peon_number_double_mine, w) + tr_p - shredder_peon_count*sc),min_peon_number_double_mine + tr_p))
+      call BuildPeons(Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_2_mines_number, min_peon_number_double_mine, w) - shredder_peon_count*sc),min_peon_number_double_mine))
     else
       // call BuildPeons(Max(min_peon_number_multi_mine, R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_mines_number, 10, w)) - shredder_peon_count*sc))
-      call BuildPeons(Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_mines_number, min_peon_number_multi_mine, w) + tr_p - shredder_peon_count*sc),min_peon_number_multi_mine + tr_p))
+      call BuildPeons(Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_mines_number, min_peon_number_multi_mine, w) - shredder_peon_count*sc),min_peon_number_multi_mine))
     endif
   endif
   if race_has_ghouls then
-      if towerrush then
-        set tr_p = 1
-      endif
-      call BuildGhouls(Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, race_max_ghouls, race_min_ghouls, w) + tr_p - R2I(shredder_peon_count/2)*sc),2)) 
+      call BuildGhouls(Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, race_max_ghouls, race_min_ghouls, w) - R2I(shredder_peon_count/2)*sc),2)) 
   endif
 endfunction
 
@@ -10294,8 +10339,10 @@ endfunction
 function ExpansionBuilder takes nothing returns nothing
 local integer mines = GetMinesOwned()
 local integer gold_left = GetGoldOwned()
+local integer i = racial_expansion
 local boolean exp_prepared = false
 local boolean rebuild = false
+local unit u = null
 
 if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
   call ChooseExpansion()
@@ -10305,8 +10352,21 @@ if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(
   endif
 endif
 
+if first_town_mine != 0 then
+  if MultipleMinefix() then
+    return
+  endif
+endif
+
+if race_manual_loading then
+  set i = race_manual_loading_mine
+endif
+if (race_uses_mine_expansion or race_manual_loading) and TownCount(i) < GetMinesOwned() then  //home_location have multiple mine , fix GetMinesOwned bug(ELF and UD)
+  set mines = TownCount(i)
+endif
+set u = GetExpFoe()
 if mines < 2 and ai_time - exp_time_count > exp_first_time then
-  if GetExpFoe() != null then
+  if u != null then
     set take_exp = true
     //if attacking_expansion then
     //  set exp_prepared = true
@@ -10320,13 +10380,17 @@ if mines < 2 and ai_time - exp_time_count > exp_first_time then
 endif
 
 if mines < 3 and ai_time - exp_time_count > exp_second_time then
-    if GetExpFoe() != null then
+    if u != null then
         set take_exp = true
     else
         set take_exp = false
         set exp_prepared = true
         call Trace("ExpansionBuilder:Ready to expand to mine 3")		
     endif
+endif
+set u = null
+if positive_expansion == true and take_exp == false and u != null then
+  set take_exp = true
 endif
 
 if not exp_prepared then
@@ -10336,7 +10400,7 @@ if not exp_prepared then
 	endif
 endif
 
-if mines < 1 or gold_left < 2000 or exp_prepared then
+if mines < 1 or gold_left < 2000 or exp_prepared or (positive_expansion and mines < 3) then
   call Trace("ExpansionBuilder: Putting mine on build list")
   if mines < 1 or gold_left < 2000 then
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_emergency_prio)
@@ -10354,7 +10418,7 @@ function InitHeroInfo takes integer hn returns nothing
   if hero_loc[hn] != null then
     call RemoveLocation(hero_loc[hn])
   endif
-  set hero_loc[hn] = GetUnitLoc(hero_unit[hn])
+  set hero_loc[hn] = Location(GetUnitX(hero_unit[hn]), GetUnitY(hero_unit[hn]))
   if hero_enemy_loc[hn] != null then
     call RemoveLocation(hero_enemy_loc[hn])
   endif
@@ -10416,15 +10480,17 @@ function LocalizeNewTown takes integer num returns nothing
   endloop
   call DestroyGroup(g)
   set g = null
+  if own_town_loc[num] != null then
+    call RemoveLocation(own_town_loc[num])
+    set own_town_loc[num] = null
+  endif
   if u == null then
 //    call DisplayToAll("Debug: New town not found")
-    call RemoveLocation(own_town_loc[num])  //Additional review required
-    set own_town_loc[num] = null
     set own_town_mine[num] = null
     set own_town_dist[num] = 0
     return
   endif
-  set own_town_loc[num] = GetUnitLoc(u)
+  set own_town_loc[num] = Location(GetUnitX(u),GetUnitY(u))
   set own_town_mine[num] = GetMineNearLoc(own_town_loc[num], 1500)
   set own_town_dist[num] = DistanceBetweenPoints(home_location, own_town_loc[num])
 //  call PingMinimap(GetUnitX(u), GetUnitY(u), 20)
@@ -10528,20 +10594,20 @@ function OneBuildLoopAM takes nothing returns nothing
     call GetBuildLock()
     loop
         exitwhen index >= build_length
-
-        set id   = build_item[index]
-        set qty  = RBlockListCheck(build_qty[index], id)
-        set tp   = build_type[index]
+        set id = build_item[index]
+        set qty = Min(RBlockListCheck(build_qty[index], id),BlockListCheck(build_qty[index], id))
+        if towerrush then
+          set qty = build_qty[index]
+        endif
+        set tp = build_type[index]
         set town = Max(build_town[index],0)
         set mo = max_order[id + town*OBJECT_NUM]
-
 //        call DumpInteger("ID"+Int2Str(index),id)
 //        call DumpInteger("Qty"+Int2Str(index),qty)
 //        call DumpInteger("Gold"+Int2Str(index),total_gold)
 //        call DumpInteger("Prio"+Int2Str(index),build_prio[index])
 
         if build_qty[index] > mo then
-
           if tp == BUILD_UNIT then
               set logtype = "unit "
               set ret = StartUnitAM(qty,id,build_town[index], build_loc[index], build_prio[index], mo)
@@ -10682,18 +10748,15 @@ endfunction
 //============================================================================
 function AttackGroupAddNeutrals takes nothing returns nothing
   local integer i = 0
-  local integer b = merc_number
-  if b < dragon_number then
-    set b = dragon_number
-  endif
   loop
-    exitwhen i > b
-    if i <= merc_number then
-      call SetAssaultGroupAM(1,60,merc_unit[i])
-    endif
-    if i + 1 <= dragon_number then
-      call SetAssaultGroupAM(1,60,dragons[i+1])
-    endif
+    exitwhen i >= merc_number
+    call SetMeleeGroupAM(merc_unit[i])
+    set i = i + 1
+  endloop
+  set i = 1
+  loop
+    exitwhen i >= dragon_number
+    call SetMeleeGroupAM(dragons[i])
     set i = i + 1
   endloop
 endfunction
@@ -10822,7 +10885,7 @@ endfunction
 function GetNearAlliedStrength takes unit target returns real
   local integer i = 0
   local real sum = 0
-  local location unitloc = GetUnitLoc(target)
+  local location unitloc = Location(GetUnitX(target),GetUnitY(target))
   local real dist = DistanceBetweenPoints(unitloc, ally_loc) + 600
   loop
     exitwhen i >= army_num
@@ -10896,7 +10959,6 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
   local integer attack_length_counter = 0
   local integer combat_length_counter = 0
   local group g = null
-  local location unitloc = null
   if target == null then
     return
   endif
@@ -10904,7 +10966,6 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
   if race_has_ghouls and race_ghouls_attack then
     set attack_length_counter = 5000  // Force army to regroup to try and get ghouls to go along
   endif
-
   loop
     exitwhen town_threat_break and town_threatened and town_threat[most_threatened_town] >= teleport_low_threat and not desperation_assault
     exitwhen break_attack and not desperation_assault
@@ -10918,10 +10979,10 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       set g = SelectByAlive(g,true)
       set g = SelectByEnemy(g,ai_player, true)
       if not UnitAlive(target) or UnitInvis(target) then
-        set g = SelectByVisible(g,ai_player,true)
+        set g = SelectByVisible(g,ai_player,true)  // to find enemies that ai has noticed
       endif
       if iscreeping then
-        set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)	// if creeping and unit invisible see if any other creeps targetable
+        set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)  // if creeping and unit invisible see if any other creeps targetable
       endif
       set target = FirstOfGroup(g)
       call DestroyGroup(g)
@@ -10933,10 +10994,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       //call Trace("Units, Creeps: " + Int2Str(GetLocationNonCreepStrength(unitx, unity, battle_radius)) + "," + Int2Str(GetLocationCreepStrength(unitx, unity, 500)))
     //	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationCreepStrength(unitx, unity, 500) <= 0			
     //endif
-
-    set unitloc = GetUnitLoc(target)
-    set dist = DistanceBetweenPoints(ally_loc, unitloc)
-    call RemoveLocation(unitloc)
+    set dist = DistanceBetweenPoints_kd(ally_loc, GetUnitLoc(target))
     if c_ally_total > 0 and dist > 1300 and dist < 2500 then
       if CheckAttackWait(target) then
         call AttackMoveXY(R2I(GetLocationX(ally_loc)), R2I(GetLocationY(ally_loc)))
@@ -10983,8 +11041,6 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     endif
   endloop
   set g = null
-  set unitloc = null
-
 endfunction
 
 //============================================================================
@@ -11018,6 +11074,56 @@ function SleepUntilAtGoalAM takes nothing returns nothing
 endfunction
 
 //============================================================================
+function BRRush takes nothing returns nothing
+  local location buildloc = null
+  local location loc = null
+  local unit u = null
+  local unit utemp = null
+  local group g = CreateGroup()
+  local integer i = 0
+  call GroupEnumUnitsInRange(g,GetUnitX(rushcreep_target), GetUnitY(rushcreep_target),800,null)
+  set g = SelectByAlive(g,true)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsPlayerEnemy(ai_player,GetOwningPlayer(u)) then
+      set i = 1  // have other player
+    endif
+    if GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == 'eaom' then
+      set utemp = u
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  if i != 1 and GetUnitState(utemp, UNIT_STATE_LIFE) >= GetUnitState(utemp, UNIT_STATE_MAX_LIFE) * 0.65 then
+    set buildloc = Location(GetUnitX(utemp),GetUnitY(utemp))
+    set attack_running = true
+    call IssueImmediateOrder(utemp, "unroot")  //try unroot
+    call Sleep(2.8)  //unroot time
+    set loc = GetUnitLoc(rushcreep_target)
+    call IssuePointOrderLoc(utemp, "attack", loc)
+    call RemoveLocation(loc)
+    set loc = null
+    call AttackMoveKill(rushcreep_target)
+    call ReformUntilTargetDeadAM(rushcreep_target, true)
+    call Chat(C_Done)
+    call SleepInCombatAM()
+    call Trace("===BR Finished===")
+    set attack_running = false
+    call IssuePointOrderLoc( utemp, "move", buildloc)  //prevent inability cannot root
+    call Sleep(0.02)
+    call IssuePointOrderLoc( utemp, "root", buildloc)  //root tree
+    call RemoveLocation(buildloc)
+    set buildloc = null
+  endif
+  if not UnitAlive(rushcreep_target) then
+    set rushcreep_target = null
+  endif
+  set utemp = null
+endfunction
+
+//============================================================================
 function AttackMoveKillAAM takes unit target returns nothing
     if target == null or not UnitAlive(target) then
         call Trace("Bad target passed to AttackMoveKillAAM")
@@ -11044,17 +11150,10 @@ endfunction
 // Attack target code without the battle radius set so uses the creep radius
 // and without distraction attack
 function AttackMoveKillCreep takes unit target returns nothing
-  local location rushcreeploc = null
     if target == null or not UnitAlive(target) then
         call Trace("Bad target passed to AttackMoveKillCreep")
         call Sleep(3 * sleep_multiplier)
         return
-    endif
-    if rushcreep_build != null and DistanceBetweenUnits(rushcreep_build, target) < 800 and GetUnitState(rushcreep_build, UNIT_STATE_LIFE) >= GetUnitState(rushcreep_build, UNIT_STATE_MAX_LIFE) * 0.65 then
-      set rushcreeploc = GetUnitLoc(rushcreep_build)
-      call IssueImmediateOrder(rushcreep_build, "unroot")
-      call Sleep(3)
-      call IssueTargetOrderById(rushcreep_build, 851983, target )  //try attack
     endif
     set attack_running = true
     set break_attack = false
@@ -11071,26 +11170,16 @@ function AttackMoveKillCreep takes unit target returns nothing
     call SleepInCombatAM()
     call Trace("===Attack Fully Finished===")
     set attack_running = false
-    if rushcreeploc != null then
-      if DistanceBetweenPoints_kd(rushcreeploc , GetUnitLoc(rushcreep_build)) > 50 then
-        call IssuePointOrderLoc( rushcreep_build, "move", rushcreeploc)  //prevent inability cannot root
-        call IssuePointOrderLoc( rushcreep_build, "root", rushcreeploc)  //root tree
-      endif
-      call RemoveLocation(rushcreeploc)
-      set rushcreeploc = null
-    endif
 endfunction
 
 //============================================================================
 function AttackMoveKillXYAAM takes integer x, integer y returns nothing
     set attack_running = true
     call DoAttackJobs()
-	
     if zep_next_wave then
         call LoadZepWave(x,y)
         set zep_next_wave = false
-    endif	
-	
+    endif
     call AttackMoveXY(x,y)
     call SleepUntilAtGoalAM()
     call SleepInCombatAM()
@@ -11235,26 +11324,23 @@ endfunction
 
 //============================================================================
 function CreepAttack takes integer str returns nothing
-    local unit target = GetFittingCreep(str)
-
+  local unit target = GetFittingCreep(str)
 // Creep camp small is level 1 - 9
 // Creep camp medium is level 10 - 19
 // Creep camp strong is level 20 - 100
 
-    if target == null then
-      call Trace("No creep target found")
-      call Sleep(20)
-      return
-    endif
-    call Chat(C_Creep)
-    if air_strength > 15 then
-      call SetAllianceTarget(target)
-    endif
-
+  if target == null then
+    call Trace("No creep target found")
+    call Sleep(20)
+    return
+  endif
+  call Chat(C_Creep)
+  if air_strength > 15 then
+    call SetAllianceTarget(target)
+  endif
   call FormGroupAM(3)
   call AttackMoveKillCreep(target)
   set target = null
-
 endfunction
 
 //============================================================================
@@ -11292,7 +11378,7 @@ endfunction
 //============================================================================
 function GetWeakestEnemy takes nothing returns player
     local integer i = 0
-    local integer pmin = -1
+    local integer pmin = 30
     local integer minstr = 1000
     local integer cstr = 0
     loop
@@ -11306,16 +11392,13 @@ function GetWeakestEnemy takes nothing returns player
       endif
     set i = i + 1
     endloop
-    if pmin != -1 then
-      return enemy_force[pmin]
-    endif
-    return null
+    return enemy_force[pmin]
 endfunction
 
 //============================================================================
 function GetStrongestEnemy takes nothing returns player
     local integer i = 0
-    local integer pmax = -1
+    local integer pmax = 30
     local integer maxstr = 0
     local integer cstr = 0
     loop
@@ -11329,10 +11412,7 @@ function GetStrongestEnemy takes nothing returns player
       endif
       set i = i + 1
     endloop
-    if pmax != -1 then
-      return enemy_force[pmax]
-    endif
-    return null
+    return enemy_force[pmax]
 endfunction
 
 //============================================================================
@@ -11367,8 +11447,8 @@ endfunction
 //============================================================================
 function GetNearHumanPlayerEnemy takes nothing returns player
   local integer i = 0
-  local integer t = -1
-  local integer nearhumanplayer = -1
+  local integer t = 0
+  local integer nearhumanplayer = 30
   local real dist = 0
   local real mindistance = 100000000  // use to big map - 12 or 24 player map
   loop
@@ -11383,18 +11463,13 @@ function GetNearHumanPlayerEnemy takes nothing returns player
     endif
     set i = i + 1
   endloop
-  if t != -1 then
-    set c_enemy_user_total = t + 1  // update c_enemy_user_total
-  endif
-  if nearhumanplayer != -1 then
-    return enemy_force[nearhumanplayer]
-  endif
-  return null
+  set c_enemy_user_total = t  // update c_enemy_user_total
+  return enemy_force[nearhumanplayer]
 endfunction
 
 function GetNearestEnemy takes nothing returns player
 local integer i = 0
-local integer nearplayer = -1
+local integer nearplayer = 30
 local real dist = 0
 local real mindistance = 1000000
 
@@ -11409,10 +11484,7 @@ loop
   endif
   set i = i + 1
 endloop
-if nearplayer != -1 then
-  return enemy_force[nearplayer]
-endif
-return null
+return enemy_force[nearplayer]
 endfunction
 
 //============================================================================
@@ -11564,6 +11636,7 @@ endfunction
 //============================================================================
 function ChooseAnEnemyTarget takes nothing returns unit
   local player target_enemy = null
+  local player temptarget = null
   local group g = CreateGroup()
   local location enemy_base = null
 
@@ -11581,8 +11654,10 @@ function ChooseAnEnemyTarget takes nothing returns unit
     //call Trace("Choosing weakest closest Enemy")
   endif
   if (c_ai_total + c_enemy_total >= 10 or mapattackdelayed > 8) and c_enemy_user_total > 0 and GetPlayerController(target_enemy) != MAP_CONTROL_USER then  // big map , attack strategy is first attack HumanPlayer
-    if GetRandomInt(0 , 100) <= (mapattackdelayed * 2 + c_ai_total + c_enemy_total) then
-      set target_enemy = GetNearHumanPlayerEnemy()
+    set temptarget = GetNearHumanPlayerEnemy()
+    if temptarget != null then
+      set target_enemy = temptarget
+      set temptarget = null
     endif
   endif
   call GroupEnumUnitsOfPlayer(g, target_enemy, null)
@@ -11648,14 +11723,16 @@ endfunction
 // Militia Expansion melee attack
 //============================================================================
 function Militia_Expansion takes integer m returns nothing
-    local group g = CreateGroup()
+    local group g = null
     local group tempg = null
     local unit u = null
-    local real x = 0
-    local real y = 0
     local unit efoe = GetExpFoe()
     local integer t = 0
-
+    if IsUnitInGroup(current_expansion,water_expansion) then  //is WaterExpansion
+      set efoe = null
+      return
+    endif
+    set g = CreateGroup()
     set break_attack = false  // to persuade attack system to hopefully not exit early and do the reforming behaviour
     set militia_check_enabled = false
     //call BuildExpa( TownCount(racial_expansion)+1, racial_expansion, farm_prio + 50 )
@@ -11663,26 +11740,23 @@ function Militia_Expansion takes integer m returns nothing
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
     set g = SelectNumberOfId(g, 100, old_id[racial_peon] )
     set g = SelectByAlive(g, true)
-    set tempg = g
-    set g = GetNearestSubGroupOfGroup(tempg, home_location, m)
-    call DestroyGroup(tempg)
-    set tempg = null
-    set expansion_peon = FirstOfGroup(g)
-    call AddAbilityToGroup(CopyGroup(g), race_militia_ability)
-    call GroupImmediateOrder(g, "militia" )
+    set tempg = GetNearestSubGroupOfGroup(g, home_location, m)
+    call DestroyGroup(g)
+    set g = null
+    set expansion_peon = FirstOfGroup(tempg)
+    call AddAbilityToGroup(CopyGroup(tempg), race_militia_ability)
+    call GroupImmediateOrder(tempg, race_militia_unitstring)
     call RemoveInjuries()
     call FormGroupAM(4)
     loop
-      exitwhen AreUnitsOfType(g, race_militia_id)
+      exitwhen AreUnitsOfType(tempg, race_militia_id)
       exitwhen t > 4
       call Sleep(2)
       set t = t + 1
     endloop
     //call AddAssault(m, old_id[racial_militia])   // Lil problem with adding assaults. For some reasons
     //call AttackMoveKill(efoe)
-    set x = GetUnitX(current_expansion)
-    set y = GetUnitY(current_expansion)
-    call GroupPointOrder(g, "attack", x, y )
+    call GroupPointOrder(tempg, "attack", GetUnitX(current_expansion), GetUnitY(current_expansion))
     set town_threat_break = false
     //set captain_flee = false
     //call SetCaptainHome(ATTACK_CAPTAIN, GetUnitX(efoe), GetUnitY(efoe)) //
@@ -11700,10 +11774,8 @@ function Militia_Expansion takes integer m returns nothing
     call Chat(C_Done)
     call SleepInCombatAM()
     call Trace("===Attack Fully Finished===")
-    set x = GetLocationX(home_location)
-    set y = GetLocationY(home_location)
-    call GroupPointOrder(g, "move", x, y )
-    call GroupImmediateOrder(g, "militiaoff" )
+    call GroupPointOrder(tempg, "move", GetLocationX(home_location), GetLocationY(home_location))
+    call GroupImmediateOrder(tempg, "militiaoff" )
     set attack_running = false
     //call SetCaptainHome(ATTACK_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
     set militia_check_enabled = true
@@ -11711,8 +11783,8 @@ function Militia_Expansion takes integer m returns nothing
     //set captain_flee = true
     //set militia = false
     set take_exp = false
-    call DestroyGroup(g)
-    set g = null
+    call DestroyGroup(tempg)
+    set tempg = null
     set efoe = null
     set u = null
 endfunction
@@ -11783,7 +11855,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
     local unit mega = null
     local unit creep = null
     local unit common = null
-
 
 //call Trace("SingleMeleeAttack")
 
@@ -11912,20 +11983,29 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
       endif
     endif
 
-	if not creeping_only then	// Do the normal attack sequence
+  if not creeping_only then	// Do the normal attack sequence
 
    // tower rush attack
    //
-	if towerrush then
-		if (town_threatened and tower_attack_run != true) or (race_towerrush_requirement != 0 and TownCountDone(race_towerrush_requirement) == 0) or (race_tower_item_must == true and builder[0] == null) or (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) == 0 then
-			return
-		endif
-		set tower_attack_run = true
-		call Trace("A Tower Rush Attack")
-		call FormGroupAM(3)
-		call AttackMoveTowerRush()
-		return
-	endif
+  if towerrush then
+    if tower_attack_run != true then
+      if town_threatened or (GetUnitCountDone(old_id[hero[1]]) + GetUnitCountDone(old_id[hero[2]]) + GetUnitCountDone(old_id[hero[3]])) == 0 then
+        return
+      elseif race_tower_item_must == true and builder[0] == null then
+        return
+      endif
+      if race_towerrush_requirement != 0 and GetUnitCountDone(old_id[race_towerrush_requirement]) == 0 and race_tower_upgrade2 == 0 then
+        return
+      elseif race_towerrush_requirement != 0 and GetUnitCount(old_id[race_towerrush_requirement]) != 0 and race_tower_upgrade2 != 0 and TownCountDone(racial_peon) >= 5 + race_tower_peon then
+        call Sleep(I2R(GetUnitBuildTime(old_id[race_towerrush_requirement])) * 3 / 7)  //wait race_towerrush_requirement build some tiome , and go , before it's built 100% , can build race_tower_upgrade2 first
+      endif
+    endif
+    set tower_attack_run = true
+    call Trace("A Tower Rush Attack")
+    call FormGroupAM(3)
+    call AttackMoveTowerRush()
+    return
+  endif
 
    // militia expansion
    //
@@ -11974,6 +12054,15 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
       if not UnitAlive(double_expansion_target) then
         set double_expansion_target = null
       endif
+      return
+    endif
+
+    // ELF BR
+    //
+    if rushcreep_target != null and UnitAlive(rushcreep_target) then
+      call Trace("ELF BR Attack")
+      call FormGroupAM(3)
+      call BRRush()  //try BR
       return
     endif
 
@@ -12087,11 +12176,9 @@ endfunction
 function SkillArraysAM takes nothing returns integer
     local integer level = GetHeroLevelAI()
     local integer hn = GetHeroNumber(GetHeroId())
-
     if level > max_hero_level then
         set max_hero_level = level
     endif
-
     return skills[(hn - 1) * HERO_LEVEL_NUMBER + level]
 endfunction
 
@@ -12232,7 +12319,6 @@ function GetArmyHealthState takes nothing returns real
       endif
     endif
     call GroupRemoveUnit(g,u)
-    call Sleep(0.02)
   endloop
   call DestroyGroup(g)
   set g = null
@@ -12457,6 +12543,7 @@ function universal_peon_assignment takes nothing returns nothing
 
     if T < 0 then
       set T = 0
+      set i = 1
     endif
 
     if g - w > 300 then
@@ -12489,19 +12576,19 @@ function universal_peon_assignment takes nothing returns nothing
 
     set swh = Max(swh - 4 * TownCountDone(neutral_shredder),0)
 
+    if towerrush and swh <= race_tower_peon then
+      set swh = race_tower_peon + 4
+    endif
+
     call ClearHarvestAI()
 
     if (desperation_assault) then
       return
     endif
 
-    call HarvestGold(0,ver_optimal_gold - 1)
+    call HarvestGold(T,ver_optimal_gold - 1)
     call HarvestWood(0,1)
-    call HarvestGold(0,1)
-    call HarvestGold(1,ver_optimal_gold)
-    call HarvestGold(2,ver_optimal_gold)
-    call HarvestGold(3,ver_optimal_gold)
-    call HarvestGold(4,ver_optimal_gold)
+    call HarvestGold(T,1)
     call HarvestWood(0,pwh)
     call HarvestWood(0,swh)
 
@@ -14169,7 +14256,6 @@ endfunction
 //============================================================================
 function SkillArrays takes nothing returns integer
     local integer level = GetHeroLevelAI()
-
     if level > max_hero_level then
         set max_hero_level = level
     endif
@@ -14242,10 +14328,8 @@ function PickMeleeHero takes race raceid returns integer
     local integer last
     local integer array heroes
     local integer i
-
-    call InitGlobalSettings()
+    //call InitGlobalSettings()
     call InitAiUnits()  // This function makes all unit ids go back to there originals
-
     set i = ver_neutral_hero_number
     //------------------------------------------------------------------------
     if raceid == RACE_HUMAN then
@@ -14299,7 +14383,7 @@ function PickMeleeHero takes race raceid returns integer
     if VersionCompatible(VERSION_FROZEN_THRONE) then
       set third  = GetRandomInt(i+1,last-2)
     else
-      set third = 1
+      set third = i+1
     endif
     set hero_id        = heroes[first]
     set heroes[first]  = heroes[last]
