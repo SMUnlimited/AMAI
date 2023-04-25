@@ -8219,7 +8219,7 @@ endfunction
 //============================================================================
 function SmallMapsAdd takes nothing returns nothing
   local integer i = 0
-  if GetPlayers() > 3 then
+  if GetPlayers() > 3 or mapattackdelayed != 8 then  // tiny small medium mapsize's mapattackdelayed not 8 , some 1V1 maybe use big map
     return
   endif
   loop
@@ -8890,7 +8890,10 @@ endfunction
 
 //============================================================================
 function SecondaryTownAM takes integer town, integer qty, integer unitid, integer prio returns nothing
-    call SetBuildAllAM(BUILD_UNIT,qty,unitid,town, BLOC_STD, prio)
+  if TownWithMine() < 1 then
+    return
+  endif
+  call SetBuildAllAM(BUILD_UNIT,qty,unitid,town, BLOC_STD, prio)
 endfunction
 
 //============================================================================
@@ -9351,9 +9354,6 @@ endfunction
 
 //============================================================================
 function DefendTownsDone takes integer qty, integer unitid, integer prio returns nothing
-  if TownWithMine() < 1 then
-    return
-  endif
   call DefendTownsEx(true, qty, unitid, prio)
 endfunction
 
@@ -10467,7 +10467,7 @@ function CheckUnitNewTown takes unit u, integer num returns boolean
 endfunction
 
 //============================================================================
-function LocalizeNewTown takes integer num returns nothing
+function LocalizeNewTown takes integer num returns boolean
   local group g = CreateGroup()
   local unit u = null
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
@@ -10488,24 +10488,27 @@ function LocalizeNewTown takes integer num returns nothing
 //    call DisplayToAll("Debug: New town not found")
     set own_town_mine[num] = null
     set own_town_dist[num] = 0
-    return
+    return false
   endif
   set own_town_loc[num] = Location(GetUnitX(u),GetUnitY(u))
   set own_town_mine[num] = GetMineNearLoc(own_town_loc[num], 1500)
   set own_town_dist[num] = DistanceBetweenPoints(home_location, own_town_loc[num])
 //  call PingMinimap(GetUnitX(u), GetUnitY(u), 20)
   set u = null
+  return true
 endfunction
 
 //============================================================================
 function CheckTownBuilt takes nothing returns nothing
   local integer i = 0
+  set max_towns = Max(max_towns,TownCountDone(racial_expansion))
   loop
     exitwhen i >= max_towns
     if not town_built[i] then
       if (TownCountEx(racial_expansion, true, i) > 0 and not (TownCountEx(racial_expansion, true, 50) > 0)) then
-        set town_built[i] = true
-        call LocalizeNewTown(i)
+        if LocalizeNewTown(i) then
+          set town_built[i] = true
+        endif
       endif
     endif
     set i = i + 1
@@ -12595,7 +12598,7 @@ function universal_peon_assignment takes nothing returns nothing
     loop
       //set i = i + 1
       exitwhen i > Max(T + 3,TownCountDone(racial_expansion))
-    if T != i and ((TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0) or GetMineNearLoc(own_town_loc[i], 1500) != null) then
+    if T != i and ((TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0) or GetResourceAmount(own_town_mine[i]) > 0) then
         if gdivw < 3.0 or g < 300 then
           call HarvestGold(i,ver_optimal_gold)
         else
