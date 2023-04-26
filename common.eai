@@ -2658,6 +2658,7 @@ function InitMapSizeVars takes nothing returns nothing
       call SetChatVar("MapSize", "small")
     elseif a < 380 then
       call SetChatVar("MapSize", "medium")
+      set mapattackdelayed = 8 - MeleeDifficulty()
     elseif a < 540 then
       call SetChatVar("MapSize", "large")
       set mapattackdelayed = 7 - MeleeDifficulty()
@@ -2674,18 +2675,19 @@ function InitMapSizeVars takes nothing returns nothing
       call SetChatVar("MapSize", "small")
     elseif a < 380 then
       call SetChatVar("MapSize", "medium")
+      set mapattackdelayed = 8 - MeleeDifficulty()
     elseif a < 540 then
       call SetChatVar("MapSize", "large")
-      set mapattackdelayed = 8 - MeleeDifficulty()
+      set mapattackdelayed = 7 - MeleeDifficulty()
     elseif a < 960 then
       call SetChatVar("MapSize", "extralarge")
-      set mapattackdelayed = 7 - MeleeDifficulty()
+      set mapattackdelayed = 6 - MeleeDifficulty()
     elseif a < 2048 then
       call SetChatVar("MapSize", "huge")
-      set mapattackdelayed = 6 - MeleeDifficulty()
+      set mapattackdelayed = 5 - MeleeDifficulty()
     else
       call SetChatVar("MapSize", "legendary")
-      set mapattackdelayed = 5 - MeleeDifficulty()
+      set mapattackdelayed = 4 - MeleeDifficulty()
     endif
   endif
 endfunction
@@ -8458,7 +8460,7 @@ endfunction
 //============================================================================
 function SmallMapsAdd takes nothing returns nothing
   local integer i = 0
-  if GetPlayers() > 3 then
+  if GetPlayers() > 3 or mapattackdelayed != 8 then  // tiny small medium mapsize's mapattackdelayed not 8 , some 1V1 maybe use big map
     return
   endif
   loop
@@ -9129,7 +9131,10 @@ endfunction
 
 //============================================================================
 function SecondaryTownAM takes integer town, integer qty, integer unitid, integer prio returns nothing
-    call SetBuildAllAM(BUILD_UNIT,qty,unitid,town, BLOC_STD, prio)
+  if TownWithMine() < 1 then
+    return
+  endif
+  call SetBuildAllAM(BUILD_UNIT,qty,unitid,town, BLOC_STD, prio)
 endfunction
 
 //============================================================================
@@ -9590,9 +9595,6 @@ endfunction
 
 //============================================================================
 function DefendTownsDone takes integer qty, integer unitid, integer prio returns nothing
-  if TownWithMine() < 1 then
-    return
-  endif
   call DefendTownsEx(true, qty, unitid, prio)
 endfunction
 
@@ -10330,13 +10332,12 @@ endfunction
 // Set up to buy an item
 function BuyItem takes integer qty, integer id returns boolean
   if attack_running then
-    return true
+    return false
   endif
   if shop_ordered then
-      //call Trace("Already ordered to get an item")
-	return true
+    //call Trace("Already ordered to get an item")
+    return true
   endif
-  set shop_wanted = qty
   if buy_type[id] == BT_RACIAL_ITEM then
     set shop_unit = GetOneOfId(ai_player, old_id[racial_shop])
     set shop_distance_limit = raceshop_distance_limit
@@ -10344,10 +10345,64 @@ function BuyItem takes integer qty, integer id returns boolean
     set shop_unit = nearest_neutral[NEUTRAL_MERCHANT]
     set shop_distance_limit = merchant_distance_limit
   endif
-  if shop_unit != null then
-	set shop_ordered = true
-	call TQAddJob(0, BUY_ITEM, id)
+  if shop_unit == null then
+    set shop_wanted = qty
+    set shop_ordered = true
+    call TQAddJob(0, BUY_ITEM, id)
+  else
+    return false
   endif
+  return true
+endfunction
+
+function BuyAllyShopItem takes integer qty, integer id returns boolean
+  local group g = null
+  local unit u = null
+  local player p = null
+  local integer i = 0
+  if attack_running or force_number < 2 then
+    return false
+  endif
+  if shop_ordered then
+    //call Trace("Already ordered to get an item")
+    return true
+  endif
+  loop
+    set p = Player(GetRandomInt(0,force_number - 1))
+    exitwhen GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and ai_player != p
+  endloop
+  set g = CreateGroup()
+  call GroupEnumUnitsOfPlayer(g, p, null)  // select ally shop
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null or i != 0
+    if GetUnitAbilityLevel(u, 'Aall') > 0 then
+      set i = GetUnitTypeId(u)
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call GroupClear(g)
+  call GroupEnumUnitsOfPlayer(g, p, null)
+  set g = SelectById(g, i, true)
+  set shop_unit = FirstOfGroup(g)
+  if GetRandomInt(0,1) == 1 then  // Random shop , if AI have DefendTowns , should have 2
+    call GroupRemoveUnit(g, shop_unit)
+    if FirstOfGroup(g) != null then
+      set shop_unit = FirstOfGroup(g)
+    endif
+  endif
+  call DestroyGroup(g)
+  set g = null
+  set p = null
+  set u = null
+  if shop_unit == null then
+    return false
+  endif
+  set shop_wanted = qty
+  set shop_distance_limit = raceshop_distance_limit
+  set shop_ordered = true
+  call TQAddJob(0, BUY_ITEM, id)
   return true
 endfunction
 
@@ -10455,7 +10510,13 @@ function StartItem takes integer ask_qty, integer itemid returns integer
   if BuyItem(have_qty + 1, itemid) then
     return BUILT_SOME
   else
-    return CANNOT_BUILD
+    if IsHealingItem(itemid) and buy_type[itemid] == BT_RACIAL_ITEM and GetGold() > 1000 and c_ally_total > 0 then
+      if BuyAllyShopItem(have_qty + 1,itemid) then  //return false just run next code
+        return BUILT_SOME
+      else
+        return CANNOT_BUILD
+      endif
+    endif
   endif
   return BUILT_SOME
 endfunction
@@ -10706,7 +10767,7 @@ function CheckUnitNewTown takes unit u, integer num returns boolean
 endfunction
 
 //============================================================================
-function LocalizeNewTown takes integer num returns nothing
+function LocalizeNewTown takes integer num returns boolean
   local group g = CreateGroup()
   local unit u = null
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
@@ -10727,24 +10788,27 @@ function LocalizeNewTown takes integer num returns nothing
 //    call DisplayToAll("Debug: New town not found")
     set own_town_mine[num] = null
     set own_town_dist[num] = 0
-    return
+    return false
   endif
   set own_town_loc[num] = Location(GetUnitX(u),GetUnitY(u))
   set own_town_mine[num] = GetMineNearLoc(own_town_loc[num], 1500)
   set own_town_dist[num] = DistanceBetweenPoints(home_location, own_town_loc[num])
 //  call PingMinimap(GetUnitX(u), GetUnitY(u), 20)
   set u = null
+  return true
 endfunction
 
 //============================================================================
 function CheckTownBuilt takes nothing returns nothing
   local integer i = 0
+  set max_towns = Max(max_towns,TownCountDone(racial_expansion))
   loop
     exitwhen i >= max_towns
     if not town_built[i] then
       if (TownCountEx(racial_expansion, true, i) > 0 and not (TownCountEx(racial_expansion, true, 50) > 0)) then
-        set town_built[i] = true
-        call LocalizeNewTown(i)
+        if LocalizeNewTown(i) then
+          set town_built[i] = true
+        endif
       endif
     endif
     set i = i + 1
@@ -11227,11 +11291,11 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       call DestroyGroup(g)
     endif
     exitwhen target == null
-		//if not iscreeping then
-		//	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationEnemyStructures(unitx, unity, battle_radius) <= 0 // enemies are dead and target dead
-		//else
-			//call Trace("Units, Creeps: " + Int2Str(GetLocationNonCreepStrength(unitx, unity, battle_radius)) + "," + Int2Str(GetLocationCreepStrength(unitx, unity, 500)))
-		//	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationCreepStrength(unitx, unity, 500) <= 0
+    //if not iscreeping then
+      //	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationEnemyStructures(unitx, unity, battle_radius) <= 0 // enemies are dead and target dead
+    //else
+      //call Trace("Units, Creeps: " + Int2Str(GetLocationNonCreepStrength(unitx, unity, battle_radius)) + "," + Int2Str(GetLocationCreepStrength(unitx, unity, 500)))
+      //	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationCreepStrength(unitx, unity, 500) <= 0
     //endif
     set dist = DistanceBetweenPoints_kd(ally_loc, GetUnitLoc(target))
     if c_ally_total > 0 and dist > 1300 and dist < 2500 then
@@ -12135,7 +12199,7 @@ endif
       set isfleeing = false
       call FormGroupAM(1)
       call SleepUntilTownDefended(ai_strength)
-      call SleepInCombatAM()
+      //call SleepInCombatAM()
     endif
 
     call Trace("===Single Melee Attack===" )
@@ -12702,10 +12766,9 @@ function HealArmy takes nothing returns nothing
         call StartEmergencyItem(1, mh_item)
         if hs <= healthTrigger then
           call Sleep(8*sleep_multiplier) // Wait some time for item to be bought
-		    endif
-		  endif
+        endif
+      endif
     endif
-
     call Sleep(2 * sleep_multiplier)
     exitwhen hs > healthTrigger // Still a large proportion of army is strong so exit loop
   endloop
@@ -12755,7 +12818,7 @@ function universal_attack_sequence takes nothing returns nothing
       set isfleeing = false
       call FormGroupAM(1)
       call SleepUntilTownDefended(GetOwnStrength())
-      call SleepInCombatAM()
+      //call SleepInCombatAM()
     elseif not towerrush and not ancient_expanding and not militia_expanding then
       call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
     endif
@@ -12839,7 +12902,7 @@ function universal_peon_assignment takes nothing returns nothing
     loop
     //set i = i + 1
     exitwhen i > Max(T + 3,TownCountDone(racial_expansion))
-    if T != i and ((TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0) or GetMineNearLoc(own_town_loc[i], 1500) != null) then
+    if T != i and ((TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0) or GetResourceAmount(own_town_mine[i]) > 0) then
         if gdivw < 3.0 or g < 300 then
           call HarvestGold(i,ver_optimal_gold)
         else
