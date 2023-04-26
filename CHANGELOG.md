@@ -69,6 +69,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Add again item ORB_OF_LIGHTNING(olig)
 - Add SleepInCombatAM Maximum number of loop , to avoid when AI moveing army in large map , easily change target , but AI no go to the target(add variables mapattackdelayed)
 - On maps with more than 10 people and human players , or big map , AI has a chance to attack human players first when attacking players , to avoid china call 【内卷】 , like AI internal conflict , no attack human player(function ChooseAnEnemyTarget Add GetNearHumanPlayerEnemy)
+- Add Ally Shopping , when BuyItem() return false , if item is HealingItem and buy_type is RACIAL_ITEM and AI have 1000 gold , then will go Random Ally's Random Shop Shopping
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
@@ -97,14 +98,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Synchronization all function code to [master]
    - 3.2.2 master 96800f0
    - Note: 3.2.2cn include 3.1.1-cn
-- Build DefendTownsDone now check TownWithMine() , make sure really have second Town
+- SecondaryTownAM now check TownWithMine , make sure really have second Town
 - Change GetPlayerAntiAirStrength returns form integer to real
 - Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
 - Optimized function XXXFountain code , no use local unit fountain
 - function CommonSleepUntilTargetDeadAM now judging target == null , improve operation efficiency
 - Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will 'smoothly'
 - Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1peon HarvestWood
-- Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
+- Adjust all races global_build_sequence build shop priority(10+(80*(tier-1))) , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
 - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
 - function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency(but the function no longer use)
@@ -113,6 +114,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Army track change
   - Army track CopyArmy no longer copy same integer , hopes it can improve efficiency
   - Reduced Army track frequency
+  - set town_threatened avoid most_threatened_town is -1
 - Town track change
   - Town track CopyTown no longer copy same integer , hopes it can improve efficiency
   - Town track SeedNewTownAtLoc town_num incremental now need TrackTown(town_num) return true
@@ -136,6 +138,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - BuildAtSpecialLoc generate a new placeholder build，home_location always create war_tree, prevent blocking of your home
 - BuildLumberMillAtBase now use TownCount(racial_lumber) , no  TownCountDone(racial_lumber) , hope  Prevent AI building many cemeteries
   - if tier is 2+ or 1.5 , and TownCount(racial_lumber) is 0 , will set racial_lumber == 0 , avoiding the cannot build
+- SmallMapsAdd now check mapsize , prevent 1V1 use of big maps
+- CheckTownBuilt max_towns take Max(max_towns,TownCountDone(racial_expansion)) , town_built[i] take have town
+- SleepUntilTownDefended and SleepInCombatAM no running simultaneously , the code seem to be in conflict
 - Strategy additional Improvements
   - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
   - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
@@ -155,11 +160,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed BuildMovePeonZeppelin no longer at first set build_zeppelin = null
 - Fixed InitNeutralBuildings neutral_id[NEUTRAL_DRAGON_ROOST] use neutral_id[NEUTRAL_MERC_CAMP]'s number [i]
 - Fixed InitNeutralBuildings [NEUTRAL_DRAGON_ROOST] and [NEUTRAL_MERC_CAMP] search Error
+- Fixed Blizzard3VAI.eai player num， 12 to 24
 - Fixed part of set xxx = GetExpansionPeon() lack set xxx = GetExpansionPeon2() when xxx == null
 - Fixed a when AI have too many ally , game stuck or crashed
-- Fixed Blizzard3VAI.eai player num， 12 to 24
 - Fixed AMAI VS AI , AI cannot work
 - Fixed PickMeleeHero non VERSION_FROZEN_THRONE third hero num, now is i + 1
+- Fixed TeleportHome , Defeated ，CheckDefeated ，c_ally_total > 1 to c_ally_total > 0
+- Fixed BuyItem cannot return false
+- Fixed RemoveFromOwnForce bug , i will set 0
 
 
 ## [3.2.2] - 2022-10-05
