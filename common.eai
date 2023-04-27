@@ -10112,6 +10112,57 @@ function BuyItem takes integer qty, integer id returns boolean
   return true
 endfunction
 
+function BuyAllyShopItem takes integer qty, integer id returns boolean
+  local group g = null
+  local unit u = null
+  local player p = null
+  local integer i = 0
+  if attack_running or force_number < 2 then
+    return false
+  endif
+  if shop_ordered then
+    //call Trace("Already ordered to get an item")
+    return true
+  endif
+  loop
+    set p = Player(GetRandomInt(0,force_number - 1))
+    exitwhen GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and ai_player != p
+  endloop
+  set g = CreateGroup()
+  call GroupEnumUnitsOfPlayer(g, p, null)  // select ally shop
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null or i != 0
+    if GetUnitAbilityLevel(u, 'Aall') > 0 then
+      set i = GetUnitTypeId(u)
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call GroupClear(g)
+  call GroupEnumUnitsOfPlayer(g, p, null)
+  set g = SelectById(g, i, true)
+  set shop_unit = FirstOfGroup(g)
+  if GetRandomInt(0,1) == 1 then  // Random shop , if AI have DefendTowns , should have 2
+    call GroupRemoveUnit(g, shop_unit)
+    if FirstOfGroup(g) != null then
+      set shop_unit = FirstOfGroup(g)
+    endif
+  endif
+  call DestroyGroup(g)
+  set g = null
+  set p = null
+  set u = null
+  if shop_unit == null then
+    return false
+  endif
+  set shop_wanted = qty
+  set shop_distance_limit = raceshop_distance_limit
+  set shop_ordered = true
+  call TQAddJob(0, BUY_ITEM, id)
+  return true
+endfunction
+
 //============================================================================
 // Buy item but ignore all buffer changes to players gold. Buy as fast as possible
 function StartEmergencyItem takes integer ask_qty, integer itemid returns integer
@@ -10213,10 +10264,17 @@ function StartItem takes integer ask_qty, integer itemid returns integer
     return NOT_ENOUGH_RES
   endif
 
+
   if BuyItem(have_qty + 1, itemid) then
     return BUILT_SOME
   else
-    return CANNOT_BUILD
+    if IsHealingItem(itemid) and buy_type[itemid] == BT_RACIAL_ITEM and GetGold() > 1000 and c_ally_total > 0 then
+      if BuyAllyShopItem(have_qty + 1,itemid) then  //return false just run next code
+        return BUILT_SOME
+      else
+        return CANNOT_BUILD
+      endif
+    endif
   endif
   return BUILT_SOME
 endfunction
@@ -11899,7 +11957,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
     set isfleeing = false
     call FormGroupAM(1)
     call SleepUntilTownDefended(ai_strength)
-    call SleepInCombatAM()
+    //call SleepInCombatAM()
   endif
 
     call Trace("===Single Melee Attack===" )
@@ -12514,7 +12572,7 @@ function universal_attack_sequence takes nothing returns nothing
     set isfleeing = false
     call FormGroupAM(1)
     call SleepUntilTownDefended(GetOwnStrength())
-    call SleepInCombatAM()
+    //call SleepInCombatAM()
   elseif not towerrush and not ancient_expanding and not militia_expanding then
     call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
   endif
