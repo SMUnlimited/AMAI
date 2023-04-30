@@ -57,7 +57,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Add SleepInCombatAM Maximum number of loop , to avoid when AI moveing army in large map , easily change target , but AI no go to the target(add variables mapattackdelayed)
 - On maps with more than 10 people and human players , or big map , AI has a chance to attack human players first when attacking players , to avoid china call 【内卷】 , like AI internal conflict , no attack human player(function ChooseAnEnemyTarget Add GetNearHumanPlayerEnemy)
 - Add Ally Shopping , when BuyItem() return false , if item is HealingItem and buy_type is RACIAL_ITEM and AI have 1000 gold , then will go Random Ally's Random Shop Shopping
-- Zoom can use up and down key change high , once 50
+- Zoom
+   - Zoom can use up and down key change high , once 50
+   - ZoomSet now support [-zoom 1650] , prevent entering spaces
+   - ZoomSet now have a report ，when entering exceeding the limit(< 1650 or > 3000)
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
@@ -142,7 +145,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
   - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)，fix ROC ELF race_has_moonwells to true
   - Adjust UPG_BOMBS BuildAdvUpgr2 chance unitcount to 0.2 , Maximum to 35 , In the test, after building COPTER, the enemy has no AIR , the COPTER no research UPG_BOMBS not useful
-- Zoom max high now is 2800
+- Zoom
+   - zoom now use CAMERA_FIELD_TARGET_DISTANCE  form W3C , max is 3000 , min is 1650
+   - Observer zoom now is 2500
 - AMAI VS AI
    - BlizzardVAI.eai Add zoom function
    - BlizzardVAI.eai ai script file real race.txt 1% and 2%
