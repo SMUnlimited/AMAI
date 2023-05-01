@@ -90,6 +90,7 @@ function TowerRushBuilderControl_dk takes unit u, location l, location t returns
 			if not IsTerrainPathable(builder_x, builder_y, PATHING_TYPE_BUILDABILITY) then
 				if towers_built < 3 or (towers_built >= 3 and towers_built < 6 and GetGold() > (GetUnitGoldCost2(race_tower_id) + 100) and GetWood() > (GetUnitWoodCost2(race_tower_id) + 80)) or (towers_built >= 6 and GetGold() > (GetUnitGoldCost2(race_tower_id) * 3) and (GetWood() > GetUnitWoodCost2(race_tower_id) * 3)) then
 					call IssueBuildOrderById(u, old_id[race_tower_id], builder_x, builder_y)
+					set towers_built_count = towers_built_count + 1
 					if towers_built != 0 then
 						call CreateDebugTag("TRush: Building", 10, u, 4.00, 2.00)
 					else
@@ -164,6 +165,7 @@ function TowerRushJob takes nothing returns nothing
 	local integer towermove = 30
 	local integer buildtries = 10
 	local real time_next_try = 5
+	local boolean Strength = false
 	local location t = null
 	call DisplayToAllJobDebug("TOWER_RUSH Job START")
 	if race_tower_move then
@@ -208,11 +210,15 @@ function TowerRushJob takes nothing returns nothing
 	endif
 
 	//call Trace("Getting ready to tower rush")
-	if GetPlayerSlotState(rushedplayer) != PLAYER_SLOT_STATE_PLAYING or GetPlayerUnitCount(rushedplayer,true) <= 0 or (towers_built == 0 and not (first_tower_point_x == 0 and first_tower_point_y == 0) and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) != 0 and (GetLocationNonCreepStrength(first_tower_point_x, first_tower_point_y, 1200) > (GetOwnStrength() * 4))) or (tower_attack_run == false and town_threatened) then    //or (builder[1] != null and (GetUnitState(builder[1], UNIT_STATE_LIFE) <= 0  and GetUnitState(builder[3], UNIT_STATE_LIFE) <= 0 and GetUnitState(builder[2], UNIT_STATE_LIFE) <= 0)) then
+	if not (first_tower_point_x == 0 and first_tower_point_y == 0) and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) != 0 then
+		set Strength = Max(GetLocationNonCreepStrength(first_tower_point_x, first_tower_point_y, 1200) , GetPlayerStrength(rushedplayer)) > (GetOwnStrength() * 4) or ((towers_built_count > race_tower_peon * 2) and towers_built == 0 and tower_attack_run == true)
+	endif
+	if GetPlayerSlotState(rushedplayer) != PLAYER_SLOT_STATE_PLAYING or GetPlayerUnitCount(rushedplayer,true) <= 0 or (towers_built == 0 and Strength == true) or (tower_attack_run == false and town_threatened) then    //or (builder[1] != null and (GetUnitState(builder[1], UNIT_STATE_LIFE) <= 0  and GetUnitState(builder[3], UNIT_STATE_LIFE) <= 0 and GetUnitState(builder[2], UNIT_STATE_LIFE) <= 0)) then
 		//maybe enemy give up the Location,so temporary no need built
 		call Trace("I have finished the tower rush")
 		set gold_buffer = 0
 		set wood_buffer = 0
+    set towers_built_count = 0
 		set race_tower_alliancetarget = false
 		set tower_used_item = false
 		set tower_attack_run = false
