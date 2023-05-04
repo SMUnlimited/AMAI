@@ -93,7 +93,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Fixed bug , AI no longer build tower on map centre
    - Note: Because available_time too long , so AI TR donot buy NEUTRAL
    - Note: The new pathfinder is not used to TR , Because the path finding direction is wrong (from home to home)
-   - Note: human have powerbuild , so AI will automatically pull all peon go to the front build tower , and this time AI no income , I cannot close automatically powerbuild , If only could change the unit race
+   - Note: human have powerbuild , so AI will automatically pull all peon go to the front build tower , and this time AI no income , I cannot close automatically powerbuild , just have some fix
    - Note: On ROC , This function is not enabled
 - Synchronization all function code to [master]
    - 3.2.2 master 96800f0
@@ -124,7 +124,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - 'ohwd' and 'hphx' is UNIT_TYPE_SUMMONED , so now no exclude UNIT_TYPE_SUMMONED
 - FOCUSFIRE_CONTROL add FOCUS FIRE special_unit , now special_unit have 'hpxe' and 'espv' , Phoenix and Soul of Revenge
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
-- GetExpansionPeon2 Add Adjust not IsUnitLoaded , because ELF peon harvest gold
+- GetExpansionPeon2 Adjust
+  - no take unit_buying_merc
+  - not take IsUnitLoaded , because ELF peon harvest gold
 - ANCIENT EXPANSION change
   - add judgment , if cannot find creep unit , GroupEnumUnitsInRange distance 1500 search again , map  like (4)Avalanche_LV , the creep and gold distance > 650
   - add judgment , when expansion location have unit  , judgment the unit OwningPlayer , if player is AGGRESSIVE ,just set ancient_exp_state to 4 , else build
