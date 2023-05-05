@@ -93,6 +93,9 @@
     button %1_button = null
 #ENDINCLUDE
 
+    trigger W3CIcons = null
+    boolean W3CIconsSet = true
+
     string chat_no_ally = ""
     string you_no_gold = ""
     string i_no_gold = ""
@@ -336,6 +339,7 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
   local integer selection_num = 2 // that many times a selection is done
   local integer bits_number = selection_num * bits_per_selection // number of bits of integer used
   local timer t = CreateTimer()
+  local location l = null
 
 //  call DisplayToPlayer(sync_p, I2S(sum))
 
@@ -359,11 +363,14 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
 
   // create units to select
   set i = 0
+  set l = GetPlayerStartLocationLoc(sync_p)
   loop
     exitwhen i >= bits_per_selection
-    set sel_unit[i] = CreateUnitAtLoc( sync_p, 'nshf', GetPlayerStartLocationLoc(sync_p), bj_UNIT_FACING )
+    set sel_unit[i] = CreateUnitAtLoc( sync_p, 'nshf', l, bj_UNIT_FACING )
     set i = i + 1
   endloop
+  call RemoveLocation(l)
+  set l = null
 
   // save old selection
   call SyncSelections()
@@ -532,6 +539,51 @@ endfunction
 
 function ShowBoard takes nothing returns nothing
   call LeaderboardDisplay(color_board, not IsLeaderboardDisplayed(color_board))
+endfunction
+
+//===========================================================================
+// W3C ICON
+//===========================================================================
+function SetW3CMiniMapIcons takes nothing returns nothing
+  local boolean b = W3CIconsSet
+  local unit u = null
+  local group g = CreateGroup()
+  local minimapicon i = null
+  call GroupEnumUnitsOfPlayer(g,Player(PLAYER_NEUTRAL_PASSIVE),null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if false then
+    #INCLUDETABLE <NeutralIcon.txt> #EFR
+    elseif GetUnitTypeId(u) == '%1' then
+      set i = CreateMinimapIcon(GetUnitX(u)/ 128 * 128,GetUnitY(u)/ 128 * 128,255,255,255,"%2",FOG_OF_WAR_FOGGED)
+      call SetMinimapIconVisible(i,b)
+      //call SetMinimapIconOrphanDestroy(i,b)
+    #ENDINCLUDE
+    endif
+    call GroupRemoveUnit(g,u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set i = null
+endfunction
+
+function W3CMiniMapIcons takes nothing returns nothing
+  local integer i = 0
+  if W3CIcons == null then
+    set W3CIcons = CreateTrigger()
+  endif
+  loop
+    exitwhen i >= GetBJMaxPlayers()
+    call TriggerRegisterPlayerChatEvent(W3CIcons, Player(i), "-minimap", true)
+    set i = i + 1
+  endloop
+  if W3CIconsSet == true then
+    set W3CIconsSet = false
+  else
+    set W3CIconsSet = true
+  endif
+  call TriggerAddAction( W3CIcons, function SetW3CMiniMapIcons )
 endfunction
 
 //===========================================================================
@@ -711,7 +763,7 @@ function ExecuteCommand takes player Comp, integer number returns nothing
     return
   endif
 
-  if command_par2[number] != -1 then  
+  if command_par2[number] != -1 then
     call CommandAI(Comp, par2, par3)
   endif
     
@@ -1792,4 +1844,5 @@ endfunction
 
 #INCLUDE <Blizzard5.j>
     call InitCommander()
+    call SetW3CMiniMapIcons()
 #INCLUDE <Blizzard6.j>
