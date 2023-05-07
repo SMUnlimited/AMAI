@@ -39,8 +39,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Buy NEUTRAL HERO add judge , some map the NEUTRAL TAVERN near have creep , maybe the creep no guarded , like creep on second floor , NEUTRAL TAVERN on first floor , but AI will considered as they are guarded , cause cannot buy neutral heroes at the first time , even no longer buy neutral heroes , when this time , AI cannot call GetNeutralHero , endless loop , so if NEUTRAL TAVERN near have creep (neutral_guarded[NEUTRAL_TAVERN]), just immediately recalculate heros , guarantee to change train ownrace hero at the first time
 - Water_expansion now record creeps guard , and ChooseExpansion returns the creeps
 - Water_expansion improvement judgment methods , now have a gorup record , just need judgment expansion on the gorup , no need loop
-- if have Water_expansion , ZEPPELIN_FOLLOW no run GroupRemoveGuardPositionInstant , then AI can take Water_expansion
+- if have Water_expansion or racial_lumber == 0 or race_no_wood_harvest , ZEPPELIN_FOLLOW no run GroupRemoveGuardPositionInstant , then AI can take Water_expansion or help ELF fix building blockage
   - Now AI can use ZEPPELIN attack Water_expansion creeps
+  - when TownCountDone(neutral_zeppelin) > 1 , Remove follow_zeppelin Guard Position, help Job continue
+when TownCountDone(neutral_zeppelin) > 1 , Remove follow_zeppelin Guard Position, help Job continue
 - Add positive_expansion , if mine outnumber player , AI will more aggressive take expansion (ExpansionBuilder)
   - Fixed expansion to much , AI cannot harvest, universal_peon_assignment and peon_assignment now will contrast TownCountDone(racial_expansion) and TownHasMine(townid) , use the max
 - Mapsize adapter Reforged new size
