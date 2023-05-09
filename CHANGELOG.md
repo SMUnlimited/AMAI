@@ -104,6 +104,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
 - Optimized function XXXFountain code , no use local unit fountain
 - function CommonSleepUntilTargetDeadAM now judging target == null , improve operation efficiency
+- MeleeDifficulty() use difficulty replace 
+  - official AI code not affected
 - Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will 'smoothly'
 - Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1peon HarvestWood
 - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1))) , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
