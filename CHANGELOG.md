@@ -22,7 +22,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Note: In fact , I would prefer the first human player (even not Observer) to directly control AI , convenient testing
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join non own racial units and heros (but excess heros may not be able to learn skills) , This function include adding mercenaries and dragons to the Attack Group( the function AttackGroupAddNeutrals no longer use) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
-- Note: the AI no longer sent repeat report for B.eai command control to C.eai
 - Buy NEUTRAL HERO add judge , some map the NEUTRAL TAVERN near have creep , maybe the creep no guarded , like creep on second floor , NEUTRAL TAVERN on first floor , but AI will considered as they are guarded , cause cannot buy neutral heroes at the first time , even no longer buy neutral heroes , when this time , AI cannot call GetNeutralHero , endless loop , so if NEUTRAL TAVERN near have creep (neutral_guarded[NEUTRAL_TAVERN]), just immediately recalculate heros , guarantee to change train ownrace hero at the first time
 - Water_expansion now record creeps guard , and ChooseExpansion returns the creeps
 - Water_expansion improvement judgment methods , now have a gorup record , just need judgment expansion on the gorup , no need loop
