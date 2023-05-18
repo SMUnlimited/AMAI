@@ -164,6 +164,10 @@ globals
     constant integer RACE_NUMBER = %row
 #ENDINCLUDE
 
+#INCLUDETABLE <$VER$\Races.txt>
+    string array %1_StrategyName
+#ENDINCLUDE
+
 #DEFINE $HEROLEVELNUM$ 0
 #INCLUDETABLE <$VER$\HeroLevels.txt>
 #DEFINE $HEROLEVELNUM$ %row
@@ -645,8 +649,6 @@ globals
     integer array other_race_unit
     integer merc_number = 0
     integer dragon_number = 0
-    integer other_race_heronumber = 0
-    integer other_race_unitnumber = 0
 #INCLUDETABLE <$VER$\MercTypes.txt>
     integer merc_%1 = 0
 #ENDINCLUDE
@@ -835,7 +837,7 @@ globals
     constant integer C_%1 = %row
 #ENDINCLUDE
 
-    string chat_no_unit_selected    = ""
+    string chat_no_unit_selected = ""
     string chat_confirm_attack_unit = ""
     string chat_towerrush = ""
     string chat_no_towerrush = ""
@@ -930,7 +932,6 @@ globals
     integer queue_t_x		= 0
     integer queue_t_y		= 0
     unit	queue_t_u = null
-
 //==============================================================
 // (AMAI)  Profile system globals
 //==============================================================
@@ -2420,7 +2421,7 @@ endfunction
 //============================================================================
 function HallsCompleted takes integer unitid returns boolean
   if IsAMAI then
-    return GetUnitCount(old_id[unitid]) == GetUnitCountDone(old_id[unitid]) 
+    return GetUnitCount(old_id[unitid]) == GetUnitCountDone(old_id[unitid])
   else
     return GetUnitCount(unitid) == GetUnitCountDone(unitid)
   endif
@@ -3024,6 +3025,29 @@ function InitTranslations takes nothing returns nothing
   #ENDINCLUDE
 #ENDINCLUDE
   set lang = null
+endfunction
+
+//============================================================================
+function InitStrategy takes nothing returns nothing
+#INCLUDETABLE <$VER$\Races.txt>
+#DEFINE $Race$ %1
+  #INCLUDETABLE <$VER$\$Race$\Strategy.txt> #EFR
+  set $Race$_StrategyName[#EVAL{%row-1}] = "%1"
+  #ENDINCLUDE
+#ENDINCLUDE
+endfunction
+
+function FindStrategy takes integer racenum , integer strategynum returns string
+  if own_race == R_ELF then
+    return ELF_StrategyName[strategynum]
+  elseif own_race == R_HUMAN then
+    return HUMAN_StrategyName[strategynum]
+  elseif own_race == R_ORC then
+    return ORC_StrategyName[strategynum]
+  elseif own_race == R_UNDEAD then
+    return UNDEAD_StrategyName[strategynum]
+  endif
+  return null
 endfunction
 
 //============================================================================
@@ -4991,13 +5015,8 @@ function GetPlayerHeroStrengthMod takes player p returns integer
     set u = FirstOfGroup(g)
     exitwhen u == null
     set sum = sum + R2I(GetHeroStrength(u) * GetPlayerStrengthHandicap(GetOwningPlayer(u)) * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)))
-    if u != hero_unit[1] and u != hero_unit[2] and u != hero_unit[3] then  //other hero
-      set other_race_hero[i] = GetUnitTypeId(u)
-      set i = i + 1
-    endif
     call GroupRemoveUnit(g,u)
   endloop
-  set other_race_heronumber = i
   set sum = sum + GetPlayerHeroBonusStrength(ai_player)
   call DestroyGroup(g)
   set g = null
@@ -5327,16 +5346,14 @@ function GetOwnStrength takes nothing returns integer
   local unit u = null
   local integer max_ghouls = attacking_ghouls
   local integer ghoul_num = 0
-  local integer i = 0
   local real airsum = 0
-  local race r1 = null
-  local race r2 = GetPlayerRace(ai_player)
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
+    set id = GetUnitTypeId(u)
     if UnitAlive(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitInGroup(u, unit_healing) and not IsUnitHidden(u) then
-      if GetUnitTypeId(u) == old_id[racial_ghoul] then
+      if id == old_id[racial_ghoul] then
         if ghoul_num < max_ghouls then
           set sum = sum + GetUnitStrength(u)
           set ghoul_num = ghoul_num + 1
@@ -5347,21 +5364,10 @@ function GetOwnStrength takes nothing returns integer
       if IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) then
         set airsum = airsum + GetUnitStrength(u)
       endif
-      set r1 = GetUnitRace(u)
-      if r1 != r2 then
-        if GetUnitTypeId(u) != 'ngir' and GetUnitTypeId(u) != 'nzep' and not IsUnitType(u, UNIT_TYPE_SUMMONED) then
-          set other_race_unit[i] = GetUnitTypeId(u)
-          set i = i + 1
-        endif
-      endif
-    endif
     call GroupRemoveUnit(g, u)
   endloop
-  set other_race_unitnumber = i
   call DestroyGroup(g)
   set g = null
-  set r1 = null
-  set r2 = null
   set air_strength = R2I(airsum + 0.5)
   return R2I(sum) + GetPlayerHeroStrengthMod(ai_player)
 endfunction
@@ -7424,13 +7430,13 @@ endfunction
 //===========================================================================
 function cmd_cancel takes integer cmd, integer data returns nothing
   if cmd == 0 then		// Cancel all orders
-    set break_attack 	= false
-    set go_home		= false
-    set strategy	= chosen_strategy
-    set attack_player	= false
-    set attack_point	= false
-    set no_attack	= false
-    set no_creep_attack	= false
+    set break_attack = false
+    set go_home = false
+    set strategy = chosen_strategy
+    set attack_player = false
+    set attack_point = false
+    set no_attack = false
+    set no_creep_attack = false
     set no_player_attack = false
     set queue_running	= false
     call Trace("Cancel All command" )
@@ -7440,12 +7446,12 @@ function cmd_cancel takes integer cmd, integer data returns nothing
     call Trace("Cancel Build Command" )
 
   elseif cmd == 2 then	// Cancel attacking orders
-    set attack_player	= false
-    set attack_point	= false
-    set no_attack	= false
-    set no_creep_attack	= false
+    set attack_player = false
+    set attack_point = false
+    set no_attack = false
+    set no_creep_attack = false
     set no_player_attack = false
-    set queue_running	= false
+    set queue_running = false
     call Trace("Cancel Attack Command" )
 
   endif
@@ -7592,6 +7598,8 @@ endfunction
 
 //============================================================================
 function cmd_misc takes integer cmd, integer data returns nothing
+  local integer i = 0
+  local string s = null
   if cmd == 50 then	// Triggering chat
     set chatting = not chatting
 
@@ -7612,11 +7620,20 @@ function cmd_misc takes integer cmd, integer data returns nothing
 
   elseif cmd == 70 then // change strategy
     if data < rp_strat_length then
-      set strategy = data
-      set chosen_strategy = strategy
-    else
-      call DisplayToAllies(invalid_strategy_number)
+      loop
+        exitwhen i >= rp_strat_length
+        set s = FindStrategy(own_race,data)
+        if strategy_name[i] == s then  //Find StrategyName
+          set strategy = i
+          set chosen_strategy = strategy
+          set s = null
+          return
+        endif
+        set i = i + 1
+      endloop
+      set s = null
     endif
+    call DisplayToAllies(invalid_strategy_number)
 
   elseif cmd == 71 then // change language
     if false then
@@ -8076,6 +8093,7 @@ function InitAMAI takes nothing returns nothing
   call InitPlayerStrengthCache()
   call SetNearestEnemy()
   call InitTownBuilt()
+  call InitStrategy()
   set max_farms = GetMaxFarms()
   set mine_loc = GetUnitLoc(own_town_mine[0])
 
@@ -8988,8 +9006,8 @@ function SetBuildReact takes integer food, integer min1, integer unit1, integer 
   local integer num2 = (food - num1 * GetFoodUsed(old_id[unit1]))/GetFoodUsed(old_id[unit2])
   local integer prio1 = 0
   local integer prio2 = 0
-  local integer food1 = food/GetFoodUsed(old_id[unit1]) 
-  local integer food2 = food/GetFoodUsed(old_id[unit2]) 
+  local integer food1 = food/GetFoodUsed(old_id[unit1])
+  local integer food2 = food/GetFoodUsed(old_id[unit2])
 
   if food1 > food2 then
     set prio1 = prio+(food1-1)*2 - (min1+num1-1)*2		// So builds starting at the max priority possible
@@ -10823,6 +10841,40 @@ function AttackGroupAddNeutrals takes nothing returns nothing
     call SetMeleeGroupAM(dragons[i])
     set i = i + 1
   endloop
+endfunction
+
+function AttackGroupAddUnknown takes nothing returns nothing
+  local group g = CreateGroup()
+  local unit u = null
+  local integer id = 0
+  local integer i = 0
+  local boolean b = false
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectUnittype(g, UNIT_TYPE_SUMMONED, false)
+  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    set id = GetUnitTypeId(u)
+    if UnitAlive(u) and id != 'ngir' and id != 'nzep' and not IsUnitInGroup(u, unit_healing) and not IsUnitHidden(u) then
+      set i = 0
+      set b = false
+      loop
+        exitwhen i >= attack_length or b == true
+        if old_id[attack_units[i]] == id then
+          set b = true
+        endif
+        set i = i + 1
+      endloop
+      if b == false then
+        call AddAssault(60,id)  //other hero and unit , like other race and custom
+      endif
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
 endfunction
 
 //============================================================================
@@ -13311,20 +13363,20 @@ function Conversions takes integer desire, integer unitid returns nothing
         return
     endif
 
-	#INCLUDETABLE <$VER$\UnitConversions.txt> #EFR
-  	if unitid == %1 then
+  #INCLUDETABLE <$VER$\UnitConversions.txt> #EFR
+    if unitid == %1 then
       call ConvertNeeds(%2)
-		  call ConvertNeeds(%3)
+      call ConvertNeeds(%3)
       call MergeUnits(desire,%2,%3,%1)
     endif
-	#ENDINCLUDE
+  #ENDINCLUDE
 
-  	#INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "BUILT_FROM"
+  #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "BUILT_FROM"
     if unitid == %1 then
-		  call ConvertNeeds(%3)
+      call ConvertNeeds(%3)
       call ConvertUnits(desire, %3)
     endif
-  	#ENDINCLUDE
+  #ENDINCLUDE
 
 endfunction
 
