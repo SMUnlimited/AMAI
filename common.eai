@@ -2525,6 +2525,8 @@ endfunction
 function InitAssaultGroup takes nothing returns nothing
   if IsAMAI then
     set attack_length = 0
+    set other_race_unitnumber = 0
+    set other_race_heronumber = 0
   else
     set harass_length = 0
   endif
@@ -4149,7 +4151,7 @@ function GroupRecycleHarrassPositionInstant takes group g returns nothing
     exitwhen u == null
     call RecycleGuardPosition(u)
     call AddAssault(1, GetUnitTypeId(u))
-    call GroupRemoveUnit(unit_harassing, u)	
+    call GroupRemoveUnit(unit_harassing, u)
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
@@ -5193,7 +5195,6 @@ function GetPlayerHeroStrengthMod takes player p returns integer
   local unit u = null
   local integer sum = 0
   local integer i = 0
-
   call GroupEnumUnitsOfPlayer(g, p, null)
   set g = SelectUnittype(g, UNIT_TYPE_HERO, true)
   set g = SelectByAlive(g, true)
@@ -5201,13 +5202,8 @@ function GetPlayerHeroStrengthMod takes player p returns integer
     set u = FirstOfGroup(g)
     exitwhen u == null
     set sum = sum + R2I(GetHeroStrength(u) * GetPlayerStrengthHandicap(GetOwningPlayer(u)) * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)))
-    if u != hero_unit[1] and u != hero_unit[2] and u != hero_unit[3] then  //other hero
-      set other_race_hero[i] = GetUnitTypeId(u)
-      set i = i + 1
-    endif
     call GroupRemoveUnit(g,u)
   endloop
-  set other_race_heronumber = i
   set sum = sum + GetPlayerHeroBonusStrength(ai_player)
   call DestroyGroup(g)
   set g = null
@@ -5537,16 +5533,13 @@ function GetOwnStrength takes nothing returns integer
   local unit u = null
   local integer max_ghouls = attacking_ghouls
   local integer ghoul_num = 0
-  local integer i = 0
   local real airsum = 0
-  local race r1 = null
-  local race r2 = GetPlayerRace(ai_player)
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
     if UnitAlive(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitInGroup(u, unit_healing) and not IsUnitHidden(u) then
-      if GetUnitTypeId(u) == old_id[racial_ghoul] then
+      if GetUnitTypeId(u)== old_id[racial_ghoul] then
         if ghoul_num < max_ghouls then
           set sum = sum + GetUnitStrength(u)
           set ghoul_num = ghoul_num + 1
@@ -5557,21 +5550,10 @@ function GetOwnStrength takes nothing returns integer
       if IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) then
         set airsum = airsum + GetUnitStrength(u)
       endif
-      set r1 = GetUnitRace(u)
-      if r1 != r2 then
-        if GetUnitTypeId(u) != 'ngir' and GetUnitTypeId(u) != 'nzep' and not IsUnitType(u, UNIT_TYPE_SUMMONED) then
-            set other_race_unit[i] = GetUnitTypeId(u)
-            set i = i + 1
-        endif
-      endif
-    endif
     call GroupRemoveUnit(g, u)
   endloop
-  set other_race_unitnumber = i
   call DestroyGroup(g)
   set g = null
-  set r1 = null
-  set r2 = null
   set air_strength = R2I(airsum + 0.5)
   return R2I(sum) + GetPlayerHeroStrengthMod(ai_player)
 endfunction
@@ -11059,6 +11041,40 @@ function AttackGroupAddNeutrals takes nothing returns nothing
     call SetMeleeGroupAM(dragons[i])
     set i = i + 1
   endloop
+endfunction
+
+function AttackGroupAddUnknown takes nothing returns nothing
+  local group g = CreateGroup()
+  local unit u = null
+  local integer id = 0
+  local integer i = 0
+  local boolean b = false
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectUnittype(g, UNIT_TYPE_SUMMONED, false)
+  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    set id = GetUnitTypeId(u)
+    if UnitAlive(u) and id != 'ngir' and id != 'nzep' and not IsUnitInGroup(u, unit_healing) and not IsUnitHidden(u) then
+      set i = 0
+      set b = false
+      loop
+        exitwhen i >= attack_length or b == true
+        if old_id[attack_units[i]] == id then
+          set b = true
+        endif
+        set i = i + 1
+      endloop
+      if b == false then
+        call AddAssault(60,id)  //other hero and unit , like other race and custom
+      endif
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
 endfunction
 
 //============================================================================
