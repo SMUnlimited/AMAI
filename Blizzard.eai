@@ -49,6 +49,15 @@
     integer array current_number_par
     player array commanded_player
 
+    string RaceStrategy = null
+    #INCLUDETABLE <$VER$\Races.txt>
+    string array %1_StrategyName
+    #ENDINCLUDE
+    integer RS_total = 0
+    string RS_interrupt = null
+    integer Strategydialog = 0
+    button Strategybutton = null
+
     string array tribute_type
     button tribute_g = null
     button tribute_l = null
@@ -491,12 +500,12 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
   local integer i = 1
   local integer j = 0
   local integer sum = unsynced
-  local group old_selection = CreateGroup()
+  local group old_selection = null
   local unit u = null
   local integer bits_per_selection = 8 // that many bits are sent per selection
   local integer selection_num = 2 // that many times a selection is done
   local integer bits_number = selection_num * bits_per_selection // number of bits of integer used
-  local timer t = CreateTimer()
+  local timer t = null
   local location l = null
 
 //  call DisplayToPlayer(sync_p, I2S(sum))
@@ -504,7 +513,8 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
   if bj_isSinglePlayer then
     return unsynced
   endif
-
+  set old_selection = CreateGroup()
+  set t = CreateTimer()
   // separate integer in bits
   if sum < 0 then
     set source_int[0] = 1
@@ -700,6 +710,18 @@ function ShowBoard takes nothing returns nothing
 endfunction
 
 //===========================================================================
+// InitRaceStrategy
+//===========================================================================
+function InitRaceStrategy takes nothing returns nothing
+  #INCLUDETABLE <$VER$\Races.txt>
+  #DEFINE $RACE$ %1
+    #INCLUDETABLE <$VER$\%1\Strategy.txt> #EFR
+    set $RACE$_StrategyName[%row] = "%1"
+    #ENDINCLUDE
+  #ENDINCLUDE
+  endfunction
+
+//===========================================================================
 // Help Function (Displays help on screen)
 //===========================================================================
 function DisplayHelpToPlayer takes player p, string msg returns nothing
@@ -881,7 +903,6 @@ function TributeWoodFromAll takes player Commander, integer res_amount returns n
 endfunction
 
 function Tribute takes player Commander, player Comp, string LorG, string ResAmount returns nothing
-
   //Player wants Gold
   if (LorG == "G") or (LorG == "GiveG") or (LorG == "Gold") then
     if LorG == "GiveG" then
@@ -951,7 +972,6 @@ function ExecuteCommand takes player Comp, integer number returns nothing
   if command_par2[number] != -1 then  
     call CommandAI(Comp, par2, par3)
   endif
-
   if command_number[number] != -1 then
     call CommandAI(Comp, cn, par1)
   endif
@@ -1047,6 +1067,20 @@ function FindCommand takes nothing returns integer
 
 endfunction
 
+function SaveStrategyName takes string racename ,string stnamesource,string stnametrans returns nothing
+  local string s = stnamesource  // use $VER$\$RACE$\Strategy.txt source StrategyName
+  if RS_interrupt != racename then
+    set RS_total = 0
+    set RS_interrupt = racename
+  endif
+  if stnametrans != null and stnametrans != "" then  //Avoiding translation Strategy.txt StrategyName omission
+    set s = stnametrans
+  endif
+  call SaveStr(translation, StringHash(racename), RS_total, s)
+  set RS_total = RS_total + 1
+  set s = null
+endfunction
+
 #INCLUDETABLE <Languages.txt> #EFR
 function initLanguage%1 takes nothing returns nothing
 #INCLUDETABLE <Languages\%1\Commander.txt> #ENC:%4 #EFR
@@ -1061,6 +1095,25 @@ function initLanguage%1 takes nothing returns nothing
 #INCLUDETABLE <Languages\%1\CommandsTrans.txt> #ENC:%4 #EFR
   call SaveStr(translation, StringHash(language), StringHash("%1"), "%2")
 #ENDINCLUDE
+
+set RS_interrupt = null
+#INCLUDETABLE <Languages\%1\Strategy.txt> #ENC:%4 #EFR
+#DEFINE $StrategyName$ %1
+#DEFINE $StrategyNameTrans$ "%2"
+  #INCLUDETABLE <$VER$\Human\Strategy.txt> #EFR #COND '%1' eq '$StrategyName$'  //Increase compilation time , But code level is limited
+  call SaveStrategyName("HUMAN",HUMAN_StrategyName[RS_total],$StrategyNameTrans$)
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\Elf\Strategy.txt> #EFR #COND '%1' eq '$StrategyName$'
+  call SaveStrategyName("ELF",ELF_StrategyName[RS_total],$StrategyNameTrans$)
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\Orc\Strategy.txt> #EFR #COND '%1' eq '$StrategyName$'
+  call SaveStrategyName("ORC",ORC_StrategyName[RS_total],$StrategyNameTrans$)
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\Undead\Strategy.txt> #EFR #COND '%1' eq '$StrategyName$'
+  call SaveStrategyName("UNDEAD",UNDEAD_StrategyName[RS_total],$StrategyNameTrans$)
+  #ENDINCLUDE
+#ENDINCLUDE
+  set RS_interrupt = null
 endfunction
 #ENDINCLUDE
 
@@ -1215,6 +1268,10 @@ endfunction
 
 function CommanderLanguageResponse takes nothing returns nothing
   local button b = GetClickedButton()
+  if language != "English" and language != "" and b != null then
+    set language = "English"
+    call initLanguageEnglish()  //Second language change , some variable assigned by previous language, so back English cannot take effect , it can fix
+  endif
   if false then
 #INCLUDETABLE <Languages.txt> #EFR
   elseif b == %1_button then
@@ -1288,6 +1345,7 @@ function StartDialogResponse takes nothing returns nothing
   call DestroyLastTrigger(last_dialog_trigger, last_dialog_trigger_action)
   set last_dialog_trigger = null
   set last_dialog_trigger_action = null
+  set RaceStrategy = null
   loop
     exitwhen sdbn_button[i] == b or i >= sdbn_length
     set i = i + 1
@@ -1315,6 +1373,15 @@ function StartDialogResponse takes nothing returns nothing
   endif
   if (b == all_button or sdbn_button[i] == b) then 
     if (sdbn_button[i] == b) then
+      if GetPlayerRace(Player(sdbn_number[i])) == RACE_HUMAN then
+        set RaceStrategy = "HUMAN"
+      elseif GetPlayerRace(Player(sdbn_number[i])) == RACE_ORC then
+        set RaceStrategy = "ORC"
+      elseif GetPlayerRace(Player(sdbn_number[i])) == RACE_UNDEAD then
+        set RaceStrategy = "UNDEAD"
+      elseif GetPlayerRace(Player(sdbn_number[i])) == RACE_NIGHTELF then
+        set RaceStrategy = "ELF"
+      endif
       set commanded_player[GetPlayerId(GetTriggerPlayer())] = Player(sdbn_number[i])
     elseif (b == all_button) then
       set commanded_player[GetPlayerId(GetTriggerPlayer())] = Player(playermax)
@@ -1346,13 +1413,27 @@ function BuildNumberDialog takes player p, integer startnum returns dialog
   call DialogSetMessage(new_dialog, dlghdr_choose_number)
   set ndbn_length = startnum
   set ndbn_paged_length = 0
-  loop
-    exitwhen i >= 9 + startnum or i >= maxCount
-    set ndbn_button[ndbn_length] = DialogAddButton(new_dialog, I2S(i), IMinBJ(48 + i, 57))
-    set ndbn_length = ndbn_length + 1
-    set ndbn_paged_length = ndbn_paged_length + 1
-    set i = i + 1
-  endloop
+  if Strategydialog == 0 or RaceStrategy == null then
+    loop
+      exitwhen i >= 9 + startnum or i >= maxCount
+      set ndbn_button[ndbn_length] = DialogAddButton(new_dialog, I2S(i), IMinBJ(48 + i, 57))
+      set ndbn_length = ndbn_length + 1
+      set ndbn_paged_length = ndbn_paged_length + 1
+      set i = i + 1
+    endloop
+  else
+    loop
+      exitwhen i >= 9 + startnum or i >= maxCount
+      if LoadStr(translation, StringHash(RaceStrategy), i) != null then
+        set ndbn_button[ndbn_length] = DialogAddButton(new_dialog, LoadStr(translation, StringHash(RaceStrategy), i), IMinBJ(48 + i, 57))
+      else
+        set ndbn_button[ndbn_length] = DialogAddButton(new_dialog, "null", IMinBJ(48 + i, 57))
+      endif
+      set ndbn_length = ndbn_length + 1
+      set ndbn_paged_length = ndbn_paged_length + 1
+      set i = i + 1
+    endloop
+  endif
   if (i < maxCount) then
     call AddNextButton(new_dialog)
   endif
@@ -1479,7 +1560,7 @@ function NumberDialogResponse takes nothing returns nothing
     call DialogDisplay(GetTriggerPlayer(), d, true)
   endif
   if (ndbn_button[i] == b) then
-    set current_number_par[GetPlayerId(GetTriggerPlayer())] =i
+    set current_number_par[GetPlayerId(GetTriggerPlayer())] = i
     call ExecuteDialogCommand(commanded_player[GetPlayerId(GetTriggerPlayer())], current_command[GetPlayerId(GetTriggerPlayer())])
   endif
   set b = null
@@ -1508,10 +1589,13 @@ function DialogResponse takes nothing returns nothing
 
   set d = cdlg_dialog[i]
   set cn = cdlg_number[i]
-
+  set Strategydialog = 0
   if d != null then
     set current_command[GetPlayerId(GetTriggerPlayer())] = cn
     if (d == number_dialog) then
+      if b == Strategybutton then
+        set Strategydialog = 1
+      endif
       set t = CreateTrigger()
       set d = BuildNumberDialog(commanded_player[GetPlayerId(GetTriggerPlayer())], 0)
       call TriggerRegisterDialogEvent(t, d )
@@ -1624,7 +1708,10 @@ function AddCommandDialog takes integer i returns nothing
     set current_name = ""
     set current_dialog = FindDialog(current_name)
     if current_dialog != null then
-      call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg1[i], command_hotkey1[i]), i, next_dialog)
+      call RegisterCDialogButton(DialogAddButtonWithHotkeyBJ(current_dialog, command_dlg1[i], command_hotkey1[i]), i, next_dialog)
+      if command_dlg1[i] == Translation("Change Strategy") then
+        set Strategybutton = bj_lastCreatedButton
+      endif
       set current_dialog = null
       set next_dialog = null
       return
@@ -1639,7 +1726,7 @@ endfunction
 function BuildCommandDialogs takes nothing returns nothing
   local integer i = 0
   loop
-    exitwhen i >=command_length
+    exitwhen i >= command_length
     call AddCommandDialog(i)
     set i = i + 1
   endloop
@@ -1796,13 +1883,13 @@ function InitCommanderPart takes nothing returns nothing
   local trigger commander_trigger = CreateTrigger()
   local trigger cdlg_trigger = CreateTrigger()
   //local timer t = CreateTimer()
-
   loop
     exitwhen i >= playermax
     call TriggerRegisterPlayerChatEvent( commander_trigger, Player(i), command_prefix, false )
     call TriggerRegisterPlayerEvent( cdlg_trigger, Player(i), EVENT_PLAYER_END_CINEMATIC )
     set i = i + 1
   endloop
+  set Strategybutton = null
   call TriggerAddAction( commander_trigger, function Commander )
   call TriggerAddAction( cdlg_trigger, function DialogCommander )
 
@@ -1963,6 +2050,11 @@ endfunction
 
 function LanguageDlgResponse takes nothing returns nothing
   local button b = GetClickedButton()
+  if language != "English" and language != "" and b != null then
+    set language = "English"
+    call SendToAllAIs(71,0)  //Second language change , some variable assigned by previous language, so back English cannot take effect , it can fix
+    call initLanguageEnglish()
+  endif
   if false then
 #INCLUDETABLE <Languages.txt> #EFR
   elseif b == %1_button then
@@ -2030,6 +2122,7 @@ endfunction
 
 #INCLUDE <Blizzard3.j>
     call InitCommander()
+    call InitRaceStrategy()
     call InitZoom()
     call AdjustZoom()
 #INCLUDE <Blizzard4.j>
