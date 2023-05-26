@@ -182,6 +182,10 @@ globals
     constant integer RACE_NUMBER = %row
 #ENDINCLUDE
 
+#INCLUDETABLE <$VER$\Races.txt>
+    string array %1_StrategyName
+#ENDINCLUDE
+
 #DEFINE $HEROLEVELNUM$ 0
 #INCLUDETABLE <$VER$\HeroLevels.txt>
 #DEFINE $HEROLEVELNUM$ %row
@@ -437,6 +441,9 @@ globals
     integer race_ancient_expansion_strength = 15  // up to how much expansion strength is an ancient expansion allowed ?
     integer race_ancient_expansion_help_id = 'earc'  // the unit id of the unit that should help in ancient expansion
     integer race_ancient_expansion_hero_rush_level = 2  // the bonus strength value hero must have to be able to do the ancient expansion
+    boolean race_item_expansion_available = false  // can expand with item building ?
+    integer race_item_sale_level = 0  // buy expand item need hall level ?
+    integer race_item_expansion_item_id = 0  // what is expand item name(from StandardUnits.txt) ?
     boolean race_sell_ziggurats = false  // does the race sell ziggurats that are at no more needed expansions ?
     real race_ziggurat_keep_distance = 1500  // keep ziggurat if this near another building except a ziggurat is
     boolean race_build_farms_front = false  // should the race build farms towards the front (as soon as the front is computed) ?
@@ -851,7 +858,7 @@ globals
     constant integer C_%1 = %row
 #ENDINCLUDE
 
-    string chat_no_unit_selected    = ""
+    string chat_no_unit_selected = ""
     string chat_confirm_attack_unit = ""
     string chat_towerrush = ""
     string chat_no_towerrush = ""
@@ -2656,13 +2663,12 @@ function InitMapSizeVars takes nothing returns nothing
       call SetChatVar("MapSize", "small")
     elseif a < 380 then
       call SetChatVar("MapSize", "medium")
-      set mapattackdelayed = 8 - difficulty
     elseif a < 540 then
       call SetChatVar("MapSize", "large")
-      set mapattackdelayed = 7 - difficulty
+      set mapattackdelayed = 8 - difficulty
     else
       call SetChatVar("MapSize", "huge")
-      set mapattackdelayed = 6 - difficulty
+      set mapattackdelayed = 7 - difficulty
     endif
   else
     if a < 90 then
@@ -2673,19 +2679,18 @@ function InitMapSizeVars takes nothing returns nothing
       call SetChatVar("MapSize", "small")
     elseif a < 380 then
       call SetChatVar("MapSize", "medium")
-      set mapattackdelayed = 8 - difficulty
     elseif a < 540 then
       call SetChatVar("MapSize", "large")
-      set mapattackdelayed = 7 - difficulty
+      set mapattackdelayed = 8 - difficulty
     elseif a < 960 then
       call SetChatVar("MapSize", "extralarge")
-      set mapattackdelayed = 6 - difficulty
+      set mapattackdelayed = 7 - difficulty
     elseif a < 2048 then
       call SetChatVar("MapSize", "huge")
-      set mapattackdelayed = 5 - difficulty
+      set mapattackdelayed = 6 - difficulty
     else
       call SetChatVar("MapSize", "legendary")
-      set mapattackdelayed = 4 - difficulty
+      set mapattackdelayed = 5 - difficulty
     endif
   endif
 endfunction
@@ -3225,6 +3230,29 @@ function InitTranslations takes nothing returns nothing
   #ENDINCLUDE
 #ENDINCLUDE
 set lang = null
+endfunction
+
+//============================================================================
+function InitStrategy takes nothing returns nothing
+#INCLUDETABLE <$VER$\Races.txt>
+#DEFINE $Race$ %1
+  #INCLUDETABLE <$VER$\$Race$\Strategy.txt> #EFR
+  set $Race$_StrategyName[#EVAL{%row-1}] = "%1"
+  #ENDINCLUDE
+#ENDINCLUDE
+endfunction
+
+function FindStrategy takes integer racenum , integer strategynum returns string
+  if own_race == R_ELF then
+    return ELF_StrategyName[strategynum]
+  elseif own_race == R_HUMAN then
+    return HUMAN_StrategyName[strategynum]
+  elseif own_race == R_ORC then
+    return ORC_StrategyName[strategynum]
+  elseif own_race == R_UNDEAD then
+    return UNDEAD_StrategyName[strategynum]
+  endif
+  return null
 endfunction
 
 //============================================================================
@@ -5535,7 +5563,7 @@ function GetOwnStrength takes nothing returns integer
     set u = FirstOfGroup(g)
     exitwhen u == null
     if UnitAlive(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitInGroup(u, unit_healing) and not IsUnitHidden(u) then
-      if GetUnitTypeId(u)== old_id[racial_ghoul] then
+      if GetUnitTypeId(u) == old_id[racial_ghoul] then
         if ghoul_num < max_ghouls then
           set sum = sum + GetUnitStrength(u)
           set ghoul_num = ghoul_num + 1
@@ -6004,7 +6032,7 @@ endfunction
 function CheckExpansionTaken takes unit expa returns boolean
   local group g = null
   local unit u = null
-  if expa == not_taken_expansion then // Used in the ancient expansion system
+  if expa == not_taken_expansion then // Used in the ancient expansion and item expansion system
     return false
   endif
   set g = CreateGroup()
@@ -6564,7 +6592,11 @@ function ChooseExpansion takes nothing returns nothing
   else
     set exp_chosen = ChooseExp()
     set current_expansion = exp_unit[exp_chosen]
+    call RemoveLocation(ancient_exp_loc)
     set ancient_exp_loc = exp_ancient[exp_chosen]
+    call RemoveLocation(item_exp_loc)
+    set item_exp_loc = exp_ancient[exp_chosen]
+    call DestroyGroup(current_expansion_creeps)
     set current_expansion_creeps = exp_creeps[exp_chosen]
 //    call PingMinimap(GetUnitX(current_expansion), GetUnitY(current_expansion), 20)
   endif
@@ -7613,13 +7645,13 @@ endfunction
 //===========================================================================
 function cmd_cancel takes integer cmd, integer data returns nothing
   if cmd == 0 then		// Cancel all orders
-    set break_attack 	= false
-    set go_home		= false
-    set strategy	= chosen_strategy
-    set attack_player	= false
-    set attack_point	= false
-    set no_attack	= false
-    set no_creep_attack	= false
+    set break_attack = false
+    set go_home = false
+    set strategy = chosen_strategy
+    set attack_player = false
+    set attack_point = false
+    set no_attack = false
+    set no_creep_attack = false
     set no_player_attack = false
     set queue_running	= false
     call Trace("Cancel All command" )
@@ -7629,12 +7661,12 @@ function cmd_cancel takes integer cmd, integer data returns nothing
     call Trace("Cancel Build Command" )
 
   elseif cmd == 2 then	// Cancel attacking orders
-    set attack_player	= false
-    set attack_point	= false
-    set no_attack	= false
-    set no_creep_attack	= false
+    set attack_player = false
+    set attack_point = false
+    set no_attack = false
+    set no_creep_attack = false
     set no_player_attack = false
-    set queue_running	= false
+    set queue_running = false
     call Trace("Cancel Attack Command" )
 
   endif
@@ -7781,6 +7813,8 @@ endfunction
 
 //============================================================================
 function cmd_misc takes integer cmd, integer data returns nothing
+  local integer i = 0
+  local string s = null
   if cmd == 50 then	// Triggering chat
     set chatting = not chatting
 
@@ -7801,11 +7835,20 @@ function cmd_misc takes integer cmd, integer data returns nothing
 
   elseif cmd == 70 then // change strategy
     if data < rp_strat_length then
-      set strategy = data
-      set chosen_strategy = strategy
-    else
-      call DisplayToAllies(invalid_strategy_number)
+      loop
+        exitwhen i >= rp_strat_length
+        set s = FindStrategy(own_race,data)
+        if strategy_name[i] == s then  //Find StrategyName
+          set strategy = i
+          set chosen_strategy = strategy
+          set s = null
+          return
+        endif
+        set i = i + 1
+      endloop
+      set s = null
     endif
+    call DisplayToAllies(invalid_strategy_number)
 
   elseif cmd == 71 then // change language
     if false then
@@ -8290,6 +8333,7 @@ function InitAMAI takes nothing returns nothing
     call InitPlayerStrengthCache()
     call SetNearestEnemy()
     call InitTownBuilt()
+    call InitStrategy()
     set max_farms = GetMaxFarms()
     set mine_loc = GetUnitLoc(own_town_mine[0])
     
@@ -10314,6 +10358,7 @@ function BuyItem takes integer qty, integer id returns boolean
     //call Trace("Already ordered to get an item")
     return true
   endif
+  set shop_wanted = qty
   if buy_type[id] == BT_RACIAL_ITEM then
     set shop_unit = GetOneOfId(ai_player, old_id[racial_shop])
     set shop_distance_limit = raceshop_distance_limit
@@ -10321,14 +10366,12 @@ function BuyItem takes integer qty, integer id returns boolean
     set shop_unit = nearest_neutral[NEUTRAL_MERCHANT]
     set shop_distance_limit = merchant_distance_limit
   endif
-  if shop_unit == null then
-    set shop_wanted = qty
+  if shop_unit != null then
     set shop_ordered = true
     call TQAddJob(0, BUY_ITEM, id)
-  else
-    return false
+    return true
   endif
-  return true
+  return false
 endfunction
 
 function BuyAllyShopItem takes integer qty, integer id returns boolean
@@ -11045,28 +11088,21 @@ function AttackGroupAddUnknown takes nothing returns nothing
   local unit u = null
   local integer id = 0
   local integer i = 0
-  local boolean b = false
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectUnittype(g, UNIT_TYPE_SUMMONED, false)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
   loop
+    exitwhen i >= attack_length
+    set g = SelectById(g, old_id[attack_units[i]], false)
+    set i = i + 1
+  endloop
+  loop
     set u = FirstOfGroup(g)
     exitwhen u == null
     set id = GetUnitTypeId(u)
     if UnitAlive(u) and id != 'ngir' and id != 'nzep' and not IsUnitInGroup(u, unit_healing) and not IsUnitHidden(u) then
-      set i = 0
-      set b = false
-      loop
-        exitwhen i >= attack_length or b == true
-        if old_id[attack_units[i]] == id then
-          set b = true
-        endif
-        set i = i + 1
-      endloop
-      if b == false then
-        call AddAssault(60,id)  //other hero and unit , like other race and custom
-      endif
+      call AddAssault(60,id)  //other hero and unit , like other race and custom
     endif
     call GroupRemoveUnit(g, u)
   endloop
@@ -12058,7 +12094,7 @@ function Militia_Expansion takes integer m returns nothing
   set g = null
   set expansion_peon = FirstOfGroup(tempg)
   call AddAbilityToGroup(CopyGroup(tempg), race_militia_ability)
-  call GroupImmediateOrder(tempg, race_militia_unitstring )
+  call GroupImmediateOrder(tempg, race_militia_unitstring)
   call RemoveInjuries()
   call FormGroupAM(4)
   loop
@@ -12355,6 +12391,22 @@ if not creeping_only then	// Do the normal attack sequence
       endif
     endif
 
+    // item expansion attack
+    //
+    if item_expanding then
+      if item_exp_state != 0 then
+        call Trace("An Item Expansion Attack or Guard")
+        set item_attack_running = true
+        call FormGroupAM(3)
+        if item_exp_state == 1 then
+          call AttackMoveKillCreep(GetExpFoe())
+          set item_attack_running = false
+        else
+          call AttackMoveKillXYAAM(R2I(GetLocationX(item_exp_guard_loc)),R2I(GetLocationY(item_exp_guard_loc)))  //Prevent the army from leaving before using the item , so no set item_attack_running
+        endif
+        return
+      endif
+    endif
 
     // defend expansion from other expansion
     //
@@ -12830,7 +12882,7 @@ function universal_attack_sequence takes nothing returns nothing
       call FormGroupAM(1)
       call SleepUntilTownDefended(GetOwnStrength())
       //call SleepInCombatAM()
-    elseif not towerrush and not ancient_expanding and not militia_expanding then
+    elseif not towerrush and not ancient_expanding and not militia_expanding and not item_expanding then
       call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
     endif
 
