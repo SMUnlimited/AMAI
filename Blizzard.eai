@@ -49,6 +49,15 @@
     integer array current_number_par
     player array commanded_player
 
+    string RaceStrategy = null
+#INCLUDETABLE <$VER$\Races.txt>
+    string array %1_StrategyName
+#ENDINCLUDE
+    integer RS_total = 0
+    string RS_interrupt = null
+    integer Strategydialog = 0
+    button Strategybutton = null
+
     string array tribute_type
     button tribute_g = null
     button tribute_l = null
@@ -92,9 +101,6 @@
 #INCLUDETABLE <Languages.txt> #EFR
     button %1_button = null
 #ENDINCLUDE
-
-    trigger W3CIcons = null
-    boolean W3CIconsSet = true
 
     string chat_no_ally = ""
     string you_no_gold = ""
@@ -176,37 +182,37 @@ endfunction
 // The Parser (Takes a String, Seperates words, puts in string array)
 //===========================================================================
 function Parser takes string ChatMsg returns nothing
-   //Required Variables
-   local integer Last = 0
-   local integer A = 1
-   local integer I = 0
-   local integer Length = StringLength(ChatMsg)
+  //Required Variables
+  local integer Last = 0
+  local integer A = 1
+  local integer I = 0
+  local integer Length = StringLength(ChatMsg)
 
-   //Pulls Words and places them each in their own Variable
-   loop
-     if (SubStringBJ(ChatMsg,A,A) == " ") then
-       set parsed_command[I] = StringCase(SubStringBJ(ChatMsg, (Last + 1), (A - 1)), true)
-       set Last = A
-       set I = I + 1
-     elseif (SubStringBJ(ChatMsg,A,A) == ":") then
-       if (SubStringBJ(ChatMsg,A+1,A+1) == " ") then
+  //Pulls Words and places them each in their own Variable
+  loop
+    if (SubStringBJ(ChatMsg,A,A) == " ") then
+      set parsed_command[I] = StringCase(SubStringBJ(ChatMsg, (Last + 1), (A - 1)), true)
+      set Last = A
+      set I = I + 1
+    elseif (SubStringBJ(ChatMsg,A,A) == ":") then
+      if (SubStringBJ(ChatMsg,A+1,A+1) == " ") then
         set A = A + 1 // space after the : so include in separator
-       endif 
-       set parsed_command[I] = StringCase(SubStringBJ(ChatMsg, (Last + 1), (A - 1)), true)
-       set Last = A
-       set I = I + 1
-     elseif (A == Length) then
-       set parsed_command[I] = StringCase(SubStringBJ(ChatMsg, (Last + 1), A), true)
-       set I = I + 1
-     endif
-     set A = A + 1
-     exitwhen(A>Length)
-   endloop
-   loop
-     exitwhen I > 6
-     set parsed_command[I] = ""
-     set I = I + 1
-   endloop
+      endif
+      set parsed_command[I] = StringCase(SubStringBJ(ChatMsg, (Last + 1), (A - 1)), true)
+      set Last = A
+      set I = I + 1
+    elseif (A == Length) then
+      set parsed_command[I] = StringCase(SubStringBJ(ChatMsg, (Last + 1), A), true)
+      set I = I + 1
+    endif
+    set A = A + 1
+    exitwhen(A>Length)
+  endloop
+  loop
+    exitwhen I > 6
+    set parsed_command[I] = ""
+    set I = I + 1
+  endloop
 
 endfunction
 
@@ -333,12 +339,12 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
   local integer i = 1
   local integer j = 0
   local integer sum = unsynced
-  local group old_selection = CreateGroup()
+  local group old_selection = null
   local unit u = null
   local integer bits_per_selection = 8 // that many bits are sent per selection
   local integer selection_num = 2 // that many times a selection is done
   local integer bits_number = selection_num * bits_per_selection // number of bits of integer used
-  local timer t = CreateTimer()
+  local timer t = null
   local location l = null
 
 //  call DisplayToPlayer(sync_p, I2S(sum))
@@ -346,7 +352,8 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
   if bj_isSinglePlayer then
     return unsynced
   endif
-
+  set old_selection = CreateGroup()
+  set t = CreateTimer()
   // separate integer in bits
   if sum < 0 then
     set source_int[0] = 1
@@ -479,8 +486,8 @@ function Convert2Player takes string Comp, boolean all_allowed returns player
     endif
 
   elseif (CColor == null) then
-   //Makes Sure color was typed Correctly  
-    //Makes sure number is 0 or bigger and 11 or smaller
+   //Makes Sure color was typed Correctly
+    //Makes sure number is 0 or bigger and 23 or smaller
     if (S2I(Comp) >= 0) and (S2I(Comp) < GetBJMaxPlayers()) then
       set theplayer = Player(S2I(Comp))
     else
@@ -542,48 +549,15 @@ function ShowBoard takes nothing returns nothing
 endfunction
 
 //===========================================================================
-// W3C ICON
+// InitRaceStrategy
 //===========================================================================
-function SetW3CMiniMapIcons takes nothing returns nothing
-  local boolean b = W3CIconsSet
-  local unit u = null
-  local group g = CreateGroup()
-  local minimapicon i = null
-  call GroupEnumUnitsOfPlayer(g,Player(PLAYER_NEUTRAL_PASSIVE),null)
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    if false then
-    #INCLUDETABLE <NeutralIcon.txt> #EFR
-    elseif GetUnitTypeId(u) == '%1' then
-      set i = CreateMinimapIcon(GetUnitX(u)/ 128 * 128,GetUnitY(u)/ 128 * 128,255,255,255,"%2",FOG_OF_WAR_FOGGED)
-      call SetMinimapIconVisible(i,b)
-      //call SetMinimapIconOrphanDestroy(i,b)
-    #ENDINCLUDE
-    endif
-    call GroupRemoveUnit(g,u)
-  endloop
-  call DestroyGroup(g)
-  set g = null
-  set i = null
-endfunction
-
-function W3CMiniMapIcons takes nothing returns nothing
-  local integer i = 0
-  if W3CIcons == null then
-    set W3CIcons = CreateTrigger()
-  endif
-  loop
-    exitwhen i >= GetBJMaxPlayers()
-    call TriggerRegisterPlayerChatEvent(W3CIcons, Player(i), "-minimap", true)
-    set i = i + 1
-  endloop
-  if W3CIconsSet == true then
-    set W3CIconsSet = false
-  else
-    set W3CIconsSet = true
-  endif
-  call TriggerAddAction( W3CIcons, function SetW3CMiniMapIcons )
+function InitRaceStrategy takes nothing returns nothing
+#INCLUDETABLE <$VER$\Races.txt>
+#DEFINE $RACE$ %1
+  #INCLUDETABLE <$VER$\%1\Strategy.txt> #EFR
+  set $RACE$_StrategyName[%row] = "%1"
+  #ENDINCLUDE
+#ENDINCLUDE
 endfunction
 
 //===========================================================================
@@ -696,7 +670,6 @@ function TributeWoodFromAll takes player Commander, integer res_amount returns n
 endfunction
 
 function Tribute takes player Commander, player Comp, string LorG, string ResAmount returns nothing
-
   //Player wants Gold
   if (LorG == "G") or (LorG == "GiveG") or (LorG == "Gold") then
     if LorG == "GiveG" then
@@ -766,7 +739,6 @@ function ExecuteCommand takes player Comp, integer number returns nothing
   if command_par2[number] != -1 then
     call CommandAI(Comp, par2, par3)
   endif
-    
   if command_number[number] != -1 then
     call CommandAI(Comp, cn, par1)
   endif
@@ -862,6 +834,20 @@ function FindCommand takes nothing returns integer
 
 endfunction
 
+function SaveStrategyName takes string racename ,string stnamesource,string stnametrans returns nothing
+  local string s = stnamesource  // use $VER$\$RACE$\Strategy.txt source StrategyName
+  if RS_interrupt != racename then
+    set RS_total = 0
+    set RS_interrupt = racename
+  endif
+  if stnametrans != null and stnametrans != "" then  //Avoiding translation Strategy.txt StrategyName omission
+    set s = stnametrans
+  endif
+  call SaveStr(translation, StringHash(racename), RS_total, s)
+  set RS_total = RS_total + 1
+  set s = null
+endfunction
+
 #INCLUDETABLE <Languages.txt> #EFR
 function initLanguage%1 takes nothing returns nothing
 #INCLUDETABLE <Languages\%1\Commander.txt> #ENC:%4 #EFR
@@ -876,6 +862,25 @@ function initLanguage%1 takes nothing returns nothing
 #INCLUDETABLE <Languages\%1\CommandsTrans.txt> #ENC:%4 #EFR
   call SaveStr(translation, StringHash(language), StringHash("%1"), "%2")
 #ENDINCLUDE
+
+  set RS_interrupt = null
+#INCLUDETABLE <Languages\%1\Strategy.txt> #ENC:%4 #EFR
+#DEFINE $StrategyName$ %1
+#DEFINE $StrategyNameTrans$ "%2"
+  #INCLUDETABLE <$VER$\Human\Strategy.txt> #EFR #COND '%1' eq '$StrategyName$'  //Increase compilation time , But code level is limited
+  call SaveStrategyName("HUMAN",HUMAN_StrategyName[RS_total],$StrategyNameTrans$)
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\Elf\Strategy.txt> #EFR #COND '%1' eq '$StrategyName$'
+  call SaveStrategyName("ELF",ELF_StrategyName[RS_total],$StrategyNameTrans$)
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\Orc\Strategy.txt> #EFR #COND '%1' eq '$StrategyName$'
+  call SaveStrategyName("ORC",ORC_StrategyName[RS_total],$StrategyNameTrans$)
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\Undead\Strategy.txt> #EFR #COND '%1' eq '$StrategyName$'
+  call SaveStrategyName("UNDEAD",UNDEAD_StrategyName[RS_total],$StrategyNameTrans$)
+  #ENDINCLUDE
+#ENDINCLUDE
+  set RS_interrupt = null
 endfunction
 #ENDINCLUDE
 
@@ -980,7 +985,7 @@ function BuildTributeDialogs takes nothing returns nothing
   call TriggerAddAction(t, function TributeDialogResponse)
   //call DisplayToAll("RegsiterButton:" + dlgbutton_tribute)
   call RegisterCDialogButton(DialogAddButton(root_dialog, dlgbutton_tribute, 84), 0, tribute_type_dlg)
-  
+
   set tribute_dlg = DialogCreate()
   call DialogSetMessage(tribute_dlg, dlghdr_tribute_amount)
   loop
@@ -1002,10 +1007,10 @@ function Translation takes string s returns string
   if HaveSavedString(translation, StringHash(language), StringHash(s)) then
     //call DisplayToAll("Translated " + s + " to " + language)
     set translate = LoadStr(translation, StringHash(language), StringHash(s))
-  endif  
+  endif
   if (translate == null or translate == "") and HaveSavedString(translation, StringHash("English"), StringHash(s)) then
     //call DisplayToAll("Translated " + s + " to english FAILSAFE")
-    set translate = LoadStr(translation, StringHash("English"), StringHash(s))  
+    set translate = LoadStr(translation, StringHash("English"), StringHash(s))
   endif
   if (translate == null or translate == "") then
     call TraceToAll("Cannot translate:" + s + " to " + language)
@@ -1030,6 +1035,10 @@ endfunction
 
 function CommanderLanguageResponse takes nothing returns nothing
   local button b = GetClickedButton()
+  if language != "English" and language != "" and b != null then
+    set language = "English"
+    call initLanguageEnglish()  //Second language change , some variable assigned by previous language, so back English cannot take effect , it can fix
+  endif
   if false then
 #INCLUDETABLE <Languages.txt> #EFR
   elseif b == %1_button then
@@ -1058,11 +1067,11 @@ function BuildStartDialog takes player current_player, integer startnum returns 
   call DialogDestroy(start_dialog)
   call DialogSetMessage(d, dlghdr_choose_ally)
   loop
-      exitwhen i >= GetBJMaxPlayers()
-      if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(current_player, Player(i)) then
-        set totalplayers = totalplayers + 1
-      endif
-      set i = i + 1
+    exitwhen i >= GetBJMaxPlayers()
+    if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(current_player, Player(i)) then
+      set totalplayers = totalplayers + 1
+    endif
+    set i = i + 1
   endloop
   call TraceToTP("Max: " + I2S(totalplayers) + " for player: " + I2S(GetPlayerId(current_player)) + " starting page at:" + I2S(startnum))
   set sdbn_length = startnum
@@ -1103,6 +1112,7 @@ function StartDialogResponse takes nothing returns nothing
   call DestroyLastTrigger(last_dialog_trigger, last_dialog_trigger_action)
   set last_dialog_trigger = null
   set last_dialog_trigger_action = null
+  set RaceStrategy = null
   loop
     exitwhen sdbn_button[i] == b or i >= sdbn_length
     set i = i + 1
@@ -1128,8 +1138,17 @@ function StartDialogResponse takes nothing returns nothing
     call TriggerAddAction(language_trigger, function CommanderLanguageResponse)
     call DialogDisplay(GetTriggerPlayer(), clanguage_dialog, true)
   endif
-  if (b == all_button or sdbn_button[i] == b) then 
+  if (b == all_button or sdbn_button[i] == b) then
     if (sdbn_button[i] == b) then
+      if GetPlayerRace(Player(sdbn_number[i])) == RACE_HUMAN then
+        set RaceStrategy = "HUMAN"
+      elseif GetPlayerRace(Player(sdbn_number[i])) == RACE_ORC then
+        set RaceStrategy = "ORC"
+      elseif GetPlayerRace(Player(sdbn_number[i])) == RACE_UNDEAD then
+        set RaceStrategy = "UNDEAD"
+      elseif GetPlayerRace(Player(sdbn_number[i])) == RACE_NIGHTELF then
+        set RaceStrategy = "ELF"
+      endif
       set commanded_player[GetPlayerId(GetTriggerPlayer())] = Player(sdbn_number[i])
     elseif (b == all_button) then
       set commanded_player[GetPlayerId(GetTriggerPlayer())] = Player(PLAYER_NEUTRAL_AGGRESSIVE)
@@ -1161,13 +1180,27 @@ function BuildNumberDialog takes player p, integer startnum returns dialog
   call DialogSetMessage(new_dialog, dlghdr_choose_number)
   set ndbn_length = startnum
   set ndbn_paged_length = 0
-  loop
-    exitwhen i >= 9 + startnum or i >= maxCount
-    set ndbn_button[ndbn_length] = DialogAddButton(new_dialog, I2S(i), IMinBJ(48 + i, 57))
-    set ndbn_length = ndbn_length + 1
-    set ndbn_paged_length = ndbn_paged_length + 1
-    set i = i + 1
-  endloop
+  if Strategydialog == 0 or RaceStrategy == null then
+    loop
+      exitwhen i >= 9 + startnum or i >= maxCount
+      set ndbn_button[ndbn_length] = DialogAddButton(new_dialog, I2S(i), IMinBJ(48 + i, 57))
+      set ndbn_length = ndbn_length + 1
+      set ndbn_paged_length = ndbn_paged_length + 1
+      set i = i + 1
+    endloop
+  else
+    loop
+      exitwhen i >= 9 + startnum or i >= maxCount
+      if LoadStr(translation, StringHash(RaceStrategy), i) != null then
+        set ndbn_button[ndbn_length] = DialogAddButton(new_dialog, LoadStr(translation, StringHash(RaceStrategy), i), IMinBJ(48 + i, 57))
+      else
+        set ndbn_button[ndbn_length] = DialogAddButton(new_dialog, "null", IMinBJ(48 + i, 57))
+      endif
+      set ndbn_length = ndbn_length + 1
+      set ndbn_paged_length = ndbn_paged_length + 1
+      set i = i + 1
+    endloop
+  endif
   if (i < maxCount) then
     call AddNextButton(new_dialog)
   endif
@@ -1211,7 +1244,7 @@ function BuildPlayerDialog takes player currentplayer, integer startnum returns 
         set ally = " (" + dlgbutton_player_ally + ")"
       else
         set ally = ""
-      endif  
+      endif
       set pcbn_button[pcbn_length] = DialogAddButton(new_dialog, cs2s(GetPlayerName(Player(i)), GetPlayerColor(Player(i))) + ally, IMinBJ(48 + i, 57))
       set pcbn_number[pcbn_length] = i
       set pcbn_length = pcbn_length + 1
@@ -1294,7 +1327,7 @@ function NumberDialogResponse takes nothing returns nothing
     call DialogDisplay(GetTriggerPlayer(), d, true)
   endif
   if (ndbn_button[i] == b) then
-    set current_number_par[GetPlayerId(GetTriggerPlayer())] =i
+    set current_number_par[GetPlayerId(GetTriggerPlayer())] = i
     call ExecuteDialogCommand(commanded_player[GetPlayerId(GetTriggerPlayer())], current_command[GetPlayerId(GetTriggerPlayer())])
   endif
   set b = null
@@ -1323,23 +1356,26 @@ function DialogResponse takes nothing returns nothing
 
   set d = cdlg_dialog[i]
   set cn = cdlg_number[i]
-
+  set Strategydialog = 0
   if d != null then
     set current_command[GetPlayerId(GetTriggerPlayer())] = cn
     if (d == number_dialog) then
+      if b == Strategybutton then
+        set Strategydialog = 1
+      endif
       set t = CreateTrigger()
       set d = BuildNumberDialog(commanded_player[GetPlayerId(GetTriggerPlayer())], 0)
       call TriggerRegisterDialogEvent(t, d )
       set last_number_trigger_action = TriggerAddAction(t, function NumberDialogResponse)
       set last_number_trigger = t
-      call DialogDisplay(GetTriggerPlayer(), d, true) 
+      call DialogDisplay(GetTriggerPlayer(), d, true)
     elseif (d == player_dialog) then
       set t = CreateTrigger()
       set d = BuildPlayerDialog(GetTriggerPlayer(), 0)
       call TriggerRegisterDialogEvent(t, d )
       set last_player_trigger_action = TriggerAddAction(t, function PlayerDialogResponse)
       set last_player_trigger = t
-      call DialogDisplay(GetTriggerPlayer(), d, true) 
+      call DialogDisplay(GetTriggerPlayer(), d, true)
     else
       if d == tribute_type_dlg then
         //call BuildTributeDialogs()
@@ -1439,7 +1475,10 @@ function AddCommandDialog takes integer i returns nothing
     set current_name = ""
     set current_dialog = FindDialog(current_name)
     if current_dialog != null then
-      call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg1[i], command_hotkey1[i]), i, next_dialog)
+      call RegisterCDialogButton(DialogAddButtonWithHotkeyBJ(current_dialog, command_dlg1[i], command_hotkey1[i]), i, next_dialog)
+      if command_dlg1[i] == Translation("Change Strategy") then
+        set Strategybutton = bj_lastCreatedButton
+      endif
       set current_dialog = null
       set next_dialog = null
       return
@@ -1454,13 +1493,13 @@ endfunction
 function BuildCommandDialogs takes nothing returns nothing
   local integer i = 0
   loop
-    exitwhen i >=command_length
+    exitwhen i >= command_length
     call AddCommandDialog(i)
     set i = i + 1
   endloop
   set root_dialog = FindDialog("")
 endfunction
-
+ 
 function DialogCommander takes nothing returns nothing
   local trigger t = CreateTrigger()
   set commanded_player[GetPlayerId(GetTriggerPlayer())] = null
@@ -1611,13 +1650,13 @@ function InitCommanderPart takes nothing returns nothing
   local trigger commander_trigger = CreateTrigger()
   local trigger cdlg_trigger = CreateTrigger()
   //local timer t = CreateTimer()
-
   loop
     exitwhen i >= GetBJMaxPlayers()
     call TriggerRegisterPlayerChatEvent( commander_trigger, Player(i), command_prefix, false )
     call TriggerRegisterPlayerEvent( cdlg_trigger, Player(i), EVENT_PLAYER_END_CINEMATIC )
     set i = i + 1
   endloop
+  set Strategybutton = null
   call TriggerAddAction( commander_trigger, function Commander )
   call TriggerAddAction( cdlg_trigger, function DialogCommander )
 
@@ -1778,6 +1817,11 @@ endfunction
 
 function LanguageDlgResponse takes nothing returns nothing
   local button b = GetClickedButton()
+  if language != "English" and language != "" and b != null then
+    set language = "English"
+    call SendToAllAIs(71,0)  //Second language change , some variable assigned by previous language, so back English cannot take effect , it can fix
+    call initLanguageEnglish()
+  endif
   if false then
 #INCLUDETABLE <Languages.txt> #EFR
   elseif b == %1_button then
@@ -1844,5 +1888,5 @@ endfunction
 
 #INCLUDE <Blizzard5.j>
     call InitCommander()
-    call SetW3CMiniMapIcons()
+    call InitRaceStrategy()
 #INCLUDE <Blizzard6.j>
