@@ -1,0 +1,131 @@
+#IFDEF GLOBAL
+  integer item_exp_state = 0
+  unit itemhero = null
+  boolean item_attack_running = false
+  boolean expitem_buy = false
+  location item_exp_loc = null
+  location item_exp_guard_loc = null
+#ELSE
+
+function ItemExpansionJob takes nothing returns nothing
+  local unit u = null
+  local unit temp = null
+  local group g = null
+  local location loc = null
+  local integer time_next_try = 5
+  if (itemhero != null and GetUnitState(itemhero, UNIT_STATE_LIFE) <= 0) or TownThreatened() or current_expansion == null then
+    call RecycleGuardPosition(itemhero)
+    call Trace("Expansion cannot or no Expansion")  // no call ChooseExpansion() , this is passive expansion , avoidance buy repeat item
+    call RemoveLocation(item_exp_loc)
+    set item_exp_loc = null
+    call RemoveLocation(item_exp_guard_loc)
+    set item_exp_guard_loc = null
+    set item_attack_running = false
+    set item_expanding = false
+    set expitem_buy = false
+    set item_exp_state = 0
+    set itemhero = null
+    call TQAddJob(50, ITEM_EXPANSION_CHECK, 0)
+    return
+  endif
+  set exp_time_count = ai_time
+  set u = GetExpFoe()
+  if item_exp_state == 0 then
+    call Trace("Expansion Distance: " + Int2Str(R2I(GetExpansionDistance())))
+    call Trace("Expansion state 0: Check Expansion Hero and Location")
+    if itemhero == null then
+      set itemhero = GetItemHero(GetItemOfType(race_item_expansion_item_id))
+    endif
+    if itemhero == null and expitem_buy == false then
+      set u = null
+      if GetGold() < gold_price[race_item_expansion_item_id] + 120 or GetWood() < wood_price[race_item_expansion_item_id] + 80 then
+        call Trace("Expansion no gold or wood")
+        call RecycleGuardPosition(itemhero)
+        set item_expanding = false
+        set expitem_buy = false
+        set item_exp_state = 0
+        set itemhero = null
+        call TQAddJob(20, ITEM_EXPANSION, 0)
+        return
+      endif
+      set shop_ordered = true
+      call TQAddJob(5, BUY_ITEM, race_item_expansion_item_id)
+      call TQAddJob(20, ITEM_EXPANSION, 0)
+      return
+    endif
+    call SetItemDroppable( GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), false )  //prevent droppable
+    call SetItemPawnable( GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), false )  //can selling
+    set expitem_buy = true
+    set item_exp_state = 1
+    if u == null then
+      set g = CreateGroup()
+      call GroupEnumUnitsInRange(g, GetUnitX(current_expansion), GetUnitY(current_expansion), 1500, null)  //Prevent some maps creep too far away
+      set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
+      set g = SelectByAlive(g, true)
+      if FirstOfGroup(g) == null then
+        if item_exp_loc == null then
+          set temp = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
+          set item_exp_loc = Location(GetUnitX(temp),GetUnitY(temp))
+          call RemoveUnit(temp)
+          set temp = null
+        endif
+        if item_exp_guard_loc == null then
+          set loc = GetUnitLoc(current_expansion)
+          set item_exp_guard_loc = AIGetProjectedLoc(loc, item_exp_loc, 850, 0)  //Prevent impact on use item
+          call RemoveLocation(loc)
+          set loc = null
+        endif
+        call RemoveGuardPosition(itemhero)
+        call UnitUseItemPoint(itemhero, GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), GetLocationX(item_exp_loc), GetLocationY(item_exp_loc))
+        set item_exp_state = 3
+      endif
+      call DestroyGroup(g)
+      set g = null
+    endif
+  elseif item_exp_state == 1 then
+    call Trace("Expansion state 1: Wait Rush Expansion")
+    if u == null then
+      set item_exp_state = 2
+      set item_attack_running = false
+      call RemoveGuardPosition(itemhero)
+      set time_next_try = 1
+    endif
+  elseif item_exp_state == 2 then
+    call RemoveGuardPosition(itemhero)
+    call UnitUseItemPoint(itemhero, GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), GetLocationX(item_exp_loc), GetLocationY(item_exp_loc))
+    set item_exp_state = 3
+  elseif item_exp_state == 3 then
+    call Trace("Expansion state 3: Check Use Item")
+    if GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero) != null then
+      if item_exp_loc == null then
+        set temp = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
+        set item_exp_loc = Location(GetUnitX(temp),GetUnitY(temp))
+        call RemoveUnit(temp)
+        set temp = null
+      endif
+      call RemoveGuardPosition(itemhero)
+      call UnitUseItemPoint(itemhero, GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), GetLocationX(item_exp_loc), GetLocationY(item_exp_loc))
+      set time_next_try = 1
+    else
+      call Trace("Expansion Done")
+      call RecycleGuardPosition(itemhero)
+      call RemoveLocation(item_exp_loc)
+      set item_exp_loc = null
+      call RemoveLocation(item_exp_guard_loc)
+      set item_exp_guard_loc = null
+      set item_attack_running = false
+      set item_expanding = false
+      set expitem_buy = false
+      set item_exp_state = 0
+      set itemhero = null
+      call SetItemDroppable( GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), true )  //prevent droppable
+      call SetItemPawnable( GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), true )  //can selling
+      call TQAddJob(50, ITEM_EXPANSION_CHECK, 0)
+      set u = null
+      return
+    endif
+  endif
+  set u = null
+  call TQAddJob(time_next_try, ITEM_EXPANSION, 0)
+endfunction
+#ENDIF

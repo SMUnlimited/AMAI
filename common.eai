@@ -423,6 +423,9 @@ globals
     integer race_ancient_expansion_strength = 15  // up to how much expansion strength is an ancient expansion allowed ?
     integer race_ancient_expansion_help_id = 'earc'  // the unit id of the unit that should help in ancient expansion
     integer race_ancient_expansion_hero_rush_level = 2  // the bonus strength value hero must have to be able to do the ancient expansion
+    boolean race_item_expansion_available = false  // can expand with item building ?
+    integer race_item_sale_level = 0  // buy expand item need hall level ?
+    integer race_item_expansion_item_id = 0  // what is expand item name(from StandardUnits.txt) ?
     boolean race_sell_ziggurats = false  // does the race sell ziggurats that are at no more needed expansions ?
     real race_ziggurat_keep_distance = 1500  // keep ziggurat if this near another building except a ziggurat is
     boolean race_build_farms_front = false  // should the race build farms towards the front (as soon as the front is computed) ?
@@ -932,6 +935,7 @@ globals
     integer queue_t_x		= 0
     integer queue_t_y		= 0
     unit	queue_t_u = null
+
 //==============================================================
 // (AMAI)  Profile system globals
 //==============================================================
@@ -1639,7 +1643,6 @@ function Trace takes string s returns nothing
 		call DisplayToAllFromPlayer(s, debug_player, false)
 	endif
 	// Blizzard ai part
-
 	if trace_on then
 		call DisplayText(GetAiPlayer(),s)
 	endif
@@ -5615,7 +5618,7 @@ function BuildLumberMillAtBase takes nothing returns boolean
   if buildloc != null then
     set u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_lumber], buildloc, 270.0)
     call RemoveLocation(buildloc)
-    set buildloc = GetUnitLoc(u)
+    set buildloc = Location(GetUnitX(u),GetUnitY(u))
     call RemoveUnit(u)
     set u = null
     call IssuePointOrderByIdLoc(peon, old_id[racial_lumber], buildloc)
@@ -5821,7 +5824,7 @@ endfunction
 function CheckExpansionTaken takes unit expa returns boolean
   local group g = null
   local unit u = null
-  if expa == not_taken_expansion then // Used in the ancient expansion system
+  if expa == not_taken_expansion then // Used in the ancient expansion and item expansion system
     return false
   endif
   set g = CreateGroup()
@@ -5834,7 +5837,7 @@ function CheckExpansionTaken takes unit expa returns boolean
   if FirstOfGroup(g) != null then
     loop
       set u = FirstOfGroup(g)
-      exitwhen u == null 
+      exitwhen u == null
       if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
         call DestroyGroup(g)
         set g = null
@@ -6381,7 +6384,11 @@ function ChooseExpansion takes nothing returns nothing
   else
     set exp_chosen = ChooseExp()
     set current_expansion = exp_unit[exp_chosen]
+    call RemoveLocation(ancient_exp_loc)
     set ancient_exp_loc = exp_ancient[exp_chosen]
+    call RemoveLocation(item_exp_loc)
+    set item_exp_loc = exp_ancient[exp_chosen]
+    call DestroyGroup(current_expansion_creeps)
     set current_expansion_creeps = exp_creeps[exp_chosen]
 //    call PingMinimap(GetUnitX(current_expansion), GetUnitY(current_expansion), 20)
   endif
@@ -7643,7 +7650,6 @@ function cmd_misc takes integer cmd, integer data returns nothing
   #ENDINCLUDE
     endif
     call InitChatArrays()
-
   endif
 endfunction
 
@@ -8062,11 +8068,7 @@ function InitAMAI takes nothing returns nothing
     set game_is_1on1 = true
   endif
   set sleep_multiplier = sleep_multiplier * LinearInterpolation(I2R(slm_start), I2R(slm_end), slm_start_mult, slm_end_mult, I2R(c_ai_total))
-  if GetLastCommand() == 100 then
-    set difficulty = HARD
-  else
-    set difficulty = MeleeDifficulty()
-  endif
+  set difficulty = MeleeDifficulty()
   set income_per_mine = income_per_mine * Max(difficulty - 1, 1)
   call Trace("Init AMAI step 1")
   call InitNeutralSpecial()
@@ -10112,11 +10114,11 @@ endfunction
 // Set up to buy an item
 function BuyItem takes integer qty, integer id returns boolean
   if attack_running then
-    return true
+    return false
   endif
   if shop_ordered then
-      //call Trace("Already ordered to get an item")
-	return true
+    //call Trace("Already ordered to get an item")
+    return true
   endif
   set shop_wanted = qty
   if buy_type[id] == BT_RACIAL_ITEM then
@@ -10127,10 +10129,11 @@ function BuyItem takes integer qty, integer id returns boolean
     set shop_distance_limit = merchant_distance_limit
   endif
   if shop_unit != null then
-	set shop_ordered = true
-	call TQAddJob(0, BUY_ITEM, id)
+    set shop_ordered = true
+    call TQAddJob(0, BUY_ITEM, id)
+    return true
   endif
-  return true
+  return false
 endfunction
 
 function BuyAllyShopItem takes integer qty, integer id returns boolean
@@ -10284,7 +10287,6 @@ function StartItem takes integer ask_qty, integer itemid returns integer
   if total_wood <= 0 and not (wood_cost == 0) then
     return NOT_ENOUGH_RES
   endif
-
 
   if BuyItem(have_qty + 1, itemid) then
     return BUILT_SOME
@@ -10459,13 +10461,13 @@ if mines < 2 and ai_time - exp_time_count > exp_first_time then
 endif
 
 if mines < 3 and ai_time - exp_time_count > exp_second_time then
-    if u != null then
-        set take_exp = true
-    else
-        set take_exp = false
-        set exp_prepared = true
-        call Trace("ExpansionBuilder:Ready to expand to mine 3")		
-    endif
+  if u != null then
+    set take_exp = true
+  else
+    set take_exp = false
+    set exp_prepared = true
+    call Trace("ExpansionBuilder:Ready to expand to mine 3")		
+  endif
 endif
 set u = null
 if positive_expansion == true and take_exp == false and u != null then
@@ -10473,10 +10475,10 @@ if positive_expansion == true and take_exp == false and u != null then
 endif
 
 if not exp_prepared then
-	set rebuild = CheckExpansionRebuild()
-	if rebuild then
-		set exp_prepared = true
-	endif
+  set rebuild = CheckExpansionRebuild()
+  if rebuild then
+    set exp_prepared = true
+  endif
 endif
 
 if mines < 1 or gold_left < 2000 or exp_prepared or (positive_expansion and mines < 3) then
@@ -10848,28 +10850,21 @@ function AttackGroupAddUnknown takes nothing returns nothing
   local unit u = null
   local integer id = 0
   local integer i = 0
-  local boolean b = false
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectUnittype(g, UNIT_TYPE_SUMMONED, false)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
   loop
+    exitwhen i >= attack_length
+    set g = SelectById(g, old_id[attack_units[i]], false)
+    set i = i + 1
+  endloop
+  loop
     set u = FirstOfGroup(g)
     exitwhen u == null
     set id = GetUnitTypeId(u)
     if UnitAlive(u) and id != 'ngir' and id != 'nzep' and not IsUnitInGroup(u, unit_healing) and not IsUnitHidden(u) then
-      set i = 0
-      set b = false
-      loop
-        exitwhen i >= attack_length or b == true
-        if old_id[attack_units[i]] == id then
-          set b = true
-        endif
-        set i = i + 1
-      endloop
-      if b == false then
-        call AddAssault(60,id)  //other hero and unit , like other race and custom
-      endif
+      call AddAssault(60,id)  //other hero and unit , like other race and custom
     endif
     call GroupRemoveUnit(g, u)
   endloop
@@ -12158,6 +12153,22 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
     endif
   endif
 
+  // item expansion attack
+  //
+  if item_expanding then
+    if item_exp_state != 0 then
+      call Trace("An Item Expansion Attack or Guard")
+      set item_attack_running = true
+      call FormGroupAM(3)
+      if item_exp_state == 1 then
+        call AttackMoveKillCreep(GetExpFoe())
+        set item_attack_running = false
+      else
+        call AttackMoveKillXYAAM(R2I(GetLocationX(item_exp_guard_loc)),R2I(GetLocationY(item_exp_guard_loc)))  //Prevent the army from leaving before using the item , so no set item_attack_running
+      endif
+      return
+    endif
+  endif
 
     // defend expansion from other expansion
     //
@@ -12575,9 +12586,8 @@ function HealArmy takes nothing returns nothing
         if hs <= healthTrigger then
           call Sleep(8*sleep_multiplier) // Wait some time for item to be bought
         endif
-      endif  
+      endif
     endif
-    
     call Sleep(2 * sleep_multiplier)
     exitwhen hs > healthTrigger // Still a large proportion of army is strong so exit loop
   endloop
@@ -12598,8 +12608,8 @@ function universal_attack_sequence takes nothing returns nothing
     if hero_unit[1] == null and ver_heroes and not desperation_assault then
       call Sleep(sleep_multiplier)
       return
-    endif	
-    
+    endif
+
     if major_hero == null or not UnitAlive(major_hero) or not IsStandardUnit(major_hero) or (IsUnitType(major_hero, UNIT_TYPE_HERO) == false and ver_heroes) then
       set major_hero = GetMajorHero()
     endif
@@ -12613,25 +12623,25 @@ function universal_attack_sequence takes nothing returns nothing
   call SingleMeleeAttackAM(needs_exp,has_siege,ai_strength)
   set added_target_aggression = 0
   set added_racial_aggression = 0
-  
+
     //call TeleportCaptain(GetLocationX(home_location), GetLocationY(home_location))
-    
+
   loop
     exitwhen not teleporting
     //call Trace("UNIVERSAL ATTACK: Units are teleporting")
     call Sleep(1)
   endloop
-  
+
   if town_threatened then
     set break_attack = false
     set isfleeing = false
     call FormGroupAM(1)
     call SleepUntilTownDefended(GetOwnStrength())
     //call SleepInCombatAM()
-  elseif not towerrush and not ancient_expanding and not militia_expanding then
+  elseif not towerrush and not ancient_expanding and not militia_expanding and not item_expanding then
     call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
   endif
-    
+
   if go_home then
     call Trace("UNIVERSAL ATTACK: Going home" )
     call ClearCaptainTargets()
