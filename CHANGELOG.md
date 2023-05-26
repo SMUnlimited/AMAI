@@ -20,6 +20,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Strategy report not send to the alliance Observer , to avoid repeated display
    - Towerruch report will send to the alliance Observer
    - Note: In fact , I would prefer the first human player (even not Observer) to directly control AI , convenient testing
+- Strategy Choose Dialog now show translation Strategy name , no Num
+   - Strategy name must consistent with file Strategy.txt name
+   - Cannot find consistent name Strategy , Dialog will missing button
+   - Common.ai have new code help find cmd Strategy(even if missing button)
+   - Strategy name button will identify ROC and TFT
+   - Because search translation , now compile B.J need take more time(Poor code level)
+- Zoom
+   - Zoom can use up and down key change high , once 50
+   - ZoomSet now support [-zoom 1650] , prevent entering spaces
+   - ZoomSet now have a report ，when entering exceeding the limit(< 1650 or > 3000)
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join unregistered (like non own racial) units and heros (but excess heros may not be able to learn skills) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
 - Buy NEUTRAL HERO add judge , some map the NEUTRAL TAVERN near have creep , maybe the creep no guarded , like creep on second floor , NEUTRAL TAVERN on first floor , but AI will considered as they are guarded , cause cannot buy neutral heroes at the first time , even no longer buy neutral heroes , when this time , AI cannot call GetNeutralHero , endless loop , so if NEUTRAL TAVERN near have creep (neutral_guarded[NEUTRAL_TAVERN]), just immediately recalculate heros , guarantee to change train ownrace hero at the first time
@@ -57,10 +67,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Add SleepInCombatAM Maximum number of loop , to avoid when AI moveing army in large map , easily change target , but AI no go to the target(add variables mapattackdelayed)
 - On maps with more than 10 people and human players , or big map , AI has a chance to attack human players first when attacking players , to avoid china call 【内卷】 , like AI internal conflict , no attack human player(function ChooseAnEnemyTarget Add GetNearHumanPlayerEnemy)
 - Add Ally Shopping , when BuyItem() return false , if item is HealingItem and buy_type is RACIAL_ITEM and AI have 1000 gold , then will go Random Ally's Random Shop Shopping
-- Zoom
-   - Zoom can use up and down key change high , once 50
-   - ZoomSet now support [-zoom 1650] , prevent entering spaces
-   - ZoomSet now have a report ，when entering exceeding the limit(< 1650 or > 3000)
+- New job Item Expansion
+   - Now can configuration Item Expansion , like ORC can buy TINY_GREAT_HALL
+   - This is not proactive expansion , but rather passive(no call ChooseExpansion())
+   - Job file is ITEM_EXPANSION_CHECK and ITEM_EXPANSION
+   - Can define race detailed instructions on Settings.txt(only TFT)
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
@@ -69,20 +80,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - New set for tower , race_tower_item_must(if Towerrush  must used item , like UD SACRIFICIAL_SKULL, set true)
    - New set for tower , upgrade race_tower_upgrade2(ROC no race_tower_upgrade2)
    - New set for tower , race_tower_idX(if the race_tower_id has Blig land (AbilityId 'Abgl'), set it ,cannot create Blig land)
+   - Can define race detailed instructions on Settings.txt(ROC and TFT)
    - Now Towerrush no longer search Enemy Player StartLocationLoc , search all Enemy Player hall , if races is UD , will search the goldmine
    - if Enemy Player is really human players , AI will build the tower closer to the enemy base
    - Adjust the order of attack modes , town_threatened and towerrush code ahead
    - Adjusted the logic of saving money , now open Towerrush no longer stop build
-   - Race can define some detailed instructions
-   - Now AI can help ally Towerrush or rush Enemy , can call ally help too
+   - Now AI can help ally Towerrush or rush Enemy or call ally help too
    - Now Towerrush max distance is 14000
    - Now off Towerrush condition will judge AI have or have not heroes
-   - Now AI will build race_simple_melee to help TR
    - Towerrush on , no run FAST BUILD
    - Towerrush on , no run Militia_Expansion and MilitiaCheck
-   - Perfect translation reports
+   - adjust TR reports translation
    - Fixed bug , AI no longer build tower on map centre
-   - Note: Because available_time too long , so AI TR donot buy NEUTRAL
    - Note: The new pathfinder is not used to TR , Because the path finding direction is wrong (from home to home)
    - Note: human have powerbuild , so AI will automatically pull all peon go to the front build tower , and this time AI no income , I cannot close automatically powerbuild , just have some fix
    - Note: On ROC , This function is not enabled
@@ -160,7 +169,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed AddBlock cannor work , OneBuildLoopAM now check BlockListCheck and RBlockListCheck
 - Fixed some translation errors
 - Fixed some reports without translation
-- Fixed AI would not buy mercenaries and dragons 
+- Fixed AI would not buy mercenaries and dragons
 - Fixed BuildMovePeonZeppelin no longer at first set build_zeppelin = null
 - Fixed InitNeutralBuildings neutral_id[NEUTRAL_DRAGON_ROOST] use neutral_id[NEUTRAL_MERC_CAMP]'s number [i]
 - Fixed InitNeutralBuildings [NEUTRAL_DRAGON_ROOST] and [NEUTRAL_MERC_CAMP] search Error
@@ -175,9 +184,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed TeleportHome , Defeated ，CheckDefeated ，c_ally_total > 1 to c_ally_total > 0
 - Fixed BuyItem cannot return false
 - Fixed RemoveFromOwnForce bug , i will set 0
+- Fixed CreatePathingUnitFull createdunit not using coordinates
 - Fixed Second Choose languages cannot take effect , because some variable assigned by previous language, so translation missing go English backup cannot take effect
 - Fixed all language Strategy.txt Strategy Name index , some language no unified
-- Fixed TFT some item price and Time(based 1.24e)
+- Fixed TFT some item price and Time(based 1.24e)(only TFT StandardUnits.txt)
 
 
 ## [2.6.2] - 2022-09-04
