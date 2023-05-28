@@ -102,6 +102,10 @@
     button %1_button = null
 #ENDINCLUDE
 
+    trigger W3CIcons = null
+    minimapicon array miniicons
+    integer miniicons_length = 0
+
     string chat_no_ally = ""
     string you_no_gold = ""
     string i_no_gold = ""
@@ -546,6 +550,77 @@ endfunction
 
 function ShowBoard takes nothing returns nothing
   call LeaderboardDisplay(color_board, not IsLeaderboardDisplayed(color_board))
+endfunction
+
+
+function SetW3CMiniMapIcons takes nothing returns nothing
+  local unit u = null
+  local group g = null
+  local minimapicon temp = null
+  local integer i = 0
+  local string t = "MiniMapIcon |cfffd0000OFF|r"
+  if miniicons[0] == null then
+    set t = "MiniMapIcon |cff00ff00ON|r"
+  endif
+  if GetTriggerPlayer() != null then
+    loop
+      exitwhen i >= GetBJMaxPlayers()
+      call DisplayTimedTextToPlayer(Player(i), 0, 0, 7, t )
+      set i = i + 1
+    endloop
+    set i = 0
+  endif
+  if miniicons[i] == null then
+    set g = CreateGroup()
+    call GroupEnumUnitsOfPlayer(g,Player(PLAYER_NEUTRAL_PASSIVE),null)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      set temp = null
+      if false then
+#INCLUDETABLE <NeutralIcon.txt> #EFR
+      elseif GetUnitTypeId(u) == '%1' then
+        set temp = CreateMinimapIcon(GetUnitX(u) - %3,GetUnitY(u) - %4,255,255,255,"%2",FOG_OF_WAR_FOGGED)
+#ENDINCLUDE
+      endif
+      if temp != null then
+        set miniicons[i] = temp
+        set i = i + 1
+      endif
+      call GroupRemoveUnit(g,u)
+    endloop
+    set miniicons_length = i
+    call DestroyGroup(g)
+    set g = null
+    set temp = null
+  else
+    loop
+      exitwhen i >= miniicons_length
+      call DestroyMinimapIcon(miniicons[i])
+      set miniicons[i] = null
+      set i = i + 1
+    endloop
+  endif
+endfunction
+
+function W3CMiniMapIcons takes nothing returns nothing
+  local integer i = 0
+  local rect c = null
+  if W3CIcons == null then
+    set W3CIcons = CreateTrigger()
+    set c = GetPlayableMapRect()
+    if (GetRectWidthBJ(c) + GetRectHeightBJ(c) < 70570) == true then   //35285 * 2 (large map) , the map larger the size, the worse the display effect
+      call SetW3CMiniMapIcons()
+    endif
+    call RemoveRect(c)
+    set c = null
+  endif
+  loop
+    exitwhen i >= GetBJMaxPlayers()
+    call TriggerRegisterPlayerChatEvent(W3CIcons, Player(i), "-minimap", true)
+    set i = i + 1
+  endloop
+  call TriggerAddAction( W3CIcons, function SetW3CMiniMapIcons )
 endfunction
 
 //===========================================================================
@@ -1889,4 +1964,5 @@ endfunction
 #INCLUDE <Blizzard5.j>
     call InitCommander()
     call InitRaceStrategy()
+    call W3CMiniMapIcons()
 #INCLUDE <Blizzard6.j>
