@@ -37,6 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - now have all Neutral build Icon(Icon more W3C)
    - you can use -minimap control Switch
    - if map size to big , the icon default not enabled , anual activation required , because the effect is too poor
+   - install use InstallTFTtoDir-Icon.pl or install - w3c minimapicon.js , need install commander
 - Strategy Choose Dialog now show translation Strategy name , no Num
    - Strategy name must consistent with file Strategy.txt name
    - Cannot find consistent name Strategy , Dialog will missing button
