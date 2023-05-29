@@ -34,12 +34,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Strategy report not send to the alliance Observer , to avoid repeated display
    - Towerruch report will send to the alliance Observer
    - Note: In fact , I would prefer the first human player (even not Observer) to directly control AI , convenient testing
-- W3C MiniMapIcon
+- W3C MiniMapIcon and item icon
    - now have all Neutral build Icon(Icon more W3C)
    - you can use -minimap control Switch
    - if map size to big , the icon default not enabled , anual activation required , because the effect is too poor
    - install use InstallTFTtoDir-Icon.pl or install - w3c minimapicon.js , need install commander
-   - if map have icon file or folder (like W3C map), writing a new icon file will fail
+   - will install item icon(1.36 version)
 - Strategy Choose Dialog now show translation Strategy name , no Num
    - Strategy name must consistent with file Strategy.txt name
    - Cannot find consistent name Strategy , Dialog will missing button
