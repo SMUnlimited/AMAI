@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - DRUID_TALON_M attack now is piercing
 - (DevTools) Add MakeROC.bat , Although it's useless
 - (DevTools) MakeVAIXX.bat Synchronize code for non VS AI scripts, include ROC
+- (DevTools) MPQEditor.exe update to 3.6.0.858
 - When BJ debugging is on , If the first human player is Observer, system will set all AI Alliance and share control with the Observer , that Observer can view the build construction location and the learning of hero skills
    - Strategy report not send to the alliance Observer , to avoid repeated display
    - Towerruch report will send to the alliance Observer
