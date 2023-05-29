@@ -27,6 +27,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Common.ai have new code help find cmd Strategy(even if missing button)
    - Strategy name button will identify ROC and TFT
    - Because search translation , now compile B.J need take more time(Poor code level)
+- W3C item icon
+   - install use InstallTFTtoDir-Icon.pl or install - w3c minimapicon.js , need install commander
+   - will install item icon(1.35 or low version)
 - Zoom
    - Zoom can use up and down key change high , once 50
    - ZoomSet now support [-zoom 1650] , prevent entering spaces
