@@ -61,7 +61,7 @@ const installOnDirectory = async () => {
 
         const mpqEditor = spawnSync(
           `MPQEditor.exe`,
-          [`htsize`, file, `64`],
+          [`htsize`, file, `128`],
           { encoding : `utf8` }
         );
 
@@ -129,9 +129,80 @@ const installOnDirectory = async () => {
             process.send(f3AddToMPQ.error.message)
               : process.send(`Add minimap icon ${file}`);
 
+          const f4AddToMPQ =  spawnSync(
+            `MPQEditor.exe`,
+            [
+              'a',
+              file,
+              `Icons\\teenCommandButtons\\*.dds`,
+              `_teen.w3mod\\ReplaceableTextures\\CommandButtons`,
+            ],
+          );
+
+          f4AddToMPQ.error ?
+            process.send(f4AddToMPQ.error.message)
+              : process.send(`Add classics item icon ${file}`);
+
+          const f5AddToMPQ =  spawnSync(
+            `MPQEditor.exe`,
+            [
+              'a',
+              file,
+              `Icons\\teenCommandButtonsDisabled\\*.dds`,
+              `_teen.w3mod\\ReplaceableTextures\\CommandButtonsDisabled`,
+            ],
+          );
+
+          f5AddToMPQ.error ?
+            process.send(f5AddToMPQ.error.message)
+              : process.send(`Add classics item disabled icon ${file}`);
+
+          const f6AddToMPQ =  spawnSync(
+            `MPQEditor.exe`,
+            [
+              'a',
+              file,
+              `Icons\\CommandButtons\\*.dds`,
+              `ReplaceableTextures\\CommandButtons`,
+            ],
+          );
+
+          f6AddToMPQ.error ?
+            process.send(f6AddToMPQ.error.message)
+              : process.send(`Add item icon ${file}`);
+
+          const f7AddToMPQ =  spawnSync(
+            `MPQEditor.exe`,
+            [
+              'a',
+              file,
+              `Icons\\CommandButtonsDisabled\\*.dds`,
+              `ReplaceableTextures\\CommandButtonsDisabled`,
+            ],
+          );
+
+          f7AddToMPQ.error ?
+            process.send(f7AddToMPQ.error.message)
+              : process.send(`Add item disabled icon ${file}`);
+
+          const f8AddToMPQ =  spawnSync(
+            `MPQEditor.exe`,
+            [
+              'a',
+              file,
+              `Icons\\war3mapSkin.w3t`,
+              `war3mapSkin.w3t`,
+            ],
+            { encoding : `utf8` }
+          );
+
+          f8AddToMPQ.error ?
+            process.send(f8AddToMPQ.error.message)
+              : process.send(`Add item file ${file}`);
+
         }
 
-        const f4AddToMPQ =  spawnSync(
+        const f9AddToMPQ =  spawnSync(
           `MPQEditor.exe`,
           [
             'f',
@@ -141,11 +212,11 @@ const installOnDirectory = async () => {
         );
 
         /** uncomment to debbug */
-       // console.log('f4AddToMPQ', f4AddToMPQ.error);
+       // console.log('f9AddToMPQ', f9AddToMPQ.error);
 
         // spawnSync(`echo`, [`running AddToMPQ 3 ${file}`]);
-        f4AddToMPQ.error ?
-          process.send(f4AddToMPQ.error.message)
+        f9AddToMPQ.error ?
+          process.send(f9AddToMPQ.error.message)
             : process.send(`Optimize map MPQ ${file}`);
       } catch(error) {
         console.log(error);
