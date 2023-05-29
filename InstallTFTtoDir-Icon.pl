@@ -20,11 +20,16 @@ sub process_dir {
       } else {
         print "Installing AMAI without Commander to $dirname/$filename\n";
       }
-			system "MPQEditor htsize \"$dirname/$filename\" 64";
+			system "MPQEditor htsize \"$dirname/$filename\" 128";
 			system "MPQEditor a \"$dirname/$filename\" Scripts\\TFT\\*.ai Scripts";
       if (!(defined($commander)) || $commander eq "true") {
         system "MPQEditor a \"$dirname/$filename\" Scripts\\Blizzard.j Scripts\\Blizzard.j";
-        system "MPQEditor a \"$dirname/$filename\" Icons\\MiniMap\\ UI\\MiniMap";
+        system "MPQEditor a \"$dirname/$filename\" Icons\\MiniMap\\*.dds UI\\MiniMap";
+        system "MPQEditor a \"$dirname/$filename\" Icons\\teenCommandButtons\\*.dds _teen.w3mod\\ReplaceableTextures\\CommandButtons";
+        system "MPQEditor a \"$dirname/$filename\" Icons\\teenCommandButtonsDisabled\\*.dds _teen.w3mod\\ReplaceableTextures\\CommandButtonsDisabled";
+        system "MPQEditor a \"$dirname/$filename\" Icons\\CommandButtons\\*.dds ReplaceableTextures\\CommandButtons";
+        system "MPQEditor a \"$dirname/$filename\" Icons\\CommandButtonsDisabled\\*.dds ReplaceableTextures\\CommandButtonsDisabled";
+        system "MPQEditor a \"$dirname/$filename\" Icons\\war3mapSkin.w3t war3mapSkin.w3t";
       }
 			system "MPQEditor f \"$dirname/$filename\""
 		}
