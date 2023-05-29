@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - New automatic function can help AI hero learning skills , it can fix war3 1.31 AI hero can not learning skills , run to war3 1.29+ , and the function can help AMAI VS AI
 - (DevTools) Synchronized MakeROC bat file code to MakeXXX.bat
 - (DevTools) MakeVAIXX.bat Synchronize code for non VS AI scripts, include ROC
+- (DevTools) MPQEditor.exe update to 3.6.0.858
 - When BJ debugging is on , If the first human player is Observer, system will set all AI Alliance and share control with the Observer , that Observer can view the build construction location and the learning of hero skills
    - Strategy report not send to the alliance Observer , to avoid repeated display
    - Towerruch report will send to the alliance Observer
