@@ -117,7 +117,7 @@ const installOnDirectory = async () => {
             [
               'a',
               file,
-              `Icons\\teenCommandButtons\\*.blp`,
+              `Icons\\CommandButtons\\*.blp`,
               `_teen.w3mod\\ReplaceableTextures\\CommandButtons`,
             ],
           );
@@ -131,7 +131,7 @@ const installOnDirectory = async () => {
             [
               'a',
               file,
-              `Icons\\teenCommandButtonsDisabled\\*.blp`,
+              `Icons\\CommandButtonsDisabled\\*.blp`,
               `_teen.w3mod\\ReplaceableTextures\\CommandButtonsDisabled`,
             ],
           );
