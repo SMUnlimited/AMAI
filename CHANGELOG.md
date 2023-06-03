@@ -188,7 +188,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed AMAI VS AI , AI cannot work
 - Fixed PickMeleeHero non VERSION_FROZEN_THRONE third hero num, now is i + 1
 - Fixed TeleportHome , Defeated ，CheckDefeated ，c_ally_total > 1 to c_ally_total > 0
-- Fixed BuyItem cannot return false
 - Fixed RemoveFromOwnForce bug , i will set 0
 - Fixed CreatePathingUnitFull createdunit not using coordinates
 - Fixed Second Choose languages cannot take effect , because some variable assigned by previous language, so translation missing go English backup cannot take effect
