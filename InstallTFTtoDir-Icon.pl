@@ -24,7 +24,7 @@ sub process_dir {
 			system "MPQEditor a \"$dirname/$filename\" Scripts\\TFT\\*.ai Scripts";
       if (!(defined($commander)) || $commander eq "true") {
         system "MPQEditor a \"$dirname/$filename\" Scripts\\Blizzard.j Scripts\\Blizzard.j";
-        system "MPQEditor a \"$dirname/$filename\" Icons\\MiniMap\\*.dds UI\\MiniMap";
+        system "MPQEditor a \"$dirname/$filename\" Icons\\MiniMap\\ UI\\MiniMap";
         system "MPQEditor a \"$dirname/$filename\" Icons\\teenCommandButtons\\*.dds _teen.w3mod\\ReplaceableTextures\\CommandButtons";
         system "MPQEditor a \"$dirname/$filename\" Icons\\teenCommandButtonsDisabled\\*.dds _teen.w3mod\\ReplaceableTextures\\CommandButtonsDisabled";
         system "MPQEditor a \"$dirname/$filename\" Icons\\CommandButtons\\*.dds ReplaceableTextures\\CommandButtons";
