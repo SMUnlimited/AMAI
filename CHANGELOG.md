@@ -180,6 +180,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed BuildMovePeonZeppelin no longer at first set build_zeppelin = null
 - Fixed InitNeutralBuildings neutral_id[NEUTRAL_DRAGON_ROOST] use neutral_id[NEUTRAL_MERC_CAMP]'s number [i]
 - Fixed InitNeutralBuildings [NEUTRAL_DRAGON_ROOST] and [NEUTRAL_MERC_CAMP] search Error
+- Fixed game_mode not equal to ai_only , Pause not cancelled
 - Fixed Blizzard3VAI.eai player num， 12 to 24
 - Fixed part of set xxx = GetExpansionPeon() lack set xxx = GetExpansionPeon2() when xxx == null
 - Fixed a when AI have too many ally , game stuck or crashed
