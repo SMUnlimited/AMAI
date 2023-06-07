@@ -182,6 +182,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed BlizzardVAI.eai playercreep num , now is 16/28
 - Fixed ROC Resolve compilation errors, ROC Profile.txt add [Rare Profile]
 - Fixed B.eai playercreep num , now is 16/28
+- Fixed game_mode not equal to ai_only , Pause not cancelled
 - Fixed B2.j and B3.j bj_PLAYER_NEUTRAL_EXTRA and bj_MAX_PLAYER_SLOTS and bj_PLAYER_NEUTRAL_VICTIM not replaced with dynamic variable playercreep or playermax
 - Fixed part of set xxx = GetExpansionPeon() lack set xxx = GetExpansionPeon2() when xxx == null
 - Fixed a when AI have too many ally , game stuck or crashed
