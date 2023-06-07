@@ -106,6 +106,9 @@
     minimapicon array miniicons
     integer miniicons_length = 0
 
+    trigger W3CDeny = CreateTrigger()
+    trigger W3CDenycon = CreateTrigger()
+
     string chat_no_ally = ""
     string you_no_gold = ""
     string i_no_gold = ""
@@ -552,33 +555,88 @@ function ShowBoard takes nothing returns nothing
   call LeaderboardDisplay(color_board, not IsLeaderboardDisplayed(color_board))
 endfunction
 
-// function FixIconsShifting takes real i returns real
-//   set i = i / 128
-//   if i >= 1 or i <= -1 then
-//     if i < 0 then
-//       set i = i - 1
-//     endif
-//     return R2I(i) * 128  //Math.floor(GetUnitX(GetEnumUnit()) / 128) * 128
-//   endif
-//   return i * 128
-// endfunction
+//===========================================================================
+// W3C UNIT DENY TIP
+//===========================================================================
+function DenyTip takes nothing returns nothing
+  local unit u1 = GetDyingUnit()
+  local unit u2 = GetKillingUnit()
+  local player p1 = GetOwningPlayer(u1)
+  local player p2 = GetOwningPlayer(u2)
+  local texttag t = null
+  local string s = cs2s("!",GetPlayerColor(p2))
+  if (not (IsUnitType(u1,UNIT_TYPE_STRUCTURE) and GetUnitTypeId(u2) == 'uaco')) and GetUnitTypeId(u2) != 'otot' and GetUnitTypeId(u2) != 'usap' and not IsUnitHidden(u1) then
+    if (IsPlayerAlly(p1,p2) or p1 == Player(PLAYER_NEUTRAL_AGGRESSIVE) or p2 == Player(PLAYER_NEUTRAL_AGGRESSIVE)) and p1 != Player(PLAYER_NEUTRAL_PASSIVE) then
+      if p2 == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
+        set s = "|cff323232!|r"
+      endif
+      set t = CreateTextTagUnitBJ(s, u1, -80, 13, 255, 255, 255, 0)
+      call SetTextTagPermanentBJ(t, false)
+      call SetTextTagVelocityBJ(t, 20, 90)
+      call SetTextTagLifespanBJ(t, 2)
+      call SetTextTagFadepointBJ(t, 1.5)
+      set t = null
+    endif
+  endif
+  set s = null
+  set u1 = null
+  set u2 = null
+  set p1 = null
+  set p2 = null
+endfunction
+
+function SetDenyUnitTip takes nothing returns nothing
+  local string t = "DenyTip |cfffd0000OFF|r"
+  if GetTriggerPlayer() != null then
+    if not IsTriggerEnabled(W3CDeny) then
+      call EnableTrigger(W3CDeny)
+      set t = "DenyTip |cff00ff00ON|r"
+    else
+      call DisableTrigger(W3CDeny)
+    endif
+    call DisplayTimedTextToForce( GetPlayersAll(), 7.00, t)
+  endif
+  set t = null
+endfunction
+
+function DenyUnitTipControl takes nothing returns nothing
+  local integer i = 0
+  loop
+    exitwhen i >= GetBJMaxPlayers()
+    call TriggerRegisterPlayerChatEvent(W3CDenycon, Player(i), "-deny", false)
+    set i = i + 1
+  endloop
+  call TriggerRegisterAnyUnitEventBJ( W3CDeny, EVENT_PLAYER_UNIT_DEATH )
+  call TriggerAddAction( W3CDenycon, function SetDenyUnitTip )
+  call TriggerAddAction( W3CDeny, function DenyTip )
+endfunction
+
+//===========================================================================
+// W3C ICON (Some ICON is custom)
+//===========================================================================
+function FixIconsShifting takes real i returns integer
+  set i = i / 128
+  //if i >= 1 or i <= -1 then
+    if i < 0 then
+      set i = i - 1
+    endif
+  //endif
+  return R2I(i) //* 128  //Math.floor(GetUnitX(GetEnumUnit()) / 128) * 128
+ // return i * 128
+endfunction
 
 function SetW3CMiniMapIcons takes nothing returns nothing
   local unit u = null
   local group g = null
   local integer i = 0
+  local real x = 0
+  local real y = 0
   local string t = "MiniMapIcon |cfffd0000OFF|r"
-  local string temp = null
   if miniicons[0] == null then
     set t = "MiniMapIcon |cff00ff00ON|r"
   endif
   if GetTriggerPlayer() != null then
-    loop
-      exitwhen i >= GetBJMaxPlayers()
-      call DisplayTimedTextToPlayer(Player(i), 0, 0, 7, t )
-      set i = i + 1
-    endloop
-    set i = 0
+    call DisplayTimedTextToForce( GetPlayersAll(), 7.00, t)
   endif
   if miniicons[i] == null then
     set g = CreateGroup()
@@ -586,15 +644,17 @@ function SetW3CMiniMapIcons takes nothing returns nothing
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      set temp = null
+      set t = null
       if false then
 #INCLUDETABLE <NeutralIcon.txt> #EFR
       elseif GetUnitTypeId(u) == '%1' then
-        set temp = "%2"
+        set t = "%2"
 #ENDINCLUDE
       endif
-      if temp != null then
-        set miniicons[i] = CreateMinimapIcon(GetUnitX(u),GetUnitY(u),255,255,255,temp,FOG_OF_WAR_FOGGED)
+      if t != null then
+        set x = FixIconsShifting(GetUnitX(u)) * 128
+        set y = FixIconsShifting(GetUnitY(u)) * 128
+        set miniicons[i] = CreateMinimapIcon(x,y,255,255,255,t,FOG_OF_WAR_FOGGED)
         set i = i + 1
       endif
       call GroupRemoveUnit(g,u)
@@ -602,7 +662,6 @@ function SetW3CMiniMapIcons takes nothing returns nothing
     set miniicons_length = i
     call DestroyGroup(g)
     set g = null
-    set temp = null
   else
     loop
       exitwhen i >= miniicons_length
@@ -611,6 +670,7 @@ function SetW3CMiniMapIcons takes nothing returns nothing
       set i = i + 1
     endloop
   endif
+  set t = null
 endfunction
 
 function W3CMiniMapIcons takes nothing returns nothing
@@ -816,7 +876,7 @@ function ExecuteCommand takes player Comp, integer number returns nothing
   local integer par1 = GetParValue(command_par1[number])
   local integer par2 = GetParValue(command_par2[number])
   local integer par3 = GetParValue(command_par3[number])
-  
+
   if cn == -1000000 or par1 == -1000000 or par2 == -1000000 or par3 == -1000000 then
     return
   endif
@@ -1928,8 +1988,8 @@ function LanguageDefault takes nothing returns nothing
     call initLanguage%1()
 #ENDINCLUDE
   endif
+  call PauseAllUnitsBJ(false)
   if game_mode != "ai_only" then
-    call PauseAllUnitsBJ(false)
     call GameStartDlg()
   endif
 endfunction
@@ -1975,4 +2035,5 @@ endfunction
     call InitCommander()
     call InitRaceStrategy()
     call W3CMiniMapIcons()
+    call DenyUnitTipControl()
 #INCLUDE <Blizzard6.j>
