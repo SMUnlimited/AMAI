@@ -1050,7 +1050,7 @@ function TriggerRegisterAnyUnitEventBJ takes trigger trig, playerunitevent which
         call TriggerRegisterPlayerUnitEvent(trig, Player(index), whichEvent, null)
 
         set index = index + 1
-        exitwhen index == playercreep
+        exitwhen index == (playerpassive + 2)
     endloop
 endfunction
 
@@ -2950,7 +2950,7 @@ function PauseAllUnitsBJ takes boolean pause returns nothing
         call GroupClear( g )
 
         set index = index + 1
-        exitwhen index == playercreep
+        exitwhen index == (playerpassive + 2)
     endloop
     call DestroyGroup(g)
 endfunction
@@ -3850,7 +3850,7 @@ function GetUnitsOfTypeIdAll takes integer unitid returns group
         call GroupAddGroup(g, result)
 
         set index = index + 1
-        exitwhen index == playercreep
+        exitwhen index == (playerpassive + 2)
     endloop
     call DestroyGroup(g)
 
@@ -3917,7 +3917,7 @@ function GetPlayersByMapControl takes mapcontrol whichControl returns force
         endif
 
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == playercreep
+        exitwhen playerIndex == (playerpassive + 2)
     endloop
 
     return f
@@ -4288,12 +4288,12 @@ function SetForceAllianceStateBJ takes force sourceForce, force targetForce, int
                 endif
 
                 set targetIndex = targetIndex + 1
-                exitwhen targetIndex == playercreep
+                exitwhen targetIndex == (playerpassive + 2)
             endloop
         endif
 
         set sourceIndex = sourceIndex + 1
-        exitwhen sourceIndex == playercreep
+        exitwhen sourceIndex == (playerpassive + 2)
     endloop
 endfunction
 
@@ -4368,7 +4368,7 @@ endfunction
 function ConfigureNeutralVictim takes nothing returns nothing
     local integer index
     local player indexPlayer
-    local player neutralVictim = Player(playermax + 1)
+    local player neutralVictim = Player(playermax + 3)
 
     set index = 0
     loop
@@ -4392,7 +4392,7 @@ endfunction
 
 //===========================================================================
 function MakeUnitsPassiveForPlayerEnum takes nothing returns nothing
-    call SetUnitOwner(GetEnumUnit(), Player(playermax + 1), false)
+    call SetUnitOwner(GetEnumUnit(), Player(playermax + 3), false)
 endfunction
 
 //===========================================================================
@@ -5201,7 +5201,7 @@ function LeaderboardGetIndexedPlayerBJ takes integer position, leaderboard lb re
         exitwhen index == playermax
     endloop
 
-    return Player(playercreep)
+    return Player(playerpassive)
 endfunction
 
 //===========================================================================
@@ -6102,7 +6102,7 @@ function TryInitRescuableTriggersBJ takes nothing returns nothing
         loop
             call TriggerRegisterPlayerUnitEvent(bj_rescueUnitBehavior, Player(index), EVENT_PLAYER_UNIT_RESCUED, null)
             set index = index + 1
-            exitwhen index == playercreep
+            exitwhen index == (playerpassive + 2)
         endloop
         call TriggerAddAction(bj_rescueUnitBehavior, function TriggerActionUnitRescuedBJ)
     endif
@@ -7405,7 +7405,7 @@ function MeleeGrantHeroItems takes nothing returns nothing
         set bj_meleeTwinkedHeroes[index] = 0
 
         set index = index + 1
-        exitwhen index == playercreep
+        exitwhen index == (playerpassive + 2)
     endloop
 
     // Register for an event whenever a hero is trained, so that we can give
@@ -7423,7 +7423,7 @@ function MeleeGrantHeroItems takes nothing returns nothing
     // Register for an event whenever a neutral hero is hired, so that we
     // can give him/her their starting items.
     set trig = CreateTrigger()
-    call TriggerRegisterPlayerUnitEvent(trig, Player(playercreep), EVENT_PLAYER_UNIT_SELL, filterMeleeTrainedUnitIsHeroBJ)
+    call TriggerRegisterPlayerUnitEvent(trig, Player(playerpassive), EVENT_PLAYER_UNIT_SELL, filterMeleeTrainedUnitIsHeroBJ)
     call TriggerAddAction(trig, function MeleeGrantItemsToHiredHero)
 
     // Flag that we are giving starting items to heroes, so that the melee
@@ -7447,7 +7447,7 @@ function MeleeClearExcessUnit takes nothing returns nothing
     if (owner == playermax) then
         // Remove any Neutral Hostile units from the area.
         call RemoveUnit(GetEnumUnit())
-    elseif (owner == playercreep) then
+    elseif (owner == playerpassive) then
         // Remove non-structure Neutral Passive units from the area.
         if not IsUnitType(theUnit, UNIT_TYPE_STRUCTURE) then
             call RemoveUnit(GetEnumUnit())
@@ -8998,7 +8998,7 @@ function CheckInitPlayerSlotAvailability takes nothing returns nothing
     local integer index
 
     if GetPlayerController(Player(12)) != MAP_CONTROL_CREEP then
-        set playercreep = 26
+        set playerpassive = 26
         set playermax = 24
         set PLAYER_COLOR_MAROONX             = ConvertPlayerColor(12)
         set PLAYER_COLOR_NAVYX               = ConvertPlayerColor(13)

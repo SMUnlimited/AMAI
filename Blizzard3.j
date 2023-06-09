@@ -91,7 +91,7 @@ function InitBlizzardGlobals takes nothing returns nothing
     // Init force presets
     set index = 0
     loop
-        exitwhen index == (playermax + 4)
+        exitwhen index == (playerpassive + 2)
         set bj_FORCE_PLAYER[index] = CreateForce()
         call ForceAddPlayer(bj_FORCE_PLAYER[index], Player(index))
         set index = index + 1
@@ -329,7 +329,7 @@ function InitNeutralBuildings takes nothing returns nothing
 
     // Set up a trigger to fire whenever an item is sold.
     set bj_stockItemPurchased = CreateTrigger()
-    call TriggerRegisterPlayerUnitEvent(bj_stockItemPurchased, Player(playercreep), EVENT_PLAYER_UNIT_SELL_ITEM, null)
+    call TriggerRegisterPlayerUnitEvent(bj_stockItemPurchased, Player(playerpassive), EVENT_PLAYER_UNIT_SELL_ITEM, null)
     call TriggerAddAction(bj_stockItemPurchased, function RemovePurchasedItem)
 endfunction
 
