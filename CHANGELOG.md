@@ -30,6 +30,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - W3C item icon
    - install use InstallTFTtoDir-Icon.pl or InstallROCtoDir-Icon.pl or install - w3c minimapicon.js , need install commander
    - will install item icon(1.35 or low version)
+- W3C DenyTip
+   - use -deny control Switch
+   - when Deny Unit or Killing by PLAYER_NEUTRAL_AGGRESSIVE or Killing PLAYER_NEUTRAL_AGGRESSIVE, will tip "!"
+   - Killing PLAYER_NEUTRAL_AGGRESSIVE not considered situation of competition between different players , is always tip , if perfect function , should only be displayed when unit is snatched
 - Zoom
    - Zoom can use up and down key change high , once 50
    - ZoomSet now support [-zoom 1650] , prevent entering spaces
