@@ -102,12 +102,12 @@
     button %1_button = null
 #ENDINCLUDE
 
-    trigger W3CIcons = null
+    boolean W3CIcons = true
     minimapicon array miniicons
+    //framehandle array iconFrame
     integer miniicons_length = 0
 
     trigger W3CDeny = CreateTrigger()
-    trigger W3CDenycon = CreateTrigger()
 
     string chat_no_ally = ""
     string you_no_gold = ""
@@ -558,7 +558,7 @@ endfunction
 //===========================================================================
 // W3C UNIT DENY TIP
 //===========================================================================
-function DenyTip takes nothing returns nothing
+function W3CDenyTip takes nothing returns nothing
   local unit u1 = GetDyingUnit()
   local unit u2 = GetKillingUnit()
   local player p1 = GetOwningPlayer(u1)
@@ -568,9 +568,9 @@ function DenyTip takes nothing returns nothing
   if (not (IsUnitType(u1,UNIT_TYPE_STRUCTURE) and GetUnitTypeId(u2) == 'uaco')) and GetUnitTypeId(u2) != 'otot' and GetUnitTypeId(u2) != 'usap' and not IsUnitHidden(u1) then
     if (IsPlayerAlly(p1,p2) or p1 == Player(PLAYER_NEUTRAL_AGGRESSIVE) or p2 == Player(PLAYER_NEUTRAL_AGGRESSIVE)) and p1 != Player(PLAYER_NEUTRAL_PASSIVE) then
       if p2 == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
-        set s = "|cff323232!|r"
+        set s = "|cff323232"+"!"+"|r"
       endif
-      set t = CreateTextTagUnitBJ(s, u1, -80, 13, 255, 255, 255, 0)
+      set t = CreateTextTagUnitBJ(s, u1, -80, 13, 100, 100, 100, 0)
       call SetTextTagPermanentBJ(t, false)
       call SetTextTagVelocityBJ(t, 20, 90)
       call SetTextTagLifespanBJ(t, 2)
@@ -585,7 +585,7 @@ function DenyTip takes nothing returns nothing
   set p2 = null
 endfunction
 
-function SetDenyUnitTip takes nothing returns nothing
+function SetW3CDenyTip takes nothing returns nothing
   local string t = "DenyTip |cfffd0000OFF|r"
   if GetTriggerPlayer() != null then
     if not IsTriggerEnabled(W3CDeny) then
@@ -599,98 +599,109 @@ function SetDenyUnitTip takes nothing returns nothing
   set t = null
 endfunction
 
-function DenyUnitTipControl takes nothing returns nothing
+function W3CDenyTipControl takes nothing returns nothing
   local integer i = 0
+  local trigger t = CreateTrigger()
   loop
     exitwhen i >= GetBJMaxPlayers()
-    call TriggerRegisterPlayerChatEvent(W3CDenycon, Player(i), "-deny", false)
+    call TriggerRegisterPlayerChatEvent(t, Player(i), "-deny", false)
     set i = i + 1
   endloop
+  call TriggerAddAction( t, function SetW3CDenyTip )
   call TriggerRegisterAnyUnitEventBJ( W3CDeny, EVENT_PLAYER_UNIT_DEATH )
-  call TriggerAddAction( W3CDenycon, function SetDenyUnitTip )
-  call TriggerAddAction( W3CDeny, function DenyTip )
+  call TriggerAddAction( W3CDeny, function W3CDenyTip )
 endfunction
 
 //===========================================================================
 // W3C ICON (Some ICON is custom)
+// use Frame need adapter 1.36 new Observer mode minimap changing position , here no adapter
+// use miniicon always have some slight deviation , like lua have innate advantage
 //===========================================================================
-function FixIconsShifting takes real i returns integer
-  set i = i / 128
-  //if i >= 1 or i <= -1 then
-    if i < 0 then
-      set i = i - 1
-    endif
-  //endif
-  return R2I(i) //* 128  //Math.floor(GetUnitX(GetEnumUnit()) / 128) * 128
- // return i * 128
-endfunction
-
 function SetW3CMiniMapIcons takes nothing returns nothing
-  local unit u = null
-  local group g = null
   local integer i = 0
-  local real x = 0
-  local real y = 0
-  local string t = "MiniMapIcon |cfffd0000OFF|r"
-  if miniicons[0] == null then
-    set t = "MiniMapIcon |cff00ff00ON|r"
-  endif
   if GetTriggerPlayer() != null then
-    call DisplayTimedTextToForce( GetPlayersAll(), 7.00, t)
+    if W3CIcons == false then
+      set W3CIcons = true
+      call DisplayTimedTextToForce( GetPlayersAll(), 7.00, "MiniMapIcon |cff00ff00ON|r")
+    else
+      set W3CIcons = false
+      call DisplayTimedTextToForce( GetPlayersAll(), 7.00, "MiniMapIcon |cfffd0000OFF|r")
+    endif
   endif
-  if miniicons[i] == null then
-    set g = CreateGroup()
-    call GroupEnumUnitsOfPlayer(g,Player(PLAYER_NEUTRAL_PASSIVE),null)
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null
-      set t = null
-      if false then
-#INCLUDETABLE <NeutralIcon.txt> #EFR
-      elseif GetUnitTypeId(u) == '%1' then
-        set t = "%2"
-#ENDINCLUDE
-      endif
-      if t != null then
-        set x = FixIconsShifting(GetUnitX(u)) * 128
-        set y = FixIconsShifting(GetUnitY(u)) * 128
-        set miniicons[i] = CreateMinimapIcon(x,y,255,255,255,t,FOG_OF_WAR_FOGGED)
-        set i = i + 1
-      endif
-      call GroupRemoveUnit(g,u)
-    endloop
-    set miniicons_length = i
-    call DestroyGroup(g)
-    set g = null
-  else
-    loop
-      exitwhen i >= miniicons_length
-      call DestroyMinimapIcon(miniicons[i])
-      set miniicons[i] = null
-      set i = i + 1
-    endloop
-  endif
-  set t = null
+  loop
+    exitwhen i >= miniicons_length
+    //call BlzFrameSetEnable( iconFrame[i] , not BlzFrameGetEnable(iconFrame[i]) )
+    //call BlzDestroyFrame(iconFrame[i])
+    //set iconFrame[i] = null
+    call SetMinimapIconVisible(miniicons[i],W3CIcons)
+    //call DestroyMinimapIcon(miniicons[i])
+    //set miniicons[i] = null
+    set i = i + 1
+  endloop
 endfunction
 
 function W3CMiniMapIcons takes nothing returns nothing
   local integer i = 0
-  local rect c = null
-  if W3CIcons == null then
-    set W3CIcons = CreateTrigger()
-    set c = GetPlayableMapRect()
-    if (GetRectWidthBJ(c) + GetRectHeightBJ(c) < 70570) == true then   //35285 * 2 (large map) , the map larger the size, the worse the display effect
-      call SetW3CMiniMapIcons()
-    endif
-    call RemoveRect(c)
-    set c = null
-  endif
+  local trigger t = CreateTrigger()
   loop
     exitwhen i >= GetBJMaxPlayers()
-    call TriggerRegisterPlayerChatEvent(W3CIcons, Player(i), "-minimap", false)
+    call TriggerRegisterPlayerChatEvent(t, Player(i), "-minimap", false)
     set i = i + 1
   endloop
-  call TriggerAddAction( W3CIcons, function SetW3CMiniMapIcons )
+  call TriggerAddAction( t, function SetW3CMiniMapIcons )
+endfunction
+
+function CreateW3CMiniMapIcons takes nothing returns nothing
+  local unit u = null
+  local group g = null
+  local rect c = GetPlayableMapRect()
+  local string t = null
+  local integer i = 0
+  local real x = 0
+  local real y = 0
+  local real xR
+  local real yR
+  local real maxMinimapDist = RMaxBJ(GetCameraBoundMaxX() - GetCameraBoundMinX() + 768 , GetCameraBoundMaxY() - GetCameraBoundMinY() + 512)/2
+  local real xCenter = (GetCameraBoundMaxX() + GetCameraBoundMinX())/2
+  local real yCenter = (GetCameraBoundMaxY() + GetCameraBoundMinY())/2
+  if GetRectWidthBJ(c) + GetRectHeightBJ(c) >= 70570 then   //35285 * 2 (large map) , the map larger the size, the worse the display effect
+    set W3CIcons = false
+  endif
+  call RemoveRect(c)
+  set c = null
+  set g = CreateGroup()
+  call GroupEnumUnitsOfPlayer(g,Player(PLAYER_NEUTRAL_PASSIVE),null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    set t = null
+    if false then
+#INCLUDETABLE <NeutralIcon.txt> #EFR
+    elseif GetUnitTypeId(u) == '%1' then
+      set t = "%2"
+#ENDINCLUDE
+    endif
+    if t != null then
+      // try fix deviation
+      set xR = R2I((GetUnitX(u) - xCenter) / maxMinimapDist)
+      set yR = R2I((GetUnitY(u) - yCenter) / maxMinimapDist)
+      // set iconFrame[i] = BlzCreateFrameByType("BACKDROP", "Icon" , BlzGetOriginFrame(ORIGIN_FRAME_GAME_UI, 0), "", 0)
+      // call BlzFrameSetSize(iconFrame[i] , 0.0166, 0.0166)
+      // call BlzFrameSetAbsPoint( iconFrame[i] , FRAMEPOINT_CENTER , 0.077 + 0.069*xR , 0.074 + 0.069*yR )
+      // call BlzFrameSetTexture( iconFrame[i] , t , 0 , true )
+      // call BlzFrameSetVisible( iconFrame[i] , true )
+      // call BlzFrameSetEnable( iconFrame[i] , false )
+      set x = GetUnitX(u) + 69*xR - 74
+      set y = GetUnitY(u) + 69*yR - 74
+      set miniicons[i] = CreateMinimapIcon(x,y,255,255,255,t,FOG_OF_WAR_FOGGED)
+      set i = i + 1
+    endif
+    call GroupRemoveUnit(g,u)
+  endloop
+  set miniicons_length = i
+  call DestroyGroup(g)
+  set g = null
+  call SetW3CMiniMapIcons()
 endfunction
 
 //===========================================================================
@@ -2034,6 +2045,7 @@ endfunction
 #INCLUDE <Blizzard5.j>
     call InitCommander()
     call InitRaceStrategy()
+    call CreateW3CMiniMapIcons()
     call W3CMiniMapIcons()
-    //call DenyUnitTipControl()
+    call W3CDenyTipControl()
 #INCLUDE <Blizzard6.j>
