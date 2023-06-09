@@ -40,6 +40,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - if map size to big , the icon default not enabled , anual activation required , because the effect is too poor
    - install use InstallTFTtoDir-Icon.pl or install - w3c minimapicon.js , need install commander
    - will install item icon(1.36 version)
+- W3C DenyTip
+   - use -deny control Switch
+   - when Deny Unit or Killing by PLAYER_NEUTRAL_AGGRESSIVE or Killing PLAYER_NEUTRAL_AGGRESSIVE, will tip "!"
+   - Killing PLAYER_NEUTRAL_AGGRESSIVE not considered situation of competition between different players , is always tip , if perfect function , should only be displayed when unit is snatched
 - Strategy Choose Dialog now show translation Strategy name , no Num
    - Strategy name must consistent with file Strategy.txt name
    - Cannot find consistent name Strategy , Dialog will missing button
