@@ -91,7 +91,7 @@
     integer dlg_length = 0
 
     integer playermax = 12
-    integer playercreep = 14
+    integer playerpassive = 14
     trigger ZoomSetx = null
     trigger AdjustZoomUp = null
     trigger AdjustZoomDown = null
@@ -107,6 +107,8 @@
 #INCLUDETABLE <Languages.txt> #EFR
     button %1_button = null
 #ENDINCLUDE
+
+    trigger W3CDeny = CreateTrigger()
 
     string chat_no_ally = ""
     string you_no_gold = ""
@@ -741,9 +743,66 @@ function Helpin takes nothing returns nothing
 endfunction
 
 //===========================================================================
+// W3C UNIT DENY TIP
+//===========================================================================
+function W3CDenyTip takes nothing returns nothing
+  local unit u1 = GetDyingUnit()
+  local unit u2 = GetKillingUnit()
+  local player p1 = GetOwningPlayer(u1)
+  local player p2 = GetOwningPlayer(u2)
+  local texttag t = null
+  local string s = cs2s("!",GetPlayerColor(p2))
+  if (not (IsUnitType(u1,UNIT_TYPE_STRUCTURE) and GetUnitTypeId(u2) == 'uaco')) and GetUnitTypeId(u2) != 'otot' and GetUnitTypeId(u2) != 'usap' and not IsUnitHidden(u1) then
+    if (IsPlayerAlly(p1,p2) or p1 == Player(playermax) or p2 == Player(playermax)) and p1 != Player(playermax+3) then
+      if p2 == Player(playermax) then
+        set s = "|cff323232"+"!"+"|r"
+      endif
+      set t = CreateTextTagUnitBJ(s, u1, -80, 13, 100, 100, 100, 0)
+      call SetTextTagPermanentBJ(t, false)
+      call SetTextTagVelocityBJ(t, 20, 90)
+      call SetTextTagLifespanBJ(t, 2)
+      call SetTextTagFadepointBJ(t, 1.5)
+      set t = null
+    endif
+  endif
+  set s = null
+  set u1 = null
+  set u2 = null
+  set p1 = null
+  set p2 = null
+endfunction
+
+function SetW3CDenyTip takes nothing returns nothing
+  local string t = "DenyTip |cfffd0000OFF|r"
+  if GetTriggerPlayer() != null then
+    if not IsTriggerEnabled(W3CDeny) then
+      call EnableTrigger(W3CDeny)
+      set t = "DenyTip |cff00ff00ON|r"
+    else
+      call DisableTrigger(W3CDeny)
+    endif
+    call DisplayTimedTextToForce( GetPlayersAll(), 7.00, t)
+  endif
+  set t = null
+endfunction
+
+function W3CDenyTipControl takes nothing returns nothing
+  local integer i = 0
+  local trigger t = CreateTrigger()
+  loop
+    exitwhen i >= playermax
+    call TriggerRegisterPlayerChatEvent(t, Player(i), "-deny", false)
+    set i = i + 1
+  endloop
+  call TriggerAddAction( t, function SetW3CDenyTip )
+  call TriggerRegisterAnyUnitEventBJ( W3CDeny, EVENT_PLAYER_UNIT_DEATH )
+  call TriggerAddAction( W3CDeny, function W3CDenyTip )
+endfunction
+
+
+//===========================================================================
 // Zoom
 //===========================================================================
-
 function ZoomSet takes nothing returns nothing
   local real Zoom = 0
   if SubStringBJ(GetEventPlayerChatString(), 6, 6) != " " then
@@ -2125,4 +2184,5 @@ endfunction
     call InitRaceStrategy()
     call InitZoom()
     call AdjustZoom()
+    call W3CDenyTipControl()
 #INCLUDE <Blizzard4.j>
