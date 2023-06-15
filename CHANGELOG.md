@@ -177,7 +177,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - BlizzardVAI.eai ai script file real race.txt 1% and 2%
 
 ###Fixed
-- Fixed AddBlock cannor work , OneBuildLoopAM now check BlockListCheck and RBlockListCheck
 - Fixed some translation errors
 - Fixed some reports without translation
 - Fixed AI would not buy mercenaries and dragons
