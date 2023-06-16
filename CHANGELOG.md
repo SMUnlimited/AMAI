@@ -52,6 +52,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Because search translation , now compile B.J need take more time(Poor code level)
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join unregistered (like non own racial) units and heros (but excess heros may not be able to learn skills) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
+- Buy NEUTRAL HERO add judge neutral_guarded[NEUTRAL_TAVERN] to StartUnitAM, call GetNeutralHero recalculate heros , guarantee to change train ownrace hero at the first time
 - Water_expansion now record creeps guard , and ChooseExpansion returns the creeps
 - Water_expansion improvement judgment methods , now have a gorup record , just need judgment expansion on the gorup , no need loop
 - if have Water_expansion or racial_lumber == 0 or race_no_wood_harvest , ZEPPELIN_FOLLOW no run GroupRemoveGuardPositionInstant , then AI can take Water_expansion or help ELF fix building blockage
