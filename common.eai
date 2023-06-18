@@ -667,8 +667,6 @@ globals
     boolean no_sleep = false
     integer array dragons
     integer array merc_unit
-    integer array other_race_hero
-    integer array other_race_unit
     integer merc_number = 0
     integer dragon_number = 0
 #INCLUDETABLE <$VER$\MercTypes.txt>
@@ -3402,30 +3400,26 @@ endfunction
 // (AMAI)  functions for coordination and choice of strategies
 //===========================================================================
 function DistanceBetweenPoints takes location locA, location locB returns real
-	local real distance = GetLengthOfLoc_d(GetSubtractionLoc(locB, locA))
+  local real distance = GetLengthOfLoc_d(GetSubtractionLoc(locB, locA))
   return distance
 endfunction
 function DistanceBetweenPoints_kd takes location locA, location locB returns real
-	local real distance = GetLengthOfLoc_d(GetSubtractionLoc_dk(locB, locA))
-  set locB = null
+  local real distance = GetLengthOfLoc_d(GetSubtractionLoc_dk(locB, locA))
   return distance
 endfunction
 function DistanceBetweenPoints_dk takes location locA, location locB returns real
-	local real distance = GetLengthOfLoc_d(GetSubtractionLoc_kd(locB, locA))
-  set locA = null
+  local real distance = GetLengthOfLoc_d(GetSubtractionLoc_kd(locB, locA))
   return distance
 endfunction
 function DistanceBetweenPoints_dd takes location locA, location locB returns real
-	local real distance = GetLengthOfLoc_d(GetSubtractionLoc_dd(locB, locA))
-  set locA = null
-  set locB = null
+  local real distance = GetLengthOfLoc_d(GetSubtractionLoc_dd(locB, locA))
   return distance
 endfunction
 
 //============================================================================
 function DistanceBetweenUnits takes unit unitA, unit unitB returns real
-    local real r = DistanceBetweenPoints_dd(GetUnitLoc(unitA), GetUnitLoc(unitB))
-    return r
+  local real r = DistanceBetweenPoints_dd(GetUnitLoc(unitA), GetUnitLoc(unitB))
+  return r
 endfunction
 
 //============================================================================
@@ -3470,7 +3464,6 @@ function EstimatedTimeToReachUnit_d takes location locA, unit target, real moves
   if movespeed != 0 then
     set time = distance / movespeed
   endif
-  set locA = null
   return time
 
 endfunction
@@ -3517,7 +3510,10 @@ function GetNearestEnemyToLoc_k takes location l returns player
     endif
     set i = i + 1
   endloop
-  return enemy_force[min_p]
+  if min_p != 30 then
+    return enemy_force[min_p]
+  endif
+  return null
 endfunction
 
 function GetNearestEnemyToLoc_d takes location l returns player
@@ -3538,8 +3534,10 @@ function GetNearestEnemyToLoc_d takes location l returns player
     set i = i + 1
   endloop
   call RemoveLocation(l)
-  set l = null
-  return enemy_force[min_p]
+  if min_p != 30 then
+    return enemy_force[min_p]
+  endif
+  return null
 endfunction
 
 //============================================================================
@@ -5044,14 +5042,12 @@ function GetMajorHeroReplacement_d takes location l returns unit
     exitwhen i > 3
     if hero_built[i] and UnitAlive(hero_unit[i]) and IsUnitInRangeLoc(hero_unit[i], l, battle_radius) and not IsUnitInGroup(hero_unit[i], unit_healing) then
       call RemoveLocation(l)
-      set l = null
       return hero_unit[i]
     endif
     set i = i + 1
   endloop
   set ru_hero = GetUnitHeroReplacement(l)
   call RemoveLocation(l)
-  set l = null
   return ru_hero
   return null
 endfunction
@@ -5714,14 +5710,12 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
   local integer groundid = 'ewsp'
   local real distance = 0
   local unit u = null
-  local real checktime = 0
+  //local real checktime = 0
   local boolean exitloop = false
 
   set u = CreatePathingUnitFull(u,Player(PLAYERPASSIVE), groundid, GetLocationX(loc),GetLocationY(loc))
   call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
-  set checktime =  GetTimeToReachLoc(u, home_location)
-  call UnitApplyTimedLife(u, 'BTLF', checktime)
-  call Sleep(0.3)
+  //set checktime = GetTimeToReachLoc(u, home_location)
   loop
     exitwhen (exitloop == true)
     set rl_getlocationindistancefromLoc[0] = Location(GetUnitX(u),GetUnitY(u))
@@ -5737,6 +5731,7 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
       //return null
     endif
     call RemoveLocation(rl_getlocationindistancefromLoc[0])
+    call Sleep(0.3)
   endloop
   call RemoveUnit(u)
   set u = null
@@ -5748,14 +5743,13 @@ endfunction
 function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns location
     local real distance = 0
     local unit u = null
-    local real checktime = 0
+    //local real checktime = 0
 
  // call DisplayToAll("Checking")
  // call PingMinimap(GetLocationX(start_loc), GetLocationY(start_loc), 20)
     set u = CreatePathingUnit(u)
     call IssuePointOrderLoc(u, "move", loc)
-    set checktime = GetTimeToReachLoc(u, loc)
-    call Sleep(0.3)
+    //set checktime = GetTimeToReachLoc(u, loc)
     loop
       set rl_getlocationindistancefromLoc[1] = Location(GetUnitX(u),GetUnitY(u))
       set distance = DistanceBetweenPoints(rl_getlocationindistancefromLoc[1], home_location)
@@ -5773,6 +5767,7 @@ function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns l
           return null
       endif
       call RemoveLocation(rl_getlocationindistancefromLoc[1])
+      call Sleep(0.3)
     endloop
     set rl_getlocationindistancefromLoc[1] = null
     call RemoveUnit(u)
@@ -5786,7 +5781,6 @@ function GetBuildLocationInDistanceFromLoc_d takes integer id, location loc, rea
   local unit u = null
 
   call RemoveLocation(loc)
-  set loc = null
   if buildloc != null then
     set u = CreateUnit(Player(PLAYERPASSIVE), id, GetLocationX(buildloc), GetLocationY(buildloc), 270.0)
     call RemoveLocation(buildloc)
@@ -6763,7 +6757,6 @@ function ComputeFrontPoints takes nothing returns nothing
   local boolean pathingdone = true
   local boolean array patherdone
   local location l = null
-  //local location locpro = null
   local real distance = 0
   
   loop
@@ -6829,7 +6822,6 @@ function ComputeFrontPoints takes nothing returns nothing
   set front_locs_computed = true
   set l = null
   set loc = null
-  //set locpro = null
   set p = null
   set mainplayer = null
 
@@ -8152,7 +8144,6 @@ function GetPatchVersion takes nothing returns nothing
 endfunction
 
 function InitGlobalSettings takes nothing returns nothing
-  call GetPatchVersion()
 #INCLUDETABLE <$VER$\GlobalSettings.txt> #EFR
   set %1 = %2
 #ENDINCLUDE
@@ -9897,7 +9888,8 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
     set l = null
     return CANNOT_BUILD
   elseif bloc == BLOC_FRONT and DistanceBetweenPoints(l,home_location) >= front_base_distance + 400 and unitid == race_tower_id then
-    call Trace("BuildatspecialLoc: Build loc too far , fix build loc")
+    call Trace("BuildatspecialLoc: Build tower loc too far , fix build loc")
+    call RemoveLocation(l)
     set l = AIGetProjectedLoc(front_loc[GetRandomInt(0, front_loc_num - 1)], home_location, 200, 0)
     call IssuePointOrderByIdLoc(peon, old_id[unitid], l)
   elseif not IssuePointOrderByIdLoc(peon, old_id[unitid], l) then
@@ -10089,17 +10081,11 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     endif
   #ENDINCLUDE
 
-    if tavernguarded == 0 and nearest_neutral[NEUTRAL_TAVERN] != null then
-      if neutral_guarded[NEUTRAL_TAVERN] and not hero_built[1] then  //guarantee to train Ownrace hero at the first time
-        set recalculate_heros = true
-      endif
-      set tavernguarded = 1
-    endif
     if buy_type[unitid] == BT_NEUTRAL_HERO then
       return GetNeutralHero(unitid)
     endif
 
-    if unitid == racial_rushcreep then
+    if unitid == racial_rushcreep and unitid != 0 then
       if CreepsOnMap() and not towerrush then
         call BuildRushCreepAtBase()
       endif
@@ -10698,11 +10684,11 @@ if mines < 3 and ai_time - exp_time_count > exp_second_time then
     call Trace("ExpansionBuilder:Ready to expand to mine 3")
   endif
 endif
-set u = null
+
 if positive_expansion == true and take_exp == false and u != null then
   set take_exp = true
 endif
-
+set u = null
 if not exp_prepared then
   set rebuild = CheckExpansionRebuild()
   if rebuild then
@@ -10892,7 +10878,12 @@ function OneBuildLoopAM takes nothing returns nothing
       call ExpansionBuilder()
       call HeroReviver()
     endif
-
+    if tavernguarded == 0 and nearest_neutral[NEUTRAL_TAVERN] != null then
+      if neutral_guarded[NEUTRAL_TAVERN] and not hero_built[1] then  //guarantee to train Ownrace hero at the first time
+        set recalculate_heros = true
+      endif
+      set tavernguarded = 1
+    endif
     set total_gold   = GetGold() - gold_buffer
     set total_wood   = GetWood() - wood_buffer
     set total_food   = ver_food_limit - FoodUsed()
@@ -11077,7 +11068,7 @@ function AttackGroupAddUnknown takes nothing returns nothing
   local integer id = 0
   local integer i = 0
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  set g = SelectUnittype(g, UNIT_TYPE_SUMMONED, false)
+  set g = SelectByAlive(g,true)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
   loop
@@ -11089,7 +11080,7 @@ function AttackGroupAddUnknown takes nothing returns nothing
     set u = FirstOfGroup(g)
     exitwhen u == null
     set id = GetUnitTypeId(u)
-    if UnitAlive(u) and id != 'ngir' and not IsUnitInGroup(u, unit_healing) and not IsUnitHidden(u) and (IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) or IsUnitType(u, UNIT_TYPE_ATTACKS_GROUND)) then
+    if IsUnitType(u,UNIT_TYPE_SUMMONED) and id != 'ngir' and not IsUnitInGroup(u, unit_healing) and not IsUnitHidden(u) and (IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) or IsUnitType(u, UNIT_TYPE_ATTACKS_GROUND)) then
       call AddAssault(60,id)  //other hero and unit , like other race and custom
     endif
     call GroupRemoveUnit(g, u)
@@ -11729,7 +11720,10 @@ function GetWeakestEnemy takes nothing returns player
       endif
     set i = i + 1
     endloop
-    return enemy_force[pmin]
+    if pmin != 30 then
+      return enemy_force[pmin]
+    endif
+    return null
 endfunction
 
 //============================================================================
@@ -11749,7 +11743,10 @@ function GetStrongestEnemy takes nothing returns player
       endif
     set i = i + 1
     endloop
-    return enemy_force[pmax]
+    if pmax != 30 then
+      return enemy_force[pmax]
+    endif
+    return null
 endfunction
 
 //============================================================================
@@ -11773,12 +11770,15 @@ function GetWeakAndNearEnemy takes nothing returns player
       endif
       set i = i + 1
     endloop
-    if pmin == -1 then
-      call Trace("Debug: GetWeakAndNearEnemy failed!")
-      set pmin = 0
-    endif
+    // if pmin == -1 then
+    //   call Trace("Debug: GetWeakAndNearEnemy failed!")
+    //   set pmin = 0
+    // endif
     set cbuilding = null
-    return enemy_force[pmin]
+    if pmin != -1 then
+      return enemy_force[pmin]
+    endif
+    return null
 endfunction
 
 //============================================================================
@@ -11801,7 +11801,10 @@ function GetNearHumanPlayerEnemy takes nothing returns player
     set i = i + 1
   endloop
   set c_enemy_user_total = t  // update c_enemy_user_total
-  return enemy_force[nearhumanplayer]
+  if nearhumanplayer != 30 then
+    return enemy_force[nearhumanplayer]
+  endif
+  return null
 endfunction
 
 function GetNearestEnemy takes nothing returns player
@@ -11821,7 +11824,10 @@ loop
   endif
   set i = i + 1
 endloop
-return enemy_force[nearplayer]
+if nearplayer != 30 then
+  return enemy_force[nearplayer]
+endif
+return null
 endfunction
 
 //============================================================================
@@ -11852,12 +11858,15 @@ function GetSecondNearestEnemy takes nothing returns player
       endif
       set i = i + 1
     endloop
-    if spmin == -1 then
-      call Trace("Debug: GetSecondNearestEnemy failed!")
-      set spmin = 0
-    endif
+    // if spmin == -1 then
+    //   call Trace("Debug: GetSecondNearestEnemy failed!")
+    //   set spmin = 0
+    // endif
     set cbuilding = null
-    return enemy_force[spmin]
+    if spmin != -1 then
+      return enemy_force[spmin]
+    endif
+    return null
 endfunction
 
 //============================================================================
@@ -11990,7 +11999,7 @@ function ChooseAnEnemyTarget takes nothing returns unit
       set target_enemy = GetWeakAndNearEnemy()
       //call Trace("Choosing weakest closest Enemy")
     endif
-    if (c_ai_total + c_enemy_total >= 10 or mapattackdelayed > 8) and c_enemy_user_total > 0 and GetPlayerController(target_enemy) != MAP_CONTROL_USER then  // big map , attack strategy is first attack HumanPlayer
+    if (c_ai_total + c_enemy_total >= 10 or mapattackdelayed > 8) and c_enemy_user_total > 0 and GetPlayerController(target_enemy) != MAP_CONTROL_USER then  // big map , first attack HumanPlayer
       set temptarget = GetNearHumanPlayerEnemy()
       if temptarget != null then
         set target_enemy = temptarget
@@ -12233,7 +12242,7 @@ endif
       set isfleeing = false
       call FormGroupAM(1)
       call SleepUntilTownDefended(ai_strength)
-      //call SleepInCombatAM()
+      //call SleepInCombatAM()  // Fix AI army Wandering
     endif
 
     call Trace("===Single Melee Attack===" )
@@ -12936,7 +12945,7 @@ function universal_peon_assignment takes nothing returns nothing
     set swh = Max(swh - 4 * TownCountDone(neutral_shredder),0)
 
     if towerrush and swh <= race_tower_peon then
-      set swh = race_tower_peon + 4
+      set swh = race_tower_peon + 2
     endif
 
     call ClearHarvestAI()
@@ -12952,9 +12961,9 @@ function universal_peon_assignment takes nothing returns nothing
     call HarvestWood(0,swh)
 
     loop
-    //set i = i + 1
-    exitwhen i > Max(T + 3,TownCountDone(racial_expansion))
-    if T != i and ((TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0) or GetResourceAmount(own_town_mine[i]) > 0) then
+      //set i = i + 1
+      exitwhen i > Max(T + 3,TownCountDone(racial_expansion))
+      if T != i and ((TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0) or GetResourceAmount(own_town_mine[i]) > 0) then
         if gdivw < 3.0 or g < 300 then
           call HarvestGold(i,ver_optimal_gold)
         else
@@ -14704,6 +14713,9 @@ function PickMeleeHero takes race raceid returns integer
     local integer array heroes
     local integer i
     call GetPatchVersion()
+    // if IsAMAI then
+    //   call InitGlobalSettings()  // repeat
+    // endif
     call InitAiUnits()  // This function makes all unit ids go back to there originals
     set i = ver_neutral_hero_number
     //------------------------------------------------------------------------
