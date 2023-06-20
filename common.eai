@@ -1107,8 +1107,7 @@ group rg_getexpfoegroup = null            // used to GetExpFoeGroup
 group rg_getcreepguardgroup = null        // used to GetCreepGuardGroup
 
 location array rl_getlocationbetweenLoc                // used to GetLocationBetweenLoc,GetLocationBetweenUnits
-location array rl_getlocationindistancefromLoc         // used to GetLocationInDistanceFromLoc,GetBuildLocationInDistanceFromLoc_d,GetLocationInDistanceFromBaseToLoc
-location rl_getlumberlocationatBase = null             // used to GetLumberLocationAtBase
+location array rl_getlocationindistancefromLoc         // used to GetLocationInDistanceFromLoc,GetLocationInDistanceFromBaseToLoc
 
 item rl_itemtype = null                                // used to GetItemOfType
 endglobals
@@ -2080,12 +2079,11 @@ function LookupCT takes string s returns string
     exitwhen i >= char_table_length
     if (s == char_bug_table[i]) then
       //call DisplayTimedTextToPlayer(Player(0),0,0,15,message_add+"1:Char Match:" + s + " With stored char:" + char_table[i])
-      //set storedstring = null
       return char_table[i]
     endif
     set i = i + 1
   endloop
-  //set storedstring = null
+
   return ""
   // set storedstring = LoadStr(language_table, CHAR_TABLE, StringHash(s))
   // if (storedstring == null) then
@@ -3447,7 +3445,7 @@ endfunction
 function GetTimeToReachLoc takes unit u, location target returns real
 	local real movespeed = GetUnitMoveSpeed(u)
 	local real time = 15
-	local real distance =  DistanceBetweenPoints_kd(target, GetUnitLoc(u))
+	local real distance = DistanceBetweenPoints_kd(target, GetUnitLoc(u))
 	//call DisplayToAllJobDebug("gettime: before")
 	if movespeed != 0 then
 		set time = distance / movespeed
@@ -4318,7 +4316,8 @@ function GetMineNearLoc takes location l, real dist returns unit
     loop
       exitwhen i >= minearray
       if GetUnitTypeId(ru_mine) == racial_goldmine[i] and GetResourceAmount(ru_mine) > 0 then
-        //if SetHasEntry(ver_gold_mines, GetUnitTypeId(ru_mine)) then
+        //if SetHasEntry(ver_gold_mines, GetUnitTypeId(u)) then
+          //if GetUnitTypeId(u) =='ngol' or GetUnitTypeId(u) =='egol' or GetUnitTypeId(u) == 'ugol' then
         call Trace("GetMineNearLOC: A Mine match found")
         call DestroyGroup(g)
         set g = null
@@ -4334,7 +4333,7 @@ function GetMineNearLoc takes location l, real dist returns unit
 endfunction
 
 //==========================================================================
-// (AMAI Addition by SM) Get Nearest Neutral	
+// (AMAI Addition by SM) Get Nearest Neutral
 //==========================================================================
 // function CanPathToLoc takes location locA, location target, pathingtype path returns real 
 
@@ -5049,7 +5048,6 @@ function GetMajorHeroReplacement_d takes location l returns unit
   set ru_hero = GetUnitHeroReplacement(l)
   call RemoveLocation(l)
   return ru_hero
-  return null
 endfunction
 
 function GetMajorHeroReplacement_k takes location l returns unit
@@ -5063,7 +5061,6 @@ function GetMajorHeroReplacement_k takes location l returns unit
     set i = i + 1
   endloop
   return GetUnitHeroReplacement(l)
-  return null
 endfunction
 
 //==========================================================================
@@ -5726,7 +5723,6 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
       set u = null
       return rl_getlocationindistancefromLoc[0]
     elseif GetUnitState(u, UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u) == OrderId("stop") or GetUnitCurrentOrder(u) != OrderId("move") then
-      //call RemoveLocation(rl_getlocationindistancefromLoc[0])
       set exitloop = true
       //return null
     endif
@@ -5779,16 +5775,19 @@ endfunction
 function GetBuildLocationInDistanceFromLoc_d takes integer id, location loc, real distance returns location
   local location buildloc = GetLocationInDistanceFromLoc(loc, distance)
   local unit u = null
+  local real x = 0
+  local real y = 0
 
   call RemoveLocation(loc)
   if buildloc != null then
     set u = CreateUnit(Player(PLAYERPASSIVE), id, GetLocationX(buildloc), GetLocationY(buildloc), 270.0)
     call RemoveLocation(buildloc)
     set buildloc = null
-    set rl_getlocationindistancefromLoc[2] = Location(GetUnitX(u),GetUnitY(u))
+    set x = GetUnitX(u)
+    set y = GetUnitY(u)
     call RemoveUnit(u)
     set u = null
-    return rl_getlocationindistancefromLoc[2]
+    return Location(x,y)
   endif
   return null
 endfunction
@@ -5799,6 +5798,8 @@ endfunction
 function GetLumberLocationAtBase takes nothing returns location
   local integer groundid = 0	//human peasant
   local real distance = 0
+  local real x = 0
+  local real y = 0
   local unit u = null
   if race_has_ghouls then
     set groundid = old_id[racial_ghoul]
@@ -5808,10 +5809,11 @@ function GetLumberLocationAtBase takes nothing returns location
   set u = CreatePathingUnitFull(u, Player(PLAYERPASSIVE), groundid, GetLocationX(home_location), GetLocationY(home_location))
   call IssueImmediateOrder(u, "autoharvestlumber")
   call Sleep(5.00)
-  set rl_getlumberlocationatBase = Location(GetUnitX(u),GetUnitY(u))
+  set x = GetUnitX(u)
+  set y = GetUnitY(u)
   call RemoveUnit(u)
   set u = null
-  return rl_getlumberlocationatBase
+  return Location(x,y)
 endfunction
 
 function BuildLumberMillAtBase takes nothing returns boolean
@@ -5876,7 +5878,6 @@ function BuildRushCreepAtBase takes nothing returns nothing
   set g = null
   set u = null
   set ru = i
-  call Sleep(0.1)
   loop
     if i == ru then
       set i = 0
@@ -5890,6 +5891,7 @@ function BuildRushCreepAtBase takes nothing returns nothing
       set id = id + 1
     endif
     set i = i + 1
+    call Sleep(0.1)
   endloop
   set i = 0
   loop
@@ -7823,7 +7825,7 @@ function cmd_misc takes integer cmd, integer data returns nothing
     set strat_change_allowed = not strat_change_allowed
 
   elseif cmd == 60 then // Show strat name
-    call DisplayToAllies(GetCurrentStrategyReport() + GetCurrentDynamicReport())  //repeat report
+    call DisplayToAllies(GetCurrentStrategyReport() + GetCurrentDynamicReport())
 
   elseif cmd == 61 then // Show all strats
     call DisplayStratNames()
@@ -10696,7 +10698,7 @@ if not exp_prepared then
   endif
 endif
 
-if mines < 1 or gold_left < 2000 or exp_prepared or (positive_expansion and mines < 3) then
+if mines < 1 or gold_left < 2000 or exp_prepared then
   call Trace("ExpansionBuilder: Putting mine on build list")
   if mines < 1 or gold_left < 2000 then
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_emergency_prio)
