@@ -4238,7 +4238,9 @@ function CanPathToLoc takes location locA, location target, pathingtype path ret
     local real totaltime = 0
     //local location prev_loc = null
     local integer checks = 0	// Number of times unit has stayed at same position
-    
+    if GetPlayerRace(ai_player) == RACE_NIGHTELF then
+      set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
+    endif
     if path == PATHING_TYPE_WALKABILITY then
       set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(locA), GetLocationY(locA))
     elseif path == PATHING_TYPE_FLOATABILITY then
@@ -4342,7 +4344,9 @@ function GetNearestNeutral takes integer id returns unit
   local real totaltime = 0
   local integer groundid = 'ewsp'
   local integer totalneutrals = 0
-
+  if GetPlayerRace(ai_player) == RACE_NIGHTELF then
+    set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
+  endif
 //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "get nearest neutral start")
 
 
@@ -5482,7 +5486,9 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
   local unit u = null
   //local real checktime = 0
   local boolean exitloop = false
-
+  if GetPlayerRace(ai_player) == RACE_NIGHTELF then
+    set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
+  endif
   set u = CreatePathingUnitFull(u,Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(loc),GetLocationY(loc))
   call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
   //set checktime = GetTimeToReachLoc(u, home_location)
@@ -5500,7 +5506,7 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
       //return null
     endif
     call RemoveLocation(rl_getlocationindistancefromLoc[0])
-    call Sleep(0.3)
+    call Sleep(0.2)
   endloop
   call RemoveUnit(u)
   set u = null
@@ -5536,7 +5542,7 @@ function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns l
           return null
       endif
       call RemoveLocation(rl_getlocationindistancefromLoc[1])
-      call Sleep(0.3)
+      call Sleep(0.2)
     endloop
     set rl_getlocationindistancefromLoc[1] = null
     call RemoveUnit(u)
@@ -5610,7 +5616,7 @@ function BuildLumberMillAtBase takes nothing returns boolean
   endif
   set peon = null
   if TownCount(racial_hall[2]) > 0 and GetUnitCount(racial_lumber) == 0 then
-    set racial_lumber = 0  //Prevent always cannot build
+    set racial_lumber = -1  //Prevent always cannot build
   endif
   return false
 endfunction
@@ -5618,30 +5624,33 @@ endfunction
 //============================================================================
 // Gets the best location to build a RushCreep building , if use GetCreepCamp , then location cannot control
 //============================================================================
-function BuildRushCreepAtBase takes nothing returns nothing
+function BuildBRAtCreep takes nothing returns nothing
   local integer i = 0
-  local integer id = 0
+  local integer r = 0
+  local integer s = 0
   local integer ru = 0
+  local integer groundid = 'ewsp'
   local real distance = 3200
   local group g = CreateGroup()
   local unit u = null
   local unit array ua
+  local unit array ub
   local unit array uc
   local location loc = null
+  if GetPlayerRace(ai_player) == RACE_NIGHTELF then
+    set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
+  endif
   call GroupEnumUnitsInRange(g,GetLocationX(home_location), GetLocationY(home_location),distance,null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set g = SelectByAlive(g,true)
-  if FirstOfGroup(g) == null then
-    call DestroyGroup(g)
-    set g = null
-    return
-  endif
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or i >= 7  //7 shoul have 2 creepcamp
     if GetUnitLevel(u) < 5 and not IsUnitType(u, UNIT_TYPE_FLYING) and (uc[0] == null or (uc[0] != null and DistanceBetweenUnits(u, uc[0]) > 600) or (uc[1] != null and DistanceBetweenUnits(u, uc[1]) > 600)) then  //maybe have same camp creep unit not cleaned up
       set ua[i] = CreatePathingUnit(ua[i])
       call IssuePointOrder(ua[i], "move", GetUnitX(u), GetUnitY(u))
+      set ub[i] = CreatePathingUnitFull(ub[i],ai_player,groundid,GetUnitX(u), GetUnitY(u))
+      call IssueTargetOrder( ub[i], "smart", ua[i] )
       set uc[i] = u
       set i = i + 1
     endif
@@ -5650,33 +5659,39 @@ function BuildRushCreepAtBase takes nothing returns nothing
   call DestroyGroup(g)
   set g = null
   set u = null
+  if i == 0 then
+    return
+  endif
   set ru = i
   loop
     if i == ru then
       set i = 0
     endif
-    exitwhen id == -1 or id == ru
-    if DistanceBetweenUnits(ua[i], uc[i]) < 600 and GetUnitState(uc[i], UNIT_STATE_LIFE) > 0 then
+    exitwhen loc != null or s == ru
+    if (DistanceBetweenUnits(ua[i], ub[i]) < 200 or DistanceBetweenUnits(ua[i], uc[i]) < 600) and GetUnitState(uc[i], UNIT_STATE_LIFE) > 0 then
       set loc = Location(GetUnitX(uc[i]),GetUnitY(uc[i]))
-      set id = -1
       set rushcreep_target = uc[i]
-    elseif GetUnitState(ua[i], UNIT_STATE_LIFE) <= 0 or GetUnitState(uc[i], UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(ua[i]) == OrderId("stop") or GetUnitCurrentOrder(ua[i]) != OrderId("move") or DistanceBetweenPoints_kd(home_location,GetUnitLoc(ua[i])) > 3200 then
-      set id = id + 1
+    elseif GetUnitState(ua[i], UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(ua[i]) == OrderId("stop") or GetUnitCurrentOrder(ua[i]) != OrderId("move") or DistanceBetweenPoints_kd(home_location,GetUnitLoc(ua[i])) > 3200 then
+      set s = s + 1
+    elseif GetUnitState(ub[i], UNIT_STATE_LIFE) <= 0 or DistanceBetweenPoints_kd(home_location,GetUnitLoc(ub[i])) > 3200 then
+      set s = s + 1
+    elseif GetUnitState(uc[i], UNIT_STATE_LIFE) <= 0 then
+      set s = s + 1
     endif
     set i = i + 1
-    call Sleep(0.1)
+    call Sleep(0.05)
   endloop
   set i = 0
   loop
     exitwhen i == ru
     call RemoveUnit(ua[i])
     set ua[i] = null
+    call RemoveUnit(ub[i])
+    set ub[i] = null
     set uc[i] = null
     set i = i + 1
   endloop
-  if id == ru or loc == null then
-    call RemoveLocation(loc)
-    set loc = null
+  if s == ru then
     return
   endif
   set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_rushcreep], loc, 600)
@@ -5685,17 +5700,14 @@ function BuildRushCreepAtBase takes nothing returns nothing
     call GroupEnumUnitsInRangeOfLoc(g, loc, 510, null)
     loop
       set u = FirstOfGroup(g)
-      exitwhen u == null or id == -2
+      exitwhen u == null or s == -2
       if IsPlayerEnemy(GetOwningPlayer(u), ai_player) then  //if have enemy , cannot build (if use getlocationstrength need judge twice -- creep and player)
-        set id = -2
+        set s = -2
       endif
       call GroupRemoveUnit(g,u)
     endloop
-    set u = GetExpansionPeon()
-    if u == null then
-      set u = GetExpansionPeon2()
-    endif
-    if id != -2 and u != null then
+    set u = GetExpansionPeon2()
+    if s != -2 and u != null then
       call IssuePointOrderByIdLoc(u, old_id[racial_rushcreep], loc)
     endif
     call DestroyGroup(g)
@@ -5906,6 +5918,9 @@ function MakeExpansionList takes nothing returns nothing
   local real totaltime = 0
   local integer groundid = 'ewsp'
   local real distance = 0
+  if GetPlayerRace(ai_player) == RACE_NIGHTELF then
+    set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
+  endif
   call GroupEnumUnitsOfType(g, "goldmine", null)
 //  call GroupRemoveUnit(g, current_expansion) // because quick expansion adds mine already
 
@@ -6506,8 +6521,11 @@ endfunction
 //============================================================================
 function AddFrontPoint takes location l returns nothing
   local unit pathable = null
-
-  set pathable = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), 'ewsp', GetLocationX(l), GetLocationY(l), 270.00)
+  local integer groundid = 'ewsp'
+  if GetPlayerRace(ai_player) == RACE_NIGHTELF then
+    set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
+  endif
+  set pathable = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(l), GetLocationY(l), 270.00)
   if DistanceBetweenPoints_dk(GetUnitLoc(pathable), l) <= 200 then
     call CreateDebugTagLoc("Front Point Added", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
     set front_loc[front_loc_num] = Location(GetLocationX(l),GetLocationY(l))
@@ -9609,8 +9627,8 @@ endfunction
 //============================================================================
 function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc returns integer
   local unit peon = GetExpansionPeon()
-  local unit utemp1 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), 'eaom', home_location, 270.0)  //utemp is seat, leave a passage , unit can ensure correct position
-  local unit utemp2 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), unitid, front_loc[0], 270.0)
+  local unit utemp1 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], home_location, 270.0)  //utemp is seat, leave a passage , unit can ensure correct position
+  local unit utemp2 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], front_loc[0], 270.0)
   local unit u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], GetBuildLocation(bloc), 270.0)
   local location l = Location(GetUnitX(u),GetUnitY(u))
   call RemoveUnit(utemp1)
@@ -9831,11 +9849,11 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       return GetNeutralHero(unitid)
     endif
 
-    if unitid == racial_rushcreep and unitid != 0 then
+    if unitid == racial_rushcreep then
       if CreepsOnMap() and not towerrush then
-        call BuildRushCreepAtBase()
+        call BuildBRAtCreep()
       endif
-      set racial_rushcreep = 0  //just run once
+      set racial_rushcreep = -1  //just run once
       return BUILT_SOME
     endif
 
