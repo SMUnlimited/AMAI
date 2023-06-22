@@ -196,6 +196,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed Second Choose languages cannot take effect , because some variable assigned by previous language, so translation missing go English backup cannot take effect
 - Fixed all language Strategy.txt Strategy Name index , some language no unified
 - Fixed TFT some item price and Time(based 1.36)(only TFT StandardUnits.txt)
+- Fixed all pathfinding Createunit now judge race , avoiding peon counting wrong
 
 
 ## [3.2.2] - 2022-10-05
