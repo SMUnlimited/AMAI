@@ -1050,7 +1050,7 @@ function TriggerRegisterAnyUnitEventBJ takes trigger trig, playerunitevent which
         call TriggerRegisterPlayerUnitEvent(trig, Player(index), whichEvent, null)
 
         set index = index + 1
-        exitwhen index == (playerpassive + 2)
+        exitwhen index == (playerpassive + 1)
     endloop
 endfunction
 
@@ -2950,7 +2950,7 @@ function PauseAllUnitsBJ takes boolean pause returns nothing
         call GroupClear( g )
 
         set index = index + 1
-        exitwhen index == (playerpassive + 2)
+        exitwhen index == (playerpassive + 1)
     endloop
     call DestroyGroup(g)
 endfunction
@@ -3850,7 +3850,7 @@ function GetUnitsOfTypeIdAll takes integer unitid returns group
         call GroupAddGroup(g, result)
 
         set index = index + 1
-        exitwhen index == (playerpassive + 2)
+        exitwhen index == (playerpassive + 1)
     endloop
     call DestroyGroup(g)
 
@@ -3917,7 +3917,7 @@ function GetPlayersByMapControl takes mapcontrol whichControl returns force
         endif
 
         set playerIndex = playerIndex + 1
-        exitwhen playerIndex == (playerpassive + 2)
+        exitwhen playerIndex == (playerpassive + 1)
     endloop
 
     return f
@@ -4288,12 +4288,12 @@ function SetForceAllianceStateBJ takes force sourceForce, force targetForce, int
                 endif
 
                 set targetIndex = targetIndex + 1
-                exitwhen targetIndex == (playerpassive + 2)
+                exitwhen targetIndex == (playerpassive + 1)
             endloop
         endif
 
         set sourceIndex = sourceIndex + 1
-        exitwhen sourceIndex == (playerpassive + 2)
+        exitwhen sourceIndex == (playerpassive + 1)
     endloop
 endfunction
 
@@ -4368,7 +4368,7 @@ endfunction
 function ConfigureNeutralVictim takes nothing returns nothing
     local integer index
     local player indexPlayer
-    local player neutralVictim = Player(playermax + 3)
+    local player neutralVictim = Player(playermax + 1)
 
     set index = 0
     loop
@@ -4392,7 +4392,7 @@ endfunction
 
 //===========================================================================
 function MakeUnitsPassiveForPlayerEnum takes nothing returns nothing
-    call SetUnitOwner(GetEnumUnit(), Player(playermax + 3), false)
+    call SetUnitOwner(GetEnumUnit(), Player(playermax + 1), false)
 endfunction
 
 //===========================================================================
@@ -6102,7 +6102,7 @@ function TryInitRescuableTriggersBJ takes nothing returns nothing
         loop
             call TriggerRegisterPlayerUnitEvent(bj_rescueUnitBehavior, Player(index), EVENT_PLAYER_UNIT_RESCUED, null)
             set index = index + 1
-            exitwhen index == (playerpassive + 2)
+            exitwhen index == (playerpassive + 1)
         endloop
         call TriggerAddAction(bj_rescueUnitBehavior, function TriggerActionUnitRescuedBJ)
     endif
@@ -7405,7 +7405,7 @@ function MeleeGrantHeroItems takes nothing returns nothing
         set bj_meleeTwinkedHeroes[index] = 0
 
         set index = index + 1
-        exitwhen index == (playerpassive + 2)
+        exitwhen index == (playerpassive + 1)
     endloop
 
     // Register for an event whenever a hero is trained, so that we can give
@@ -8998,7 +8998,7 @@ function CheckInitPlayerSlotAvailability takes nothing returns nothing
     local integer index
 
     if GetPlayerController(Player(12)) != MAP_CONTROL_CREEP then
-        set playerpassive = 26
+        set playerpassive = 27
         set playermax = 24
         set PLAYER_COLOR_MAROONX             = ConvertPlayerColor(12)
         set PLAYER_COLOR_NAVYX               = ConvertPlayerColor(13)
