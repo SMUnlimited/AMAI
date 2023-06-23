@@ -117,7 +117,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - MeleeDifficulty() use difficulty replace 
   - official AI code not affected
 - Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will 'smoothly'
-- Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1peon HarvestWood
+- Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1peon HarvestWood , but ELF is 4 peon 2 HarvestGold and peon HarvestWood when beginning of the game 
 - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1))) , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
 - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
@@ -142,6 +142,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - GetExpansionPeon2 Adjust
   - no take unit_buying_merc
   - not take IsUnitLoaded , because ELF peon harvest gold
+  - Improve command judgment
 - ANCIENT EXPANSION change
   - add judgment , if cannot find creep unit , GroupEnumUnitsInRange distance 1500 search again , map  like (4)Avalanche_LV , the creep and gold distance > 650
   - add judgment , when expansion location have unit  , judgment the unit OwningPlayer , if player is AGGRESSIVE ,just set ancient_exp_state to 4 , else build
@@ -199,6 +200,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed all language Strategy.txt Strategy Name index , some language no unified
 - Fixed TFT some item price and Time(based 1.24e)(only TFT StandardUnits.txt)
 - Fixed all pathfinding Createunit now judge race , avoiding peon counting wrong
+- Fixed build and training stopped at the beginning of the game due to insufficient resources , now will skip this one , build or training the next one
 
 
 ## [2.6.2] - 2022-09-04
