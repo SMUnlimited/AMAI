@@ -103,7 +103,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - New set for tower , race_tower_idX(if the race_tower_id has Blig land (AbilityId 'Abgl'), set it ,cannot create Blig land)
    - Can define race detailed instructions on Settings.txt(ROC and TFT)
    - Now Towerrush no longer search Enemy Player StartLocationLoc , search all Enemy Player hall , if races is UD , will search the goldmine
-   - if Enemy Player is really human players , AI will build the tower closer to the enemy base
    - Adjust the order of attack modes , town_threatened and towerrush code ahead
    - Adjusted the logic of saving money , now open Towerrush no longer stop build
    - Now AI can help ally Towerrush or rush Enemy or call ally help too
@@ -112,8 +111,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Towerrush on , no run Militia_Expansion and MilitiaCheck
    - adjust TR reports translation
    - Fixed bug , AI no longer build tower on map centre
-   - Note: The new pathfinder is not used to TR , Because the path finding direction is wrong (from home to home)
-   - Note: human have powerbuild , so AI will automatically pull all peon go to the front build tower , and this time AI no income , I cannot close automatically powerbuild , just have some fix
+   - Note: human race have powerbuild , so AI will automatically pull all peon go to the front build tower , and this time AI no income , I cannot close automatically powerbuild , just have some fix
    - Note: On ROC , This function is not enabled
 - Synchronization all function code to [master]
    - 3.2.2 master 96800f0
@@ -159,7 +157,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - now peon can shapeshifting Militia
 - ZEPPELIN_MOVE now can take POWER FOUNTAIN
 - MANA_FOUNTAIN now can take POWER FOUNTAIN
-- front_base_distance now is 1100 , and increase according to AI difficulty , front_base_distance = difficulty * 50 + front_base_distance
+- front_base_distance now is dynamic , first is 1100 , and increase according to AI difficulty , front_base_distance = difficulty * 50 + front_base_distance
   - if race no use racial_lumber or race no harvest wood , front_base_distance additional additions 100
 - BuildAtSpecialLoc generate a new placeholder build，home_location always create war_tree, prevent blocking of your home
 - BuildLumberMillAtBase now use TownCount(racial_lumber) , no  TownCountDone(racial_lumber) , hope  Prevent AI building many cemeteries
@@ -199,6 +197,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed TFT some item price and Time(based 1.36)(only TFT StandardUnits.txt)
 - Fixed all pathfinding Createunit now judge race , avoiding peon counting wrong
 - Fixed build and training stopped at the beginning of the game due to insufficient resources , now will skip this one , build or training the next one
+- Fixed build BLOC_FRONT , now will check build Loc and home distance , avoid island terrain let the build construction too far away , like issues 116
 
 
 ## [3.2.2] - 2022-10-05
