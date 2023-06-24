@@ -200,9 +200,23 @@ const installOnDirectory = async () => {
             process.send(f8AddToMPQ.error.message)
               : process.send(`Add item file ${file}`);
 
+          const f9AddToMPQ =  spawnSync(
+            `MPQEditor.exe`,
+            [
+              'a',
+              file,
+              `Icons\\war3map.imp`,
+              `war3map.imp`,
+            ],
+            { encoding : `utf8` }
+          );
+
+          f9AddToMPQ.error ?
+            process.send(f9AddToMPQ.error.message)
+              : process.send(`Add item file ${file}`);
         }
 
-        const f9AddToMPQ =  spawnSync(
+        const f10AddToMPQ =  spawnSync(
           `MPQEditor.exe`,
           [
             'f',
@@ -212,11 +226,11 @@ const installOnDirectory = async () => {
         );
 
         /** uncomment to debbug */
-       // console.log('f9AddToMPQ', f9AddToMPQ.error);
+       // console.log('f10AddToMPQ', f10AddToMPQ.error);
 
         // spawnSync(`echo`, [`running AddToMPQ 3 ${file}`]);
-        f9AddToMPQ.error ?
-          process.send(f9AddToMPQ.error.message)
+        f10AddToMPQ.error ?
+          process.send(f10AddToMPQ.error.message)
             : process.send(`Optimize map MPQ ${file}`);
       } catch(error) {
         console.log(error);
