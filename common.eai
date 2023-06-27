@@ -1093,9 +1093,6 @@ globals
     group rg_getexpfoegroup = null            // used to GetExpFoeGroup
     group rg_getcreepguardgroup = null        // used to GetCreepGuardGroup
 
-    location array rl_getlocationbetweenLoc                // used to GetLocationBetweenLoc,GetLocationBetweenUnits
-    location array rl_getlocationindistancefromLoc         // used to GetLocationInDistanceFromLoc,GetLocationInDistanceFromBaseToLoc
-
     item rl_itemtype = null                                // used to GetItemOfType
 endglobals
 
@@ -3273,24 +3270,32 @@ endfunction
 function GetLocationBetweenLoc takes location locA, location locB, real d returns location
   local location locC = GetSubtractionLoc(locA, locB)
   local location locD = GetMultipleLoc(locC, d)
-  set rl_getlocationbetweenLoc[0] = GetSumLoc(locA, locD)
+  local location l = GetSumLoc(locA, locD)
+  local real x = GetLocationX(l)
+  local real y = GetLocationY(l)
   call RemoveLocation(locC)
   set locC = null
   call RemoveLocation(locD)
   set locD = null
-  return rl_getlocationbetweenLoc[0]
+  call RemoveLocation(l)
+  set l = null
+  return Location(x,y)
 endfunction
 
 //============================================================================
 function GetLocationBetweenUnits takes unit u1, unit u2, real d returns location
   local location loc1 = GetUnitLoc(u1)
   local location loc2 = GetUnitLoc(u2)
-  set rl_getlocationbetweenLoc[1] = GetLocationBetweenLoc(loc1, loc2, d)
+  local location l = GetLocationBetweenLoc(loc1, loc2, d)
+  local real x = GetLocationX(l)
+  local real y = GetLocationY(l)
   call RemoveLocation(loc1)
   set loc1 = null
   call RemoveLocation(loc2)
   set loc2 = null
-  return rl_getlocationbetweenLoc[1]
+  call RemoveLocation(l)
+  set l = null
+  return Location(x,y)
 endfunction
 
 //============================================================================
@@ -5488,6 +5493,8 @@ endfunction
 function GetLocationInDistanceFromLoc takes location loc, real dist returns location
   local integer groundid = 'ewsp'
   local real distance = 0
+  local real x = 0
+  local real y = 0
   local unit u = null
   //local real checktime = 0
   local boolean exitloop = false
@@ -5499,18 +5506,18 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
   //set checktime = GetTimeToReachLoc(u, home_location)
   loop
     exitwhen (exitloop == true)
-    set rl_getlocationindistancefromLoc[0] = Location(GetUnitX(u),GetUnitY(u))
-    set distance = DistanceBetweenPoints(rl_getlocationindistancefromLoc[0], loc)
+    set x = GetUnitX(u)
+    set y = GetUnitY(u)
+    set distance = DistanceBetweenPoints_dk(Location(x,y), loc)
     if distance >= dist then
       //call DisplayToAll("loc found")
       call RemoveUnit(u)
       set u = null
-      return rl_getlocationindistancefromLoc[0]
+      return Location(x,y)
     elseif GetUnitState(u, UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u) == OrderId("stop") or GetUnitCurrentOrder(u) != OrderId("move") then
       set exitloop = true
       //return null
     endif
-    call RemoveLocation(rl_getlocationindistancefromLoc[0])
     call Sleep(0.2)
   endloop
   call RemoveUnit(u)
@@ -5522,6 +5529,8 @@ endfunction
 //============================================================================
 function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns location
     local real distance = 0
+    local real x = 0
+    local real y = 0
     local unit u = null
     //local real checktime = 0
 
@@ -5531,25 +5540,23 @@ function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns l
     call IssuePointOrderLoc(u, "move", loc)
     //set checktime = GetTimeToReachLoc(u, loc)
     loop
-      set rl_getlocationindistancefromLoc[1] = Location(GetUnitX(u),GetUnitY(u))
-      set distance = DistanceBetweenPoints(rl_getlocationindistancefromLoc[1], home_location)
+      set x = GetUnitX(u)
+      set y = GetUnitY(u)
+      set distance = DistanceBetweenPoints_dk(Location(x,y), home_location)
       if distance >= d then
 //        call DisplayToAll("loc found")
 //        call PingMinimap(GetLocationX(l), GetLocationY(l), 20)
           call RemoveUnit(u)
           set u = null
-          return rl_getlocationindistancefromLoc[1]
+          return Location(x,y)
       elseif GetUnitState(u, UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u) == OrderId("stop") or GetUnitCurrentOrder(u) != OrderId("move") then
-          call RemoveLocation(rl_getlocationindistancefromLoc[1])
           call RemoveUnit(u)
           set u = null
 //        call DisplayToAll("loc not found")
           return null
       endif
-      call RemoveLocation(rl_getlocationindistancefromLoc[1])
       call Sleep(0.2)
     endloop
-    set rl_getlocationindistancefromLoc[1] = null
     call RemoveUnit(u)
     set u = null
     return null
