@@ -107,8 +107,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Adjusted the logic of saving money , now open Towerrush no longer stop build
    - Now AI can help ally Towerrush or rush Enemy or call ally help too
    - Now Towerrush max distance is 14000
-   - Towerrush on , no run FAST BUILD
-   - Towerrush on , no run Militia_Expansion and MilitiaCheck
+   - Towerrush on , no run MilitiaCheck
    - adjust TR reports translation
    - Fixed bug , AI no longer build tower on map centre
    - Note: human race have powerbuild , so AI will automatically pull all peon go to the front build tower , and this time AI no income , I cannot close automatically powerbuild , just have some fix
@@ -120,8 +119,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Change GetPlayerAntiAirStrength returns form integer to real
 - Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
 - Optimized function XXXFountain code , no use local unit fountain
-- function CommonSleepUntilTargetDeadAM now judging target == null , improve operation efficiency
-- MeleeDifficulty() use difficulty replace 
+- MeleeDifficulty() use difficulty replace
   - official AI code not affected
 - Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will 'smoothly'
 - Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1 peon HarvestWood , but ELF is 4 peon 2 HarvestGold and peon HarvestWood when beginning of the game 
@@ -150,11 +148,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - not take IsUnitLoaded , because ELF peon harvest gold
   - Improve command judgment
 - ANCIENT EXPANSION change
-  - add judgment , if cannot find creep unit , GroupEnumUnitsInRange distance 1500 search again , map  like (4)Avalanche_LV , the creep and gold distance > 650
-  - add judgment , when expansion location have unit  , judgment the unit OwningPlayer , if player is AGGRESSIVE ,just set ancient_exp_state to 4 , else build
-- StartExpansionAM added judgment search creep  in mine range 1500 ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION
+  - add judgment , if cannot find creep unit , GroupEnumUnitsInRange distance 1500 search again , map like (4)Avalanche_LV , the creep and gold distance > 650
+  - add judgment , when expansion location have unit , judgment the unit OwningPlayer , if player is AGGRESSIVE ,just set ancient_exp_state to 4 , else build
+- StartExpansionAM added judgment search creep in mine range 1500 ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION
+- Militia_Expansion now check water_expansion , no take water_expansion
 - Militia_Expansion and Militia_Expansion JOB now use Militia ability
-  - now peon can shapeshifting Militia
+  - now peon can shape shifting Militia
 - ZEPPELIN_MOVE now can take POWER FOUNTAIN
 - MANA_FOUNTAIN now can take POWER FOUNTAIN
 - front_base_distance now is dynamic , first is 1100 , and increase according to AI difficulty , front_base_distance = difficulty * 50 + front_base_distance
