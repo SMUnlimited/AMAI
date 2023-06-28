@@ -991,12 +991,6 @@ globals
     group water_expansion = CreateGroup()
     group array water_expansion_creeps
 
-    destructable array destructable_list
-    integer destructable_list_length = 0
-    destructable array innerlayer_destructable_list
-    integer innerlayer_destructable_list_length = 0
-    boolean destructablepathdone = false
-
     boolean positive_expansion = false
 
     unit expansion_peon = null
@@ -6649,83 +6643,6 @@ function PingFrontPoints takes nothing returns nothing
 endfunction
 
 //==========================================================================
-// (AMAI) Destructable
-//==========================================================================
-function DestructablePath takes nothing returns nothing
-  if GetDestructableMaxLife(GetEnumDestructable()) >= 100 then  // door life is 100+
-    set destructable_list[destructable_list_length] = GetEnumDestructable()
-    set destructable_list_length = destructable_list_length + 1
-  endif
-endfunction
-
-function MakeDestructableList takes nothing returns nothing
-  local rect r = Rect(path_left, path_bottom, path_right, path_top)
-  local code path = function DestructablePath
-  local unit array u
-  local location array l
-  local boolean innerlayer = false
-  local integer i = 0
-  local integer b = 0
-  local integer c = 0
-  call EnumDestructablesInRect(r,null,path)
-  call RemoveRect(r)
-  set r = null
-  set path = null
-  loop
-    exitwhen i >= destructable_list_length
-    set u[i] = CreatePathingUnit(u[i])
-    call ShowUnit(u[i], true)
-    set l[i] = Location(GetDestructableX(destructable_list[i]), GetDestructableY(destructable_list[i]))
-    call IssuePointOrderLoc(u[i], "move", l[i])
-    set i = i + 1
-  endloop
-  loop
-    if i >= destructable_list_length then
-      set i = 0
-    endif
-    exitwhen b >= destructable_list_length
-    if u[i] != null and GetDestructableLife(destructable_list[i]) > 0 then
-      if DistanceBetweenPoints_dk(GetUnitLoc(u[i]),l[i]) <= 200 then
-        set b = b + 1
-      elseif GetUnitState(u[i], UNIT_STATE_LIFE) <= 0 then
-        set b = b + 1
-      elseif GetUnitCurrentOrder(u[i]) == OrderId("stop") or GetUnitCurrentOrder(u[i]) != OrderId("move") then
-        set b = b + 1
-        set innerlayer = true
-      endif
-    endif
-    if innerlayer == true then
-      set innerlayer = false
-      set innerlayer_destructable_list[innerlayer_destructable_list_length] = destructable_list[i]
-      set innerlayer_destructable_list_length = innerlayer_destructable_list_length + 1
-      set destructable_list[i] = null
-    endif
-    if GetDestructableLife(destructable_list[i]) <= 0 or c != b then
-      call RemoveUnit(u[i])
-      set u[i] = null
-      call RemoveLocation(l[i])
-      set l[i] = null
-      if c != b then
-        set c = b
-      else
-        set destructable_list[i] = null
-      endif
-    endif
-    set i = i + 1
-  endloop
-  loop
-    exitwhen i >= destructable_list_length  // Removal failed
-    if destructable_list[i] == null then
-      set destructable_list[i] = destructable_list[i+1]
-      set destructable_list[i+1] = null
-      set b = i
-    endif
-    set i = i + 1
-  endloop
-  set destructable_list_length = b
-  set destructablepathdone = true
-endfunction
-//==========================================================================
 // (AMAI) Resource utility functions
 //==========================================================================
 function GetPlayerGold takes player p returns integer
@@ -7444,7 +7361,6 @@ function PathingThread takes nothing returns nothing
   call ChooseExpansion()
   call CheckFastExpansion()
   call CheckAllNeutrals() // The more advanced new system check
-  //call MakeDestructableList()
 
 endfunction
 
