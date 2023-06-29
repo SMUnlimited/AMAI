@@ -129,35 +129,8 @@ const installOnDirectory = async () => {
             process.send(f3AddToMPQ.error.message)
               : process.send(`Add minimap icon ${file}`);
 
+
           const f4AddToMPQ =  spawnSync(
-            `MPQEditor.exe`,
-            [
-              'a',
-              file,
-              `Icons\\teenCommandButtons\\*.dds`,
-              `_teen.w3mod\\ReplaceableTextures\\CommandButtons`,
-            ],
-          );
-
-          f4AddToMPQ.error ?
-            process.send(f4AddToMPQ.error.message)
-              : process.send(`Add classics item icon ${file}`);
-
-          const f5AddToMPQ =  spawnSync(
-            `MPQEditor.exe`,
-            [
-              'a',
-              file,
-              `Icons\\teenCommandButtonsDisabled\\*.dds`,
-              `_teen.w3mod\\ReplaceableTextures\\CommandButtonsDisabled`,
-            ],
-          );
-
-          f5AddToMPQ.error ?
-            process.send(f5AddToMPQ.error.message)
-              : process.send(`Add classics item disabled icon ${file}`);
-
-          const f6AddToMPQ =  spawnSync(
             `MPQEditor.exe`,
             [
               'a',
@@ -167,11 +140,11 @@ const installOnDirectory = async () => {
             ],
           );
 
-          f6AddToMPQ.error ?
-            process.send(f6AddToMPQ.error.message)
+          f4AddToMPQ.error ?
+            process.send(f4AddToMPQ.error.message)
               : process.send(`Add item icon ${file}`);
 
-          const f7AddToMPQ =  spawnSync(
+          const f5AddToMPQ =  spawnSync(
             `MPQEditor.exe`,
             [
               'a',
@@ -181,11 +154,11 @@ const installOnDirectory = async () => {
             ],
           );
 
-          f7AddToMPQ.error ?
-            process.send(f7AddToMPQ.error.message)
+          f5AddToMPQ.error ?
+            process.send(f5AddToMPQ.error.message)
               : process.send(`Add item disabled icon ${file}`);
 
-          const f8AddToMPQ =  spawnSync(
+          const f6AddToMPQ =  spawnSync(
             `MPQEditor.exe`,
             [
               'a',
@@ -196,11 +169,11 @@ const installOnDirectory = async () => {
             { encoding : `utf8` }
           );
 
-          f8AddToMPQ.error ?
-            process.send(f8AddToMPQ.error.message)
+          f6AddToMPQ.error ?
+            process.send(f6AddToMPQ.error.message)
               : process.send(`Add import file list ${file}`);
 
-          const f9AddToMPQ =  spawnSync(
+          const f7AddToMPQ =  spawnSync(
             `MPQEditor.exe`,
             [
               'a',
@@ -211,13 +184,13 @@ const installOnDirectory = async () => {
             { encoding : `utf8` }
           );
 
-          f9AddToMPQ.error ?
-            process.send(f9AddToMPQ.error.message)
+          f7AddToMPQ.error ?
+            process.send(f7AddToMPQ.error.message)
               : process.send(`Add item file ${file}`);
 
         }
 
-        const f10AddToMPQ =  spawnSync(
+        const f8AddToMPQ =  spawnSync(
           `MPQEditor.exe`,
           [
             'f',
@@ -227,11 +200,11 @@ const installOnDirectory = async () => {
         );
 
         /** uncomment to debbug */
-       // console.log('f10AddToMPQ', f10AddToMPQ.error);
+       // console.log('f8AddToMPQ', f8AddToMPQ.error);
 
         // spawnSync(`echo`, [`running AddToMPQ 3 ${file}`]);
-        f10AddToMPQ.error ?
-          process.send(f10AddToMPQ.error.message)
+        f8AddToMPQ.error ?
+          process.send(f8AddToMPQ.error.message)
             : process.send(`Optimize map MPQ ${file}`);
       } catch(error) {
         console.log(error);
