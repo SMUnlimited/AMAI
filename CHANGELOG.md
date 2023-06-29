@@ -106,7 +106,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - available_time and regenerate_time not change
    - Balance parameters have not changed
    - Add war3_1.32 mercenaries adjustment , but no use , just add unit to StandardUnits.txt, if you war3 is 1.33+, please run AMAI 3.2.2+
-- SecondaryTownAM now check TownWithMine , make sure really have second Town
 - Change GetPlayerAntiAirStrength returns form integer to real
 - Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
 - Optimized function XXXFountain code , no use local unit fountain
