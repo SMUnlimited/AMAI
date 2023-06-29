@@ -115,7 +115,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Synchronization all function code to [master]
    - 3.2.2 master 96800f0
    - Note: 3.2.2cn include 3.1.1-cn
-- SecondaryTownAM now check TownWithMine , make sure really have second Town
 - Change GetPlayerAntiAirStrength returns form integer to real
 - Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
 - Optimized function XXXFountain code , no use local unit fountain
