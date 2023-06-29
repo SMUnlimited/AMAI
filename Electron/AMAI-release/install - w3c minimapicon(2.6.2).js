@@ -156,7 +156,7 @@ const installOnDirectory = async () => {
 
           f5AddToMPQ.error ?
             process.send(f5AddToMPQ.error.message)
-              : process.send(`Add import file list ${file}`);
+              : process.send(`Add item file ${file}`);
 
           const f6AddToMPQ =  spawnSync(
             `MPQEditor.exe`,
@@ -171,7 +171,7 @@ const installOnDirectory = async () => {
 
           f6AddToMPQ.error ?
             process.send(f6AddToMPQ.error.message)
-              : process.send(`Add item file ${file}`);
+              : process.send(`Add import file list ${file}`);
         }
 
         const f7AddToMPQ =  spawnSync(
