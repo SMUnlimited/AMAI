@@ -178,8 +178,8 @@ const installOnDirectory = async () => {
             [
               'a',
               file,
-              `Icons\\war3mapSkin.w3t`,
-              `war3mapSkin.w3t`,
+              `Icons\\war3map.w3t`,
+              `war3map.w3t`,
             ],
             { encoding : `utf8` }
           );
