@@ -148,30 +148,30 @@ const installOnDirectory = async () => {
             [
               'a',
               file,
-              `Icons\\war3map.w3t`,
-              `war3map.w3t`,
-            ],
-            { encoding : `utf8` }
-          );
-
-          f5AddToMPQ.error ?
-            process.send(f5AddToMPQ.error.message)
-              : process.send(`Add item file ${file}`);
-
-          const f6AddToMPQ =  spawnSync(
-            `MPQEditor.exe`,
-            [
-              'a',
-              file,
               `Icons\\war3map.imp`,
               `war3map.imp`,
             ],
             { encoding : `utf8` }
           );
 
+          f5AddToMPQ.error ?
+            process.send(f5AddToMPQ.error.message)
+              : process.send(`Add import file list ${file}`);
+
+          const f6AddToMPQ =  spawnSync(
+            `MPQEditor.exe`,
+            [
+              'a',
+              file,
+              `Icons\\war3map.w3t`,
+              `war3map.w3t`,
+            ],
+            { encoding : `utf8` }
+          );
+
           f6AddToMPQ.error ?
             process.send(f6AddToMPQ.error.message)
-              : process.send(`Add import file list ${file}`);
+              : process.send(`Add item ${file}`);
         }
 
         const f7AddToMPQ =  spawnSync(
