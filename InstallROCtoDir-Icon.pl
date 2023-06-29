@@ -26,10 +26,8 @@ sub process_dir {
         system "MPQEditor a \"$dirname/$filename\" Scripts\\Blizzard.j Scripts\\Blizzard.j";
         system "MPQEditor a \"$dirname/$filename\" Icons\\CommandButtons\\*.blp ReplaceableTextures\\CommandButtons";
         system "MPQEditor a \"$dirname/$filename\" Icons\\CommandButtonsDisabled\\*.blp ReplaceableTextures\\CommandButtonsDisabled";
-        system "MPQEditor a \"$dirname/$filename\" Icons\\CommandButtons\\*.blp _teen.w3mod\\ReplaceableTextures\\CommandButtons";
-        system "MPQEditor a \"$dirname/$filename\" Icons\\CommandButtonsDisabled\\*.blp _teen.w3mod\\ReplaceableTextures\\CommandButtonsDisabled";
         system "MPQEditor a \"$dirname/$filename\" Icons\\war3map.imp war3map.imp";
-        system "MPQEditor a \"$dirname/$filename\" Icons\\war3mapSkin.w3t war3mapSkin.w3t";
+        system "MPQEditor a \"$dirname/$filename\" Icons\\war3map.w3t war3map.w3t";
       }
 			system "MPQEditor f \"$dirname/$filename\""
 		}
