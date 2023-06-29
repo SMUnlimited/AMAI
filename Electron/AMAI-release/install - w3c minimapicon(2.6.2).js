@@ -148,8 +148,8 @@ const installOnDirectory = async () => {
             [
               'a',
               file,
-              `Icons\\war3map.imp`,
-              `war3map.imp`,
+              `Icons\\war3map.w3t`,
+              `war3map.w3t`,
             ],
             { encoding : `utf8` }
           );
@@ -163,8 +163,8 @@ const installOnDirectory = async () => {
             [
               'a',
               file,
-              `Icons\\war3map.w3t`,
-              `war3map.w3t`,
+              `Icons\\war3map.imp`,
+              `war3map.imp`,
             ],
             { encoding : `utf8` }
           );
