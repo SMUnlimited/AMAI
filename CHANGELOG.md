@@ -93,6 +93,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - This is not proactive expansion , but rather passive(no call ChooseExpansion())
    - Job file is ITEM_EXPANSION_CHECK and ITEM_EXPANSION
    - Can define race detailed instructions on Settings.txt(only TFT)
+- New job ITEM REPEAT CHECK
+   - Check for items that cannot be superposition or have poor superposition effects , transfer to other heroes
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
