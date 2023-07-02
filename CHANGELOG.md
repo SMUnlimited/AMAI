@@ -16,17 +16,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## [3.2.2-cn] - 2023-4-24
 
 ### Added
-- Adaptation war3 1.35.2
-   - 1.35 blizzard.j and common.j and Natives.j no change , same as 1.33
+- Adaptation war3 1.36
+   - 1.36 blizzard.j and common.j and Natives.j no change , same as 1.33
    - The item price of technology tree and goods has been adjusted
    - Add item ORB_OF_FIRE(ofr2)
    - Add again item ORB_OF_LIGHTNING(olig)
+   - DRUID_TALON_M attack now is piercing
 - HeroAbilities adjustment
    - FAR SEER will reduce the repetition rate of the Ability scheme , now have wolf core Ability scheme , this adjustment includes ROC
    - TFT BLADE MASTER now have MIRROR core , again
    - ROC BLADE MASTER now havenot MIRROR core
    - TFT Demon Hunters will now be more active in learning to IMMOLATION
-   - DRUID_TALON_M attack now is piercing
 - (DevTools) Add MakeROC.bat , Although it's useless
 - (DevTools) MakeVAIXX.bat Synchronize code for non VS AI scripts, include ROC
 - (DevTools) MPQEditor.exe update to 3.6.0.858
@@ -39,7 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - you can use -minimap control Switch
    - if map size to big , the icon default not enabled , anual activation required , because the effect is too poor
    - install use InstallTFTtoDir-Icon.pl or install - w3c minimapicon.js , need install commander
-   - will install item icon(1.36 version)
+   - will install item icon(Adaptation 1.36 version)
 - W3C DenyTip
    - use -deny control Switch
    - when Deny Unit or Killing by PLAYER_NEUTRAL_AGGRESSIVE or Killing PLAYER_NEUTRAL_AGGRESSIVE, will tip "!"
@@ -59,7 +59,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Now AI can use ZEPPELIN attack Water_expansion creeps
   - when TownCountDone(neutral_zeppelin) > 1 , just Remove follow_zeppelin Guard Position, help Job continue , other zeppelin help AI fix building blockage
 - Add positive_expansion , if mine outnumber player , AI will more aggressive take expansion (ExpansionBuilder)
-  - Fixed expansion to much , AI cannot harvest, universal_peon_assignment and peon_assignment now will contrast TownCountDone(racial_expansion) and TownHasMine(townid) , use the max
 - Mapsize adapter Reforged new size
 - RALLY_POINT reform to STRUCTURE_CONTROL , conteol all build
    - if ELF or no wood harvest race , now Adjust home_location nearby buildings , if buildings quantity exceeds 4 , buildunit no use BLOC_STD , will use BLOC_FRONT
@@ -76,7 +75,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - GetMineNearLoc add the code , if the take location between home_location Distance < 500 , will check own_town_mine[0] , if own_town_mine[0] == null , check range 1500 all mine
    - if home_location have more mine , first_town_mine will set 1 , human and orc own_town_mine[0] will return latest mine , ELF and UD no return goldmine , will return racemine
    - if home_location have more mine , AI EXPANSION will change , will first take home_location near mine , ELF will build new Town(max 2) or entangle, UD will build new Mine , human and orc just harvest
-   - if home_location have more mine , GetMinesHarvested will set twm = TownCount(racial_expansion) , ELF's racial_expansion is race_manual_loading_mine, because TownWithMine() is wrong
+   - if home_location have more mine , GetMinesHarvested will set twm = TownCountDone(racial_expansion) , ELF's racial_expansion is race_manual_loading_mine, because TownWithMine() is wrong
 - ELF now can use BR build to creepcamp(rushcreep) , and have one build on outside , hope can can reduce the chance of being stuck at home
    - CreepAttack Priority attack the tree current creep
    - Note: the build will let ELF build tree to later , but seems unable to improve , even if when tree quantity greater than 1 build the rushcreep tree
@@ -123,8 +122,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - MeleeDifficulty() use difficulty replace
   - official AI code not affected
 - Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will 'smoothly'
-- Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1 peon HarvestWood , but ELF is 4 peon 2 HarvestGold and peon HarvestWood when beginning of the game 
-- Adjust all races global_build_sequence build shop priority(10+(80*(tier-1))) , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
+- Build peon have compensate , when startloc have more mine
+- Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1 peon HarvestWood , but ELF is 4 peon 2 HarvestGold and peon HarvestWood when beginning of the game
+- Adjust all races global_build_sequence build shop priority(10+(80*(tier-1))) , all build_sequence_XX no call BuildUnit(1, shop) , and build shop leave to the global_build_sequence
 - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
 - function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency
@@ -198,6 +198,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed all pathfinding Createunit now judge race , avoiding peon counting wrong
 - Fixed build and training stopped at the beginning of the game due to insufficient resources , now will skip this one , build or training the next one
 - Fixed build BLOC_FRONT , now will check build Loc and home distance , avoid island terrain let the build construction too far away , like issues 116
+- Fixed expansion to much , AI cannot harvest, universal_peon_assignment and peon_assignment now will contrast TownCountDone(racial_expansion) and TownHasMine(townid) , use the max
 
 
 ## [3.2.2] - 2022-10-05
