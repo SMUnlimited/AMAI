@@ -15,29 +15,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - New code check version , only can check 1.28f or low, 1.29+
 - New automatic function can help AI hero learning skills , it can fix war3 1.31 AI hero can not learning skills , run to war3 1.29+ , and the function can help AMAI VS AI
 - (DevTools) Synchronized MakeROC bat file code to MakeXXX.bat
+- HeroAbilities adjustment
+  - FAR SEER will reduce the repetition rate of the Ability scheme , now have wolf core Ability scheme , this adjustment includes ROC
+  - ROC BLADE MASTER now havenot MIRROR core
 - (DevTools) MakeVAIXX.bat Synchronize code for non VS AI scripts, include ROC
 - (DevTools) MPQEditor.exe update to 3.6.0.858
 - When BJ debugging is on , If the first human player is Observer, system will set all AI Alliance and share control with the Observer , that Observer can view the build construction location and the learning of hero skills
    - Strategy report not send to the alliance Observer , to avoid repeated display
    - Towerruch report will send to the alliance Observer
    - Note: In fact , I would prefer the first human player (even not Observer) to directly control AI , convenient testing
+- Zoom
+   - Zoom can use up and down key change high , once 50
+   - ZoomSet now support [-zoom 1650] , prevent entering spaces
+   - ZoomSet now have a report ，when entering exceeding the limit(< 1650 or > 3000)
+- W3C item icon
+   - install use InstallTFTtoDir-Icon.pl or InstallROCtoDir-Icon.pl or install - w3c minimapicon.js , need install commander
+   - will install item icon(Adaptation 1.35 or low version)
+- W3C DenyTip
+   - use -deny control Switch
+   - when Deny Unit or Killing by PLAYER_NEUTRAL_AGGRESSIVE or Killing PLAYER_NEUTRAL_AGGRESSIVE, will tip "!"
+   - Killing PLAYER_NEUTRAL_AGGRESSIVE not considered situation of competition between different players , is always tip , if perfect function , should only be displayed when unit is snatched
 - Strategy Choose Dialog now show translation Strategy name , no Num
    - Strategy name must consistent with file Strategy.txt name
    - Cannot find consistent name Strategy , Dialog will missing button
    - Common.ai have new code help find cmd Strategy(even if missing button)
    - Strategy name button will identify ROC and TFT
    - Because search translation , now compile B.J need take more time(Poor code level)
-- W3C item icon
-   - install use InstallTFTtoDir-Icon.pl or InstallROCtoDir-Icon.pl or install - w3c minimapicon.js , need install commander
-   - will install item icon(1.35 or low version)
-- W3C DenyTip
-   - use -deny control Switch
-   - when Deny Unit or Killing by PLAYER_NEUTRAL_AGGRESSIVE or Killing PLAYER_NEUTRAL_AGGRESSIVE, will tip "!"
-   - Killing PLAYER_NEUTRAL_AGGRESSIVE not considered situation of competition between different players , is always tip , if perfect function , should only be displayed when unit is snatched
-- Zoom
-   - Zoom can use up and down key change high , once 50
-   - ZoomSet now support [-zoom 1650] , prevent entering spaces
-   - ZoomSet now have a report ，when entering exceeding the limit(< 1650 or > 3000)
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join unregistered (like non own racial) units and heros (but excess heros may not be able to learn skills) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
 - Buy NEUTRAL HERO add judge neutral_guarded[NEUTRAL_TAVERN] to StartUnitAM, call GetNeutralHero recalculate heros , guarantee to change train ownrace hero at the first time
@@ -47,7 +50,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Now AI can use ZEPPELIN attack Water_expansion creeps
   - when TownCountDone(neutral_zeppelin) > 1 , just Remove follow_zeppelin Guard Position, help Job continue , other zeppelin help AI fix building blockage
 - Add positive_expansion , if mine outnumber player , AI will more aggressive take expansion (ExpansionBuilder)
-  - Fixed expansion to much , AI cannot harvest, universal_peon_assignment and peon_assignment now will contrast TownCountDone(racial_expansion) and TownHasMine(townid) , use the max
 - Mapsize adapter Reforged new size
 - RALLY_POINT reform to STRUCTURE_CONTROL , conteol all build
    - if ELF or no wood harvest race , now Adjust home_location nearby buildings , if buildings quantity exceeds 4 , buildunit no use BLOC_STD , will use BLOC_FRONT
@@ -64,7 +66,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - GetMineNearLoc add the code , if the take location between home_location Distance < 500 , will check own_town_mine[0] , if own_town_mine[0] == null , check range 1500 all mine
    - if home_location have more mine , first_town_mine will set 1 , human and orc own_town_mine[0] will return latest mine , ELF and UD no return goldmine , will return racemine
    - if home_location have more mine , AI EXPANSION will change , will first take home_location near mine , ELF will build new Town(max 2) or entangle, UD will build new Mine , human and orc just harvest
-   - if home_location have more mine , GetMinesHarvested will set twm = TownCount(racial_expansion) , ELF's racial_expansion is race_manual_loading_mine, because TownWithMine() is wrong
+   - if home_location have more mine , GetMinesHarvested will set twm = TownCountDone(racial_expansion) , ELF's racial_expansion is race_manual_loading_mine, because TownWithMine() is wrong
 - ELF now can use BR build to creepcamp(rushcreep) , and have one build on outside , hope can can reduce the chance of being stuck at home
    - CreepAttack Priority attack the tree current creep
    - Note: the build will let ELF build tree to later , but seems unable to improve , even if when tree quantity greater than 1 build the rushcreep tree
@@ -95,7 +97,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Adjusted the logic of saving money , now open Towerrush no longer stop build
    - Now AI can help ally Towerrush or rush Enemy or call ally help too
    - Now Towerrush max distance is 14000
-   - Now off Towerrush condition will judge AI have or have not heroes
    - Towerrush on , no run MilitiaCheck
    - adjust TR reports translation
    - Fixed bug , AI no longer build tower on map centre
@@ -105,15 +106,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - include C.eai , B.eai , RECA.AI , but can still be used in the older version of Warcraft 3 , older version player should get more perfect AMAI
    - available_time and regenerate_time not change
    - Balance parameters have not changed
-   - Add war3_1.32 mercenaries adjustment , but no use , just add unit to StandardUnits.txt, if you war3 is 1.33+, please run AMAI 3.2.2+
+   - Add war3_1.32 mercenaries adjustment , but no use , just add unit to StandardUnits.txt, no use , if you war3 is 1.33+, please run AMAI 3.2.2+
 - Change GetPlayerAntiAirStrength returns form integer to real
 - Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
 - Optimized function XXXFountain code , no use local unit fountain
 - MeleeDifficulty() use difficulty replace
   - official AI code not affected
 - Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will 'smoothly'
-- Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1peon HarvestWood , but ELF is 4 peon 2 HarvestGold and peon HarvestWood when beginning of the game 
-- Adjust all races global_build_sequence build shop priority(10+(80*(tier-1))) , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
+- Build peon have compensate , when startloc have more mine
+- Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1 peon HarvestWood , but ELF is 4 peon 2 HarvestGold and peon HarvestWood when beginning of the game
+- Adjust all races global_build_sequence build shop priority(10+(80*(tier-1))) , all build_sequence_XX no call BuildUnit(1, shop) , and build shop leave to the global_build_sequence
 - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
 - function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency
@@ -152,9 +154,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - BuildAtSpecialLoc generate a new placeholder build，home_location always create war_tree, prevent blocking of your home
 - BuildLumberMillAtBase now use TownCount(racial_lumber) , no  TownCountDone(racial_lumber) , hope  Prevent AI building many cemeteries
   - if tier is 2+ or 1.5 , and TownCount(racial_lumber) is 0 , will set racial_lumber == 0 , avoiding the cannot build
-- HeroAbilities adjustment
-  - FAR SEER will reduce the repetition rate of the Ability scheme , now have wolf core Ability scheme , this adjustment includes ROC
-  - ROC BLADE MASTER now havenot MIRROR core
 - SmallMapsAdd now check mapsize , prevent 1V1 use of big maps
 - CheckTownBuilt max_towns take Max(max_towns,TownCountDone(racial_expansion)) , town_built[i] take have town
 - SleepUntilTownDefended and SleepInCombatAM no running simultaneously , the code seem to be in conflict
@@ -184,7 +183,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed ROC Resolve compilation errors, ROC Profile.txt add [Rare Profile]
 - Fixed B.eai playercreep num , now is 16/28
 - Fixed game_mode not equal to ai_only , Pause not cancelled
-- Fixed B2.j and B3.j bj_PLAYER_NEUTRAL_EXTRA and bj_MAX_PLAYER_SLOTS and bj_PLAYER_NEUTRAL_VICTIM not replaced with dynamic variable playercreep or playermax
+- Fixed B2.j and B3.j bj_PLAYER_NEUTRAL_EXTRA and bj_MAX_PLAYER_SLOTS and bj_PLAYER_NEUTRAL_VICTIM not replaced with dynamic variable playerpassive + 1 or playermax
 - Fixed part of set xxx = GetExpansionPeon() lack set xxx = GetExpansionPeon2() when xxx == null
 - Fixed a when AI have too many ally , game stuck or crashed
 - Fixed AMAI VS AI , AI cannot work
@@ -198,6 +197,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed all pathfinding Createunit now judge race , avoiding peon counting wrong
 - Fixed build and training stopped at the beginning of the game due to insufficient resources , now will skip this one , build or training the next one
 - Fixed build BLOC_FRONT , now will check build Loc and home distance , avoid island terrain let the build construction too far away , like issues 116
+- Fixed expansion to much , AI cannot harvest, universal_peon_assignment and peon_assignment now will contrast TownCountDone(racial_expansion) and TownHasMine(townid) , use the max
 
 
 ## [2.6.2] - 2022-09-04
