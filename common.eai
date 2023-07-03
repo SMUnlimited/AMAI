@@ -10400,7 +10400,7 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
     return true
   endif
   loop
-    exitwhen i >= GetBJMaxPlayers()
+    exitwhen i >= PLAYERAGGRESSIVE
     if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and ai_player != Player(i) and IsPlayerAlly(ai_player,Player(i)) and not IsPlayerObserver(Player(i)) then
       set per[m] = i
       set m = m + 1
@@ -10408,7 +10408,7 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
     set i = i + 1
   endloop
   set g = CreateGroup()
-  call GroupEnumUnitsOfPlayer(g, p, null)  // select ally shop
+  call GroupEnumUnitsOfPlayer(g, Player(per[GetRandomInt(0,m-1)]), null)  // select ally shop
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   set shop_unit = null
   loop
@@ -10423,7 +10423,6 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
   endloop
   call DestroyGroup(g)
   set g = null
-  set p = null
   set u = null
   if shop_unit == null then
     return false
@@ -11825,31 +11824,6 @@ function GetWeakAndNearEnemy takes nothing returns player
 endfunction
 
 //============================================================================
-function GetNearHumanPlayerEnemy takes nothing returns player
-  local integer i = 0
-  local integer t = 0
-  local integer nearhumanplayer = 30
-  local real dist = 0
-  local real mindistance = 100000000  // use to big map - 12 or 24 player map
-  loop
-    exitwhen i >= c_enemy_total
-    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(enemy_force[i]) != MAP_CONTROL_COMPUTER and not IsPlayerObserver(enemy_force[i]) then
-      set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(enemy_force[i]))
-      if dist < mindistance then
-        set mindistance = dist
-        set nearhumanplayer = i
-      endif
-      set t = t + 1
-    endif
-    set i = i + 1
-  endloop
-  set c_enemy_user_total = t  // update c_enemy_user_total
-  if nearhumanplayer != 30 then
-    return enemy_force[nearhumanplayer]
-  endif
-  return null
-endfunction
-
 function GetNearestEnemy takes nothing returns player
 local integer i = 0
 local integer nearplayer = 30
@@ -12042,13 +12016,6 @@ function ChooseAnEnemyTarget takes nothing returns unit
       set target_enemy = GetWeakAndNearEnemy()
       //call Trace("Choosing weakest closest Enemy")
     endif
-    if (c_ally_total + c_enemy_total >= 10 or mapattackdelayed < 8) and c_enemy_user_total > 0 and GetPlayerController(target_enemy) != MAP_CONTROL_USER and not desperation_assault then  // big map , first attack HumanPlayer
-      set temptarget = GetNearHumanPlayerEnemy()
-      if temptarget != null then
-        set target_enemy = temptarget
-        set temptarget = null
-      endif
-    endif
     call GroupEnumUnitsOfPlayer(g, target_enemy, null)
     set enemy_base = GetPlayerStartLocationLoc(target_enemy)
     set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
@@ -12097,6 +12064,41 @@ function ChooseAttackTarget takes nothing returns unit
     set ru_target[5] = ChooseAnyEnemyTarget()
   endif
   return ru_target[5]
+endfunction
+
+function GetNearHumanPlayerEnemy takes nothing returns unit
+  local integer i = 0
+  local integer t = 0
+  local integer nearhumanplayer = 30
+  local real dist = 0
+  local real mindistance = 100000000  // use to big map - 12 or 24 player map
+  local group g = null
+  loop
+    exitwhen i >= c_enemy_total
+    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(enemy_force[i]) != MAP_CONTROL_COMPUTER and not IsPlayerObserver(enemy_force[i]) then
+      set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(enemy_force[i]))
+      if dist < mindistance then
+        set mindistance = dist
+        set nearhumanplayer = i
+      endif
+      set t = t + 1
+    endif
+    set i = i + 1
+  endloop
+  set c_enemy_user_total = t  // update c_enemy_user_total
+  if nearhumanplayer != 30 then
+    call GroupEnumUnitsOfPlayer(g, enemy_force[nearhumanplayer], null)
+    set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+    set g = SelectByAlive(g, true)
+    set g = SelectByHidden(g, false)
+    set ru_target[6] = FirstOfGroup(g)
+    call DestroyGroup(g)
+    set g = null
+    return ru_target[6]
+  endif
+  call DestroyGroup(g)
+  set g = null
+  return null
 endfunction
 
 //============================================================================
@@ -12244,6 +12246,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
     local unit mega = null
     local unit creep = null
     local unit common = null
+    local unit humanhall = null
 
 //call Trace("SingleMeleeAttack")
 
@@ -12378,18 +12381,18 @@ if not creeping_only then	// Do the normal attack sequence
     //
     if towerrush then
       if tower_attack_run != true then
-      if town_threatened or (GetUnitCountDone(old_id[hero[1]]) + GetUnitCountDone(old_id[hero[2]]) + GetUnitCountDone(old_id[hero[3]])) == 0 then
-        return
-      elseif (race_tower_item_must == true and builder[0] == null) or builder[Max(race_tower_peon - 1,Min(race_tower_peon,2))] == null then
-        return
-      endif
-      if race_tower_upgrade2 == 0 then
-        if race_towerrush_requirement != 0 and GetUnitCountDone(old_id[race_towerrush_requirement]) == 0 then
+        if town_threatened or (GetUnitCountDone(old_id[hero[1]]) + GetUnitCountDone(old_id[hero[2]]) + GetUnitCountDone(old_id[hero[3]])) == 0 then
+          return
+        elseif (race_tower_item_must == true and builder[0] == null) or builder[Max(race_tower_peon - 1,Min(race_tower_peon,2))] == null then
           return
         endif
-      endif
-      set tower_attack_run = true
-      return  //Waiting for the next cycle will attack
+        if race_tower_upgrade2 == 0 then
+          if race_towerrush_requirement != 0 and GetUnitCountDone(old_id[race_towerrush_requirement]) == 0 then
+            return
+          endif
+        endif
+        set tower_attack_run = true
+        return  //Waiting for the next cycle will attack
       endif
       call Trace("A Tower Rush Attack")
       call FormGroupAM(3)
@@ -12449,6 +12452,16 @@ if not creeping_only then	// Do the normal attack sequence
       endif
     endif
 
+    // ELF BR
+    //
+    if rushcreep_target != null and UnitAlive(rushcreep_target) then
+      call Trace("ELF BR Attack")
+      call FormGroupAM(3)
+      call BRRush()  //try BR
+      return
+    endif
+endif
+
     // defend expansion from other expansion
     //
 
@@ -12459,16 +12472,8 @@ if not creeping_only then	// Do the normal attack sequence
       call AttackMoveKillAAM(double_expansion_target)
       if not UnitAlive(double_expansion_target) then
         set double_expansion_target = null
+        call SetAllianceTarget(null)
       endif
-      return
-    endif
-
-    // ELF BR
-    //
-    if rushcreep_target != null and UnitAlive(rushcreep_target) then
-      call Trace("ELF BR Attack")
-      call FormGroupAM(3)
-      call BRRush()  //try BR
       return
     endif
 
@@ -12492,8 +12497,9 @@ if not creeping_only then	// Do the normal attack sequence
           call Chat(C_Expansion)
           call FormGroupAM(3)
           call AttackMoveKillCreep(creep)
-          if GetExpFoe() == null then
+          if creep == null then
             set take_exp = false
+            call SetAllianceTarget(null)
           endif
           call Sleep(10)
           set attacking_expansion = false
@@ -12538,6 +12544,7 @@ if not creeping_only then	// Do the normal attack sequence
           call Chat(C_Megatarget)
           call FormGroupAM(3)
           call AttackMoveKillAAM(mega)
+          call SetAllianceTarget(null)
           set mega = null
           return
         endif
@@ -12550,18 +12557,30 @@ if not creeping_only then	// Do the normal attack sequence
         if hall != null and UnitAlive(hall) then
           call SetChatVarsAttack(hall)
           call Chat(C_Attack)
-          call SetAllianceTarget(alli_target)
+          call SetAllianceTarget(hall)
           //set alli_target = null
           call FormGroupAM(3)
           call AttackMoveKillAAM(hall)
+          call SetAllianceTarget(null)
           set hall = null
           return
         endif
         set hall = null
       endif
-    endif
 
-endif // if not creep only
+      if (c_ally_total + c_enemy_total >= 10 or mapattackdelayed < 8) and c_enemy_user_total > 0 then  // player too much or big map , first attack HumanPlayer
+        set humanhall = GetNearHumanPlayerEnemy()
+        if humanhall != null then
+          call Chat(C_Attack)
+          call SetAllianceTarget(humanhall)
+          call FormGroupAM(3)
+          call AttackMoveKillAAM(humanhall)
+          call SetAllianceTarget(null)
+          set humanhall = null
+        endif
+      endif
+
+    endif // if not creep only
 
     if no_creep_attack or ai_no_creep then
       call Trace("no creeping" )
