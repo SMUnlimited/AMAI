@@ -10135,9 +10135,9 @@ endfunction
 function BuyAllyShopItem takes integer qty, integer id returns boolean
   local group g = null
   local unit u = null
-  local player p = null
-  local integer i = 1
-  local integer m = GetBJMaxPlayers()
+  local integer i = 0
+  local integer m = 0
+  local integer array per
   if attack_running then
     return false
   endif
@@ -10146,42 +10146,29 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
     return true
   endif
   loop
-    set p = Player(GetRandomInt(0,m))
-    exitwhen i == 0 or i > 6
-    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and ai_player != p and IsPlayerAlly(ai_player,p) and not IsPlayerObserver(p) then  // maybe can get human player ally
-      set i = 0
+    exitwhen i >= GetBJMaxPlayers()
+    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and ai_player != Player(i) and IsPlayerAlly(ai_player,Player(i)) and not IsPlayerObserver(Player(i)) then
+      set per[m] = i
+      set m = m + 1
     endif
-    set i = i + 1  // prevent infinite loop
+    set i = i + 1
   endloop
-  if i != 0 then
-   set p = own_force[GetRandomInt(0,force_number-1)]  // not get ally , get AI ally
-   set i = 0
-  endif
   set g = CreateGroup()
-  call GroupEnumUnitsOfPlayer(g, p, null)  // select ally shop
+  call GroupEnumUnitsOfPlayer(g, Player(per[GetRandomInt(0,m-1)]), null)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  set shop_unit = null
   loop
     set u = FirstOfGroup(g)
-    exitwhen u == null or i != 0
-    if GetUnitAbilityLevel(u, 'Aall') > 0 then
-      set i = GetUnitTypeId(u)
+    exitwhen u == null
+    if GetUnitAbilityLevel(u, 'Aall') > 0 and UnitAlive(u) then  // select ally shop , use JOB record ally shop is best, but too wasteful
+      if shop_unit == null or GetRandomInt(0,1) == 1 then
+        set shop_unit = u  // get Random shop
+      endif
     endif
     call GroupRemoveUnit(g, u)
   endloop
-  call GroupClear(g)
-  call GroupEnumUnitsOfPlayer(g, p, null)
-  set g = SelectById(g, i, true)
-  set shop_unit = FirstOfGroup(g)
-  if GetRandomInt(0,1) == 1 then  // Random shop , if AI have DefendTowns , should have 2
-    call GroupRemoveUnit(g, shop_unit)
-    if FirstOfGroup(g) != null then
-      set shop_unit = FirstOfGroup(g)
-    endif
-  endif
   call DestroyGroup(g)
   set g = null
-  set p = null
-  set u = null
   if shop_unit == null then
     return false
   endif
