@@ -11568,31 +11568,6 @@ function GetWeakAndNearEnemy takes nothing returns player
 endfunction
 
 //============================================================================
-function GetNearHumanPlayerEnemy takes nothing returns player
-  local integer i = 0
-  local integer t = 0
-  local integer nearhumanplayer = 30
-  local real dist = 0
-  local real mindistance = 100000000  // use to big map - 12 or 24 player map
-  loop
-    exitwhen i >= c_enemy_total
-    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(enemy_force[i]) != MAP_CONTROL_COMPUTER and not IsPlayerObserver(enemy_force[i]) then
-      set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(enemy_force[i]))
-      if dist < mindistance then
-        set mindistance = dist
-        set nearhumanplayer = i
-      endif
-      set t = t + 1
-    endif
-    set i = i + 1
-  endloop
-  set c_enemy_user_total = t  // update c_enemy_user_total
-  if nearhumanplayer != 30 then
-    return enemy_force[nearhumanplayer]
-  endif
-  return null
-endfunction
-
 function GetNearestEnemy takes nothing returns player
 local integer i = 0
 local integer nearplayer = 30
@@ -11785,13 +11760,6 @@ function ChooseAnEnemyTarget takes nothing returns unit
     set target_enemy = GetWeakAndNearEnemy()
     //call Trace("Choosing weakest closest Enemy")
   endif
-  if (c_ally_total + c_enemy_total >= 10 or mapattackdelayed < 8) and c_enemy_user_total > 0 and GetPlayerController(target_enemy) != MAP_CONTROL_USER and not desperation_assault then  // big map , first attack HumanPlayer
-    set temptarget = GetNearHumanPlayerEnemy()
-    if temptarget != null then
-      set target_enemy = temptarget
-      set temptarget = null
-    endif
-  endif
   call GroupEnumUnitsOfPlayer(g, target_enemy, null)
   set enemy_base = GetPlayerStartLocationLoc(target_enemy)
   set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
@@ -11840,6 +11808,41 @@ function ChooseAttackTarget takes nothing returns unit
       set ru_target[5] = ChooseAnyEnemyTarget()
     endif
     return ru_target[5]
+endfunction
+
+function GetNearHumanPlayerEnemy takes nothing returns unit
+  local integer i = 0
+  local integer t = 0
+  local integer nearhumanplayer = 30
+  local real dist = 0
+  local real mindistance = 100000000  // use to big map - 12 or 24 player map
+  local group g = null
+  loop
+    exitwhen i >= c_enemy_total
+    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(enemy_force[i]) != MAP_CONTROL_COMPUTER and not IsPlayerObserver(enemy_force[i]) then
+      set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(enemy_force[i]))
+      if dist < mindistance then
+        set mindistance = dist
+        set nearhumanplayer = i
+      endif
+      set t = t + 1
+    endif
+    set i = i + 1
+  endloop
+  set c_enemy_user_total = t  // update c_enemy_user_total
+  if nearhumanplayer != 30 then
+    call GroupEnumUnitsOfPlayer(g, enemy_force[nearhumanplayer], null)
+    set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+    set g = SelectByAlive(g, true)
+    set g = SelectByHidden(g, false)
+    set ru_target[6] = FirstOfGroup(g)
+    call DestroyGroup(g)
+    set g = null
+    return ru_target[6]
+  endif
+  call DestroyGroup(g)
+  set g = null
+  return null
 endfunction
 
 //============================================================================
@@ -11987,6 +11990,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
     local unit mega = null
     local unit creep = null
     local unit common = null
+    local unit humanhall = null
 
 //call Trace("SingleMeleeAttack")
 
@@ -12192,20 +12196,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
       endif
     endif
 
-    // defend expansion from other expansion
-    //
-
-    if double_expansion_target != null and IsTargetGood(double_expansion_target, 10) then
-      call Trace("Double Expansion Attack")
-      call SetAllianceTarget(double_expansion_target)
-      call FormGroupAM(3)
-      call AttackMoveKillAAM(double_expansion_target)
-      if not UnitAlive(double_expansion_target) then
-        set double_expansion_target = null
-      endif
-      return
-    endif
-
     // ELF BR
     //
     if rushcreep_target != null and UnitAlive(rushcreep_target) then
@@ -12215,92 +12205,121 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
       return
     endif
 
-    if not (no_creep_attack or ai_no_creep) then
+  endif
 
-      // take expansions as needed
-      //
-      if needs_exp then
-        if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
-          call ChooseExpansion()
-          if current_expansion == null then
-            return
-          endif
-        endif
-        set creep = GetExpFoe()
-        if creep != null and UnitAlive(creep) then
-          call Trace("Creep the Expansion")
-          set attacking_expansion = true
-          set battle_radius = creep_battle_radius
-          call SetAllianceTarget(creep)
-          call Chat(C_Expansion)
-          call FormGroupAM(3)
-          call AttackMoveKillCreep(creep)
-          if GetExpFoe() == null then
-            set take_exp = false
-          endif
-          call Sleep(10)
-          set attacking_expansion = false
-          set creep = null
-          return
-        endif
-        set creep = null
-      endif
-
+  // defend expansion from other expansion
+  //
+  if double_expansion_target != null and IsTargetGood(double_expansion_target, 10) then
+    call Trace("Double Expansion Attack")
+    call SetAllianceTarget(double_expansion_target)
+    call FormGroupAM(3)
+    call AttackMoveKillAAM(double_expansion_target)
+    if not UnitAlive(double_expansion_target) then
+      set double_expansion_target = null
+      call SetAllianceTarget(null)
     endif
+    return
+  endif
 
-    // coordinate with allies
+  if not (no_creep_attack or ai_no_creep) then
+
+    // take expansions as needed
     //
-    if c_ally_total > 0 then
-      call SetLeadAlly()
-      if difficulty != EASY then
-        set common = GetAllianceTarget()
-        if common != null then
-          call Trace("Attack Alliance Target")
-          call Chat(C_Ally)
-          call FormGroupAM(3)
-          call AttackMoveKillAAM(common)
-          call Trace("Attack complete")
-          call SetAllianceTarget(null)
-          set common = null
+    if needs_exp then
+      if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
+        call ChooseExpansion()
+        if current_expansion == null then
           return
         endif
+      endif
+      set creep = GetExpFoe()
+      if creep != null and UnitAlive(creep) then
+        call Trace("Creep the Expansion")
+        set attacking_expansion = true
+        set battle_radius = creep_battle_radius
+        call SetAllianceTarget(creep)
+        call Chat(C_Expansion)
+        call FormGroupAM(3)
+        call AttackMoveKillCreep(creep)
+        if creep == null then
+          set take_exp = false
+        endif
+        call Sleep(10)
+        set attacking_expansion = false
+        set creep = null
+        call SetAllianceTarget(null)
+        return
+      endif
+      set creep = null
+    endif
+  endif
+
+  // coordinate with allies
+  //
+  if c_ally_total > 0 then
+    call SetLeadAlly()
+    if difficulty != EASY then
+      set common = GetAllianceTarget()
+      if common != null then
+        call Trace("Attack Alliance Target")
+        call Chat(C_Ally)
+        call FormGroupAM(3)
+        call AttackMoveKillAAM(common)
+        call Trace("Attack complete")
+        call SetAllianceTarget(null)
+        set common = null
+        return
       endif
     endif
+  endif
 
-    if not no_player_attack then
+  if not no_player_attack then
 
-      // all-out attack if the player is weak
-      //
-      if difficulty != EASY then
-        set mega = GetMegaTarget()
-        if mega != null and UnitAlive(mega) then
-          call Trace("Mega Attack Target")
-          call SetAllianceTarget(mega)
-          call SetChatVarsAttack(mega)
-          call Chat(C_Mega)
-          call Chat(C_Megatarget)
-          call FormGroupAM(3)
-          call AttackMoveKillAAM(mega)
-          set mega = null
-          return
-        endif
+    // all-out attack if the player is weak
+    //
+    if difficulty != EASY then
+      set mega = GetMegaTarget()
+      if mega != null and UnitAlive(mega) then
+        call Trace("Mega Attack Target")
+        call SetAllianceTarget(mega)
+        call SetChatVarsAttack(mega)
+        call Chat(C_Mega)
+        call Chat(C_Megatarget)
+        call FormGroupAM(3)
+        call AttackMoveKillAAM(mega)
+        call SetAllianceTarget(null)
         set mega = null
+        return
       endif
+      set mega = null
+    endif
 
-      if GetHeroXP(hero_unit[1]) < GetRandomInt(50,150) or GetHeroXP(hero_unit[1]) > GetRandomInt(300,850) or GetHeroXP(hero_unit[2]) > 450 or FoodUsed() > GetRandomInt(40,60) then
+    if GetHeroXP(hero_unit[1]) < GetRandomInt(50,150) or GetHeroXP(hero_unit[1]) > GetRandomInt(300,850) or GetHeroXP(hero_unit[2]) > 450 or FoodUsed() > GetRandomInt(40,60) then
 
-        set hall = ChooseAttackTarget()
-        if hall != null and UnitAlive(hall) then
-          call SetChatVarsAttack(hall)
-          call Chat(C_Attack)
-            call SetAllianceTarget(alli_target)
-            //set alli_target = null
-          call FormGroupAM(3)
-          call AttackMoveKillAAM(hall)
-          set hall = null
-          return
-        endif
+      set hall = ChooseAttackTarget()
+      if hall != null and UnitAlive(hall) then
+        call SetChatVarsAttack(hall)
+        call Chat(C_Attack)
+        call SetAllianceTarget(hall)
+        //set alli_target = null
+        call FormGroupAM(3)
+        call AttackMoveKillAAM(hall)
+        call SetAllianceTarget(null)
         set hall = null
+        return
+      endif
+      set hall = null
+    endif
+
+    if (c_ally_total + c_enemy_total >= 10 or mapattackdelayed < 8) and c_enemy_user_total > 0 then  // player too much or big map , first attack HumanPlayer
+      set humanhall = GetNearHumanPlayerEnemy()
+      if humanhall != null then
+        call Chat(C_Attack)
+        call SetAllianceTarget(humanhall)
+        call FormGroupAM(3)
+        call AttackMoveKillAAM(humanhall)
+        call SetAllianceTarget(null)
+        set humanhall = null
       endif
     endif
 
