@@ -1,0 +1,80 @@
+#IFDEF GLOBAL
+
+#ELSE
+function ItemTypeCheck takes unit u , item it , integer t returns boolean
+  local integer i = GetItemTypeId(it)
+  local integer h = GetUnitTypeId(u)
+  local integer sum = 0
+  if it == null or GetItemType(it) != ITEM_TYPE_CHARGED or GetItemType(it) != ITEM_TYPE_POWERUP then
+    return false
+  endif
+  loop
+    exitwhen t > 5 or sum > 0
+    set t = t + 1  // just need check remaining Slot
+    if GetItemTypeId(UnitItemInSlot(u, t)) == i then
+      set sum = sum + 1
+    endif
+  endloop
+  if false then
+  #INCLUDETABLE <$VER$\ItemCheck.txt> #EFR
+  elseif i == '%1' and (sum > 0 or (h == '%2' or h == '%3')) then
+    return true
+  #ENDINCLUDE
+  endif
+  return false
+endfunction
+
+function CheckItem takes nothing returns nothing
+  local integer i = 1
+  local integer c = 0
+  local integer t = 0
+  local group g = CreateGroup()
+  local unit u = null
+  local unit array tempu
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectUnittype(g, UNIT_TYPE_HERO, true)  // Prevent hero more than 3 , no use hero_unit[i]
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if UnitAlive(u) and not IsUnitInGroup(u, unit_buying_merc) and not IsUnitInGroup(u, unit_healing) and GetSlotsFreeOnUnit(u) < 6 then
+      set tempu[i] = u
+      set i = i + 1
+    endif
+    call GroupRemoveUnit(g,u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set c = i - 1
+  set i = 1
+  loop
+    set u = tempu[i]
+    exitwhen u == null
+    set t = 0
+    loop
+      exitwhen t > 5
+      if ItemTypeCheck(u,UnitItemInSlot(u,t),t) then
+        set tempu[0] = tempu[GetRandomInt(1,c)]
+        if tempu[0] != u and GetSlotsFreeOnUnit(tempu[0]) > 0 and DistanceBetweenUnits(tempu[0],u) <= 1600 then
+          call IssueTargetOrder(tempu[0], "move", u)  // two hero near
+          call UnitDropItemTarget(u,it,tempu[0])
+          set t = 5  // once move one item
+        endif
+      endif
+      set t = t + 1
+    endloop
+    set i = i + 1
+  endloop
+  loop
+    set i = i - 1
+    exitwhen i < 0
+    set tempu[i] = null
+  endloop
+endfunction
+
+function ItemRepeatCheck takes nothing returns nothing
+  if not town_threatened and not TownThreatened() and not CaptainRetreating() and not CaptainInCombat(true) and not attack_running then
+    call CheckItem()  // Prevent the map set unit die will drop item , so no judge CreepsOnMap
+  endif
+  call TQAddJob(160, ITEM_REPEAT_CHECK, 0)
+endfunction
+#ENDIF
