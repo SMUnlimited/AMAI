@@ -200,6 +200,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed build BLOC_FRONT , now will check build Loc and home distance , avoid island terrain let the build construction too far away , like issues 116
 - Fixed expansion to much , AI cannot harvest, universal_peon_assignment and peon_assignment now will contrast TownCountDone(racial_expansion) and TownHasMine(townid) , use the max
 - Fixed some SingleMeleeAttackAM's SetAllianceTarget error
+- Fixed BlockListCheck cannot limitation RefreshNeeded Refresh needed1[unitid] ~ needed3[unitid] , now BlockListCheck normal work , like 2.54
 
 
 ## [2.6.2] - 2022-09-04
