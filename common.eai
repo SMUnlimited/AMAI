@@ -138,6 +138,7 @@ globals
 
 
     constant integer o0                 = 0
+    string array unitNames
 
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR
   integer %1 = %row  // Cannot be constants for VS AI support
@@ -2050,7 +2051,7 @@ function GetExpansionPeon2 takes nothing returns unit
 	call GroupEnumUnitsOfPlayer(g, ai_player, null)
 	loop
 		set ru_peon2 = FirstOfGroup(g)
-		exitwhen ru_peon2 == null or (GetUnitTypeId(ru_peon2) == old_id[racial_peon] and UnitAlive(ru_peon2) and (GetUnitCurrentOrder(ru_peon2) == OrderId("harvest") or GetUnitCurrentOrder(ru_peon2) == OrderId("null")) and not IsUnitLoaded(ru_peon2) and not IsUnitInGroup(ru_peon2, unit_buying_merc))
+		exitwhen ru_peon2 == null or (GetUnitTypeId(ru_peon2) == old_id[racial_peon] and UnitAlive(ru_peon2) and (GetUnitCurrentOrder(ru_peon2) == OrderId("harvest") or GetUnitCurrentOrder(ru_peon2) == OrderId(null)) and not IsUnitLoaded(ru_peon2) and not IsUnitInGroup(ru_peon2, unit_buying_merc))
 		call GroupRemoveUnit(g, ru_peon2)
 	endloop
 	call DestroyGroup(g)
@@ -5765,8 +5766,8 @@ function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns l
       set y = GetUnitY(u)
       set distance = DistanceBetweenPoints_dk(Location(x,y), home_location)
       if distance >= d then
-//      call DisplayToAll("loc found")
-//      call PingMinimap(GetLocationX(l), GetLocationY(l), 20)
+//        call DisplayToAll("loc found")
+//        call PingMinimap(GetLocationX(l), GetLocationY(l), 20)
         call RemoveUnit(u)
         set u = null
         return Location(x,y)
@@ -8316,6 +8317,9 @@ endfunction
 // AMAI Code
 //============================================================================
 function InitAMAI takes nothing returns nothing
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR
+  set unitNames[%row] = "%1"
+#ENDINCLUDE
     set message_add = c2s(GetPlayerColor(ai_player))
     if race_militia_available then
       call GetMilitiaHall()
@@ -9024,11 +9028,11 @@ endfunction
 function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns nothing
   local integer i = 0
   local integer j = 0
+  set qty = BlockListCheck(qty, unitid)
 
   if unitid == 0 then
     return
   endif
-
   if t == BUILD_UPGRADE then
     if GetUpgradeLevel(old_id[unitid]) >= qty then
       return
@@ -9133,9 +9137,8 @@ function RefreshNeeded takes integer t, integer qty, integer unitid, integer tow
 endfunction
 
 function SetBuildAllAM takes integer t, integer mqty, integer unitid, integer town, integer bloc, integer prio returns nothing
-  local integer qty = BlockListCheck(mqty, unitid)
-  call SetBuildAllAMCore(t, qty, unitid, town, bloc, prio)
-  call RefreshNeeded(t, qty, unitid, town, bloc, prio)
+  call SetBuildAllAMCore(t, mqty, unitid, town, bloc, prio)
+  call RefreshNeeded(t, mqty, unitid, town, bloc, prio)
 endfunction
 
 //============================================================================
@@ -9437,7 +9440,7 @@ function BuildAnti%1Strength takes nothing returns nothing
 		//endif
 		if u > 0 and i <= totalanti_%1 then
 		//set food1 = food/GetFoodUsed(old_id[units[choice]])
-		//call Trace("Dynamic building Unit:" + unitNames[u] + " " +Int2Str(u))
+		call Trace("Dynamic building Unit:" + unitNames[u] + " " +Int2Str(u))
 			set chosen_counter_unit = u
 		endif
 	endif
@@ -9619,9 +9622,9 @@ endfunction
 //============================================================================
 
 function GuardSecondaryAM takes integer townid, integer qty, integer unitid, integer prio returns nothing
-    if TownHasHall(townid) and TownHasMine(townid) then
-        call SecondaryTownAM( townid, qty, unitid, prio )
-    endif
+  if TownHasHall(townid) and TownHasMine(townid) then
+    call SecondaryTownAM( townid, qty, unitid, prio )
+  endif
 endfunction
 
 //============================================================================
@@ -10408,13 +10411,13 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
     set i = i + 1
   endloop
   set g = CreateGroup()
-  call GroupEnumUnitsOfPlayer(g, Player(per[GetRandomInt(0,m-1)]), null)  // select ally shop
+  call GroupEnumUnitsOfPlayer(g, Player(per[GetRandomInt(0,m-1)]), null)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   set shop_unit = null
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitAbilityLevel(u, 'Aall') > 0 and UnitAlive(u) then  // select ally shop , use JOB record ally shop is best, but too wasteful
+    if GetUnitAbilityLevel(u, 'Aall') > 0 and UnitAlive(u) then  // select ally shop , use JOB TrackTown record ally shop is best, but worried about affecting efficiency , if use new JOB then too wasteful
       if shop_unit == null or GetRandomInt(0,1) == 1 then
         set shop_unit = u  // get Random shop
       endif
@@ -10423,7 +10426,6 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
   endloop
   call DestroyGroup(g)
   set g = null
-  set u = null
   if shop_unit == null then
     return false
   endif
@@ -10968,7 +10970,7 @@ function OneBuildLoopAM takes nothing returns nothing
 
           if ret == CANNOT_BUILD then
             if (traced == 0) then
-              //call Trace("CANNOT BUILD " + logtype + unitNames[id] + " " + Int2Str(id))
+              call Trace("CANNOT BUILD " + logtype + unitNames[id] + " " + Int2Str(id))
               set traced = id
             endif
             call AddRefresh(tp, qty, id, build_town[index], build_loc[index], build_prio[index])
@@ -10979,7 +10981,7 @@ function OneBuildLoopAM takes nothing returns nothing
             //call Trace("BUILT ALL " + logtype + unitNames[id] + " " + Int2Str(id))
             set tracedall = id
           elseif ret == NOT_ENOUGH_RES and tracednoresources == 0 then
-            //call Trace("NO RESOURCES " + logtype + unitNames[id] + " " + Int2Str(id))
+            call Trace("NO RESOURCES " + logtype + unitNames[id] + " " + Int2Str(id))
             set tracednoresources = id
           endif
           exitwhen ret == NOT_ENOUGH_RES // Don't try and build anything else as thing we trying to buy is too expensive
@@ -10992,7 +10994,6 @@ function OneBuildLoopAM takes nothing returns nothing
             set build_prio[index_free] = build_prio[index] + prio_t_inc
             set index_free = index_free + 1
           endif
-
           call ApplyUpkeepSaving()
         endif
 
@@ -12464,7 +12465,6 @@ endif
 
     // defend expansion from other expansion
     //
-
     if double_expansion_target != null and IsTargetGood(double_expansion_target, 10) then
       call Trace("Double Expansion Attack")
       call SetAllianceTarget(double_expansion_target)
@@ -12499,16 +12499,15 @@ endif
           call AttackMoveKillCreep(creep)
           if creep == null then
             set take_exp = false
-            call SetAllianceTarget(null)
           endif
           call Sleep(10)
           set attacking_expansion = false
           set creep = null
+          call SetAllianceTarget(null)
           return
         endif
         set creep = null
       endif
-
     endif
 
     // coordinate with allies
