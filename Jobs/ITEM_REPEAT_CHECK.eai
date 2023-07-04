@@ -4,14 +4,16 @@
 function ItemTypeCheck takes unit u , item it , integer t returns boolean
   local integer i = GetItemTypeId(it)
   local integer h = GetUnitTypeId(u)
-  local integer c = 0
   local integer sum = 0
+  if it == null or GetItemType(it) != ITEM_TYPE_CHARGED or GetItemType(it) != ITEM_TYPE_POWERUP then
+    return false
+  endif
   loop
-    exitwhen c > 5
-    if GetItemTypeId(UnitItemInSlot(u, c)) == i and c != t then
+    exitwhen t > 5 or sum > 0
+    set t = t + 1  // just need check remaining Slot
+    if GetItemTypeId(UnitItemInSlot(u, t)) == i then
       set sum = sum + 1
     endif
-    set c = c + 1
   endloop
   if false then
   #INCLUDETABLE <$VER$\ItemCheck.txt> #EFR
@@ -26,7 +28,6 @@ function CheckItem takes nothing returns nothing
   local integer i = 1
   local integer c = 0
   local integer t = 0
-  local item it = null
   local group g = CreateGroup()
   local unit u = null
   local unit array tempu
@@ -35,7 +36,7 @@ function CheckItem takes nothing returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitInGroup(u, unit_buying_merc) and not IsUnitInGroup(u, unit_healing) then
+    if UnitAlive(u) and not IsUnitInGroup(u, unit_buying_merc) and not IsUnitInGroup(u, unit_healing) and GetSlotsFreeOnUnit(u) < 6 then
       set tempu[i] = u
       set i = i + 1
     endif
@@ -51,28 +52,23 @@ function CheckItem takes nothing returns nothing
     set t = 0
     loop
       exitwhen t > 5
-      set it = UnitItemInSlot(u,t)
-      if it != null and GetItemType(it) != ITEM_TYPE_CHARGED and GetItemType(it) != ITEM_TYPE_POWERUP then
-        if ItemTypeCheck(u,it,t) then
-          set tempu[0] = tempu[GetRandomInt(1,c)]
-          if tempu[0] != u and GetSlotsFreeOnUnit(tempu[0]) > 0 and DistanceBetweenUnits(tempu[0],u) <= 1600 then
-            call IssueTargetOrder(tempu[0], "move", u)  // two hero near
-            call UnitDropItemTarget(u,it,tempu[0])
-            set t = 5  // once move one item
-          endif
+      if ItemTypeCheck(u,UnitItemInSlot(u,t),t) then
+        set tempu[0] = tempu[GetRandomInt(1,c)]
+        if tempu[0] != u and GetSlotsFreeOnUnit(tempu[0]) > 0 and DistanceBetweenUnits(tempu[0],u) <= 1600 then
+          call IssueTargetOrder(tempu[0], "move", u)  // two hero near
+          call UnitDropItemTarget(u,it,tempu[0])
+          set t = 5  // once move one item
         endif
       endif
       set t = t + 1
     endloop
     set i = i + 1
   endloop
-  set i = 0
   loop
+    set i = i - 1
+    exitwhen i < 0
     set tempu[i] = null
-    set i = i + 1
-    exitwhen tempu[i] == null
   endloop
-  set it = null
 endfunction
 
 function ItemRepeatCheck takes nothing returns nothing
