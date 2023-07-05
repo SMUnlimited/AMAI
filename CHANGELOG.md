@@ -58,7 +58,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - if have Water_expansion or racial_lumber == 0 or race_no_wood_harvest , ZEPPELIN_FOLLOW no run GroupRemoveGuardPositionInstant , then AI can take Water_expansion or help ELF fix building blockage
   - Now AI can use ZEPPELIN attack Water_expansion creeps
   - when TownCountDone(neutral_zeppelin) > 1 , just Remove follow_zeppelin Guard Position, help Job continue , other zeppelin help AI fix building blockage
-- Add positive_expansion , if mine outnumber player , AI will more aggressive take expansion (ExpansionBuilder)
+- Add active_expansion , if mine outnumber player , AI will more aggressive take expansion (ExpansionBuilder)
 - Mapsize adapter Reforged new size
 - RALLY_POINT reform to STRUCTURE_CONTROL , conteol all build
    - if ELF or no wood harvest race , now Adjust home_location nearby buildings , if buildings quantity exceeds 4 , buildunit no use BLOC_STD , will use BLOC_FRONT
