@@ -9072,7 +9072,7 @@ endfunction
 
 //===========================================================================
 function InitGenericPlayerSlots takes nothing returns nothing
-    local gametype gType = GetGameTypeSelected()  //这里
+    local gametype gType = GetGameTypeSelected()
     if GetPlayerController(Player(12)) != MAP_CONTROL_CREEP then
         set playerpassive = 27
         set playermax = 24
