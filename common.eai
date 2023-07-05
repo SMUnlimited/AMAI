@@ -991,7 +991,7 @@ globals
     group water_expansion = CreateGroup()
     group array water_expansion_creeps
 
-    boolean positive_expansion = false
+    boolean active_expansion = false
 
     unit expansion_peon = null
     location exp_loc_cache = Location(0,0)
@@ -6016,7 +6016,7 @@ function MakeExpansionList takes nothing returns nothing
     set i = i + 1
   endloop
   if water_expansion_list_length + expansion_list_length > c_enemy_total + c_ally_total + 1 then  // have more mine , should positive Expansion
-    set positive_expansion = true
+    set active_expansion = true
   endif
   call Trace("Expansion number: " + Int2Str(expansion_list_length))
 
@@ -6386,8 +6386,8 @@ function ChooseExpansion takes nothing returns nothing
       set i = i + 1
     endloop
   endif
-  if positive_expansion and exp_number < c_enemy_total + c_ally_total + 1 then
-    set positive_expansion = false
+  if active_expansion and exp_number < c_enemy_total + c_ally_total + 1 then
+    set active_expansion = false
   endif
   call add_exp_rp()
 //  call make_exp_rp_positive()
@@ -10435,11 +10435,11 @@ if first_town_mine > 0 then
   endif
 endif
 
-if race_manual_loading then
-  set i = race_manual_loading_mine
-endif
-if (race_uses_mine_expansion or race_manual_loading) and TownCount(i) < GetMinesOwned() then  //home_location have multiple mine , fix GetMinesOwned bug(ELF and UD)
-  set mines = TownCount(i)
+if (race_uses_mine_expansion or race_manual_loading) then  //home_location have multiple mine , fix GetMinesOwned bug(ELF and UD)
+  if race_manual_loading then
+    set i = race_manual_loading_mine
+  endif
+  set mines = Min(TownCount(i),GetMinesOwned())
 endif
 set u = GetExpFoe()
 if mines < 2 and ai_time - exp_time_count > exp_first_time then
@@ -10466,9 +10466,6 @@ if mines < 3 and ai_time - exp_time_count > exp_second_time then
   endif
 endif
 
-if positive_expansion == true and take_exp == false and u != null then
-  set take_exp = true
-endif
 set u = null
 if not exp_prepared then
   set rebuild = CheckExpansionRebuild()
@@ -12645,7 +12642,7 @@ function universal_attack_sequence takes nothing returns nothing
     local integer ai_strength = GetOwnStrength()
     local integer ai_antiair_strength = air_strength
     local integer exp_strength = GetExpansionStrength()
-
+    local integer i = racial_expansion
     if hero_unit[1] == null and ver_heroes and not desperation_assault then
       call Sleep(sleep_multiplier)
       return
@@ -12660,6 +12657,15 @@ function universal_attack_sequence takes nothing returns nothing
   #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bsiege\b/
     set has_siege        = has_siege or TownCountDone(%1) > 0
   #ENDINCLUDE
+
+  if active_expansion == true and needs_exp == false then
+    if race_manual_loading then
+      set i = race_manual_loading_mine
+    endif
+    if Min(TownCount(i),GetMinesOwned()) < 3 then  // check actual number of gold mines
+      set needs_exp = true
+    endif
+  endif
 
   call SingleMeleeAttackAM(needs_exp,has_siege,ai_strength)
   set added_target_aggression = 0
