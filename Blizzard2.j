@@ -8997,23 +8997,6 @@ endfunction
 function CheckInitPlayerSlotAvailability takes nothing returns nothing
     local integer index
 
-    if GetPlayerController(Player(12)) != MAP_CONTROL_CREEP then
-        set playerpassive = 27
-        set playermax = 24
-        set PLAYER_COLOR_MAROONX             = ConvertPlayerColor(12)
-        set PLAYER_COLOR_NAVYX               = ConvertPlayerColor(13)
-        set PLAYER_COLOR_TURQUOISEX          = ConvertPlayerColor(14)
-        set PLAYER_COLOR_VIOLETX             = ConvertPlayerColor(15)
-        set PLAYER_COLOR_WHEATX              = ConvertPlayerColor(16)
-        set PLAYER_COLOR_PEACHX              = ConvertPlayerColor(17)
-        set PLAYER_COLOR_MINTX               = ConvertPlayerColor(18)
-        set PLAYER_COLOR_LAVENDERX           = ConvertPlayerColor(19)
-        set PLAYER_COLOR_COALX               = ConvertPlayerColor(20)
-        set PLAYER_COLOR_SNOWX               = ConvertPlayerColor(21)
-        set PLAYER_COLOR_EMERALDX            = ConvertPlayerColor(22)
-        set PLAYER_COLOR_PEANUTX             = ConvertPlayerColor(23)
-    endif
-
     if (not bj_slotControlReady) then
         set index = 0
         loop
@@ -9089,8 +9072,23 @@ endfunction
 
 //===========================================================================
 function InitGenericPlayerSlots takes nothing returns nothing
-    local gametype gType = GetGameTypeSelected()
-
+    local gametype gType = GetGameTypeSelected()  //这里
+    if GetPlayerController(Player(12)) != MAP_CONTROL_CREEP then
+        set playerpassive = 27
+        set playermax = 24
+        set PLAYER_COLOR_MAROONX             = ConvertPlayerColor(12)
+        set PLAYER_COLOR_NAVYX               = ConvertPlayerColor(13)
+        set PLAYER_COLOR_TURQUOISEX          = ConvertPlayerColor(14)
+        set PLAYER_COLOR_VIOLETX             = ConvertPlayerColor(15)
+        set PLAYER_COLOR_WHEATX              = ConvertPlayerColor(16)
+        set PLAYER_COLOR_PEACHX              = ConvertPlayerColor(17)
+        set PLAYER_COLOR_MINTX               = ConvertPlayerColor(18)
+        set PLAYER_COLOR_LAVENDERX           = ConvertPlayerColor(19)
+        set PLAYER_COLOR_COALX               = ConvertPlayerColor(20)
+        set PLAYER_COLOR_SNOWX               = ConvertPlayerColor(21)
+        set PLAYER_COLOR_EMERALDX            = ConvertPlayerColor(22)
+        set PLAYER_COLOR_PEANUTX             = ConvertPlayerColor(23)
+    endif
     if (gType == GAME_TYPE_MELEE) then
         call MeleeInitPlayerSlots()
     elseif (gType == GAME_TYPE_FFA) then
