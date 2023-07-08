@@ -118,7 +118,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will 'smoothly'
 - Build peon have compensate , when startloc have more mine
 - If race_manual_loading or race_uses_mine_expansion , GetMinesHarvested will return TownCountDone(mine)
-- Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1 peon HarvestWood , but ELF is 4 peon 2 HarvestGold and peon HarvestWood when beginning of the game
+- Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1 peon HarvestWood , but ELF is 3 peon HarvestGold(to avoid conflict with HARVEST_CHECK job , 4 or 5 peon HarvestGold wiil causing one peon donot Harvest wood , so 4 and 5 Harvest gold hand to HARVEST_CHECK)
 - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1))) , all build_sequence_XX no call BuildUnit(1, shop) , and build shop leave to the global_build_sequence
 - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
