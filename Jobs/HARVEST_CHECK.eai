@@ -1,11 +1,13 @@
 #IFDEF GLOBAL
  unit secondmine = null
+  unit savewisp = null
 #ELSE
 function PeonMineCheck takes unit mine returns boolean
   local group g = CreateGroup()
   local group tempg = null
   local location unitloc = GetUnitLoc(mine)
   local unit u = null
+    local boolean b = false
   local integer i = 0
   local integer delaywisps = ver_optimal_gold - 1
   call DisplayToAllJobDebug("HARVEST CHECK Job Start")
@@ -13,9 +15,10 @@ function PeonMineCheck takes unit mine returns boolean
     set delaywisps = ver_optimal_gold
   endif
   if race_manual_loading then
-    if TownCountDone(racial_peon) < 9 and not hero_built[1] then
+    if TownCountDone(racial_peon) < 8 and not hero_built[1] then
       set delaywisps = ver_optimal_gold - 1
     endif
+    set b = TownCount(racial_peon) == TownCountDone(racial_peon) and TownCount(racial_peon) > 1 and TownCount(racial_peon) <= delaywisps and FoodSpace() <= 0  // no foodspace , no peon(at least keep one harvest mine) , need one harvest mine peon build Farms
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
     set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
     set g = SelectByAlive(g, true)
@@ -25,16 +28,19 @@ function PeonMineCheck takes unit mine returns boolean
       if IsUnitInTransport(u, mine) then
         set i = i + 1
         //call RecycleGuardPosition(u)
-      elseif GetUnitCurrentOrder(u) == 0 then  // 0 is null
-        call IssueImmediateOrder(u, "autoharvestlumber")
+        if b == true and (savewisp == null or not UnitAlive(savewisp)) then
+          set savewisp = u
+          set delaywisps = delaywisps - 1
+          call IssueTargetOrder(mine, "unload", u)
+        endif
       endif
       call GroupRemoveUnit(g, u)
     endloop
     if i < delaywisps then
       call GroupEnumUnitsOfPlayer(g, ai_player, null)
+      set g = SelectById(g, old_id[race_manual_loading_wisp], true)
       set g = SelectByLoaded(g, false)
-      set g = SelectNumberOfId(g, 100, old_id[race_manual_loading_wisp])
-      set g = SelectByOrderOr(g,OrderId("harvest"),0,true)
+      call GroupRemoveUnit(g, savewisp)
       set tempg = CopyGroup(g)
       call DestroyGroup(g)
       set g = GetNearestSubGroupOfGroup(tempg, unitloc, delaywisps - i)
@@ -48,31 +54,30 @@ function PeonMineCheck takes unit mine returns boolean
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
     set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
     set g = SelectByAlive(g, true)
-    set tempg = CopyGroup(g)
-    call DestroyGroup(g)
-    set g = GetNearestSubGroupOfGroup(tempg, home_location, TownCountDone(racial_peon))
+    set g = SelectByHidden(g, false)
+    set tempg = CreateGroup()  // just excrete
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null or i == delaywisps
-      if GetUnitCurrentOrder(u) == 0 and UnitAlive(u) then
+      if GetUnitCurrentOrder(u) == OrderId("harvest") and DistanceBetweenUnits(u,mine) < 225 then  // UD harvest gold max Distance is 221
+        set i = i + 1
+      elseif GetUnitCurrentOrder(u) == 0 and UnitAlive(u) and not IsUnitBuying(u) and not IsUnitInGroup(u, unit_zepplin_move) then
         call IssueTargetOrder(u, "harvest", mine)
-        set i = i + 1
-      elseif GetUnitCurrentOrder(u) == OrderId("harvest") then
-        set i = i + 1
       endif
       call GroupRemoveUnit(g, u)
     endloop
-  else  //human and orc
+  else //human and orc
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
     set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
     set g = SelectByAlive(g, true)
+    set g = SelectByHidden(g, false)
     set tempg = CopyGroup(g)
     call DestroyGroup(g)
-    set g = GetNearestSubGroupOfGroup(tempg, home_location, 6 + delaywisps)
+    set g = GetNearestSubGroupOfGroup(tempg, home_location, 10)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null or i == delaywisps
-      if UnitAlive(u) and (GetUnitCurrentOrder(u) == 0 or GetUnitCurrentOrder(u) == OrderId("harvest")) then  // no get other order peon , maybe the peon go buy unit or build some
+      if UnitAlive(u) and (GetUnitCurrentOrder(u) == 0 or GetUnitCurrentOrder(u) == OrderId("harvest")) and not IsUnitBuying(u) and not IsUnitInGroup(u, unit_zepplin_move) then  // no get other order peon , maybe the peon go buy unit or build some
         call IssueTargetOrder(u, "harvest", mine)
       endif
       call GroupRemoveUnit(g, u)
