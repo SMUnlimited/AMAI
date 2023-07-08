@@ -93,7 +93,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Job file is ITEM_EXPANSION_CHECK and ITEM_EXPANSION
    - Can define race detailed instructions on Settings.txt(only TFT)
 - New job ITEM REPEAT CHECK
-   - Check for items that cannot be superposition or have poor superposition effects , transfer to other heroes
+   - Check for items that cannot be superposition or have poor superposition effects or items skills that duplicate hero skills, transfer to other heroes
+   - The job can fixed when hero have Aura item(the item Aura same to hero Aura skill) , then hero donot study hero Aura skill
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
@@ -202,6 +203,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed expansion to much , AI cannot harvest, universal_peon_assignment and peon_assignment now will contrast TownCountDone(racial_expansion) and TownHasMine(townid) , use the max
 - Fixed some SingleMeleeAttackAM's SetAllianceTarget error
 - Fixed BlockListCheck cannot limitation RefreshNeeded Refresh needed1[unitid] ~ needed3[unitid] , now BlockListCheck normal work , like 2.54
+- Fixed GOBLIN_TINKER abnormal skill learning
+- Fixed ENDURANCE_AURA to AOr2 , C should is Cairne Bloodhoof
 
 
 ## [3.2.2] - 2022-10-05
