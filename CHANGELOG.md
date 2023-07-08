@@ -70,6 +70,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - WISP_CHECK reform to HARVEST_CHECK , apply to all race
    - if home_location have more mine (range 1500), then AI cannot harvestmine , no income , HARVEST_CHECK can help AI harvest
    - if no more mine , the code will only apply to ELF , just WISP_CHECK , but if have more , will conteol other race peon harvest own_town_mine[0]
+   - if no foodspace , ELF will take one harvest mine peon build , As long as the peon doesn't harvest mine , no matter what build , even if they were killed , have 1 food spare(army unit min fooduse general is 2 , so ai can build peon) or one peon free
    - Fixed ELF game start build delay , now game start harves WISP is 4 , until have 9 WISP , use hero_built[1] definition game start
 - new first_town_mine for check home_location mine
    - GetMineNearLoc add the code , if the take location between home_location Distance < 500 , will check own_town_mine[0] , if own_town_mine[0] == null , check range 1500 all mine
