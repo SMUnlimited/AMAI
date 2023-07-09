@@ -153,6 +153,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Militia_Expansion now check water_expansion , no take water_expansion
 - Militia_Expansion and Militia_Expansion JOB now use Militia ability
   - now peon can shape shifting Militia
+- DETECT_DEFEAT JOB add self rescue , first saveyourself , no run kill or desperation_assault
+  - Choose self methods based on racial abilities , one ability use one num/mode
+  - Not recommended sale item or build(like UD)
+  - The function untested , but should can run
 - ZEPPELIN_MOVE now can take POWER FOUNTAIN
 - MANA_FOUNTAIN now can take POWER FOUNTAIN
 - front_base_distance now is dynamic , first is 1100 , and increase according to AI difficulty , front_base_distance = difficulty * 50 + front_base_distance
