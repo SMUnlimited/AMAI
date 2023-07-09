@@ -7,7 +7,6 @@ function PeonMineCheck takes unit mine returns boolean
   local group tempg = null
   local location unitloc = GetUnitLoc(mine)
   local unit u = null
-  local boolean b = false
   local integer i = 0
   local integer delaywisps = ver_optimal_gold - 1
   call DisplayToAllJobDebug("HARVEST CHECK Job Start")
@@ -18,8 +17,7 @@ function PeonMineCheck takes unit mine returns boolean
     if TownCountDone(racial_peon) < 8 and not hero_built[1] then
       set delaywisps = ver_optimal_gold - 1
     endif
-    set b = TownCount(racial_peon) == TownCountDone(racial_peon) and TownCount(racial_peon) > 1 and TownCount(racial_peon) <= delaywisps and FoodSpace() <= 0  // no foodspace , no peon(at least keep one harvest mine) , need one harvest mine peon build Farms
-    call GroupEnumUnitsOfPlayer(g, ai_player, null)
+ call GroupEnumUnitsOfPlayer(g, ai_player, null)
     set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
     set g = SelectByAlive(g, true)
     loop
@@ -28,14 +26,18 @@ function PeonMineCheck takes unit mine returns boolean
       if IsUnitInTransport(u, mine) then
         set i = i + 1
         //call RecycleGuardPosition(u)
-        if b == true and (savewisp == null or not UnitAlive(savewisp)) then
+        if savewisp == null or not UnitAlive(savewisp) then
           set savewisp = u
-          set delaywisps = delaywisps - 1
-          call IssueTargetOrder(mine, "unload", u)
         endif
       endif
       call GroupRemoveUnit(g, u)
     endloop
+    if FoodSpace() <= 0 and i >= 3 then  // no foodspace , no peon(at least keep 2 harvest mine) , need one harvest mine peon build Farms
+      if TownCount(racial_peon) == TownCountDone(racial_peon) and TownCount(racial_peon) > 1 and TownCount(racial_peon) <= delaywisps then
+        set delaywisps = 2
+        call IssueTargetOrder(mine, "unload", u)
+      endif
+    endif
     if i < delaywisps then
       call GroupEnumUnitsOfPlayer(g, ai_player, null)
       set g = SelectById(g, old_id[race_manual_loading_wisp], true)
@@ -61,7 +63,7 @@ function PeonMineCheck takes unit mine returns boolean
       exitwhen u == null or i == delaywisps
       if GetUnitCurrentOrder(u) == OrderId("harvest") and DistanceBetweenUnits(u,mine) < 225 then  // UD harvest gold max Distance is 221
         set i = i + 1
-      elseif GetUnitCurrentOrder(u) == 0 and UnitAlive(u) and not IsUnitBuying(u) and not IsUnitInGroup(u, unit_zepplin_move) then
+      elseif GetUnitCurrentOrder(u) == 0 and not IsUnitBuying(u) and not IsUnitInGroup(u, unit_zepplin_move) then
         call IssueTargetOrder(u, "harvest", mine)
       endif
       call GroupRemoveUnit(g, u)
