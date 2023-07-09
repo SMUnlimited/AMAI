@@ -173,7 +173,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - CheckTownBuilt max_towns take Max(max_towns,TownCountDone(racial_expansion)) , town_built[i] take have town
 - SleepUntilTownDefended and SleepInCombatAM no running simultaneously , the code seem to be in conflict
 - Strategy additional Improvements
-  - add PALADIN and DEMON_HUNTER Harass , PALADIN Harass UD , Because PALADIN have HOLY_BOLT and DIVINE_SHIELD , DEMON_HUNTER on 1.33+ can Harass , Because IMMOLATION has been strengthened
+  - Harass no longer judge unit quantity , because dynamic strategy make it difficult to achieve quantity
+  - Add PALADIN and DEMON_HUNTER Harass , PALADIN Harass UD , Because PALADIN have HOLY_BOLT and DIVINE_SHIELD , DEMON_HUNTER on 1.33+ can Harass , Because IMMOLATION has been strengthened
   - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
   - Rewrite Build Dragons and Mercenaries , all Strategy no longer alone build, buy code now on Dynamic Strategy
   - Disturbance function global_init_strategy AddBlock
