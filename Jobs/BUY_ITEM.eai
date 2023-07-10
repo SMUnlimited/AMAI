@@ -1,20 +1,20 @@
 #IFDEF GLOBAL
-  unit shop_sent = null
-  boolean shop_ordered = false
-  real shop_buy_time_small = -1
-  real shop_buy_time_large = -1
-  integer shop_wanted = 0
-  unit shop_unit = null
-  real shop_distance_limit = 100000
-  real raceshop_distance_limit = 100000
-  real merchant_distance_limit = 5000
-  boolean retreat_home = false
-  boolean ismoving = false
-  real buyX
-  real buyY
+    unit shop_sent = null
+    boolean shop_ordered = false
+    real shop_buy_time_small = -1
+    real shop_buy_time_large = -1
+    integer shop_wanted = 0
+    unit shop_unit = null
+    real shop_distance_limit = 100000
+    real raceshop_distance_limit = 100000
+    real merchant_distance_limit = 5000
+    boolean retreat_home = false
+    boolean ismoving = false
+    real buyX
+    real buyY
 
-  group going_home_group = CreateGroup()
-  group buying_group = CreateGroup()
+    group going_home_group = CreateGroup()
+    group buying_group = CreateGroup()
 
 #ELSE
 function IsHealingItem takes integer id returns boolean
@@ -55,14 +55,14 @@ function BuyItemJob takes integer id returns nothing
   local boolean healing = false
   local integer detectedenemies = GetLocationNonCreepStrength(GetUnitX(shop_sent), GetUnitY(shop_sent), 1000) 
 
-  call DisplayToAllJobDebug("BUY_ITEM JOB START")
+ call DisplayToAllJobDebug("BUY_ITEM JOB START")
 
-  if shop_ordered == false then
+   if shop_ordered == false then
     call Trace("Order to get item is off so end job")
     return	// Shouldn't be buying an item anyway
-  endif
+   endif
 
-  // moved here to prevent a job crash 
+  // moved here to prevent a job crash
   if shop_sent == null or not UnitAlive(shop_sent) then
     set ismoving = false
     if retreat_home then
@@ -91,60 +91,60 @@ function BuyItemJob takes integer id returns nothing
    //call CreateDebugTag("In BUT ITEM JOB, 10, shop_sent, 3.00, 1.50)
 
 // Town threatened so dont get item , check distance , prevent being caught alone(some time , army walk but not attack_running)
-//if GetUnitTypeId(shop_unit) == old_id[racial_shop] and DistanceBetweenUnits(shop_sent, shop_unit) < 1000 then
-//else
-	if town_threatened or attack_running or DistanceBetweenUnits(shop_sent, shop_unit) > 3200 then
-		call CreateDebugTag("BUY_ITEM:in attack so dont get item", 10, shop_sent, 3.00, 1.50)
-		call RecycleGuardPosition(shop_sent)
-		call GroupRemoveUnit(unit_buying_item, shop_sent)
-		call AddAssault(1, GetUnitTypeId(shop_sent))
-		set shop_sent = null
-		set shop_ordered = false
-		set shop_buy_time_large = -1
-		set shop_buy_time_small = -1
+  //if GetUnitTypeId(shop_unit) == old_id[racial_shop] and DistanceBetweenUnits(shop_sent, shop_unit) < 1000 then
+  //else
+    if town_threatened or attack_running or DistanceBetweenUnits(shop_sent, shop_unit) > 3200 then
+      call CreateDebugTag("BUY_ITEM:in attack so dont get item", 10, shop_sent, 3.00, 1.50) 
+      call RecycleGuardPosition(shop_sent)
+      call GroupRemoveUnit(unit_buying_item, shop_sent)
+      call AddAssault(1, GetUnitTypeId(shop_sent))
+      set shop_sent = null
+      set shop_ordered = false
+      set shop_buy_time_large = -1
+      set shop_buy_time_small = -1
+      return
+    endif
+  //endif
+
+	if retreat_home then
+		set l = GetUnitLoc(shop_sent)
+		if DistanceBetweenPoints(l, home_location) >= 1100 then
+			call CreateDebugTag("BUY_ITEM: Retreat to Home", 10, shop_sent, 3.00, 1.50)
+			call RemoveGuardPosition(shop_sent)
+			if not IsUnitInGroup(shop_sent, going_home_group) then
+				call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
+				call GroupAddUnit(going_home_group, shop_sent)
+			elseif GetUnitCurrentOrder(shop_sent) == OrderId("stop") or GetUnitCurrentOrder(shop_sent) != OrderId("move") then
+				call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
+			endif
+			call TQAddJob(5, BUY_ITEM, id)
+		else
+			call GroupRemoveUnit(unit_buying_item, shop_sent)
+			if IsUnitInGroup(shop_sent, going_home_group) then
+				call GroupRemoveUnit(going_home_group, shop_sent)
+			endif
+			call RecycleGuardPosition(shop_sent)
+			call CreateDebugTag("BUY_ITEM: Retreated", 10, shop_sent, 3.00, 1.50)
+			set shop_sent = null
+			set retreat_home = false
+			set shop_ordered = false
+			set shop_buy_time_large = -1
+			set shop_buy_time_small = -1
+		endif
+		call RemoveLocation(l)
+		set l = null
 		return
 	endif
-//endif
-
-if retreat_home then
-	set l = GetUnitLoc(shop_sent)
-	if DistanceBetweenPoints(l, home_location) >= 1100 then
-		call CreateDebugTag("BUY_ITEM: Retreat to Home", 10, shop_sent, 3.00, 1.50)
-		call RemoveGuardPosition(shop_sent)
-		if not IsUnitInGroup(shop_sent, going_home_group) then
-			call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
-			call GroupAddUnit(going_home_group, shop_sent)
-		elseif GetUnitCurrentOrder(shop_sent) == OrderId("stop") or GetUnitCurrentOrder(shop_sent) != OrderId("move") then
-			call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
-		endif
-		call TQAddJob(5, BUY_ITEM, id)
-	else
-		call GroupRemoveUnit(unit_buying_item, shop_sent)
-		if IsUnitInGroup(shop_sent, going_home_group) then
-			call GroupRemoveUnit(going_home_group, shop_sent)
-		endif
-		call RecycleGuardPosition(shop_sent)
-		call CreateDebugTag("BUY_ITEM: Retreated", 10, shop_sent, 3.00, 1.50)
-		set shop_sent = null
-		set retreat_home = false
-		set shop_ordered = false
-		set shop_buy_time_large = -1
-		set shop_buy_time_small = -1
-	endif
-	call RemoveLocation(l)
-	set l = null
-	return
-endif
 
 // Enemies are present so get home before they harm us
-if detectedenemies >= GetUnitStrength(shop_sent) and GetUnitTypeId(shop_unit) != old_id[racial_shop] then
-	call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
-	//call TQAddUnitJob(GetTimeToReachLoc(shop_sent, home_location), RESET_GUARD_POSITION, 1, shop_sent)
-	set retreat_home = true
-	call CreateDebugTag("BUY_ITEM: Enemies present so dont get item this time", 10, shop_sent, 3.00, 1.50) 
-	call TQAddJob(0, BUY_ITEM, id)
-	return
-endif
+  if detectedenemies >= GetUnitStrength(shop_sent) and GetUnitTypeId(shop_unit) != old_id[racial_shop] then
+    call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
+    //call TQAddUnitJob(GetTimeToReachLoc(shop_sent, home_location), RESET_GUARD_POSITION, 1, shop_sent)
+    set retreat_home = true
+    call CreateDebugTag("BUY_ITEM: Enemies present so dont get item this time", 10, shop_sent, 3.00, 1.50)
+    call TQAddJob(0, BUY_ITEM, id)
+    return
+  endif
 
 //  call DisplayToAll("Item Buy Start")
   if (shop_buy_time_large >= 0 and shop_buy_time_large + buy_timeout_large < current_time) or (shop_buy_time_small >= 0 and shop_buy_time_small + buy_timeout_small < current_time) then
