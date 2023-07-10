@@ -31,7 +31,7 @@ function SaveYourself takes nothing returns boolean
         set b = true
       endif
     elseif SaveYourselfMode == 2 then
-      if (TownCount(racial_expansion) - TownCountDone(racial_expansion) > 0) or GetMinesOwned() > 0 then
+      if not HallsCompleted() or GetMinesOwned() > 0 then
         set SaveYourselfMode = 0
         set b = true
       endif
@@ -85,7 +85,7 @@ function KillYourself takes boolean end_ai returns nothing
         loop
           set u = FirstOfGroup(g)
           exitwhen u == null
-          call SetUnitOwner(u, Player(PLAYERPASSIVE), true)
+          call SetUnitOwner(u, Player(PLAYER_NEUTRAL_PASSIVE), true)
           call GroupRemoveUnit(g, u )
         endloop
       endif
@@ -98,8 +98,8 @@ function KillYourself takes boolean end_ai returns nothing
         call ExchangeOnce()
       endif
       if not destroy_buildings_on_defeat then
-        call SetPlayerAlliance(ai_player, Player(PLAYERAGGRESSIVE), ALLIANCE_PASSIVE, true)  // trigger the victory/defeat recognition triggers
-        call SetPlayerAlliance(ai_player, Player(PLAYERAGGRESSIVE), ALLIANCE_PASSIVE, false)
+        call SetPlayerAlliance(ai_player, Player(PLAYER_NEUTRAL_AGGRESSIVE), ALLIANCE_PASSIVE, true)  // trigger the victory/defeat recognition triggers
+        call SetPlayerAlliance(ai_player, Player(PLAYER_NEUTRAL_AGGRESSIVE), ALLIANCE_PASSIVE, false)
       endif
       set player_defeated = true
     endif
@@ -154,36 +154,36 @@ function CheckDefeated takes nothing returns nothing
   if disable_surrender then
     set agg = 0
   endif
-
+  
   if town_threatened then
     set enemy_sum = army_strength[town_threat_army[most_threatened_town]]
   else
     call GroupEnumUnitsInRange(g,GetLocationX(home_location),GetLocationY(home_location),front_base_distance,null)
     loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null
-      if UnitAlive(u) and GetOwningPlayer(u) != Player(PLAYERAGGRESSIVE) and GetOwningPlayer(u) != Player(PLAYERPASSIVE) and IsPlayerEnemy(ai_player, GetOwningPlayer(u)) then
-        set enemy_sum = enemy_sum + GetUnitStrength(u)
-      endif
-      call GroupRemoveUnit(g,u)
+        set u = FirstOfGroup(g)
+        exitwhen u == null
+        if UnitAlive(u) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerEnemy(ai_player, GetOwningPlayer(u)) then
+          set enemy_sum = enemy_sum + GetUnitStrength(u)
+        endif
+        call GroupRemoveUnit(g,u)
     endloop
   endif
   call DestroyGroup(g)
   set g = null
 
   if c_ally_total > 0 then
-  loop
-    exitwhen i >= PLAYERAGGRESSIVE
-    if IsPlayerAlly(ai_player,Player(i)) then
-      set ally_sum = ally_sum + GetPlayerStrength(Player(i))
-    endif
-    set i = i + 1
-  endloop
+    loop
+      exitwhen i >= GetBJMaxPlayers()
+      if IsPlayerAlly(ai_player,Player(i)) then
+        set ally_sum = ally_sum + GetPlayerStrength(Player(i))
+      endif
+      set i = i + 1
+    endloop
   endif
 
 // Have nothing left checks
   if GetPlayerUnitCount(ai_player, true) == 0 and GetPlayerStructureCount(ai_player, true) == 0 then
-    call KillYourself(no_ai_ally)	
+    call KillYourself(no_ai_ally)
     return
   endif
 
@@ -205,7 +205,7 @@ function CheckDefeated takes nothing returns nothing
         return
       endif
       set desperation_assault = true
-    else
+    else 
       call KillYourself(no_ai_ally)
       return
     endif
@@ -216,7 +216,7 @@ function CheckDefeated takes nothing returns nothing
     call KillYourself(no_ai_ally)
     return
   endif
-
+  
   // Key Resource issues
   if hall_count == 0 and GetGold() < hall_cost then
     set gold_problem_level = hall_cost
@@ -270,7 +270,7 @@ function DetectDefeatJob takes nothing returns nothing
   call DisplayToAllJobDebug("DETECT_DEFEAT Job Start")
   call CheckDefeated()
   call CheckDefeatedForce()
-  if desperation_assault == true and (TownCount(race_manual_loading_mine) > 0 or (TownCount(racial_expansion) - TownCountDone(racial_expansion) > 0) or GetMinesOwned() > 0) then
+  if desperation_assault == true and (TownCount(race_manual_loading_mine) > 0 or not HallsCompleted() or GetMinesOwned() > 0) then
     set desperation_assault = false
   endif
   if not player_defeated then
