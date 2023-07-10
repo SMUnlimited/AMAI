@@ -156,6 +156,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Choose self methods based on racial abilities , one ability use one num/mode
   - Not recommended sale item or build(like UD)
   - The function untested , but should can run
+  - Add desperation_assault closing mechanism
 - ZEPPELIN_MOVE now can take POWER FOUNTAIN
 - MANA_FOUNTAIN now can take POWER FOUNTAIN
 - front_base_distance now is dynamic , first is 1100 , and increase according to AI difficulty , front_base_distance = difficulty * 50 + front_base_distance
