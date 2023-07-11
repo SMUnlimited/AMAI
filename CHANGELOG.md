@@ -146,6 +146,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - FOCUSFIRE_CONTROL add FOCUS FIRE special_unit , now special_unit have 'hpxe' and 'espv' and 'ngsp' , Phoenix and Soul of Revenge and GoblinSapper
   - Add exclude more Channeling skills ： healingspray , stampederainoffire , magicleash , cloudoffog , unstableconcoction , grabtree , possession , ambush , devour , 852487
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
+- ChooseExp now check mine , if no mine , abandoning rules , just take recent Mines
 - GetExpansionPeon2 Adjust
   - no take unit_buying_merc
   - not take IsUnitLoaded , because ELF peon harvest gold
@@ -158,6 +159,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Militia_Expansion now check water_expansion , no take water_expansion
 - Militia_Expansion and Militia_Expansion JOB now use Militia ability
   - now peon can shape shifting Militia
+- BUYTIEM now check distance , prevent being caught alone, some time , army walk but not attack_running , turn over game after Heroes being killed
 - DETECT_DEFEAT JOB add self rescue , first saveyourself , no run kill or desperation_assault
   - Choose self methods based on racial abilities , one ability use one num/mode
   - Not recommended sale item or build(like UD)
@@ -213,7 +215,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed BlockListCheck cannot limitation RefreshNeeded Refresh needed1[unitid] ~ needed3[unitid] , now BlockListCheck normal work , like 2.54
 - Fixed GOBLIN_TINKER abnormal skill learning
 - Fixed ENDURANCE_AURA to AOr2 , C should is Cairne Bloodhoof
-
+- Fixed TFT ORC Strategy VersusHuman key building to Tauren Totem(Thank Slayer95 , Pull #123)
 
 ## [3.2.2] - 2022-10-05
 
