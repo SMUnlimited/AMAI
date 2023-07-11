@@ -37,7 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - W3C MiniMapIcon and item icon
    - now have all Neutral build Icon(Icon more W3C)
    - you can use -minimap control Switch
-   - if map size to big , the icon default not enabled , anual activation required , because the effect is too poor
+   - Do not want to initialize and enable , please set W3CIcons to false
    - install use InstallTFTtoDir-Icon.pl or install - w3c minimapicon.js , need install commander
    - will install item icon(Adaptation 1.36 version)
 - W3C DenyTip
