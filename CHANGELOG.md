@@ -136,6 +136,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Army track CopyArmy no longer copy same integer , hopes it can improve efficiency
   - Reduced Army track frequency
   - set town_threatened avoid most_threatened_town is -1
+  - only check ai_player UnitStandard , check other player Standard will let FirstOfGroup is null , and Hopefully fix laggy and collapse
 - Town track change
   - Town track CopyTown no longer copy same integer , hopes it can improve efficiency
   - Town track SeedNewTownAtLoc town_num incremental now need TrackTown(town_num) return true
@@ -176,6 +177,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - CheckTownBuilt max_towns take Max(max_towns,TownCountDone(racial_expansion)) , town_built[i] take have town
 - SleepUntilTownDefended and SleepInCombatAM no running simultaneously , the code seem to be in conflict
 - Strategy additional Improvements
+  - AddUnitToAntiXX Computational UpgradeLevel
   - Harass no longer judge unit quantity , because dynamic strategy make it difficult to achieve quantity
   - Add PALADIN and DEMON_HUNTER Harass , PALADIN Harass UD , Because PALADIN have HOLY_BOLT and DIVINE_SHIELD , DEMON_HUNTER on 1.33+ can Harass , Because IMMOLATION has been strengthened
   - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
