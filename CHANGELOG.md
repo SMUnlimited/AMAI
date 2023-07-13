@@ -129,6 +129,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Army track CopyArmy no longer copy same integer , hopes it can improve efficiency
   - Reduced Army track frequency
   - set town_threatened avoid most_threatened_town is -1
+  - only check ai_player UnitStandard , check other player Standard will let FirstOfGroup is null , and Hopefully fix laggy and collapse
 - Town track change
   - Town track CopyTown no longer copy same integer , hopes it can improve efficiency
   - Town track SeedNewTownAtLoc town_num incremental now need TrackTown(town_num) return true
@@ -140,6 +141,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Add exclude more Channeling skills ： healingspray , stampederainoffire , magicleash , cloudoffog , unstableconcoction , grabtree , possession , ambush , devour , 852487
   - RemoveFocusGroupUnit now is GroupRemoveGroupAM , as Public Code on common.eai
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
+- ChooseExp now check mine , if no mine , abandoning rules , just take recent Mines
 - GetExpansionPeon2 Adjust
   - no take unit_buying_merc
   - not take IsUnitLoaded , because ELF peon harvest gold
@@ -152,6 +154,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Militia_Expansion now check water_expansion , no take water_expansion
 - Militia_Expansion and Militia_Expansion JOB now use Militia ability
   - now peon can shape shifting Militia
+- BUYTIEM now check distance , prevent being caught alone, some time , army walk but not attack_running , turn over game after Heroes being killed
 - DETECT_DEFEAT JOB add self rescue , first saveyourself , no run kill or desperation_assault
   - Choose self methods based on racial abilities , one ability use one num/mode
   - Not recommended sale item or build(like UD)
@@ -168,6 +171,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - CheckTownBuilt max_towns take Max(max_towns,TownCountDone(racial_expansion)) , town_built[i] take have town
 - SleepUntilTownDefended and SleepInCombatAM no running simultaneously , the code seem to be in conflict
 - Strategy additional Improvements
+  - AddUnitToAntiXX Computational UpgradeLevel
   - Harass no longer judge unit quantity , because dynamic strategy make it difficult to achieve quantity
   - Add PALADIN Harass , PALADIN Harass UD , Because PALADIN have HOLY_BOLT and DIVINE_SHIELD
   - Synchronization Dynamic Strategy to [master] , and removed Dynamic Strategy redundant upgrade hall code
