@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) Old non-working installer has now been removed now we have new version in place.
 
 ### Fixed
+- Spirit Walkers key building should be the Tauren Totem.
 
 ## [3.2.2] - 2022-10-05
 
