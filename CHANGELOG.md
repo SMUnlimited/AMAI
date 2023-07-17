@@ -147,7 +147,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - FOCUSFIRE_CONTROL add FOCUS FIRE special_unit , now special_unit have 'hpxe' and 'espv' and 'ngsp' , Phoenix and Soul of Revenge and GoblinSapper
   - Add exclude more Channeling skills ： healingspray , stampederainoffire , magicleash , cloudoffog , unstableconcoction , grabtree , possession , ambush , devour , 852487
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
-- ChooseExp now check mine , if no mine , abandoning rules , just take recent Mines
 - GetExpansionPeon2 Adjust
   - no take unit_buying_merc
   - not take IsUnitLoaded , because ELF peon harvest gold
@@ -177,6 +176,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - CheckTownBuilt max_towns take Max(max_towns,TownCountDone(racial_expansion)) , town_built[i] take have town
 - SleepUntilTownDefended and SleepInCombatAM no running simultaneously , the code seem to be in conflict
 - Strategy additional Improvements
+  - Remove SAC_PIT, UPG_SKEL_LIFE from Undead builds(thank Slayer95)
   - AddUnitToAntiXX Computational UpgradeLevel
   - Harass no longer judge unit quantity , because dynamic strategy make it difficult to achieve quantity
   - Add PALADIN and DEMON_HUNTER Harass , PALADIN Harass UD , Because PALADIN have HOLY_BOLT and DIVINE_SHIELD , DEMON_HUNTER on 1.33+ can Harass , Because IMMOLATION has been strengthened
@@ -218,6 +218,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed GOBLIN_TINKER abnormal skill learning
 - Fixed ENDURANCE_AURA to AOr2 , C should is Cairne Bloodhoof
 - Fixed TFT ORC Strategy VersusHuman key building to Tauren Totem(Thank Slayer95 , Pull #123)
+- Fixed Ritual Dagger check(thank Slayer95)
+- Fixed QTLOOP sleep time < 0
 
 ## [3.2.2] - 2022-10-05
 
