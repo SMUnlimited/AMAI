@@ -339,7 +339,7 @@ globals
 
 #PRAGMA START VERSION SETTINGS
    boolean ver_neutral_heroes_available = true  // does the version have neutral heroes ?
-   integer ver_neutral_hero_number = 8  // how many neutral heroes ?
+   integer ver_neutral_hero_number = 0  // how many neutral heroes ?
    boolean ver_only_heroes_buy = false  // can only heroes buy stuff ?
    integer ver_food_limit = 100  // what is the food limit ?
    integer ver_strat_change_enemy_strength_min = 25  // don't allow strategy change unless the maximum strength of all enemy players in the game is above this.
@@ -4671,14 +4671,6 @@ function GetNearestNeutral takes integer id returns unit
   call DestroyGroup(g)
   set g = null
   set i = 0
-  loop
-    exitwhen i == totalneutrals
-    if pather[i] != null then
-      call RemoveUnit(pather[i])
-      set pather[i] = null
-    endif
-    set i = i + 1
-  endloop
   return ru_distraction[1]
 
 	//loop
@@ -5809,15 +5801,13 @@ endfunction
 // Gets the best location to build a lumber mill building
 //============================================================================
 function GetLumberLocationAtBase takes nothing returns location
-  local integer groundid = 0	//human peasant
+  local integer groundid = old_id[racial_peon]	//human peasant
   local real distance = 0
   local real x = 0
   local real y = 0
   local unit u = null
   if race_has_ghouls then
     set groundid = old_id[racial_ghoul]
-  else
-    set groundid = old_id[racial_peon]
   endif
   set u = CreatePathingUnitFull(u, Player(PLAYERPASSIVE), groundid, GetLocationX(home_location), GetLocationY(home_location))
   call IssueImmediateOrder(u, "autoharvestlumber")
@@ -6104,7 +6094,6 @@ local real seconddistance = 0
 local unit u = null
 local real mindistance = 10000  // max distance away the first mine can be
 local real secMaxDistance = 6000  // max distance range second mine must be in
-local location l = null
 local group g = CreateGroup()
 local integer rand = GetRandomInt(1,4)
 set ru_exp[0] = null
@@ -6113,9 +6102,7 @@ call GroupEnumUnitsOfType(g, "goldmine", null)
 loop
 	set u = FirstOfGroup(g)
 	exitwhen u == null
-	set l = GetUnitLoc(u)
-	set distance = DistanceBetweenPoints(l, home_location)
-	call RemoveLocation(l)
+	set distance = DistanceBetweenPoints_dk(GetUnitLoc(u), home_location)
 	if distance < mindistance and not CheckExpansionTaken(u) and GetLocationCreepStrength(GetUnitX(u), GetUnitY(u), expansion_radius) < 40 then
 		if mindistance < secMaxDistance then
 			set ru_exp[1] = ru_exp[0]
@@ -6129,7 +6116,6 @@ loop
 	endif
 	call GroupRemoveUnit(g, u)
 endloop
-set l = null
 call DestroyGroup(g)
 set g = null
 
@@ -6233,15 +6219,6 @@ function MakeExpansionList takes nothing returns nothing
   call DestroyGroup(g)
   set g = null
   set tempg = null
-  set i = 0
-  loop
-    exitwhen i == totalpathers
-    if pather[i] != null then
-      call RemoveUnit(pather[i])
-      set pather[i] = null
-    endif
-    set i = i + 1
-  endloop
   if water_expansion_list_length + expansion_list_length > c_enemy_total + c_ally_total + 1 then  // have more mine , should positive Expansion
     set active_expansion = true
   endif
@@ -6468,7 +6445,7 @@ function CheckExpansionRebuild takes nothing returns boolean
 
   call GroupEnumUnitsInRange(g, GetUnitX(current_expansion), GetUnitY(current_expansion), expansion_taken_radius, null)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  set g = SelectByPlayer(g, Player(PLAYERPASSIVE), false)
+  //set g = SelectByPlayer(g, Player(PLAYERPASSIVE), false)  // no need the Select
   set g = SelectByPlayer(g, ai_player, true)
   set g = SelectByAlive(g, true)
 
@@ -6504,7 +6481,7 @@ function ExpansionFormula takes integer exp_d, unit exp_u returns integer
 
   call GroupEnumUnitsInRange(g, GetUnitX(exp_u), GetUnitY(exp_u), expansion_taken_radius, null)
   //set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  set g = SelectByPlayer(g, Player(PLAYERPASSIVE), false)
+  //set g = SelectByPlayer(g, Player(PLAYERPASSIVE), false)  //no need the Select
   set g = SelectByAlive(g, true)
 
   loop
@@ -6750,13 +6727,13 @@ function CheckFastExpansion takes nothing returns nothing
   //set firstexp = null
 
   if current_expansion != null then
-	set es = GetExpansionStrength()
-  //MinRangeToEnemy(l) > 7000
-	if GetRandomInt(1,2) == 1 and GetPlayers() > 2 and MinRangeToEnemy(home_location) > 7000 and es <= 0 then
-		set exp_time_count = -exp_first_time
-	endif
-  //call RemoveLocation(l)
-  //set l = null
+    set es = GetExpansionStrength()
+    //MinRangeToEnemy(l) > 7000
+    if GetRandomInt(1,2) == 1 and GetPlayers() > 2 and MinRangeToEnemy(home_location) > 7000 and es <= 0 then
+      set exp_time_count = -exp_first_time
+    endif
+    //call RemoveLocation(l)
+    //set l = null
   endif
 endfunction
 
@@ -6788,7 +6765,7 @@ function ComputeFrontPoints takes nothing returns nothing
   local unit array u
   local integer totalplayers = 0
   local location loc = null
-  local player mainplayer = Player(GetAiPlayer()) 
+  local player mainplayer = Player(GetAiPlayer())
   local boolean pathingdone = true
   local boolean array patherdone
   local location l = null
@@ -6842,16 +6819,6 @@ function ComputeFrontPoints takes nothing returns nothing
     endloop
     exitwhen pathingdone
     call Sleep(0.1)
-  endloop
-
-  set i = 0
-  loop
-    exitwhen i == totalplayers
-    if u[i] != null then
-      call RemoveUnit(u[i])
-      set u[i] = null
-    endif
-    set i = i + 1
   endloop
 
   set front_locs_computed = true
@@ -7373,7 +7340,7 @@ if neutral_available[nn] == true then
     endif
 
     if nearest_neutral[nn] != null then
-      call Trace("Neutral Pathing ID done: " + Int2Str(nn)) 
+      call Trace("Neutral Pathing ID done: " + Int2Str(nn))
     else
       call Trace("Neutral Pathing ID done (no pathable neutral): " + Int2Str(nn))
     endif
@@ -9461,7 +9428,7 @@ function DynamicBuildUnit takes integer count, integer prio returns nothing
 		elseif buy_type[chosen_counter_unit] > BT_RACIAL_ITEM and buy_type[chosen_counter_unit] < BT_MERCHANT_ITEM then // A neutral mercenary
 			set num = R2I((count - FoodUsed())/GetFoodUsed(old_id[chosen_counter_unit]))
 			if num > 0 then
-				call BuildUnit(GetUnitCountDone(old_id[chosen_counter_unit] + 1), chosen_counter_unit, prio)
+				call BuildUnit(GetUnitCountDone(old_id[chosen_counter_unit]) + 1, chosen_counter_unit, prio)
 			endif
 		else // structure
 			call BuildUnit(1, chosen_counter_unit, prio*2) 
@@ -10246,6 +10213,7 @@ function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
       call IssueTargetOrder(build_zeppelin, "unload", zeppelin_peon)
       call Sleep(1.2)  //unload time
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
+      set build_zeppelin = null
       return true
     endif
   else
@@ -11447,7 +11415,7 @@ function BRRush takes nothing returns nothing
   set g = SelectByAlive(g,true)
   loop
     set u = FirstOfGroup(g)
-    exitwhen u == null
+    exitwhen u == null or i == 1
     if GetOwningPlayer(u) != Player(PLAYERAGGRESSIVE) and IsPlayerEnemy(ai_player,GetOwningPlayer(u)) then
       set i = 1  // have other player
     elseif GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == 'eaom' then
@@ -12070,7 +12038,7 @@ function GetNearHumanPlayerEnemy takes nothing returns unit
   local integer t = 0
   local integer p = 30
   local real dist = 0
-  local real mindistance = 100000000  // use to big map - 12 or 24 player map
+  local real mindistance = 100000  // use to big map - 12 or 24 player map
   local group g = CreateGroup()
   loop
     exitwhen i >= c_enemy_total
@@ -12527,6 +12495,18 @@ endif
 
     if not no_player_attack then
 
+      if (c_ally_total + c_enemy_total >= 10 or mapattackdelayed < 8) and c_enemy_user_total > 0 then  // player too much or big map , first attack HumanPlayer
+        set humanhall = GetNearHumanPlayerEnemy()
+        if humanhall != null then
+          call Chat(C_Attack)
+          call SetAllianceTarget(humanhall)
+          call FormGroupAM(3)
+          call AttackMoveKillAAM(humanhall)
+          call SetAllianceTarget(null)
+          set humanhall = null
+        endif
+      endif
+
       // all-out attack if the player is weak
       //
       if difficulty != EASY then
@@ -12561,18 +12541,6 @@ endif
           return
         endif
         set hall = null
-      endif
-
-      if (c_ally_total + c_enemy_total >= 10 or mapattackdelayed < 8) and c_enemy_user_total > 0 then  // player too much or big map , first attack HumanPlayer
-        set humanhall = GetNearHumanPlayerEnemy()
-        if humanhall != null then
-          call Chat(C_Attack)
-          call SetAllianceTarget(humanhall)
-          call FormGroupAM(3)
-          call AttackMoveKillAAM(humanhall)
-          call SetAllianceTarget(null)
-          set humanhall = null
-        endif
       endif
 
     endif // if not creep only
