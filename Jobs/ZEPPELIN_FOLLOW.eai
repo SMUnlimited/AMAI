@@ -4,6 +4,7 @@ function ZeppelinFollowJob takes nothing returns nothing
   local real dist = 0
   local location l = null
   local group g = CreateGroup()
+  local group tempg = null
   local location heroloc = null
   call DisplayToAllJobDebug("ZEPPELIN_FOLLOW Start")
   //call GroupEnumUnitsOfType(g, "goblinzeppelin", null)
@@ -14,9 +15,6 @@ function ZeppelinFollowJob takes nothing returns nothing
   //-----------------------------------------------
   //set g = SelectByOrderOr(g, 0, order_attack, true)
   set g = SelectByUnitStandard(g, true)
-  if water_expansion_list_length == 0 or racial_lumber == 0 or not race_no_wood_harvest then
-    call GroupRemoveGuardPositionInstant(g)  //water_expansion Transport Harvest peon , AI default Transport Order need use zep , racial_lumber help ELF fix building blockage
-  endif
   //call GroupPointOrderLoc(g, "attack", home_location)
   if major_hero != null and UnitAlive(major_hero) then
     set heroloc = GetUnitLoc(major_hero)
@@ -26,12 +24,20 @@ function ZeppelinFollowJob takes nothing returns nothing
   else
     set follow_zeppelin = null
   endif
-  if TownCountDone(neutral_zeppelin) > 1 then
-    call GroupRecycleGuardPositionInstant(g)  // help AI fix building blockage
-    call RemoveGuardPosition(follow_zeppelin)  // have more zeppelin , Job can continue , whether water_expansion , ELF , no harvest wood
+  set tempg = CopyGroup(g)
+  if water_expansion_list_length == 0 or racial_lumber != 0 or not race_no_wood_harvest then
+    call GroupRemoveGuardPositionInstant(g)  //water_expansion Transport Harvest peon , AI default Transport Order need use zep , racial_lumber help ELF fix building blockage
+  else
+    call DestroyGroup(g)
+    set g = null
   endif
-  call DestroyGroup(g)
-  set g = null
+  if TownCountDone(neutral_zeppelin) > 1 then
+    call GroupRecycleGuardPositionInstant(tempg)  // help AI fix building blockage
+    call RemoveGuardPosition(follow_zeppelin)  // have more zeppelin , Job can continue , whether water_expansion , ELF , no harvest wood
+  else
+    call DestroyGroup(tempg)
+    set tempg = null
+  endif
   if follow_zeppelin == null then
     call TQAddJob(10, ZEPPELIN_FOLLOW, 0)
     set zeppelin_following = false
