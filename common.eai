@@ -5133,6 +5133,7 @@ endfunction
 function GetLocationCreepStrength takes real x, real y, real radius returns integer
   local group g = CreateGroup()
   local real sum = 0
+  local real strength = 0
   local unit u = null
   local real airsum = 0
   set no_sleep = false
@@ -5142,9 +5143,10 @@ function GetLocationCreepStrength takes real x, real y, real radius returns inte
     exitwhen u == null
     if UnitAlive(u) and GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and not IsUnitHidden(u) then
       //call Trace("Getting unit strength begin")
-      set sum = sum + GetUnitStrength(u)
+      set strength = GetUnitStrength(u)
+      set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
-        set airsum = airsum + GetUnitStrength(u)
+        set airsum = airsum + strength
       endif
       if not UnitCanSleep(u) then
         set no_sleep = true
@@ -5185,6 +5187,7 @@ endfunction
 function GetLocationNonCreepStrength takes real x, real y, real radius returns integer
   local group g = CreateGroup()
   local real sum = 0
+  local real strength = 0
   local unit u = null
   local real airsum = 0
   call GroupEnumUnitsInRange(g,x,y,radius,null)
@@ -5192,9 +5195,10 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
     set u = FirstOfGroup(g)
     exitwhen u == null
     if UnitAlive(u) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and not IsUnitHidden(u) and IsUnitType(u,UNIT_TYPE_STRUCTURE) == false and IsUnitType(u,UNIT_TYPE_PEON) == false and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
-      set sum = sum + GetUnitStrength(u)
+      set strength = GetUnitStrength(u)
+      set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
-        set airsum = airsum + GetUnitStrength(u)
+        set airsum = airsum + strength
       endif
     endif
     call GroupRemoveUnit(g,u)
@@ -5252,6 +5256,7 @@ endfunction
 function GetLocationStrength takes real x, real y, real radius returns real
   local group g = CreateGroup()
   local real sum = 0
+  local real strength = 0
   local unit u = null
   local real airsum = 0
   call GroupEnumUnitsInRange(g,x,y,radius,null)
@@ -5259,9 +5264,10 @@ function GetLocationStrength takes real x, real y, real radius returns real
     set u = FirstOfGroup(g)
     exitwhen u == null
     if UnitAlive(u) and not IsUnitHidden(u) and IsUnitType(u,UNIT_TYPE_PEON) == false and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
-      set sum = sum + GetUnitStrength(u)
+      set strength = GetUnitStrength(u)
+      set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
-        set airsum = airsum + GetUnitStrength(u)
+        set airsum = airsum + strength
       endif
     endif
     call GroupRemoveUnit(g,u)
@@ -5305,21 +5311,23 @@ function GetOwnStrength takes nothing returns integer
   local integer max_ghouls = attacking_ghouls
   local integer ghoul_num = 0
   local real airsum = 0
+  local real strength = 0
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
     if UnitAlive(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitInGroup(u, unit_healing) and not IsUnitHidden(u) then
+      set strength = GetUnitStrength(u)
       if GetUnitTypeId(u) == old_id[racial_ghoul] then
         if ghoul_num < max_ghouls then
-          set sum = sum + GetUnitStrength(u)
+          set sum = sum + strength
           set ghoul_num = ghoul_num + 1
         endif
       else
-        set sum = sum + GetUnitStrength(u)
+        set sum = sum + strength
       endif
       if IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) then
-        set airsum = airsum + GetUnitStrength(u)
+        set airsum = airsum + strength
       endif
     endif
     call GroupRemoveUnit(g, u)
@@ -5849,21 +5857,22 @@ set ru_exp[0] = null
 set ru_exp[1] = null
 call GroupEnumUnitsOfType(g, "goldmine", null)
 loop
-	set u = FirstOfGroup(g)
-	exitwhen u == null
-	set distance = DistanceBetweenPoints_dk(GetUnitLoc(u), home_location)
-	if distance < mindistance and not CheckExpansionTaken(u) and GetLocationCreepStrength(GetUnitX(u), GetUnitY(u), expansion_radius) < 40 then
-		if mindistance < secMaxDistance then
-			set ru_exp[1] = ru_exp[0]
-			set seconddistance = mindistance
-		endif
-		set mindistance = distance
-		set ru_exp[0] = u
-	elseif distance < seconddistance and distance <= secMaxDistance and not CheckExpansionTaken(u) and GetLocationCreepStrength(GetUnitX(u), GetUnitY(u), expansion_radius) < 40 then
-		set seconddistance = distance
-		set ru_exp[1] = u
-	endif
-	call GroupRemoveUnit(g, u)
+  set u = FirstOfGroup(g)
+  exitwhen u == null
+  if not CheckExpansionTaken(u) and GetLocationCreepStrength(GetUnitX(u), GetUnitY(u), expansion_radius) < 40 then
+    set distance = DistanceBetweenPoints_dk(GetUnitLoc(u), home_location)
+    if distance < mindistance then
+      if mindistance < secMaxDistance then
+        set ru_exp[1] = ru_exp[0]
+        set seconddistance = mindistance
+      endif
+      set mindistance = distance
+      set ru_exp[0] = u
+    elseif distance < seconddistance and distance <= secMaxDistance then
+      set seconddistance = distance
+      set ru_exp[1] = u
+    endif
+    call GroupRemoveUnit(g, u)
 endloop
 call DestroyGroup(g)
 set g = null
