@@ -4278,17 +4278,22 @@ function GetMineNearLoc takes location l, real dist returns unit
     endif
     call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
     set g = SelectById(g, old_id[GOLD_MINE], true)
-    set u = FirstOfGroup(g)
-    call GroupRemoveUnit(g, u)
+    set ru_mine = FirstOfGroup(g)
+    call GroupRemoveUnit(g, ru_mine)
     if FirstOfGroup(g) != null then  //have more mind
       set first_town_mine = 1
     endif
-    if i == GOLD_MINE then  // human and orc need find closest mine
-      call GroupAddUnit(g, u)
+    if i == GOLD_MINE then
+      if first_town_mine != 1 then
+        call DestroyGroup(g)
+        set g = null
+        return ru_mine
+      endif
+      call GroupAddUnit(g, ru_mine)
       loop
         set u = FirstOfGroup(g)
         exitwhen u == null
-        set i = R2I(DistanceBetweenPoints_kd(home_location,GetUnitLoc(u)))
+        set i = R2I(DistanceBetweenPoints_kd(home_location,GetUnitLoc(u)))  // human and orc need find closest mine
         if GetResourceAmount(u) > 0 and i <= distance then
           set distance = i
           set ru_mine = u
@@ -5957,13 +5962,16 @@ function MultipleMinefix takes nothing returns boolean
   call GroupEnumUnitsInRangeOfLoc(g, home_location, 1500, null)
   set g = SelectById(g, old_id[GOLD_MINE], true)
   set g = SelectByAlive(g, true)
-  call GroupRemoveUnit(g, FirstOfGroup(g))  //remove one mine
+  set u = FirstOfGroup(g)
+  call GroupRemoveUnit(g, u)  //remove one mine
   if FirstOfGroup(g) == null then
     call DestroyGroup(g)
     set g = null
-    set first_town_mine = 0  //StartLocation only one mine
+    set u = null
+    set first_town_mine = 0  //StartLocation only one or no mine
     return false
   endif
+  call GroupAddUnit(g, u)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -8182,7 +8190,7 @@ endfunction
 //  local integer food = 0
 //
 //  GetPlayerState(p, PLAYER_STATE_RESOURCE_FOOD_USED)
-//  
+//
 //
 //endfunction
 
