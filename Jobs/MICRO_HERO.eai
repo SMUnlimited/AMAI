@@ -1,23 +1,23 @@
 #IFDEF GLOBAL
-    constant integer ACTION_DO_NOTHING = 0
-    constant integer ACTION_GO_HOME = 1
-    constant integer ACTION_FOUNTAIN = 2
-    constant integer ACTION_TP = 3
-    constant integer ACTION_ZEPPELIN_HOME = 4
-    constant integer ACTION_ZEPPELIN_FOUNTAIN = 5
-    constant integer ACTION_HEALER = 6
-    constant integer ACTION_MANA_FOUNTAIN = 7
-    constant integer ACTION_MOONWELLS = 8
+  constant integer ACTION_DO_NOTHING = 0
+  constant integer ACTION_GO_HOME = 1
+  constant integer ACTION_FOUNTAIN = 2
+  constant integer ACTION_TP = 3
+  constant integer ACTION_ZEPPELIN_HOME = 4
+  constant integer ACTION_ZEPPELIN_FOUNTAIN = 5
+  constant integer ACTION_HEALER = 6
+  constant integer ACTION_MANA_FOUNTAIN = 7
+  constant integer ACTION_MOONWELLS = 8
 
-    location array hero_loc
-    location array hero_dir
-    real array hero_hp
-    real array hero_hp_loss
-    real array hero_enemy_density
-    location array hero_enemy_loc
-    real array hero_ally_density
-    location array hero_ally_loc
-    
+  location array hero_loc
+  location array hero_dir
+  real array hero_hp
+  real array hero_hp_loss
+  real array hero_enemy_density
+  location array hero_enemy_loc
+  real array hero_ally_density
+  location array hero_ally_loc
+
 #ELSE
 
 function TeleportHome takes integer hn returns nothing
@@ -50,22 +50,20 @@ function TeleportHome takes integer hn returns nothing
         if teleport_loc != null then
           call RemoveLocation(teleport_loc)
         endif
-        set teleport_loc = Location(GetLocationX(start_loc), GetLocationY(start_loc))
+        set teleport_loc = GetTeleportLandPoint(start_loc)
       endif
       set i = i + 1
-      if start_loc != null then
-        call RemoveLocation( start_loc )
-      endif
+      call RemoveLocation(start_loc)
     endloop
     call ClearCaptainTargets()
     call CaptainAttack(GetLocationX(teleport_loc), GetLocationY(teleport_loc))
-    call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(teleport_loc), GetLocationY(teleport_loc))
-    call RemoveLocation(teleport_loc)
-    set teleport_loc = null
   else
     call CaptainGoHome()
-    call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(home_location), GetLocationY(home_location))
+    set teleport_loc = GetTeleportLandPoint(home_location)
   endif
+  call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(teleport_loc), GetLocationY(teleport_loc))
+  call RemoveLocation(teleport_loc)
+  set teleport_loc = null
   set start_loc = null
   //if hero_loc != null then
   //call RemoveLocation( hero_loc )
@@ -76,13 +74,16 @@ function TeleportHome takes integer hn returns nothing
 endfunction
 
 function TeleportToLoc takes unit u, location l returns nothing
+  local location loc = GetTeleportLandPoint(l)
   set break_attack = attack_running
   set attack_running = false
   set teleporting = true
   call ClearCaptainTargets()
-  call CaptainAttack(GetLocationX(l), GetLocationY(l))
-  call UnitUseItemPoint(u, GetItemOfTypeOnUnit(tp_item, u), GetLocationX(l), GetLocationY(l))
+  call CaptainAttack(GetLocationX(loc), GetLocationY(loc))
+  call UnitUseItemPoint(u, GetItemOfTypeOnUnit(tp_item, u), GetLocationX(loc), GetLocationY(loc))
   call TQAddUnitJob(0.5, TELEPORT, 0, u)
+  call RemoveLocation(loc)
+  set loc = null
 endfunction
 
 function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothing
@@ -184,7 +185,7 @@ endfunction
 function MicroHeroJob takes integer hn returns nothing
   local real new_hp = 0.0
   local real teleportdistance = 0.0
-  local integer current_order = 0 
+  local integer current_order = 0
 
   call DisplayToAllJobDebug("MICRO_HERO Job start")
 
@@ -193,34 +194,34 @@ function MicroHeroJob takes integer hn returns nothing
     call CreateDebugTag("HERO: Healing Bug Fix Job", 10, hero_unit[hn], 4.00, 2.00)
     call RecycleGuardPosition(hero_unit[hn])
     call GroupRemoveUnit(unit_healing, hero_unit[hn])
-   endif
+  endif
   //
 
   set new_hp = GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) / GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE)
   set current_order = GetUnitCurrentOrder(hero_unit[hn])
 
   if UnitAlive(hero_unit[hn]) then
-    //  call DisplayToAll("MicroH Start")
-      if hero_dir[hn] != null then
-        call RemoveLocation(hero_dir[hn])
-      endif
-      //set hero_dir[hn] = GetSubtractionLoc_dd(GetUnitLoc(hero_unit[hn]), hero_loc[hn])
-      set hero_dir[hn] = hero_loc[hn]
-      set hero_loc[hn] = Location(GetUnitX(hero_unit[hn]), GetUnitY(hero_unit[hn]))
-      set hero_hp_loss[hn] = hero_hp[hn] - new_hp
-      set hero_hp[hn] = new_hp
-      call GetDensities(hero_loc[hn], ai_player, hero_radius)
-      set hero_enemy_density[hn] = enemy_density
-      call MoveLocation(hero_enemy_loc[hn], GetLocationX(enemy_density_loc), GetLocationY(enemy_density_loc))
-      set hero_ally_density[hn] = ally_density
-      call MoveLocation(hero_ally_loc[hn], GetLocationX(ally_density_loc), GetLocationY(ally_density_loc))
+  //  call DisplayToAll("MicroH Start")
+    if hero_dir[hn] != null then
+      call RemoveLocation(hero_dir[hn])
+    endif
+    //set hero_dir[hn] = GetSubtractionLoc_dd(GetUnitLoc(hero_unit[hn]), hero_loc[hn])
+    set hero_dir[hn] = hero_loc[hn]
+    set hero_loc[hn] = Location(GetUnitX(hero_unit[hn]), GetUnitY(hero_unit[hn]))
+    set hero_hp_loss[hn] = hero_hp[hn] - new_hp
+    set hero_hp[hn] = new_hp
+    call GetDensities(hero_loc[hn], ai_player, hero_radius)
+    set hero_enemy_density[hn] = enemy_density
+    call MoveLocation(hero_enemy_loc[hn], GetLocationX(enemy_density_loc), GetLocationY(enemy_density_loc))
+    set hero_ally_density[hn] = ally_density
+    call MoveLocation(hero_ally_loc[hn], GetLocationX(ally_density_loc), GetLocationY(ally_density_loc))
 
-      if not teleporting and current_order >= 852008 and current_order <= 852013 then
-        if GetItemTypeId(UnitItemInSlot(hero_unit[hn], current_order - 852008)) == old_id[tp_item] then
-          set teleporting = true
-          call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
-        endif
+    if not teleporting and current_order >= 852008 and current_order <= 852013 then
+      if GetItemTypeId(UnitItemInSlot(hero_unit[hn], current_order - 852008)) == old_id[tp_item] then
+        set teleporting = true
+        call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
       endif
+    endif
 
   //  call DisplayToAll("Hero Order: "+Int2Str(GetUnitCurrentOrder(hero_unit[hn])))
 
