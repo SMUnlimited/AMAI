@@ -5210,13 +5210,14 @@ function GetPlayerHeroStrengthMod takes player p returns integer
   local group g = CreateGroup()
   local unit u = null
   local integer sum = 0
+  local real handicap = GetPlayerStrengthHandicap(GetOwningPlayer(u))
   call GroupEnumUnitsOfPlayer(g, p, null)
   set g = SelectUnittype(g, UNIT_TYPE_HERO, true)
   set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set sum = sum + R2I(GetHeroStrength(u) * GetPlayerStrengthHandicap(GetOwningPlayer(u)) * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)))
+    set sum = sum + R2I(GetHeroStrength(u) * handicap * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)))
     call GroupRemoveUnit(g,u)
   endloop
   set sum = sum + GetPlayerHeroBonusStrength(p)
@@ -5266,14 +5267,18 @@ function GetPlayerStrength takes player p returns real
   local real sum = 0
 
   call GroupEnumUnitsOfPlayer(g, p, null)
+  set g = SelectUnittype(g, UNIT_TYPE_HERO, false)
+  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
+  set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitHidden(u) then
-      //call Trace("A Unit strength added: " + Int2Str(R2I(GetUnitStrength(u))))
-      set sum = sum + GetUnitStrength(u)
-    endif
+    //if not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitHidden(u) then
+    //call Trace("A Unit strength added: " + Int2Str(R2I(GetUnitStrength(u))))
+    set sum = sum + GetUnitStrength(u)
+    //endif
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
@@ -5338,13 +5343,16 @@ function GetPlayerAntiAirStrength takes player p returns integer
   local real sum = 0
 
   call GroupEnumUnitsOfPlayer(g, p, null)
+  set g = SelectUnittype(g, UNIT_TYPE_ATTACKS_FLYING, true)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
+  set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitHidden(u) then
-      set sum = sum + GetUnitStrength(u)
-    endif
+    //if IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitHidden(u) then
+    set sum = sum + GetUnitStrength(u)
+    //endif
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
@@ -5550,10 +5558,15 @@ function GetOwnStrength takes nothing returns integer
   local integer ghoul_num = 0
   local real airsum = 0
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
+  set g = SelectUnittype(g, UNIT_TYPE_HERO, false)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
+  set g = SelectByHidden(g, false)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitInGroup(u, unit_healing) and not IsUnitHidden(u) then
+    if UnitAlive(u) and not IsUnitInGroup(u, unit_healing) then // and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitInGroup(u, unit_healing) and not IsUnitHidden(u) then
+      set strength = GetUnitStrength(u)
       if GetUnitTypeId(u) == old_id[racial_ghoul] then
         if ghoul_num < max_ghouls then
           set sum = sum + GetUnitStrength(u)
