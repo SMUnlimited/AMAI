@@ -229,6 +229,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed GetPlayerHeroStrength BonusStrength always use ai_player
 - Fixed TeleportJob self circulation
 - Fixed first_expansion_chosen now should correctly expressed
+- Fixed IsTargetGood aggression error
 
 
 ## [3.2.2] - 2022-10-05
