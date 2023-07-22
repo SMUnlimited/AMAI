@@ -12376,12 +12376,12 @@ endfunction
 function LoadSkills takes integer sa, integer hn, integer ta returns nothing
   local integer perc = GetRandomInt(0,major_hero_skill_value+minor_hero_skill_value+rare_hero_skill_value)
   local integer sk = 0	// is which of the 3 skill lines is chosen
-  
-	if perc <= rare_hero_skill_value then
-		set sk = HERO_SKILL_RARE
-	elseif perc <= minor_hero_skill_value+rare_hero_skill_value then
-		set sk = HERO_SKILL_MINOR
-	endif
+
+  if perc <= rare_hero_skill_value then
+    set sk = HERO_SKILL_RARE
+  elseif perc <= minor_hero_skill_value+rare_hero_skill_value then
+    set sk = HERO_SKILL_MINOR
+  endif
   set hero_skills[sa] = sk // set global variable so we can use the fact of knowning what skill was chosen in AMAI
   call LoadSkillsExt((sa-1)*3*HERO_LEVEL_NUMBER + sk*HERO_LEVEL_NUMBER + (hn-1)*9*HERO_LEVEL_NUMBER)
   call StoreSkills(ta)
@@ -12399,15 +12399,15 @@ endfunction
 //============================================================================
 function HeroHealingBugFix takes nothing returns nothing
   local integer i = 1
-    loop
-      exitwhen i > 3
-      if HeroBugFixHealthCheck(i) then
-        call Trace("HERO: Healing Bug Fix")
-        call RecycleGuardPosition(hero_unit[i])
-        call GroupRemoveUnit(unit_healing, hero_unit[i])
-      endif
-      set i = i + 1
-    endloop
+  loop
+    exitwhen i > 3
+    if HeroBugFixHealthCheck(i) then
+      call Trace("HERO: Healing Bug Fix")
+      call RecycleGuardPosition(hero_unit[i])
+      call GroupRemoveUnit(unit_healing, hero_unit[i])
+    endif
+    set i = i + 1
+  endloop
 endfunction
 
 // Returns a boolean if it should only attack creeps
@@ -12457,36 +12457,41 @@ function GetArmyHealthState takes nothing returns real
   set small_healing_count = 0
   set ward_cast = false
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
+  set g = SelectByHidden(g, false)
+  set g = SelectByIllusion(g, false)
+  set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
     if GetUnitTypeId(u) == 'ohwd' then
       set ward_cast = true
     endif
-    if UnitAlive(u) and not (IsUnitHidden(u) or IsUnitType(u, UNIT_TYPE_PEON) or IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitIllusion(u)) then
-      set uhs = GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)
-      if IsUnitType(u, UNIT_TYPE_MECHANICAL) or IsUnitType(u, UNIT_TYPE_SUMMONED) then
-        set health_sum = health_sum + 1 // Because is not currently handled by healing and we don't want army to run away if only 1 human unit is hurt
-        set uhs = 1
-      else
-        set health_sum = health_sum + uhs
-      endif
-      set count = count + 1
-      set hid = GetHealerId(GetUnitTypeId(u))
-      if hid != -1 and GetUnitState(u, UNIT_STATE_MANA) >= (healer_mana_cost[hid] * 2) / 3 and ((healer_upg_id[hid] == 0) or (GetUpgradeLevel(healer_upg_id[hid]) >= healer_upg_level[hid])) then
-        call GroupAddUnit(healer_group, u)
-      endif
-      if uhs < 0.5 then
-        call GroupAddUnit(urgent_healing_group, u)
-        set urgent_healing_count = urgent_healing_count + 1
-      elseif uhs < 0.75 then
-        call GroupAddUnit(medium_healing_group, u)
-        set medium_healing_count = medium_healing_count + 1
-      elseif uhs < 1 then
-        call GroupAddUnit(small_healing_group, u)
-        set small_healing_count = small_healing_count + 1
-      endif
+    //if UnitAlive(u) and not (IsUnitHidden(u) or IsUnitType(u, UNIT_TYPE_PEON) or IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitIllusion(u)) then
+    set uhs = GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)
+    if IsUnitType(u, UNIT_TYPE_MECHANICAL) or IsUnitType(u, UNIT_TYPE_SUMMONED) then
+      set health_sum = health_sum + 1 // Because is not currently handled by healing and we don't want army to run away if only 1 human unit is hurt
+      set uhs = 1
+    else
+      set health_sum = health_sum + uhs
     endif
+    set count = count + 1
+    set hid = GetHealerId(GetUnitTypeId(u))
+    if hid != -1 and GetUnitState(u, UNIT_STATE_MANA) >= (healer_mana_cost[hid] * 2) / 3 and ((healer_upg_id[hid] == 0) or (GetUpgradeLevel(healer_upg_id[hid]) >= healer_upg_level[hid])) then
+      call GroupAddUnit(healer_group, u)
+    endif
+    if uhs < 0.5 then
+      call GroupAddUnit(urgent_healing_group, u)
+      set urgent_healing_count = urgent_healing_count + 1
+    elseif uhs < 0.75 then
+      call GroupAddUnit(medium_healing_group, u)
+      set medium_healing_count = medium_healing_count + 1
+    elseif uhs < 1 then
+      call GroupAddUnit(small_healing_group, u)
+      set small_healing_count = small_healing_count + 1
+    endif
+    //endif
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
@@ -12641,32 +12646,32 @@ endfunction
 // (AMAI) Universal attack sequence
 //============================================================================
 function universal_attack_sequence takes nothing returns nothing
-    local boolean needs_exp = false
-    local boolean has_siege = false
-    local integer ai_strength = GetOwnStrength()
-    local integer ai_antiair_strength = air_strength
-    local integer exp_strength = GetExpansionStrength()
+  local boolean needs_exp = false
+  local boolean has_siege = false
+  local integer ai_strength = GetOwnStrength()
+  local integer ai_antiair_strength = air_strength
+  local integer exp_strength = GetExpansionStrength()
 
-    if hero_unit[1] == null and ver_heroes and not desperation_assault then
-      call Sleep(sleep_multiplier)
-      return
-    endif
+  if hero_unit[1] == null and ver_heroes and not desperation_assault then
+    call Sleep(sleep_multiplier)
+    return
+  endif
 
-    if major_hero == null or not UnitAlive(major_hero) or not IsStandardUnit(major_hero) or (IsUnitType(major_hero, UNIT_TYPE_HERO) == false and ver_heroes) then
-      set major_hero = GetMajorHero()
-    endif
+  if major_hero == null or not UnitAlive(major_hero) or not IsStandardUnit(major_hero) or (IsUnitType(major_hero, UNIT_TYPE_HERO) == false and ver_heroes) then
+    set major_hero = GetMajorHero()
+  endif
 
-    set needs_exp        = take_exp and (ai_strength > exp_strength)
-    set has_siege = ai_strength > 60
-  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bsiege\b/
-    set has_siege        = has_siege or TownCountDone(%1) > 0
-  #ENDINCLUDE
+  set needs_exp        = take_exp and (ai_strength > exp_strength)
+  set has_siege = ai_strength > 60
+#INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bsiege\b/
+  set has_siege        = has_siege or TownCountDone(%1) > 0
+#ENDINCLUDE
 
-  call SingleMeleeAttackAM(needs_exp,has_siege,ai_strength)
-  set added_target_aggression = 0
-  set added_racial_aggression = 0
+call SingleMeleeAttackAM(needs_exp,has_siege,ai_strength)
+set added_target_aggression = 0
+set added_racial_aggression = 0
 
-    //call TeleportCaptain(GetLocationX(home_location), GetLocationY(home_location))
+  //call TeleportCaptain(GetLocationX(home_location), GetLocationY(home_location))
 
   loop
     exitwhen not teleporting
@@ -12701,79 +12706,79 @@ endfunction
 // (AMAI) Universal peon assignment
 //============================================================================
 function universal_peon_assignment takes nothing returns nothing
-    local integer T = TownWithMine()
-    local integer g = GetGold()
-    local integer w = GetWood()
-    local integer pwh = 0
-    local integer swh = 0
-    local real gdivw = I2R(g)/I2R(Max(w,1))
-    local integer i = T + 1
+  local integer T = TownWithMine()
+  local integer g = GetGold()
+  local integer w = GetWood()
+  local integer pwh = 0
+  local integer swh = 0
+  local real gdivw = I2R(g)/I2R(Max(w,1))
+  local integer i = T + 1
 
-    if T < 0 then
-      set T = 0
-      set i = 1
-    endif
+  if T < 0 then
+    set T = 0
+    set i = 1
+  endif
 
-    if g - w > 300 then
-      set pwh = 2
-    elseif g - w > 500 and w < 100 then
-      set pwh = 5
-    elseif g - w > 900 and w < 200 then
-      set pwh = 8
-    else
-      set pwh = 2
-    endif
+  if g - w > 300 then
+    set pwh = 2
+  elseif g - w > 500 and w < 100 then
+    set pwh = 5
+  elseif g - w > 900 and w < 200 then
+    set pwh = 8
+  else
+    set pwh = 2
+  endif
 
-    if w < 200 then
-      set swh = 6 - pwh
-    elseif gdivw < 0.5 then
-      set swh = 0
-    elseif gdivw < 0.8 then
-      set swh = Max(1 - pwh,0)
-    elseif gdivw < 1.1 then
-      set swh = Max(2 - pwh,0)
-    elseif gdivw < 1.4 then
-      set swh = Max(3 - pwh,0)
-    elseif gdivw < 1.7 then
-      set swh = Max(4 - pwh,0)
-    elseif gdivw < 2.0 then
-      set swh = Max(5 - pwh,0)
-    else
-      set swh = Max(6 - pwh,0)
-    endif
+  if w < 200 then
+    set swh = 6 - pwh
+  elseif gdivw < 0.5 then
+    set swh = 0
+  elseif gdivw < 0.8 then
+    set swh = Max(1 - pwh,0)
+  elseif gdivw < 1.1 then
+    set swh = Max(2 - pwh,0)
+  elseif gdivw < 1.4 then
+    set swh = Max(3 - pwh,0)
+  elseif gdivw < 1.7 then
+    set swh = Max(4 - pwh,0)
+  elseif gdivw < 2.0 then
+    set swh = Max(5 - pwh,0)
+  else
+    set swh = Max(6 - pwh,0)
+  endif
 
-    set swh = Max(swh - 4 * TownCountDone(neutral_shredder),0)
+  set swh = Max(swh - 4 * TownCountDone(neutral_shredder),0)
 
-    if towerrush and swh <= race_tower_peon then
-      set swh = race_tower_peon + 2
-    endif
+  if towerrush and swh <= race_tower_peon then
+    set swh = race_tower_peon + 2
+  endif
 
-    call ClearHarvestAI()
+  call ClearHarvestAI()
 
-    if (desperation_assault) then
-      return
-    endif
+  if (desperation_assault) then
+    return
+  endif
 
-    call HarvestGold(T,ver_optimal_gold - 1)
-    call HarvestWood(0,1)
-    call HarvestGold(T,1)
-    call HarvestWood(0,pwh)
-    call HarvestWood(0,swh)
+  call HarvestGold(T,ver_optimal_gold - 1)
+  call HarvestWood(0,1)
+  call HarvestGold(T,1)
+  call HarvestWood(0,pwh)
+  call HarvestWood(0,swh)
 
-    loop
-      //set i = i + 1
-      exitwhen i > Max(T + 3,TownCountDone(racial_expansion))
-      if T != i and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then
-        if gdivw < 3.0 or g < 300 then
-          call HarvestGold(i,ver_optimal_gold)
-        else
-          call HarvestGold(i,ver_optimal_gold - 2)
-        endif
+  loop
+    //set i = i + 1
+    exitwhen i > Max(T + 3,TownCountDone(racial_expansion))
+    if T != i and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then
+      if gdivw < 3.0 or g < 300 then
+        call HarvestGold(i,ver_optimal_gold)
+      else
+        call HarvestGold(i,ver_optimal_gold - 2)
       endif
-      set i = i + 1
-    endloop
+    endif
+    set i = i + 1
+  endloop
 
-    call HarvestWood(0,20)
+  call HarvestWood(0,20)
 endfunction
 
 //============================================================================
