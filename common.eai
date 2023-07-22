@@ -3288,6 +3288,34 @@ function GetLocationBetweenUnits takes unit u1, unit u2, real d returns location
 endfunction
 
 //============================================================================
+function GetTeleportLandPoint takes location l returns location
+  local group g = CreateGroup()
+  local unit u = null
+  local real x = 0
+  local real y = 0
+  call GroupEnumUnitsInRange(g, GetLocationX(l), GetLocationY(l), 900, null)
+  call RemoveLocation(teleportloc)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null  //Find a enemy unit , land to unit loc , prevent army land to hall , cannot expand
+    if IsPlayerEnemy(ai_player,GetOwningPlayer(u)) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitInvisible(u, ai_player) and not IsUnitHidden(u) then
+      set x = GetUnitX(u)
+      set y = GetUnitY(u)
+      set teleportloc = Location(x,y)
+      set u = null
+      call DestroyGroup(g)
+      set g = null
+      return Location(x,y)
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set teleportloc = Location(GetLocationX(l), GetLocationY(l))
+  return Location(GetLocationX(l), GetLocationY(l))
+endfunction
+
+//============================================================================
 function GetNearestEnemyToLoc_k takes location l returns player
   local integer i = 0
   local integer min_p = 30
@@ -5722,6 +5750,7 @@ function MultipleMinefix takes nothing returns boolean
   if TownThreatened() or not hero_built[1] or (GetGold() < 600 and GetWood() < 400) or (not race_manual_loading and not race_uses_mine_expansion) or (race_manual_loading and TownCount(race_manual_loading_mine) > 1) or (race_uses_mine_expansion and TownCount(racial_expansion) > 1) then
     return b  //no first hero priority build army , human and orc just harvest
   endif
+  call Trace("Check Multiple Mine")
   set g = CreateGroup()
   call GroupEnumUnitsInRangeOfLoc(g, home_location, 1500, null)
   set g = SelectById(g, old_id[GOLD_MINE], true)
@@ -5806,7 +5835,7 @@ function AddWaterExpansion takes unit u returns nothing
 endfunction
 
 //==============================================================
-function RemoveExpansion takes unit u returns nothing
+function RemoveExpansion takes nothing returns nothing
   local integer i = 0
   loop
     exitwhen i >= expansion_list_length
@@ -9998,7 +10027,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   local unit    peon = null
   local integer gold_cost = 0
   local integer wood_cost = 0
-  local group g = null
+  local group   g = null
 
   if countdone >= qty then
     return BUILT_ALL
@@ -10007,13 +10036,13 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     return BUILT_SOME
   endif
 
-  if CheckExpansionTaken(current_expansion) then
-    set current_expansion = null
-  endif
   if first_town_mine > 0 then
     if MultipleMinefix() then
       return BUILT_ALL
     endif
+  endif
+  if CheckExpansionTaken(current_expansion) then
+    set current_expansion = null
   endif
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Taken Checked")
 
