@@ -131,7 +131,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
 - function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency
+- ComputeFrontPoints and CheckFastExpansion just run once , this code no need repeated
 - TELEPORT will when the teleportation unit dies , send call CaptainGoHome() , no longer send teleportation unit GetUnitXY
+  - now can send distant unit go home , preventing death
 - All search the enemy function no longer use GetBJMaxPlayers() , now use enemy_force[i] , to reduce the number of cycles
 - Army track change
   - Army track CopyArmy no longer copy same integer , hopes it can improve efficiency
@@ -188,8 +190,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
   - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)，fix ROC ELF race_has_moonwells to true
   - Adjust UPG_BOMBS BuildAdvUpgr2 chance unitcount to 0.2 , Maximum to 35 , In the test, after building COPTER, the enemy has no AIR , the COPTER no research UPG_BOMBS not useful
+- debugging、chatting、add_tag、add_skill、fixedcomputername only need set globally(c.eai) , no need version secondary settings
 - AMAI VS AI
-   - BlizzardVAI.eai ai script file real race.txt 1% and 2%
+   - BlizzardVAI.eai ai script file read race.txt 1% and 2%
 
 ###Fixed
 - Fixed some translation errors
@@ -203,6 +206,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed part of set xxx = GetExpansionPeon() lack set xxx = GetExpansionPeon2() when xxx == null
 - Fixed a when AI have too many ally , game stuck or crashed
 - Fixed AMAI VS AI , AI cannot work
+- Fixed ver_neutral_hero_number initial value to 0 , than official AI cannot choose neutral hero
 - Fixed PickMeleeHero non VERSION_FROZEN_THRONE third hero num, now is i + 1
 - Fixed TeleportHome , Defeated ，CheckDefeated ，c_ally_total > 1 to c_ally_total > 0
 - Fixed RemoveFromOwnForce bug , i will set 0
@@ -221,6 +225,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed TFT ORC Strategy VersusHuman key building to Tauren Totem(Thank Slayer95 , Pull #123)
 - Fixed Ritual Dagger check(thank Slayer95)
 - Fixed QTLOOP sleep time < 0
+- Fixed GetPlayerHeroStrength BonusStrength always use ai_player
+- Fixed TeleportJob self circulation
+
 
 ## [3.2.2] - 2022-10-05
 
