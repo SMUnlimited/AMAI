@@ -78,6 +78,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Add item ORB_OF_FIRE(ofr2)
 - Add again item ORB_OF_LIGHTNING(olig)
 - Add SleepInCombatAM Maximum number of loop , to avoid when AI moveing army in large map , easily change target , but AI no go to the target(add variables mapattackdelayed)
+- Add GetTeleportLandPoint , AI use teleport , the army is land to hall , due to the terrain and trees , the army cannot expand , the code can help AI find a enemy unit , land to unit loc , due to enemy point is outside , wide terrain , the army can expand
 - Add new attack mode , on maps with more than 10 players , or big map , AI will first attack human players hall , to avoid china call 【内卷】 , like AI internal conflict , no attack human player
 - Add Ally Shopping , when BuyItem() return false , if item is HealingItem and buy_type is RACIAL_ITEM and AI have 1000 gold , then will go Random Ally's Random Shop Shopping
 - New job Item Expansion
@@ -126,7 +127,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency
 - ComputeFrontPoints and CheckFastExpansion just run once , this code no need repeated
 - TELEPORT will when the teleportation unit dies , send call CaptainGoHome() , no longer send teleportation unit GetUnitXY
-  - now can send distant unit go home , preventing death
+  - now can send distant unit go teleportloc , preventing death
 - All search the enemy function no longer use GetBJMaxPlayers() , now use enemy_force[i] , to reduce the number of cycles
 - Army track change
   - Army track CopyArmy no longer copy same integer , hopes it can improve efficiency
