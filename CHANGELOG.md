@@ -227,6 +227,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed QTLOOP sleep time < 0
 - Fixed GetPlayerHeroStrength BonusStrength always use ai_player
 - Fixed first_expansion_chosen now should correctly expressed
+- Fixed IsTargetGood aggression error
 
 
 ## [2.6.2] - 2022-09-04
