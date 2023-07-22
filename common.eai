@@ -5788,16 +5788,10 @@ function AddExpansion takes unit u, real d returns nothing
 
   set expansion_list[expansion_list_length] = u
   set expansion_dist[expansion_list_length] = d
-  if expansion_ancient[expansion_list_length] != null then
-    call RemoveLocation(expansion_ancient[expansion_list_length])
-  endif
   if race_ancient_expansion_available then
     set expansion_ancient[expansion_list_length] = GetBuildLocationInDistanceFromLoc_d(old_id[racial_expansion], GetUnitLoc(u), ver_creeps_attack_buildings_dist + 500)
   else
     set expansion_ancient[expansion_list_length] = null
-  endif
-  if expansion_creeps[expansion_list_length] != null then
-    call DestroyGroup(expansion_creeps[expansion_list_length])
   endif
   set expansion_creeps[expansion_list_length] = GetExpFoeGroup(u)  // group of the the creeps that guard this mine
   set expansion_list_length = expansion_list_length + 1
@@ -5807,11 +5801,35 @@ endfunction
 function AddWaterExpansion takes unit u returns nothing
   set water_expansion_list[water_expansion_list_length] = u
   call GroupAddUnit(water_expansion, u)
-  if water_expansion_creeps[water_expansion_list_length] != null then
-    call DestroyGroup(water_expansion_creeps[water_expansion_list_length])
-  endif
   set water_expansion_creeps[water_expansion_list_length] = GetExpFoeGroup(u)  // group of the the creeps that guard this mine
   set water_expansion_list_length = water_expansion_list_length + 1
+endfunction
+
+//==============================================================
+function RemoveExpansion takes unit u returns nothing
+  local integer i = 0
+  loop
+    exitwhen i >= expansion_list_length
+    set expansion_list[i] = null
+    set expansion_dist[i] = 0
+    if expansion_ancient[i] != null then
+      call RemoveLocation(expansion_ancient[i])
+      set expansion_ancient[i] = null
+    endif
+    call DestroyGroup(expansion_creeps[i])
+    set expansion_creeps[i] = null
+    set i = i + 1
+  endloop
+  set i = 0
+  loop
+    exitwhen i >= water_expansion_list_length
+    set water_expansion_list[i] = null
+    call DestroyGroup(water_expansion_creeps[i])
+    set water_expansion_creeps[i] = null
+    set i = i + 1
+  endloop
+  set expansion_list_length = 0
+  set water_expansion_list_length = 0
 endfunction
 
 //============================================================================
@@ -5918,6 +5936,9 @@ function MakeExpansionList takes nothing returns nothing
   //local integer groundid = 'ewsp'
   local real distance = 0
 
+  if expansion_list_length > 0 then  // excrete
+    call RemoveExpansion()
+  endif
   call GroupEnumUnitsOfType(g, "goldmine", null)
 //  call GroupRemoveUnit(g, current_expansion) // because quick expansion adds mine already
 
@@ -7328,10 +7349,6 @@ function PathingThread takes nothing returns nothing
 //  call PingFrontPoints()
   //set current_expansion = GetExpNearestMin()  // Rough guide to what first expansion should be
   call CheckAllNeutralsQuick() // Old system check
-  if expansion_list_length > 0 then  // excrete
-    set expansion_list_length = 0
-    set water_expansion_list_length = 0
-  endif
   call MakeExpansionList()
   set water_map = water_expansion_list_length >= expansion_list_length
   call ChooseExpansion()
