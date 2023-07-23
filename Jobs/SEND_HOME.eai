@@ -82,25 +82,16 @@ local unit otherhero = null
     call CreateDebugTag("SEND_HOME unit dead", 10, u, 3.00, 1.50)
     call GroupRemoveUnit(unit_healing, u)
     call TQAddUnitJob(2, RESET_GUARD_POSITION, p, u)
-    set nearshopunit = null
-    set otherhero = null
-    return  // end the unit job
   elseif GetUnitState(u, UNIT_STATE_LIFE) >= GetUnitState(u, UNIT_STATE_MAX_LIFE) * (I2R(p)/100) and GetUnitCurrentOrder(u) != OrderId("cannibalize") then
     call CreateDebugTag("SEND_HOME Healed", 10, u, 3.00, 1.50)
     call GroupRemoveUnit(unit_healing, u)
     call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
-    set nearshopunit = null
-    set otherhero = null
-    return  // end the unit job
   elseif racial_healing_item != 0 and GetItemNumberOnUnit(racial_healing_item, u) > 0 then
     call CreateDebugTag("Hero: Use healing item", 10, u, 3.00, 2.00)
     if GetItemInstantType(racial_healing_item) == ITEMTYPE_CONTINUOUS and DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) >= 1200 then
       call SendHomeMoveUnitToLoc(u,p,home_location)  // This should be required for all regenerative type healing items
       call TQAddUnitJob(Max(3,GetItemHealingTime(racial_healing_item)), SEND_HOME, p, u) // Have to add delay as continous healing items run out then
-      set nearshopunit = null
-      set otherhero = null
-      return
-    else  // ITEMTYPE_SUDDEN no need delay
+    else  // ITEMTYPE_SUDDEN just end job , if need send home , hero job will call again
       call CreateDebugTag("Hero: Use healing item , end Job", 10, u, 3.00, 1.50)
       call UnitUseItem(u, GetItemOfTypeOnUnit(racial_healing_item, u))
       call UnitUseItemTarget(u, GetItemOfTypeOnUnit(racial_healing_item, u), u)
@@ -108,9 +99,6 @@ local unit otherhero = null
         call UnitUseItem(u, GetItemOfTypeOnUnit(racial_mana_item, u))
       endif
       call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
-      set nearshopunit = null
-      set otherhero = null
-      return  // end the job , item is SUDDEN , if the hero need save , MICRO_HERO will call SEND_HOME on next time
     endif
   elseif otherhero != null then
     if GetSlotsFreeOnUnit(u) > 0 then  // prevent create on the ground
@@ -122,6 +110,7 @@ local unit otherhero = null
       call SendHomeMoveUnitToLoc(u,p,l)
       call RemoveLocation(l)
       set l = null
+      call TQAddUnitJob(4, SEND_HOME, p, u)
     else
       call CreateDebugTag("SEND_HOME Stop at Shop", 10, u, 3.00, 2.00)
       call IssueImmediateOrder(u, "stop")
@@ -130,9 +119,6 @@ local unit otherhero = null
         call IssueNeutralImmediateOrderById(ai_player, nearshopunit, old_id[racial_mana_item])
       endif
       call RecycleGuardPosition(u)
-      set nearshopunit = null
-      set otherhero = null
-      return  // end the job , prevent multi line operation
     endif
   else
     if DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) >= 1200 then
@@ -164,10 +150,10 @@ local unit otherhero = null
         call IssueImmediateOrder(u, "autoharvestlumber")
         call CreateDebugTag("SEND_HOME harvest lumber", 10, u, 3.00, 1.50)
       endif
+      call TQAddUnitJob(4, SEND_HOME, p, u)
     endif
     //call DisplayToAllJobDebug("SEND_HOME: JOB Finished!!!! ")
   endif
-  call TQAddUnitJob(4, SEND_HOME, p, u)
   set nearshopunit = null
   set otherhero = null
   set corpse = null
