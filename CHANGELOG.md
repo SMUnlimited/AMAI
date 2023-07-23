@@ -234,6 +234,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed first_expansion_chosen now should correctly expressed
 - Fixed IsTargetGood aggression error
 - Fixed SendHomeMoveUnitToLoc repeat run semd home Job
+- Fixed BUY_NEUTRAL_HERO JOB buying_unit GuardPosition not properly removed
 
 
 ## [3.2.2] - 2022-10-05
