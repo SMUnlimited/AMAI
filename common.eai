@@ -4282,7 +4282,7 @@ function GetMineNearLoc takes location l, real dist returns unit
     set g = SelectById(g, old_id[GOLD_MINE], true)
     set ru_mine = FirstOfGroup(g)
     call GroupRemoveUnit(g, ru_mine)
-    if FirstOfGroup(g) != null then  //have more mind
+    if FirstOfGroup(g) != null then  // have more mind
       set first_town_mine = 1
     endif
     if i == GOLD_MINE then
@@ -5386,6 +5386,7 @@ endfunction
 function GetLocationCreepStrength takes real x, real y, real radius returns integer
   local group g = CreateGroup()
   local real sum = 0
+  local real strength = 0
   local unit u = null
   local real airsum = 0
   set no_sleep = false
@@ -5395,9 +5396,10 @@ function GetLocationCreepStrength takes real x, real y, real radius returns inte
     exitwhen u == null
     if UnitAlive(u) and GetOwningPlayer(u) == Player(PLAYERAGGRESSIVE) and not IsUnitHidden(u) then
       //call Trace("Getting unit strength begin")
-      set sum = sum + GetUnitStrength(u)
+      set strength = GetUnitStrength(u)
+      set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
-        set airsum = airsum + GetUnitStrength(u)
+        set airsum = airsum + strength
       endif
       if not UnitCanSleep(u) then
         set no_sleep = true
@@ -5438,6 +5440,7 @@ endfunction
 function GetLocationNonCreepStrength takes real x, real y, real radius returns integer
   local group g = CreateGroup()
   local real sum = 0
+  local real strength = 0
   local unit u = null
   local real airsum = 0
   call GroupEnumUnitsInRange(g,x,y,radius,null)
@@ -5445,9 +5448,10 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
     set u = FirstOfGroup(g)
     exitwhen u == null
     if UnitAlive(u) and GetOwningPlayer(u) != Player(PLAYERAGGRESSIVE) and GetOwningPlayer(u) != Player(PLAYERPASSIVE) and IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and not IsUnitHidden(u) and IsUnitType(u,UNIT_TYPE_STRUCTURE) == false and IsUnitType(u,UNIT_TYPE_PEON) == false and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
-      set sum = sum + GetUnitStrength(u)
+      set strength = GetUnitStrength(u)
+      set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
-        set airsum = airsum + GetUnitStrength(u)
+        set airsum = airsum + strength
       endif
     endif
     call GroupRemoveUnit(g,u)
@@ -5505,6 +5509,7 @@ endfunction
 function GetLocationStrength takes real x, real y, real radius returns real
   local group g = CreateGroup()
   local real sum = 0
+  local real strength = 0
   local unit u = null
   local real airsum = 0
   call GroupEnumUnitsInRange(g,x,y,radius,null)
@@ -5512,9 +5517,10 @@ function GetLocationStrength takes real x, real y, real radius returns real
     set u = FirstOfGroup(g)
     exitwhen u == null
     if UnitAlive(u) and not IsUnitHidden(u) and IsUnitType(u,UNIT_TYPE_PEON) == false and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
-      set sum = sum + GetUnitStrength(u)
+      set strength = GetUnitStrength(u)
+      set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
-        set airsum = airsum + GetUnitStrength(u)
+        set airsum = airsum + strength
       endif
     endif
     call GroupRemoveUnit(g,u)
@@ -5980,7 +5986,7 @@ function MultipleMinefix takes nothing returns boolean
   set g = SelectByAlive(g, true)
   set u = FirstOfGroup(g)
   call GroupRemoveUnit(g, u)  //remove one mine
-  if FirstOfGroup(g) == null then
+  if FirstOfGroup(g) == null and first_town_mine == 1 then
     call DestroyGroup(g)
     set g = null
     set u = null
@@ -7946,6 +7952,32 @@ function cmd_loop takes nothing returns nothing
 
 endfunction
 
+function CheckPeon takes nothing returns nothing
+  local group g = CreateGroup()
+  local unit u = null
+  local integer i = 0
+  if race_manual_loading or race_uses_mine_expansion then
+    call GroupEnumUnitsOfPlayer(g, ai_player, null)
+    set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
+    set g = SelectByAlive(g, true)
+    set g = SelectByHidden(g, false)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      if GetUnitCurrentOrder(u) == OrderId("harvest") or IsUnitLoaded(u) then
+        set i = i + 1
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+    if i == 0 then
+      set first_town_mine = 2
+    endif
+  endif
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+endfunction
+
 //===========================================================================
 function InitTownBuilt takes nothing returns nothing
   local integer i = 1
@@ -7958,6 +7990,9 @@ function InitTownBuilt takes nothing returns nothing
   set own_town_loc[0] = Location(GetLocationX(home_location), GetLocationY(home_location))
   set own_town_dist[0] = 0
   set own_town_mine[0] = GetMineNearLoc(home_location, 1500)
+  if first_town_mine == 0 then
+    call CheckPeon()  // now home_location distance 1500 just one mine , but old version some map UD and ELF cannot harvest , use mode two
+  endif
 endfunction
 
 //============================================================================
@@ -8726,11 +8761,11 @@ function finish_strategy_change takes nothing returns nothing
   loop
     set sum = sum + rp_strat[rp_strat_sort[i]]
     if strategy_roll <= sum then
-	  //if rp_strat[rp_strat_sort[i]] / Max(rp_strat[strategy], 1) > strategy_change_threshold then
-		set strategy = rp_strat_sort[i]
-		set chosen_strategy = strategy
-		call SetChatVar("Strategy", GetCurrentStrategyName())
-	  //endif
+      //if rp_strat[rp_strat_sort[i]] / Max(rp_strat[strategy], 1) > strategy_change_threshold then
+      set strategy = rp_strat_sort[i]
+      set chosen_strategy = strategy
+      call SetChatVar("Strategy", GetCurrentStrategyName())
+      //endif
       return
     endif
     set i = i + 1
@@ -8907,7 +8942,7 @@ function GetMinesHarvested takes nothing returns integer
   if race_manual_loading then
     set mine = race_manual_loading_mine
   endif
-  if first_town_mine > 0 then  //home_location have multiple mine
+  if first_town_mine == 1 then  //home_location have multiple mine
     set twm = TownCountDone(mine)
     set i = twm
   endif
@@ -10291,7 +10326,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     return BUILT_SOME
   endif
 
-  if first_town_mine > 0 then
+  if first_town_mine == 1 then
     if MultipleMinefix() then
       return BUILT_ALL
     endif
@@ -10615,7 +10650,7 @@ function BuildPeons takes integer number returns nothing
       set number = number + 2
     endif
   endif
-  if first_town_mine > 0 and not towerrush then  // startloc have more mine compensate
+  if first_town_mine == 1 and not towerrush then  // startloc have more mine compensate
     if not race_manual_loading and not race_uses_mine_expansion and not race_has_ghouls then
       set number = number + 3
     endif
@@ -10706,7 +10741,7 @@ if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(
   endif
 endif
 
-if first_town_mine > 0 and (race_uses_mine_expansion or race_manual_loading) then  //home_location have multiple mine , fix GetMinesOwned bug(ELF and UD)
+if first_town_mine == 1 and (race_uses_mine_expansion or race_manual_loading) then  //home_location have multiple mine , fix GetMinesOwned bug(ELF and UD)
   if race_manual_loading then
     set i = race_manual_loading_mine
   endif
