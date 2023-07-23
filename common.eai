@@ -5742,7 +5742,7 @@ function MultipleMinefix takes nothing returns boolean
   call GroupEnumUnitsInRangeOfLoc(g, home_location, 1500, null)
   set g = SelectById(g, old_id[GOLD_MINE], true)
   set g = SelectByAlive(g, true)
-  if BlzGroupGetSize(g) < 2 then
+  if BlzGroupGetSize(g) < 2 and first_town_mine == 1 then
     call DestroyGroup(g)
     set g = null
     set u = null
@@ -5913,8 +5913,8 @@ loop
       set seconddistance = distance
       set ru_exp[1] = u
     endif
-    call GroupRemoveUnit(g, u)
   endif
+  call GroupRemoveUnit(g, u)
 endloop
 call DestroyGroup(g)
 set g = null
@@ -7707,6 +7707,32 @@ function cmd_loop takes nothing returns nothing
 
 endfunction
 
+function CheckPeon takes nothing returns nothing
+  local group g = CreateGroup()
+  local unit u = null
+  local integer i = 0
+  if race_manual_loading or race_uses_mine_expansion then
+    call GroupEnumUnitsOfPlayer(g, ai_player, null)
+    set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
+    set g = SelectByAlive(g, true)
+    set g = SelectByHidden(g, false)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      if GetUnitCurrentOrder(u) == OrderId("harvest") or IsUnitLoaded(u) then
+        set i = i + 1
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+    if i == 0 then
+      set first_town_mine = 2
+    endif
+  endif
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+endfunction
+
 //===========================================================================
 function InitTownBuilt takes nothing returns nothing
   local integer i = 1
@@ -7719,6 +7745,9 @@ function InitTownBuilt takes nothing returns nothing
   set own_town_loc[0] = Location(GetLocationX(home_location), GetLocationY(home_location))
   set own_town_dist[0] = 0
   set own_town_mine[0] = GetMineNearLoc(home_location, 1500)
+  if first_town_mine == 0 then
+    call CheckPeon()  // now home_location distance 1500 just one mine , but old version some map UD and ELF cannot harvest , use mode two
+  endif
 endfunction
 
 //============================================================================
@@ -8635,7 +8664,7 @@ function GetMinesHarvested takes nothing returns integer
   if race_manual_loading then
     set mine = race_manual_loading_mine
   endif
-  if first_town_mine > 0 then  //home_location have multiple mine
+  if first_town_mine == 1 then  //home_location have multiple mine
     set twm = TownCountDone(mine)
     set i = twm
   endif
@@ -10019,7 +10048,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     return BUILT_SOME
   endif
 
-  if first_town_mine > 0 then
+  if first_town_mine == 1 then
     if MultipleMinefix() then
       return BUILT_ALL
     endif
@@ -10343,7 +10372,7 @@ function BuildPeons takes integer number returns nothing
       set number = number + 2
     endif
   endif
-  if first_town_mine > 0 and not towerrush then  // startloc have more mine compensate
+  if first_town_mine == 1 and not towerrush then  // startloc have more mine compensate
     if not race_manual_loading and not race_uses_mine_expansion and not race_has_ghouls then
       set number = number + 3
     endif
@@ -10434,7 +10463,7 @@ if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(
   endif
 endif
 
-if first_town_mine > 0 and (race_uses_mine_expansion or race_manual_loading) then  //home_location have multiple mine , fix GetMinesOwned bug(ELF and UD)
+if first_town_mine == 1 and (race_uses_mine_expansion or race_manual_loading) then  //home_location have multiple mine , fix GetMinesOwned bug(ELF and UD)
   if race_manual_loading then
     set i = race_manual_loading_mine
   endif
@@ -12254,7 +12283,6 @@ if not creeping_only then	// Do the normal attack sequence
     endif
   endif
 
-
   // coordinate with allies
   //
   if c_ally_total > 0 then
@@ -12670,9 +12698,9 @@ function universal_attack_sequence takes nothing returns nothing
   set has_siege        = has_siege or TownCountDone(%1) > 0
 #ENDINCLUDE
 
-call SingleMeleeAttackAM(needs_exp,has_siege,ai_strength)
-set added_target_aggression = 0
-set added_racial_aggression = 0
+  call SingleMeleeAttackAM(needs_exp,has_siege,ai_strength)
+  set added_target_aggression = 0
+  set added_racial_aggression = 0
 
   //call TeleportCaptain(GetLocationX(home_location), GetLocationY(home_location))
 
