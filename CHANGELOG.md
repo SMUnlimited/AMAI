@@ -70,6 +70,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - if home_location have more mine , first_town_mine will set 1 , human and orc own_town_mine[0] will return latest mine , ELF and UD no return goldmine , will return racemine
    - if home_location have more mine , AI EXPANSION will change , will first take home_location near mine , ELF will build new Town(max 2) or entangle, UD will build new Mine , human and orc just harvest
    - if home_location have more mine , GetMinesHarvested will set twm = TownCountDone(racial_expansion) , ELF's racial_expansion is race_manual_loading_mine, because TownWithMine() is wrong
+   - Even if home_location just one mine(Distance 1500) , old war3 version run some map , UD still cannot harvest , now use first_town_mine 2 mode fix
 - ELF now can use BR build to creepcamp(rushcreep) , and have one build on outside , hope can can reduce the chance of being stuck at home
    - CreepAttack Priority attack the tree current creep
    - Note: the build will let ELF build tree to later , but seems unable to improve , even if when tree quantity greater than 1 build the rushcreep tree
@@ -82,8 +83,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Add GetTeleportLandPoint , AI use teleport , the army is land to hall , due to the terrain and trees , the army cannot expand , the code can help AI find a enemy unit , land to unit loc , due to enemy point is outside , wide terrain , the army can expand
 - Add new attack mode , on maps with more than 10 players , or big map , AI will first attack human players hall , to avoid china call 【内卷】 , like AI internal conflict , no attack human player
 - Add Ally Shopping , when BuyItem() return false , if item is HealingItem and buy_type is RACIAL_ITEM and AI have 1000 gold , then will go Random Ally's Random Shop Shopping
-- SEND_HOME add termination mechanism , prevent infinite loops
-   - Creating item will judge SlotsFree , prevent create on the ground
 - New job Item Expansion
    - Now can configuration Item Expansion , like ORC can buy TINY_GREAT_HALL
    - This is not proactive expansion , but rather passive(no call ChooseExpansion())
@@ -141,6 +140,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Town track CopyTown no longer copy same integer , hopes it can improve efficiency
   - Town track SeedNewTownAtLoc town_num incremental now need TrackTown(town_num) return true
   - Reduced track track frequency
+- SEND_HOME Adjust exit JOB logic
+   - Creating item will judge SlotsFree , prevent create on the ground
 - MICRO_UNITS add DenyUnit
   - SaveUnit will save 'hphx' and racial_militia string
   - 'ohwd' and 'hphx' is UNIT_TYPE_SUMMONED , so now no exclude UNIT_TYPE_SUMMONED
