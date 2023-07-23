@@ -51,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - when TownCountDone(neutral_zeppelin) > 1 , just Remove follow_zeppelin Guard Position, help Job continue , other zeppelin help AI fix building blockage
 - When peon and current_expansion Distance too far , AI will use BuildMovePeonZeppelin
 - Add active_expansion , if mine outnumber player , AI will more aggressive take expansion (ExpansionBuilder)
+- NEUTRAL Build Healing add Healing_Ward(ohwd)
 - Mapsize adapter Reforged new size
 - RALLY_POINT reform to STRUCTURE_CONTROL , conteol all build
    - if ELF or no wood harvest race , now Adjust home_location nearby buildings , if buildings quantity exceeds 4 , buildunit no use BLOC_STD , will use BLOC_FRONT
@@ -81,6 +82,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Add GetTeleportLandPoint , AI use teleport , the army is land to hall , due to the terrain and trees , the army cannot expand , the code can help AI find a enemy unit , land to unit loc , due to enemy point is outside , wide terrain , the army can expand
 - Add new attack mode , on maps with more than 10 players , or big map , AI will first attack human players hall , to avoid china call 【内卷】 , like AI internal conflict , no attack human player
 - Add Ally Shopping , when BuyItem() return false , if item is HealingItem and buy_type is RACIAL_ITEM and AI have 1000 gold , then will go Random Ally's Random Shop Shopping
+- SEND_HOME add termination mechanism , prevent infinite loops
+   - Creating item will judge SlotsFree , prevent create on the ground
 - New job Item Expansion
    - Now can configuration Item Expansion , like ORC can buy TINY_GREAT_HALL
    - This is not proactive expansion , but rather passive(no call ChooseExpansion())
@@ -228,6 +231,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed GetPlayerHeroStrength BonusStrength always use ai_player
 - Fixed first_expansion_chosen now should correctly expressed
 - Fixed IsTargetGood aggression error
+- Fixed SendHomeMoveUnitToLoc repeat run semd home Job
 
 
 ## [2.6.2] - 2022-09-04
