@@ -7949,25 +7949,27 @@ function cmd_loop takes nothing returns nothing
 
 endfunction
 
+//===========================================================================
 function CheckPeon takes nothing returns nothing
   local group g = CreateGroup()
   local unit u = null
   local integer i = 0
-  if race_manual_loading or race_uses_mine_expansion then
-    call GroupEnumUnitsOfPlayer(g, ai_player, null)
-    set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
-    set g = SelectByAlive(g, true)
-    set g = SelectByHidden(g, false)
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null or i == 1
-      if GetUnitCurrentOrder(u) == OrderId("harvest") or IsUnitLoaded(u) then
-        set i = i + 1
-      endif
-      call GroupRemoveUnit(g, u)
-    endloop
-    if i == 0 then
-      set first_town_mine = 2
+  call GroupEnumUnitsInRangeOfLoc(g, home_location, 800, null)
+  set g = SelectByPlayer(g, ai_player, true)
+  set g = SelectByAlive(g, true)
+  set g = SelectByHidden(g, false)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null or i == 1
+    if GetUnitCurrentOrder(u) == OrderId("harvest") and GetUnitTypeId(u) != old_id[racial_ghoul] then
+      set i = 1
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  if i == 0 then
+    set first_town_mine = 2
+    if race_uses_mine_expansion then  // now need run HARVEST_CHECK job once more , because has already been run before , and UD no run success
+      call TQAddJob(2, HARVEST_CHECK, 0)
     endif
   endif
   call DestroyGroup(g)
@@ -7987,9 +7989,6 @@ function InitTownBuilt takes nothing returns nothing
   set own_town_loc[0] = Location(GetLocationX(home_location), GetLocationY(home_location))
   set own_town_dist[0] = 0
   set own_town_mine[0] = GetMineNearLoc(home_location, 1500)
-  if first_town_mine == 0 then  // first_town_mine == 1 use to expensive and all race harvest , 2 just use UD and ELF harvest
-    call CheckPeon()  // now home_location distance 1500 just one mine , but old war3 version some map UD and ELF cannot harvest , this can fix
-  endif
 endfunction
 
 //============================================================================
@@ -8448,7 +8447,9 @@ function AMAI takes code heroes, code peons, code attacks returns nothing
     //call Trace("attacks")
     call StartThread(function cmd_loop)
     //call Trace("cmd_loop")
-
+    if first_town_mine == 0 and (race_manual_loading or race_uses_mine_expansion) then  // first_town_mine == 1 use to expensive and all race harvest , 2 just use UD harvest
+      call CheckPeon()  // now home_location distance 1500 just one mine , but old war3 version some map UD cannot harvest , this can fix , ELF no need , because ELF always run harvest job
+    endif
 endfunction
 
 //============================================================================
@@ -8939,7 +8940,7 @@ function GetMinesHarvested takes nothing returns integer
   if race_manual_loading then
     set mine = race_manual_loading_mine
   endif
-  if first_town_mine == 1 then  //home_location have multiple mine
+  if first_town_mine > 0 then  //home_location have multiple mine or just one mine but UD and ELF cannot harvested
     set twm = TownCountDone(mine)
     set i = twm
   endif
