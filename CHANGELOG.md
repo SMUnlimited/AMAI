@@ -234,6 +234,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed IsTargetGood aggression error
 - Fixed SendHomeMoveUnitToLoc repeat run semd home Job
 - Fixed BUY_NEUTRAL_HERO JOB buying_unit GuardPosition not properly removed
+- Fixed BUY_NEUTRAL timeout no end job
 
 
 ## [2.6.2] - 2022-09-04
