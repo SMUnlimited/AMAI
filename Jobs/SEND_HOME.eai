@@ -4,21 +4,20 @@ unit ru_aunit = null            // used to SomeUnitHasHealingItem
 
 function SendHomeMoveUnitToLoc takes unit u, integer p, location l returns nothing
 local integer enemystrength = GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 800)
-		if enemystrength > 0 and not UnitInvis(u) then
-			call IssueImmediateOrder(u, "windwalk")
-		endif
-		if enemystrength > 0 and ((GetUnitState(u, UNIT_STATE_MANA) > 50 and GetUnitAbilityLevel(u, 'AEbl') == 1) or (GetUnitState(u, UNIT_STATE_MANA) > 10 and GetUnitAbilityLevel(u, 'AEbl') > 1)) then
-			call IssuePointOrder(u, "blink", GetLocationX(l), GetLocationY(l))
-			call IssuePointOrder(u, "move", GetLocationX(l), GetLocationY(l))
-		elseif GetUnitAbilityLevel(u, 'Ashm') > 0 and enemystrength > 0 and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6) and not IsUnitType(u, UNIT_TYPE_HERO) then
-			call CreateDebugTag("SEND_HOME: Night Hide", 10, u, 3.00, 1.50)
-			call IssueImmediateOrder(u, "ambush")
-		else
-			call CreateDebugTag("SEND_HOME: Moving to Location", 10, u, 3.00, 2.00)
-			call RemoveGuardPosition(u)
-			call IssuePointOrder(u, "move", GetLocationX(l), GetLocationY(l))
-		endif
-		call TQAddUnitJob(4, SEND_HOME, p, u)
+  if enemystrength > 0 and not UnitInvis(u) then
+    call IssueImmediateOrder(u, "windwalk")
+  endif
+  if enemystrength > 0 and ((GetUnitState(u, UNIT_STATE_MANA) > 50 and GetUnitAbilityLevel(u, 'AEbl') == 1) or (GetUnitState(u, UNIT_STATE_MANA) > 10 and GetUnitAbilityLevel(u, 'AEbl') > 1)) then
+    call IssuePointOrder(u, "blink", GetLocationX(l), GetLocationY(l))
+    call IssuePointOrder(u, "move", GetLocationX(l), GetLocationY(l))
+  elseif GetUnitAbilityLevel(u, 'Ashm') > 0 and enemystrength > 0 and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6) and not IsUnitType(u, UNIT_TYPE_HERO) then
+    call CreateDebugTag("SEND_HOME: Night Hide", 10, u, 3.00, 1.50)
+    call IssueImmediateOrder(u, "ambush")
+  else
+    call CreateDebugTag("SEND_HOME: Moving to Location", 10, u, 3.00, 2.00)
+    call RemoveGuardPosition(u)
+    call IssuePointOrder(u, "move", GetLocationX(l), GetLocationY(l))
+  endif
 endfunction
 
 function SomeUnitHasHealingItem takes unit u, integer rhi returns unit
@@ -83,24 +82,40 @@ local unit otherhero = null
     call CreateDebugTag("SEND_HOME unit dead", 10, u, 3.00, 1.50)
     call GroupRemoveUnit(unit_healing, u)
     call TQAddUnitJob(2, RESET_GUARD_POSITION, p, u)
+    set nearshopunit = null
+    set otherhero = null
+    return  // end the unit job
   elseif GetUnitState(u, UNIT_STATE_LIFE) >= GetUnitState(u, UNIT_STATE_MAX_LIFE) * (I2R(p)/100) and GetUnitCurrentOrder(u) != OrderId("cannibalize") then
     call CreateDebugTag("SEND_HOME Healed", 10, u, 3.00, 1.50)
     call GroupRemoveUnit(unit_healing, u)
     call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
+    set nearshopunit = null
+    set otherhero = null
+    return  // end the unit job
   elseif racial_healing_item != 0 and GetItemNumberOnUnit(racial_healing_item, u) > 0 then
+    call CreateDebugTag("Hero: Use healing item", 10, u, 3.00, 2.00)
     if GetItemInstantType(racial_healing_item) == ITEMTYPE_CONTINUOUS and DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) >= 1200 then
       call SendHomeMoveUnitToLoc(u,p,home_location)  // This should be required for all regenerative type healing items
-    else
+      call TQAddUnitJob(Max(3,GetItemHealingTime(racial_healing_item)), SEND_HOME, p, u) // Have to add delay as continous healing items run out then
+      set nearshopunit = null
+      set otherhero = null
+      return
+    else  // ITEMTYPE_SUDDEN no need delay
+      call CreateDebugTag("Hero: Use healing item , end Job", 10, u, 3.00, 1.50)
       call UnitUseItem(u, GetItemOfTypeOnUnit(racial_healing_item, u))
       call UnitUseItemTarget(u, GetItemOfTypeOnUnit(racial_healing_item, u), u)
       if racial_mana_item != 0 and GetUnitState(u, UNIT_STATE_MANA) < 100 and GetItemNumberOnUnit(racial_mana_item, u) > 0 then
         call UnitUseItem(u, GetItemOfTypeOnUnit(racial_mana_item, u))
       endif
-      call CreateDebugTag("Hero: Use healing item", 10, u, 3.00, 2.00)
-      call TQAddUnitJob(Max(3,GetItemHealingTime(racial_healing_item)), SEND_HOME, p, u) // Have to add delay as continous healing items run out then
+      call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
+      set nearshopunit = null
+      set otherhero = null
+      return  // end the job , item is SUDDEN , if the hero need save , MICRO_HERO will call SEND_HOME on next time
     endif
   elseif otherhero != null then
-    call UnitAddItem(u, GetItemOfTypeOnUnit(racial_healing_item, otherhero))
+    if GetSlotsFreeOnUnit(u) > 0 then  // prevent create on the ground
+      call UnitAddItem(u, GetItemOfTypeOnUnit(racial_healing_item, otherhero))
+    endif
   elseif nearshopunit != null and GetSlotsFreeOnUnit(u) > 0 and GetItemNumberOnUnit(racial_healing_item, u) <= 0 then
     if DistanceBetweenUnits(u, nearshopunit) >= buy_distance then
       set l = GetUnitLoc(nearshopunit)
@@ -115,7 +130,9 @@ local unit otherhero = null
         call IssueNeutralImmediateOrderById(ai_player, nearshopunit, old_id[racial_mana_item])
       endif
       call RecycleGuardPosition(u)
-      call TQAddUnitJob(4, SEND_HOME, p, u)
+      set nearshopunit = null
+      set otherhero = null
+      return  // end the job , prevent multi line operation
     endif
   else
     if DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) >= 1200 then
@@ -127,8 +144,15 @@ local unit otherhero = null
       set g = SelectUnittype(g,UNIT_TYPE_STRUCTURE,false)
       set g = SelectUnittype(g,UNIT_TYPE_DEAD,true)
       set corpse = FirstOfGroup(g)
+      call DestroyGroup(g)
+      set g = null
       if town_threatened then
+        call CreateDebugTag("SEND_HOME town_threatened , end job", 10, u, 3.00, 1.50)
         call RecycleGuardPosition(u)   // Gives unit control for only a little bit but dosn't remove from healing group
+        set nearshopunit = null
+        set otherhero = null
+        set corpse = null
+        return  // end the unit job , prevent multi line operation
       elseif GetUnitAbilityLevel(u, 'Ashm') > 0 and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6) and not IsUnitType(u, UNIT_TYPE_HERO) then
         call IssueImmediateOrder(u, "ambush")
         call CreateDebugTag("SEND_HOME hide", 10, u, 3.00, 1.50)
@@ -140,14 +164,12 @@ local unit otherhero = null
         call IssueImmediateOrder(u, "autoharvestlumber")
         call CreateDebugTag("SEND_HOME harvest lumber", 10, u, 3.00, 1.50)
       endif
-      call DestroyGroup(g)
-      set g = null
-      call TQAddUnitJob(4, SEND_HOME, p, u)
     endif
     //call DisplayToAllJobDebug("SEND_HOME: JOB Finished!!!! ")
   endif
+  call TQAddUnitJob(4, SEND_HOME, p, u)
   set nearshopunit = null
-  set corpse = null
   set otherhero = null
+  set corpse = null
 endfunction
 #ENDIF
