@@ -4044,22 +4044,19 @@ function GetMineNearLoc takes location l, real dist returns unit
       set first_town_mine = 1
     endif
     if i == GOLD_MINE then
-      if first_town_mine != 1 then
-        set ru_mine = FirstOfGroup(g)
-        call DestroyGroup(g)
-        set g = null
-        return ru_mine
+      set ru_mine = FirstOfGroup(g)
+      if first_town_mine == 1 then
+        loop
+          set u = FirstOfGroup(g)
+          exitwhen u == null
+          set i = R2I(DistanceBetweenPoints_kd(home_location,GetUnitLoc(u)))  // human and orc need find closest mine
+          if GetResourceAmount(u) > 0 and i <= distance then
+            set distance = i
+            set ru_mine = u
+          endif
+          call GroupRemoveUnit(g, u)
+        endloop
       endif
-      loop
-        set u = FirstOfGroup(g)
-        exitwhen u == null
-        set i = R2I(DistanceBetweenPoints_kd(home_location,GetUnitLoc(u)))  // human and orc need find closest mine
-        if GetResourceAmount(u) > 0 and i <= distance then
-          set distance = i
-          set ru_mine = u
-        endif
-        call GroupRemoveUnit(g, u)
-      endloop
     else
       call GroupClear(g)
       call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
@@ -7718,7 +7715,7 @@ function CheckPeon takes nothing returns nothing
     set g = SelectByHidden(g, false)
     loop
       set u = FirstOfGroup(g)
-      exitwhen u == null
+      exitwhen u == null or i == 1
       if GetUnitCurrentOrder(u) == OrderId("harvest") or IsUnitLoaded(u) then
         set i = i + 1
       endif
@@ -7745,8 +7742,8 @@ function InitTownBuilt takes nothing returns nothing
   set own_town_loc[0] = Location(GetLocationX(home_location), GetLocationY(home_location))
   set own_town_dist[0] = 0
   set own_town_mine[0] = GetMineNearLoc(home_location, 1500)
-  if first_town_mine == 0 then
-    call CheckPeon()  // now home_location distance 1500 just one mine , but old version some map UD and ELF cannot harvest , use mode two
+  if first_town_mine == 0 then  // first_town_mine == 1 use to expensive and all race harvest , 2 just use UD and ELF harvest
+    call CheckPeon()  // now home_location distance 1500 just one mine , but old war3 version some map UD and ELF cannot harvest , this can fix
   endif
 endfunction
 
