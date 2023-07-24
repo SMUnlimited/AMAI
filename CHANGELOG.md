@@ -70,13 +70,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Regular burrow disarm , fix ORC cannot disarm
    - New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
 - WISP_CHECK reform to HARVEST_CHECK , apply to all race
-   - if home_location have more mine (range 1500), then AI cannot harvestmine , no income , HARVEST_CHECK can help AI harvest
+   - if home_location have more mine (range 1500 or UD/ELF no harves), then AI cannot harvestmine , no income , HARVEST_CHECK can help AI harvest
    - if no more mine , the code will only apply to ELF , just WISP_CHECK , but if have more , will conteol other race peon harvest own_town_mine[0]
    - if no foodspace , ELF will take one harvest mine peon build , As long as the peon doesn't harvest mine , no matter what build , even if they were killed , have 1 food spare(army unit min fooduse general is 2 , so ai can build peon) or one peon free
-   - Fixed ELF game start build delay , now game start harves WISP is 4 , until have 9 WISP , use hero_built[1] definition game start
+   - Fixed ELF game start build delay , now game start harves WISP is 4 , until have 7 WISP , use hero_built[1] definition game start
 - new first_town_mine for check home_location mine
-   - GetMineNearLoc add the code , if the take location between home_location Distance < 500 , will check own_town_mine[0] , if own_town_mine[0] == null , check range 1500 all mine
-   - if home_location have more mine , first_town_mine will set 1 , human and orc own_town_mine[0] will return latest mine , ELF and UD no return goldmine , will return racemine
+   - if home_location have more mine(check range 1500 all goldmine , more than one) , first_town_mine will set 1 , human and orc own_town_mine[0] will return latest mine , ELF and UD will return racemine
    - if home_location have more mine , AI EXPANSION will change , will first take home_location near mine , ELF will build new Town(max 2) or entangle, UD will build new Mine , human and orc just harvest
    - if home_location have more mine , GetMinesHarvested will set twm = TownCountDone(racial_expansion) , ELF's racial_expansion is race_manual_loading_mine, because TownWithMine() is wrong
    - Even if home_location just one mine(Distance 1500) , old war3 version run some map , UD still cannot harvest , now use first_town_mine 2 mode fix
