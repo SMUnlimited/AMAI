@@ -811,7 +811,7 @@ globals
     location array own_town_loc
     real array own_town_dist
     unit array own_town_mine
-    real first_town_mine = 0
+    integer first_town_mine = 0
 
     integer attacking_ghouls = 0
     integer harvesting_ghouls = 0
@@ -4267,48 +4267,12 @@ function GetMineNearLoc takes location l, real dist returns unit
   local unit u = null
   local integer i = GOLD_MINE
   local real distance = 1500
-  if DistanceBetweenPoints(l , home_location) < 500 then  // when home_location gold mine more than 1 , ELF and UD may not harvest gold , so check home_location near all mine
+  if DistanceBetweenPoints(l , home_location) < 500 then
     if own_town_mine[0] != null and GetResourceAmount(own_town_mine[0]) > 0 then
-      call DestroyGroup(g)
-      set g = null
       return own_town_mine[0]
     endif
-    if race_manual_loading then
-      set i = race_manual_loading_mine
-    elseif race_uses_mine_expansion then
-      set i = racial_expansion
-    endif
-    call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
-    set g = SelectById(g, old_id[GOLD_MINE], true)
-    set ru_mine = FirstOfGroup(g)
-    call GroupRemoveUnit(g, ru_mine)
-    if FirstOfGroup(g) != null then  // have more mind
-      set first_town_mine = 1
-    endif
-    if i == GOLD_MINE then
-      if first_town_mine == 1 then
-        call GroupAddUnit(g, ru_mine)
-        loop
-          set u = FirstOfGroup(g)
-          exitwhen u == null
-          set i = R2I(DistanceBetweenPoints_kd(home_location,GetUnitLoc(u)))  // human and orc need find closest mine
-          if GetResourceAmount(u) > 0 and i <= distance then
-            set distance = i
-            set ru_mine = u
-          endif
-          call GroupRemoveUnit(g, u)
-        endloop
-      endif
-    else
-      call GroupClear(g)
-      call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
-      set g = SelectById(g, old_id[i], true)
-      set ru_mine = FirstOfGroup(g)
-    endif
-    call DestroyGroup(g)
-    set g = null
-    return ru_mine
   endif
+  set g = CreateGroup()
   call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
   //set g = SelectByAlive(g, true)
   loop
@@ -5973,7 +5937,7 @@ function MultipleMinefix takes nothing returns boolean
   local unit mine = null
   local unit u = null
   local boolean b = true
-  if TownThreatened() or not hero_built[1] or (GetGold() < 600 and GetWood() < 400) or (not race_manual_loading and not race_uses_mine_expansion) or (race_manual_loading and TownCount(race_manual_loading_mine) > 1) or (race_uses_mine_expansion and TownCount(racial_expansion) > 1) then
+  if town_threatened or not hero_built[1] or (GetGold() < 600 and GetWood() < 400) or (not race_manual_loading and not race_uses_mine_expansion) or (race_manual_loading and TownCount(race_manual_loading_mine) > 1) or (race_uses_mine_expansion and TownCount(racial_expansion) > 1) then
     return b  //no first hero priority build army , human and orc just harvest
   endif
   call Trace("Check Multiple Mine")
@@ -5983,14 +5947,23 @@ function MultipleMinefix takes nothing returns boolean
   set g = SelectByAlive(g, true)
   set u = FirstOfGroup(g)
   call GroupRemoveUnit(g, u)  //remove one mine
-  if FirstOfGroup(g) == null and first_town_mine == 1 then
-    call DestroyGroup(g)
-    set g = null
-    set u = null
-    set first_town_mine = 0  //StartLocation only one or no mine
-    return false
+  if (FirstOfGroup(g) != null and not race_manual_loading and not race_uses_mine_expansion) or u == null then
+    if FirstOfGroup(g) != null then
+      set mine = FirstOfGroup(g)
+      call GroupRemoveUnit(g, mine)  //remove two mine , prevent now still have one mine , but human and orc can return to normal
+    endif
+    if FirstOfGroup(g) == null then  // if u is null , first unit must null
+      call DestroyGroup(g)
+      set g = null
+      set u = null
+      if not race_manual_loading then
+        set first_town_mine = -1  //home_location only one or no mine , if not ELF , need end HARVEST CHECK job
+      endif
+      return false
+    endif
   endif
   call GroupAddUnit(g, u)
+  call GroupAddUnit(g, mine)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -6012,6 +5985,7 @@ function MultipleMinefix takes nothing returns boolean
     call IssueTargetOrder(FirstOfGroup(g), "entangle", mine)  // first entangle , no need build
   elseif c > 2 then  //prevent build too much TOWNHALL
     set current_expansion = mine  //expansion mine
+    set not_taken_expansion = mine
     set b = false
   endif
   call DestroyGroup(g)
@@ -7950,26 +7924,60 @@ function cmd_loop takes nothing returns nothing
 endfunction
 
 //===========================================================================
-function CheckPeon takes nothing returns nothing
+function InitCheckHarvest takes nothing returns nothing
   local group g = CreateGroup()
   local unit u = null
-  local integer i = 0
-  call GroupEnumUnitsInRangeOfLoc(g, home_location, 800, null)
-  set g = SelectByPlayer(g, ai_player, true)
-  set g = SelectByAlive(g, true)
-  set g = SelectByHidden(g, false)
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null or i == 1
-    if GetUnitCurrentOrder(u) == OrderId("harvest") and GetUnitTypeId(u) != old_id[racial_ghoul] then
-      set i = 1
+  local integer i = GOLD_MINE
+  local real distance = 0
+  if race_manual_loading then
+    set i = race_manual_loading_mine
+  elseif race_uses_mine_expansion then
+    set i = racial_expansion
+  endif
+  call GroupEnumUnitsInRangeOfLoc(g, home_location, 1500, null)
+  set g = SelectById(g, old_id[GOLD_MINE], true)
+  set u = FirstOfGroup(g)
+  call GroupRemoveUnit(g, u)
+  if FirstOfGroup(g) != null or (u != null and i != GOLD_MINE ) then  // have more mind , UD and ELF cannot harvest
+    set first_town_mine = 1  // mode one , fix all race harvest and expensive , expensive should prior take home_location mine
+    if i != GOLD_MINE then
+      call GroupAddUnit(g,u)  // add Group first mine
+      loop
+        set u = FirstOfGroup(g)
+        exitwhen u == null
+        set i = R2I(DistanceBetweenPoints_kd(home_location,GetUnitLoc(u)))  // human and orc need find closest mine
+        if GetResourceAmount(u) > 0 and i <= distance then
+          set distance = i
+          set own_town_mine[0] = u
+        endif
+        call GroupRemoveUnit(g, u)
+      endloop
+    else
+      call GroupClear(g)
+      call GroupEnumUnitsInRangeOfLoc(g, home_location, 1500, null)
+      set g = SelectById(g, old_id[i], true)
+      set own_town_mine[0] = FirstOfGroup(g)  // UD and ELF find race mine
     endif
-    call GroupRemoveUnit(g, u)
-  endloop
-  if i == 0 then
-    set first_town_mine = 2
-    if race_uses_mine_expansion then  // now need run HARVEST_CHECK job once more , because has already been run before , and UD no run success
-      call TQAddJob(2, HARVEST_CHECK, 0)
+    call TQAddJob(2, HARVEST_CHECK, 0)
+  elseif i != GOLD_MINE then  // some map home_location 1500 radius just one mine , but old war3 (maybe 1.24~1.28 , 1.36 no this bug) UD and ELF still cannot harvest(maybe need 2300 radius no more mine)
+    call GroupClear(g)
+    call GroupEnumUnitsInRangeOfLoc(g, home_location, 800, null)
+    set g = SelectByPlayer(g, ai_player, true)
+    set g = SelectByAlive(g, true)
+    set g = SelectByHidden(g, false)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null or i == -1
+      if GetUnitCurrentOrder(u) == OrderId("harvest") and GetUnitTypeId(u) != old_id[racial_ghoul] then
+        set i = -1
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+    if i != -1 then  // no peon harvest
+      set first_town_mine = 2  // mode two , fix UD harvest , because ELF always run HARVEST_CHECK job
+      call TQAddJob(2, HARVEST_CHECK, 0)  // now need run HARVEST_CHECK job once more , because has already been run before
+    elseif race_manual_loading then
+      call TQAddJob(20, HARVEST_CHECK, 0)
     endif
   endif
   call DestroyGroup(g)
@@ -8447,9 +8455,7 @@ function AMAI takes code heroes, code peons, code attacks returns nothing
     //call Trace("attacks")
     call StartThread(function cmd_loop)
     //call Trace("cmd_loop")
-    if first_town_mine == 0 and (race_manual_loading or race_uses_mine_expansion) then  // first_town_mine == 1 use to expensive and all race harvest , 2 just use UD harvest
-      call CheckPeon()  // now home_location distance 1500 just one mine , but old war3 version some map UD cannot harvest , this can fix , ELF no need , because ELF always run harvest job
-    endif
+    call InitCheckHarvest()  // now home_location distance 1500 have more mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix , ELF no need , because ELF always run harvest job
 endfunction
 
 //============================================================================
@@ -10739,7 +10745,7 @@ if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(
   endif
 endif
 
-if first_town_mine == 1 and (race_uses_mine_expansion or race_manual_loading) then  //home_location have multiple mine , fix GetMinesOwned bug(ELF and UD)
+if first_town_mine > 0 and (race_uses_mine_expansion or race_manual_loading) then  //home_location have multiple mine , fix GetMinesOwned bug(ELF and UD)
   if race_manual_loading then
     set i = race_manual_loading_mine
   endif
