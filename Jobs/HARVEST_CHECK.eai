@@ -15,7 +15,7 @@ function PeonMineCheck takes unit mine returns boolean
   endif
   if race_manual_loading then
     if TownCountDone(racial_peon) < 7 and not hero_built[1] then
-      set delaywisps = delaywisps - 1
+      set delaywisps = ver_optimal_gold - 2
     endif
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
     set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
@@ -50,24 +50,31 @@ function PeonMineCheck takes unit mine returns boolean
       call GroupTargetOrder(g, "harvest", mine)
     endif
   elseif race_uses_mine_expansion then
-    if TownCountDone(racial_peon) >= 5 then
-      set delaywisps = ver_optimal_gold
-    endif
+    set delaywisps = Min(ver_optimal_gold,TownCountDone(racial_peon))
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
     set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
     set g = SelectByAlive(g, true)
     set g = SelectByHidden(g, false)
-    set tempg = CreateGroup()  // just excrete
+    set tempg = CreateGroup()
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null or i == delaywisps
       if GetUnitCurrentOrder(u) == OrderId("harvest") and DistanceBetweenUnits(u,mine) < 225 then  // UD harvest gold max Distance is 221
         set i = i + 1
       elseif GetUnitCurrentOrder(u) == 0 and not IsUnitBuying(u) and not IsUnitInGroup(u, unit_zepplin_move) then
-        call IssueTargetOrder(u, "harvest", mine)
+        call GroupAddUnit(tempg,u)  // prevent the mine harvest peon more than 5
       endif
       call GroupRemoveUnit(g, u)
     endloop
+    if i < delaywisps then
+      loop
+        set u = FirstOfGroup(tempg)
+        exitwhen u == null or i == delaywisps
+        call IssueTargetOrder(u, "harvest", mine)
+        set i = i + 1
+        call GroupRemoveUnit(tempg, u)
+      endloop
+    endif
   else //human and orc
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
     set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
