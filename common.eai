@@ -7705,26 +7705,13 @@ function InitCheckHarvest takes nothing returns nothing
       set g = SelectById(g, old_id[i], true)
       set own_town_mine[0] = FirstOfGroup(g)  // UD and ELF find race mine
     endif
-    call TQAddJob(2, HARVEST_CHECK, 0)
+    if not race_manual_loading then
+      call TQAddJob(2, HARVEST_CHECK, 0)  // elf alway run HARVEST_CHECK job
+    endif
   elseif i != GOLD_MINE then  // some map home_location 1500 radius just one mine , but old war3 (maybe 1.24~1.28 , 1.36 no this bug) UD and ELF still cannot harvest(maybe need 2300 radius no more mine)
-    call GroupClear(g)
-    call GroupEnumUnitsInRangeOfLoc(g, home_location, 800, null)
-    set g = SelectByPlayer(g, ai_player, true)
-    set g = SelectByAlive(g, true)
-    set g = SelectByHidden(g, false)
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null or i == -1
-      if GetUnitCurrentOrder(u) == OrderId("harvest") and GetUnitTypeId(u) != old_id[racial_ghoul] then
-        set i = -1
-      endif
-      call GroupRemoveUnit(g, u)
-    endloop
-    if i != -1 then  // no peon harvest
-      set first_town_mine = 2  // mode two , fix UD harvest , because ELF always run HARVEST_CHECK job
-      call TQAddJob(2, HARVEST_CHECK, 0)  // now need run HARVEST_CHECK job once more , because has already been run before
-    elseif race_manual_loading then
-      call TQAddJob(10, HARVEST_CHECK, 0)
+    set first_town_mine = 2  // mode two , fix UD harvest , because ELF always run HARVEST_CHECK job
+    if race_uses_mine_expansion then
+      call TQAddJob(2, HARVEST_CHECK, 0)  // no peon harvest, need run HARVEST_CHECK job
     endif
   endif
   call DestroyGroup(g)
@@ -8169,7 +8156,9 @@ function AMAI takes code heroes, code peons, code attacks returns nothing
     //call Trace("attacks")
     call StartThread(function cmd_loop)
     //call Trace("cmd_loop")
-    call InitCheckHarvest()  // now home_location distance 1500 have more mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix , ELF no need , because ELF always run harvest job
+    if GetMinesOwned() > 1 then
+      call InitCheckHarvest()  // now home_location distance 1500 have more mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix , ELF no need , because ELF always run harvest job
+    endif
 endfunction
 
 //============================================================================
