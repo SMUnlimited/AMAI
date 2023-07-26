@@ -61,7 +61,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Regular burrow disarm , fix ORC cannot disarm
    - New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
 - WISP_CHECK reform to HARVEST_CHECK , apply to all race
-   - Initial running not at TQInitJobs , now at InitCheckHarvest
    - if home_location have more mine (range 1500 or UD/ELF no harves), then AI cannot harvestmine , no income , HARVEST_CHECK can help AI harvest
    - if no more mine , the code will only apply to ELF , just WISP_CHECK , but if have more , will conteol other race peon harvest own_town_mine[0]
    - if no foodspace , ELF will take one harvest mine peon build , As long as the peon doesn't harvest mine , no matter what build , even if they were killed , have 1 food spare(army unit min fooduse general is 2 , so ai can build peon) or one peon free
@@ -235,6 +234,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed SendHomeMoveUnitToLoc repeat run semd home Job
 - Fixed BUY_NEUTRAL_HERO JOB buying_unit GuardPosition not properly removed
 - Fixed BUY_NEUTRAL timeout no end job
+- Fixed HEALTH_FOUNTAIN fountain have enemies end job , prevent unit wander
+- Fixed MANA_FOUNTAIN fountain have enemies end job , prevent unit wander
 
 
 ## [2.6.2] - 2022-09-04
