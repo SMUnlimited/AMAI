@@ -153,10 +153,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - not take IsUnitLoaded , because ELF peon harvest gold
   - Improve command judgment
 - ANCIENT EXPANSION change
-  - add judgment , if cannot find creep unit , GroupEnumUnitsInRange distance 1500 search again , map like (4)Avalanche_LV , the creep and gold distance > 650
   - add judgment , when expansion location have unit , judgment the unit OwningPlayer , if player is AGGRESSIVE ,just set ancient_exp_state to 4 , else build
   - if no mine , set ancient_exp_state to 1 , and check all hall tree , use move tree expansion
-- StartExpansionAM added judgment search creep in mine range 1500 ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION
+- GetExpFoe added judgment search creep in mine range 1500 ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION , some map like (4)Avalanche_LV , the creep and gold distance > 650
 - Militia_Expansion now check water_expansion , no take water_expansion
 - Militia_Expansion and Militia_Expansion JOB now use Militia ability
   - now peon can shape shifting Militia
