@@ -6381,6 +6381,7 @@ endfunction
 function GetExpFoe takes nothing returns unit
   local group g = CopyGroup(current_expansion_creeps)
   local location l = GetUnitLoc(current_expansion)
+  local real i = expansion_radius
   //call Trace("Copy group")
   set g = SelectByAlive(g, true)
   set ru_exp[2] = GetNearestOfGroup(g, l)
@@ -6388,13 +6389,16 @@ function GetExpFoe takes nothing returns unit
     call RemoveLocation(l)
     set l = null
   endif
-  if ru_exp[2] == null then
+  loop
+    exitwhen ru_exp[2] != null
     call GroupClear(g)
-    call GroupEnumUnitsInRange(g, GetUnitX(current_expansion), GetUnitY(current_expansion), expansion_radius, null)
+    call GroupEnumUnitsInRange(g, GetUnitX(current_expansion), GetUnitY(current_expansion), i, null)
     set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
     set g = SelectByAlive(g, true)
     set ru_exp[2] = FirstOfGroup(g)
-  endif
+    exitwhen i >= 1500
+    set i = RMax(1500,expansion_radius)  // fix some map creeps to far away
+  endloop
   call DestroyGroup(g)
   set g = null
   //call Trace("Have a foe")
@@ -10024,7 +10028,6 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   local unit    peon = null
   local integer gold_cost = 0
   local integer wood_cost = 0
-  local group   g = null
 
   if countdone >= qty then
     return BUILT_ALL
@@ -10055,17 +10058,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   if GetExpFoe() != null then
     set take_exp = true
   else
-    set g = CreateGroup()
-    call GroupEnumUnitsInRange(g, GetUnitX(current_expansion), GetUnitY(current_expansion), 1500, null)  //Prevent some maps creep too far away
-    set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
-    set g = SelectByAlive(g, true)
-    if FirstOfGroup(g) != null then
-      set take_exp = true
-    else
-      set take_exp = false
-    endif
-    call DestroyGroup(g)
-    set g = null
+    set take_exp = false
   endif
 
   set gold_cost = GetUnitGoldCost2(hall)
@@ -12678,7 +12671,7 @@ function universal_attack_sequence takes nothing returns nothing
   endif
 
   set needs_exp        = take_exp and (ai_strength > exp_strength)
-  set has_siege = ai_strength > 60
+  set has_siege        = ai_strength > 60
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bsiege\b/
   set has_siege        = has_siege or TownCountDone(%1) > 0
 #ENDINCLUDE
