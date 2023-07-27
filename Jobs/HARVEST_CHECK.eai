@@ -1,12 +1,12 @@
 #IFDEF GLOBAL
   unit secondmine = null
-  unit savewisp = null
 #ELSE
 function PeonMineCheck takes unit mine returns boolean
   local group g = CreateGroup()
   local group tempg = null
   local location unitloc = GetUnitLoc(mine)
   local unit u = null
+  local unit savewisp = null
   local integer i = 0
   local integer delaywisps = ver_optimal_gold - 1
   call DisplayToAllJobDebug("HARVEST CHECK Job Start")
@@ -24,18 +24,16 @@ function PeonMineCheck takes unit mine returns boolean
       set u = FirstOfGroup(g)
       exitwhen u == null
       if IsUnitInTransport(u, mine) then
+        set savewisp = u
         set i = i + 1
         //call RecycleGuardPosition(u)
-        if savewisp == null or not UnitAlive(savewisp) then
-          set savewisp = u
-        endif
       endif
       call GroupRemoveUnit(g, u)
     endloop
     if FoodSpace() <= 0 and i >= 3 then  // no foodspace , no peon(at least keep 2 harvest mine) , need one harvest mine peon build Farms
       if TownCount(racial_peon) == TownCountDone(racial_peon) and TownCount(racial_peon) > 1 and TownCount(racial_peon) <= delaywisps then
         set delaywisps = 2
-        call IssueTargetOrder(mine, "unload", u)
+        call IssueTargetOrder(mine, "unload", savewisp)
       endif
     endif
     if i < delaywisps then
@@ -49,6 +47,7 @@ function PeonMineCheck takes unit mine returns boolean
       //call GroupRemoveGuardPositionInstant(g) // this gets wisps to come off the trees.
       call GroupTargetOrder(g, "harvest", mine)
     endif
+    set savewisp = null
   elseif race_uses_mine_expansion then
     set delaywisps = Min(ver_optimal_gold,TownCountDone(racial_peon))
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
