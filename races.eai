@@ -149,30 +149,30 @@ function initRacialUnits takes nothing returns nothing
     set racial_hall[$TIER$] = %1
 #ENDINCLUDE
 #ENDINCLUDE
-	// Basically if its not a undead type expansion method just make variable the first hall
-	if racial_expansion == 0 then
-		set racial_expansion = racial_hall[1]
-	endif
+    // Basically if its not a undead type expansion method just make variable the first hall
+    if racial_expansion == 0 then
+      set racial_expansion = racial_hall[1]
+    endif
 
 #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bmine\b/
     set racial_goldmine[minearray] = '%2'
-	set minearray = minearray + 1
+    set minearray = minearray + 1
 #ENDINCLUDE
 #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "NEUTRAL" and "%4" =~ /\bmine\b/
     set racial_goldmine[minearray] = '%2'
-	set minearray = minearray + 1
+    set minearray = minearray + 1
 #ENDINCLUDE
 
 #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bzigg\b/
-	set racial_zigg[ziggarray] = '%2'
-	set ziggarray = ziggarray + 1
+    set racial_zigg[ziggarray] = '%2'
+    set ziggarray = ziggarray + 1
 #ENDINCLUDE
 #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bfarm\b/
     set racial_farm = %1
-	if race_sell_ziggurats then
-		set racial_zigg[ziggarray] = old_id[racial_farm]
-		set ziggarray = ziggarray + 1
-	endif
+    if race_sell_ziggurats then
+      set racial_zigg[ziggarray] = old_id[racial_farm]
+      set ziggarray = ziggarray + 1
+    endif
 #ENDINCLUDE
 
 #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bshop\b/
@@ -358,7 +358,7 @@ function AMAI_PickMeleeHero takes nothing returns nothing
   // recalculate_heros occurs only if hero is a tavern hero but tavern is not pathable
   if not recalculate_heros and ver_neutral_heroes_available and neutral_available[NEUTRAL_TAVERN] then //and CanPathToLoc(home_location, l, PATHING_TYPE_WALKABILITY) > 0 then
     call InitNeutralSkills()
-  //call Trace("PickMeleeHero: Neutral Hero possible")
+    //call Trace("PickMeleeHero: Neutral Hero possible")
   else
     set first_choosable_hero = ver_neutral_hero_number
   endif
@@ -454,14 +454,14 @@ endfunction
 
 #INCLUDETABLE <$VER$\$RACE$\CommandBuilds.txt> #EFR
 function %1Build takes nothing returns nothing
-	local integer cc_%1 = 0
+  local integer cc_%1 = 0
 
-	set cc_%1 = TownCount(%2)
-	if cc_%1 >= bn_%1 then
-		set strategy = chosen_strategy
-	else
-		call BuildUnit( bn_%1, %2, 90  )
-	endif
+  set cc_%1 = TownCount(%2)
+  if cc_%1 >= bn_%1 then
+    set strategy = chosen_strategy
+  else
+    call BuildUnit( bn_%1, %2, 90  )
+  endif
 endfunction
 #ENDINCLUDE
 
@@ -622,7 +622,7 @@ endfunction
 //============================================================================
 function attack_sequence_all takes nothing returns nothing
 
-     call Trace("Starting Attack Thread Loop")
+  call Trace("Starting Attack Thread Loop")
 
   if ver_heroes then
   loop
@@ -652,7 +652,7 @@ function attack_sequence_all takes nothing returns nothing
     //call Trace("RACIAL ATTACK: Army Healed") 
 
     //call HeroHealingBugFix()     // To hopefully fix bugs with attack system as will keep them running
-  
+
     if ver_heroes then
       set creeping_only = AwaitMeleeHeroesAM()
     endif
@@ -674,7 +674,7 @@ function attack_sequence_all takes nothing returns nothing
         endloop
         call Trace("RACIAL ATTACK: exit Assigning Peons")
         call Sleep(2) // Seems this helps make sure we do get the ghouls instead of them going back to wood
-    //call FormGroupAM(2)
+        //call FormGroupAM(2)
       endif
 
       call Trace("RACIAL ATTACK: waiting for troops")
@@ -716,7 +716,11 @@ function peon_assignment takes nothing returns nothing
 
   if race_manual_loading then
     if TownHasMine(0) then
-      if not hero_built[1] then
+      if FoodSpace() <= 0 then  // no foodspace , no peon , need one harvest mine peon build Farms
+        if TownCount(racial_peon) == TownCountDone(racial_peon) and TownCount(racial_peon) > 1 and TownCount(racial_peon) <= 4 then
+          call HarvestWood(0, 2)
+        endif
+      elseif not hero_built[1] then
         if TownCountDone(racial_peon) < 7 then  // game just started
           call HarvestGold(0, 3)  // need more wisp HarvestWood , avoidance no wood cannot build and AI stop construction
         else
@@ -748,7 +752,7 @@ function peon_assignment_all takes nothing returns nothing
   //if race_has_power_build then
     //call TownHallCheck()
   //endif
-  
+
   if (race_has_ghouls and race_ghouls_attack) or race_no_wood_harvest or race_manual_loading then
     call peon_assignment()
   else
@@ -780,85 +784,85 @@ function build_sequence_all takes nothing returns nothing
   local boolean reset_counter = false
 
   call Trace("Starting Build Sequence Loop")
-    loop
-      exitwhen player_defeated
+  loop
+    exitwhen player_defeated
 
-      if recalculate_heros then
-        call AMAI_PickMeleeHero()
-        call set_skills()
-        set recalculate_heros = false
+    if recalculate_heros then
+      call AMAI_PickMeleeHero()
+      call set_skills()
+      set recalculate_heros = false
+    endif
+
+    //call Trace("BUILD SEQUENCE: Running Loop")
+    call peon_assignment_all()
+    //call Trace("BUILD SEQUENCE: peon_assignment")
+    if x > 12 then
+      set x = 0
+      //call Trace("BUILD SEQUENCE: StrategyChanger")
+      call StrategyChanger()
+      if strategy <= 49 then
+        set x = Min(Max(calculate_strat_timer() / 2, -120), -60) // If same strategy persists give more time
+        set counter_timer = 2
+        set reset_counter = true
       endif
+    endif
 
-      //call Trace("BUILD SEQUENCE: Running Loop")
-      call peon_assignment_all()
-      //call Trace("BUILD SEQUENCE: peon_assignment")
-      if x > 12 then
-        set x = 0
-        //call Trace("BUILD SEQUENCE: StrategyChanger")
-        call StrategyChanger()
-        if strategy <= 49 then
-            set x = Min(Max(calculate_strat_timer() / 2, -120), -60) // If same strategy persists give more time
-            set counter_timer = 2
-            set reset_counter = true
-        endif
+    if last_strategy != strategy then
+      set last_strategy = strategy
+      set reportStrategy = true
+      call SetRaceAggression()
+      if strategy <= 49 then
+        set x = calculate_strat_timer()
+        set counter_timer = R2I(RMin(x/2,-80)) // Don't allow counter to change so soon
+        set reset_counter = true
       endif
+      //call Trace("BUILD SEQUENCE: InitBuildarray")
+      call InitBuildArrayAM()
+      //call Trace("BUILD SEQUENCE: init_strategy")
+      call init_strategy()
+    endif
 
-      if last_strategy != strategy then
-        set last_strategy = strategy
+    if (x > counter_timer and counter_timer < 0) or reset_counter then
+      set chosen_counter = DetermineCounterForce()
+      if last_counter != chosen_counter and (debugging or GetRandomInt(1,5) == 1) then // Only randomly report counter changes to allies not every single time unless debug mode is on
         set reportStrategy = true
-        call SetRaceAggression()
-        if strategy <= 49 then
-            set x = calculate_strat_timer()
-            set counter_timer = R2I(RMin(x/2,-80)) // Don't allow counter to change so soon
-            set reset_counter = true
-        endif
-        //call Trace("BUILD SEQUENCE: InitBuildarray")
-        call InitBuildArrayAM()
-         //call Trace("BUILD SEQUENCE: init_strategy")
-        call init_strategy()
       endif
+      set set_counter = true
+      if reset_counter then
+        set reset_counter = false
+      else
+        set counter_timer = 2 // Once fired don't change again until strategy changes
+      endif
+    endif
 
-      if (x > counter_timer and counter_timer < 0) or reset_counter then
-        set chosen_counter = DetermineCounterForce()
-        if last_counter != chosen_counter and (debugging or GetRandomInt(1,5) == 1) then // Only randomly report counter changes to allies not every single time unless debug mode is on
-          set reportStrategy = true
-        endif
-        set set_counter = true
-        if reset_counter then
-          set reset_counter = false
-        else
-          set counter_timer = 2 // Once fired don't change again until strategy changes
-        endif
+    if reportStrategy then
+      set reportStrategy = false
+      call DisplayToAlliesImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
+      if not IsPlayerAlly(ai_player,GetLocalPlayer()) then
+        call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
       endif
+    endif
 
-      if reportStrategy then
-        set reportStrategy = false
-        call DisplayToAlliesImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
-        if not IsPlayerAlly(ai_player,GetLocalPlayer()) then
-          call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
-        endif
-      endif
+    set new_tier = GetTier()
+    if tier != new_tier then
+      set tier = new_tier
+      //call Trace("BUILD SEQUENCE: initbuildarray2")
+      call InitBuildArrayAM()
+    endif
 
-      set new_tier = GetTier()
-      if tier != new_tier then
-        set tier = new_tier
-        //call Trace("BUILD SEQUENCE: initbuildarray2")
-        call InitBuildArrayAM()
-      endif
-
-      //call Trace("BUILD SEQUENCE: build_sequence")
-      call Sleep(0.05)
-      call build_sequence()
-      if set_counter == true then 
-        call DynamicStrategySelector()
-        set set_counter = false
-      endif
-      call Sleep(3 * sleep_multiplier)
-      //call Trace("BUILD SEQUENCE: peon_assignment 2")
-      call peon_assignment_all()
-      call Sleep(3 * sleep_multiplier)
-      set x = x + Max(R2I(6*sleep_multiplier), 1)
-    endloop
+    //call Trace("BUILD SEQUENCE: build_sequence")
+    call Sleep(0.05)
+    call build_sequence()
+    if set_counter == true then
+      call DynamicStrategySelector()
+      set set_counter = false
+    endif
+    call Sleep(3 * sleep_multiplier)
+    //call Trace("BUILD SEQUENCE: peon_assignment 2")
+    call peon_assignment_all()
+    call Sleep(3 * sleep_multiplier)
+    set x = x + Max(R2I(6*sleep_multiplier), 1)
+  endloop
 endfunction
 
 
