@@ -70,6 +70,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Regular burrow disarm , fix ORC cannot disarm
    - New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
 - WISP_CHECK reform to HARVEST_CHECK , apply to all race
+   - ELF no longer use accurate quantity control , prevent any wips will go harvestmine , but mine no vacancies
    - if home_location have more mine (range 1500 or UD/ELF no harves), then AI cannot harvestmine , no income , HARVEST_CHECK can help AI harvest
    - if no more mine , the code will only apply to ELF , just WISP_CHECK , but if have more , will conteol other race peon harvest own_town_mine[0]
    - if no foodspace , ELF will take one harvest mine peon build , As long as the peon doesn't harvest mine , no matter what build , even if they were killed , have 1 food spare(army unit min fooduse general is 2 , so ai can build peon) or one peon free
@@ -128,7 +129,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will 'smoothly'
 - Build peon have compensate , when startloc have more mine
 - If race_manual_loading or race_uses_mine_expansion , GetMinesHarvested will return TownCountDone(mine)
-- Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1 peon HarvestWood , but ELF is 3 peon HarvestGold(to avoid conflict with HARVEST_CHECK job , 4 or 5 peon HarvestGold wiil causing one peon donot Harvest wood , so 4 and 5 Harvest gold hand to HARVEST_CHECK)
+- Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1 peon HarvestWood(ELF is 2)
 - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1))) , all build_sequence_XX no call BuildUnit(1, shop) , and build shop leave to the global_build_sequence
 - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
@@ -180,7 +181,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - if tier is 2+ or 1.5 , and TownCount(racial_lumber) is 0 , will set racial_lumber == 0 , avoiding the cannot build
 - SmallMapsAdd now check mapsize , prevent 1V1 use of big maps
 - CheckTownBuilt max_towns take Max(max_towns,TownCountDone(racial_expansion)) , town_built[i] take have town
-- SleepUntilTownDefended and SleepInCombatAM no running simultaneously , the code seem to be in conflict
+- SleepUntilTownDefended and SleepInCombatAM no longer running simultaneously , the code seem to be in conflict
 - Strategy additional Improvements
   - Remove SAC_PIT, UPG_SKEL_LIFE from Undead builds(thank Slayer95)
   - AddUnitToAntiXX Computational UpgradeLevel
@@ -237,6 +238,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed BUY_NEUTRAL timeout no end job
 - Fixed HEALTH_FOUNTAIN fountain have enemies end job , prevent unit wander
 - Fixed MANA_FOUNTAIN fountain have enemies end job , prevent unit wander
+- Fixed InitAMAIGameCache not properly flush AMAI_AI.w3v
+
 
 ## [3.2.2] - 2022-10-05
 
