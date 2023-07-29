@@ -42,15 +42,6 @@ pjass common.j Scripts\ROC\common.ai Scripts\ROC\undead.ai
 ECHO _____________________________
 pjass common.j Scripts\Blizzard.j
 ECHO _____________________________
-ECHO creating \Scripts\ROC\AMAI.mpq
-copy empty.mpq Scripts\ROC\AMAI.mpq
-AddToMPQ Scripts\ROC\AMAI.mpq Scripts\ROC\common.ai Scripts\common.ai Scripts\Blizzard.j Scripts\Blizzard.j
-AddToMPQ Scripts\ROC\AMAI.mpq Scripts\ROC\elf.ai Scripts\elf.ai
-AddToMPQ Scripts\ROC\AMAI.mpq Scripts\ROC\human.ai Scripts\human.ai
-AddToMPQ Scripts\ROC\AMAI.mpq Scripts\ROC\orc.ai Scripts\orc.ai
-AddToMPQ Scripts\ROC\AMAI.mpq Scripts\ROC\undead.ai Scripts\undead.ai
-copy Scripts\ROC\AMAI.mpq Scripts\AMAI.mpq
-ECHO \Scripts\ROC\AMAI.mpq created
 ECHO =============================
 ECHO Making AMAI finished
 pause
