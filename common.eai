@@ -554,9 +554,9 @@ globals
     integer action_numbers = 0
 
     real enemy_density = 0
-    location enemy_density_loc = null
+    location enemy_density_loc = Location(0,0)
     real ally_density = 0
-    location ally_density_loc = null
+    location ally_density_loc = Location(0,0)
 
     real nearest_enemy_range = 10000000
     player nearest_enemy = null
@@ -5041,20 +5041,19 @@ function GetDensities takes location l, player p, real r returns nothing
   local group g = CreateGroup()
   local unit u = null
   local real ur = 0
+  local real xe = 0
+  local real ye = 0
+  local real xa = 0
+  local real ya = 0
+  local real x = 0
+  local real y = 0
   local location ul = null
+  local location loc = null
 
   set enemy_density = 0
   set ally_density = 0
-  if ally_density_loc == null then
-    set ally_density_loc = Location(0,0)
-  else
-    call MoveLocation(ally_density_loc, 0,0)
-  endif
-  if enemy_density_loc == null then
-    set enemy_density_loc = Location(0,0)
-  else
-    call MoveLocation(enemy_density_loc, 0,0)
-  endif
+  call MoveLocation(ally_density_loc, 0,0)
+  call MoveLocation(enemy_density_loc, 0,0)
   call GroupEnumUnitsInRangeOfLoc(g, l, r, null)
   loop
     set u = FirstOfGroup(g)
@@ -5062,27 +5061,42 @@ function GetDensities takes location l, player p, real r returns nothing
     if UnitAlive(u) then
       set ul = GetUnitLoc(u)
       set ur = 1 - (DistanceBetweenPoints(ul, l) / r)
+      set loc = GetMultipleLoc(ul, ur)
+      set x = GetLocationX(loc)
+      set y = GetLocationY(loc)
       //if ur == 1 then
       if IsPlayerEnemy(p, GetOwningPlayer(u)) then
         set enemy_density = enemy_density + ur
-        set enemy_density_loc = GetSumLoc_dd(enemy_density_loc, GetMultipleLoc(ul, ur))
+        set xe = xe + x  // Prevent loc exceeding map range
+        set ye = ye + y
+        //set enemy_density_loc = GetSumLoc_dd(enemy_density_loc, GetMultipleLoc(ul, ur))
       elseif IsPlayerAlly(p, GetOwningPlayer(u)) then
         set ally_density = ally_density + ur
+        set xa = xa + x
+        set ya = ya + y
         set ally_density_loc = GetSumLoc_dd(ally_density_loc, GetMultipleLoc(ul, ur))
       endif
+      call RemoveLocation(loc)
       call RemoveLocation(ul)
     endif
     call GroupRemoveUnit(g, u)
   endloop
   if ally_density > 0 then
-    set ally_density_loc = GetDivisionLoc_d(ally_density_loc, ally_density)
+    set xa = xa / ally_density
+    set ya = ya / ally_density
+    call MoveLocation(ally_density_loc, xa,ya)
+    //set ally_density_loc = GetDivisionLoc_d(ally_density_loc, ally_density)
   endif
   if enemy_density > 0 then
-    set enemy_density_loc = GetDivisionLoc_d(enemy_density_loc, enemy_density)
+    set xe = xe / enemy_density
+    set ye = ye / enemy_density
+    call MoveLocation(enemy_density_loc, xe,ye)
+    //set enemy_density_loc = GetDivisionLoc_d(enemy_density_loc, enemy_density)
   endif
   call DestroyGroup(g)
   set g = null
   set ul = null
+  set loc = null
 endfunction
 
 //==========================================================================
