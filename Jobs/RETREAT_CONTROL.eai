@@ -36,6 +36,10 @@ function RetreatControlJob takes nothing returns nothing
   local integer num_units = 0
   local real ally_strength = 0
   local real enemy_strength = 0
+  local real xa = 0
+  local real ya = 0
+  local real xe = 0
+  local real ye = 0
 
   // local variables used to calculate roughly where the current enemy army is located at
   local integer ally_count = 0
@@ -131,8 +135,8 @@ endif
 
   call MoveLocation(last_enemy_loc, GetLocationX(enemy_loc), GetLocationY(enemy_loc))
   call MoveLocation(last_ally_loc, GetLocationX(ally_loc), GetLocationY(ally_loc))
-  call MoveLocation(enemy_loc, 0,0)
-  call MoveLocation(ally_loc, 0,0)
+  //call MoveLocation(enemy_loc, 0,0)
+  //call MoveLocation(ally_loc, 0,0)
 
   loop
     set u = FirstOfGroup(g)
@@ -147,11 +151,15 @@ endif
         if not IsUnitInGroup(u, unit_healing) then //and unit_life > RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) then
           set ally_sum = ally_sum + unit_strength
         endif
-        set ally_loc = GetSumLoc_dd(ally_loc, GetUnitLoc(u))
+        set xa = xa + GetUnitX(u)  // Prevent loc exceeding map range
+        set ya = ya + GetUnitY(u)
+        //set ally_loc = GetSumLoc_dd(ally_loc, GetUnitLoc(u))
         set ally_count = ally_count + 1
       elseif not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
         set enemy_sum = enemy_sum + unit_strength
-        set enemy_loc = GetSumLoc_dd(enemy_loc, GetUnitLoc(u))
+        set xe = xe + GetUnitX(u)
+        set ye = ye + GetUnitY(u)
+        //set enemy_loc = GetSumLoc_dd(enemy_loc, GetUnitLoc(u))
         set enemy_count = enemy_count + 1
       endif
     elseif GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and not IsUnitHidden(u) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
@@ -165,8 +173,14 @@ endif
   call DestroyGroup(g)
   set g = null
 
-  set enemy_loc = GetDivisionLoc_d(enemy_loc, I2R(Max(enemy_count, 1)))
-  set ally_loc = GetDivisionLoc_d(ally_loc, I2R(Max(ally_count, 1)))
+  set xe = xe / I2R(Max(enemy_count, 1))
+  set ye = ye / I2R(Max(enemy_count, 1))
+  set xa = xa / I2R(Max(ally_count, 1))
+  set ya = ya / I2R(Max(ally_count, 1))
+  call MoveLocation(enemy_loc, xe,ye)
+  call MoveLocation(ally_loc, xa,ya)
+  //set enemy_loc = GetDivisionLoc_d(enemy_loc, I2R(Max(enemy_count, 1)))
+  //set ally_loc = GetDivisionLoc_d(ally_loc, I2R(Max(ally_count, 1)))
 //  call SetCaptainHome(0, GetLocationX(ally_loc), GetLocationY(ally_loc))
 
   set enemy_strength_sum = enemy_sum
