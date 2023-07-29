@@ -38,7 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Strategy Choose Dialog now show translation Strategy name , no Num
    - Strategy name must consistent with file Strategy.txt name
    - Cannot find consistent name Strategy , Dialog will missing button
-   - Common.ai have new code help find cmd Strategy(even if missing button)
+   - Common.eai have new code help find cmd Strategy(even if missing button)
    - Strategy name button will identify ROC and TFT
    - Because search translation , now compile B.J need take more time(Poor code level)
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
@@ -74,9 +74,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - ELF now can use BR build to creepcamp(rushcreep) , and have one build on outside , hope can can reduce the chance of being stuck at home
    - CreepAttack Priority attack the tree current creep
    - Note: the build will let ELF build tree to later , but seems unable to improve , even if when tree quantity greater than 1 build the rushcreep tree
-- When BJ debugging is on , If the first human player is Observer, system will set all AI Alliance and share control with the Observer , that Observer can view the build construction location and the learning of hero skills
-   - Strategy report not send to the alliance Observer , to avoid repeated display
-   - Note: In fact , I would prefer the first human player (even not Observer) to directly control AI , convenient testing
 - Add item ORB_OF_FIRE(ofr2)
 - Add again item ORB_OF_LIGHTNING(olig)
 - Add SleepInCombatAM Maximum number of loop , to avoid when AI moveing army in large map , easily change target , but AI no go to the target(add variables mapattackdelayed)
@@ -189,7 +186,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
   - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)，fix ROC ELF race_has_moonwells to true
   - Adjust UPG_BOMBS BuildAdvUpgr2 chance unitcount to 0.2 , Maximum to 35 , In the test, after building COPTER, the enemy has no AIR , the COPTER no research UPG_BOMBS not useful
-- debugging、chatting、add_tag、add_skill、fixedcomputername only need set globally(c.eai) , no need version secondary settings
+- debugging , chatting , add_tag , add_skill , fixedcomputername only need set globally(c.eai) , no need GlobalSettings.txt secondary settings
+- Remove Duplicates ROC GlobalSettings.txt front_base_distance
 - Zoom
    - zoom now use CAMERA_FIELD_TARGET_DISTANCE form W3C , max is 3000 , min is 1650
    - Observer zoom now is 2500
