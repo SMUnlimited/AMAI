@@ -467,7 +467,9 @@ globals
     boolean water_map = false
     
     string array digit_map
-    
+
+    integer mapattackdelayed = 8  //used for the attack delay of the big map , prevent AI from losing targets when attacking in the big map
+
     integer array player_race
     integer array player_race_pref
     string array race_name
@@ -2360,7 +2362,9 @@ function InitMapSizeVars takes nothing returns nothing
   local real a = (x/1000)*(y/1000)
   call SetChatVarR("MapSizeX", x)
   call SetChatVarR("MapSizeY", y)
-  if a < 120 then
+  if a < 90 then
+    call SetChatVar("MapSize", "extrasmall")
+  elseif a < 120 then
     call SetChatVar("MapSize", "tiny")
   elseif a < 240 then
     call SetChatVar("MapSize", "small")
@@ -2368,8 +2372,16 @@ function InitMapSizeVars takes nothing returns nothing
     call SetChatVar("MapSize", "medium")
   elseif a < 540 then
     call SetChatVar("MapSize", "large")
-  else
+    set mapattackdelayed = 8 - difficulty
+  elseif a < 960 then
+    call SetChatVar("MapSize", "extralarge")
+    set mapattackdelayed = 7 - difficulty
+  elseif a < 2048 then
     call SetChatVar("MapSize", "huge")
+    set mapattackdelayed = 6 - difficulty
+  else
+    call SetChatVar("MapSize", "legendary")
+    set mapattackdelayed = 5 - difficulty
   endif
 endfunction
 
@@ -7922,7 +7934,7 @@ endfunction
 //============================================================================
 function SmallMapsAdd takes nothing returns nothing
   local integer i = 0
-  if GetPlayers() > 3 then
+  if GetPlayers() > 3 or mapattackdelayed != 8 then  // tiny small medium mapsize's mapattackdelayed not 8 , some 1V1 maybe use big map
     return
   endif
   loop
@@ -10472,7 +10484,7 @@ function SleepInCombatAM takes nothing returns nothing
         endloop
         //call Sleep(1)
         set count = count + 1
-        exitwhen count >= 8
+        exitwhen count >= mapattackdelayed
     endloop
 	call Trace("exit SleepInCombat")
 endfunction
@@ -11413,7 +11425,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
 		set isfleeing = false
 		call FormGroupAM(1)
 		call SleepUntilTownDefended(ai_strength)
-		call SleepInCombatAM()
+                //call SleepInCombatAM()  // Fix AI army Wandering
     endif
 
     call Trace("===Single Melee Attack===" )
@@ -12022,7 +12034,7 @@ function universal_attack_sequence takes nothing returns nothing
     set isfleeing = false
     call FormGroupAM(1)
     call SleepUntilTownDefended(GetOwnStrength())
-    call SleepInCombatAM()
+    //call SleepInCombatAM()  // Fix AI army Wandering
   elseif not towerrush and not ancient_expanding and not militia_expanding then
     call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
   endif
