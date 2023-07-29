@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 - New English taunts and messages created from generated AI.
+- Ability to perform expansions using items (jzy-chitong56)
+- Heroes will attempt to avoid/swap specific items from their inventory or when they already have a specific skill (jzy-chitong56)
+  - Can be modified via the ItemCheck.txt
 
 ### Changed
 - Chinese Translation improvements.
