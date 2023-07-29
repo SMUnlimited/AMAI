@@ -164,6 +164,9 @@ globals
     constant integer RACE_NUMBER = %row
 #ENDINCLUDE
 
+#INCLUDETABLE <$VER$\Races.txt>
+    string array %1_StrategyName
+#ENDINCLUDE
 #DEFINE $HEROLEVELNUM$ 0
 #INCLUDETABLE <$VER$\HeroLevels.txt>
 #DEFINE $HEROLEVELNUM$ %row
@@ -2921,6 +2924,29 @@ function InitTranslations takes nothing returns nothing
   call AddTranslation(lang, "%1", "%2", "%3")
   #ENDINCLUDE
 #ENDINCLUDE
+endfunction
+
+//============================================================================
+function InitStrategy takes nothing returns nothing
+#INCLUDETABLE <$VER$\Races.txt>
+#DEFINE $Race$ %1
+  #INCLUDETABLE <$VER$\$Race$\Strategy.txt> #EFR
+  set $Race$_StrategyName[#EVAL{%row-1}] = "%1"
+  #ENDINCLUDE
+#ENDINCLUDE
+endfunction
+
+function FindStrategy takes integer racenum , integer strategynum returns string
+  if own_race == R_ELF then
+    return ELF_StrategyName[strategynum]
+  elseif own_race == R_HUMAN then
+    return HUMAN_StrategyName[strategynum]
+  elseif own_race == R_ORC then
+    return ORC_StrategyName[strategynum]
+  elseif own_race == R_UNDEAD then
+    return UNDEAD_StrategyName[strategynum]
+  endif
+  return null
 endfunction
 
 //============================================================================
@@ -7261,6 +7287,8 @@ endfunction
 
 //============================================================================
 function cmd_misc takes integer cmd, integer data returns nothing
+  local integer i = 0
+  local string s = null
   if cmd == 50 then	// Triggering chat
     set chatting = not chatting
 
@@ -7281,11 +7309,20 @@ function cmd_misc takes integer cmd, integer data returns nothing
 
   elseif cmd == 70 then // change strategy
     if data < rp_strat_length then
-      set strategy = data
-      set chosen_strategy = strategy
-    else
-      call DisplayToAllies(invalid_strategy_number)
+      set s = FindStrategy(own_race,data)
+      loop
+        exitwhen i >= rp_strat_length
+        if strategy_name[i] == s then  //Find StrategyName
+          set strategy = i
+          set chosen_strategy = strategy
+          set s = null
+          return
+        endif
+        set i = i + 1
+      endloop
+      set s = null
     endif
+    call DisplayToAllies(invalid_strategy_number)
 
   elseif cmd == 71 then // change language
     if false then
