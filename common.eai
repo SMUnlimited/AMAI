@@ -6752,12 +6752,8 @@ function CheckFastExpansion takes nothing returns nothing
 endfunction
 
 //============================================================================
-function AddFrontPoint takes location l returns nothing
+function AddFrontPoint takes location l, integer groundid returns nothing
   local unit pathable = null
-  local integer groundid = 'ewsp'
-  if GetPlayerRace(ai_player) == RACE_NIGHTELF then
-    set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
-  endif
   set pathable = CreateUnit(Player(PLAYERPASSIVE), groundid, GetLocationX(l), GetLocationY(l), 270.00)
   if DistanceBetweenPoints_dk(GetUnitLoc(pathable), l) <= 200 then
     call CreateDebugTagLoc("Front Point Added", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
@@ -6783,7 +6779,10 @@ function ComputeFrontPoints takes nothing returns nothing
   local boolean array patherdone
   local location l = null
   local real distance = 0
-
+  local integer groundid = 'ewsp'
+  if GetPlayerRace(ai_player) == RACE_NIGHTELF then
+    set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
+  endif
   loop
     exitwhen i >= c_enemy_total
     set p = enemy_force[i]
@@ -6811,11 +6810,11 @@ function ComputeFrontPoints takes nothing returns nothing
             call RemoveUnit(u[i])
             set u[i] = null
             set patherdone[i] = true
-            call AddFrontPoint(Location(GetLocationX(l),GetLocationY(l)))
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, 90))
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, -90))
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, 80))
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, -80))
+            call AddFrontPoint(Location(GetLocationX(l),GetLocationY(l)),groundid)
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, 90),groundid)
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, -90),groundid)
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, 80),groundid)
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, -80),groundid)
           elseif GetUnitState(u[i], UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u[i]) == OrderId("stop") or GetUnitCurrentOrder(u[i]) != OrderId("move") then
             set patherdone[i] = true
             call RemoveUnit(u[i])
@@ -7345,9 +7344,9 @@ function CheckNeutral takes integer nn returns nothing
     set neutral_guarded[nn] = (GetNeutralGuard(nn) != null)
     set neutral_night_buy[nn] = CanCreepGuardsSleep(nn)
     // set neutral_night_buy[nn] = not no_sleep
-    if neutral_guarded[nn] then
-      call TQAddJob(30 * sleep_multiplier, NEUTRAL_GUARDED, nn)
-    endif
+    //if neutral_guarded[nn] then
+      //call TQAddJob(30 * sleep_multiplier, NEUTRAL_GUARDED, nn)  //CheckNeutralQuick call once
+    //endif
 
     if nearest_neutral[nn] != null then
       call Trace("Neutral Pathing ID done: " + Int2Str(nn))
@@ -8830,7 +8829,7 @@ function ChooseHero takes nothing returns integer
   local integer i = first_choosable_hero
   local integer sum = 0
   local integer rp_sum = sum_hero_rp()
-  local integer hero_roll = GetRandomInt(1,rp_sum)
+  local integer hero_roll = GetRandomInt(1,Max(rp_sum,1))
   if rp_sum <= 0 then
     return 0
   endif
