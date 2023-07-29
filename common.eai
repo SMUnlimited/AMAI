@@ -7100,9 +7100,9 @@ function CheckNeutral takes integer nn returns nothing
     set neutral_guarded[nn] = (GetNeutralGuard(nn) != null)
     set neutral_night_buy[nn] = CanCreepGuardsSleep(nn)
     // set neutral_night_buy[nn] = not no_sleep
-    // if neutral_guarded[nn] then
-    //   call TQAddJob(30 * sleep_multiplier, NEUTRAL_GUARDED, nn)  //CheckNeutralQuick call once
-    // endif
+    //if neutral_guarded[nn] then
+      //call TQAddJob(30 * sleep_multiplier, NEUTRAL_GUARDED, nn)  //CheckNeutralQuick call once
+    //endif
 
     if nearest_neutral[nn] != null then
       call Trace("Neutral Pathing ID done: " + Int2Str(nn))
@@ -10291,7 +10291,7 @@ function StartItem takes integer ask_qty, integer itemid returns integer
     return BUILT_SOME
   else
     if IsHealingItem(itemid) and buy_type[itemid] == BT_RACIAL_ITEM and GetGold() > 1000 and c_ally_total > 0 then
-      if BuyAllyShopItem(have_qty + 1,itemid) then  //return false just run next code
+      if BuyAllyShopItem(have_qty + 1,itemid) then  //return false just run next time
         return BUILT_SOME
       else
         return CANNOT_BUILD
@@ -10791,15 +10791,15 @@ function BuildLoopAM takes nothing returns nothing
   call OneBuildLoopAM()
   call StaggerSleep(1,5)
   loop
-	  //call Trace("Build Loop")
-      set blc = blc + 1
-      call OneBuildLoopAM()
-      exitwhen player_defeated
-      if blc > build_array_reset_time then
-        call InitBuildArrayAM()
-        set blc = 0
-      endif
-      call Sleep(5 * sleep_multiplier)
+    //call Trace("Build Loop")
+    set blc = blc + 1
+    call OneBuildLoopAM()
+    exitwhen player_defeated
+    if blc > build_array_reset_time then
+      call InitBuildArrayAM()
+      set blc = 0
+    endif
+    call Sleep(5 * sleep_multiplier)
   endloop
 //    call DisplayToAll("Shutting down BuildLoopAM")
 //    call DebugSequenceEnd()
@@ -10816,7 +10816,7 @@ endfunction
 function ConversionsAM takes integer desire, integer unitid returns nothing
 #INCLUDETABLE <$VER$\UnitConversions.txt> #EFR
   if unitid == %1 then
-      call MergeUnits(desire,o%2,o%3,o%1)
+    call MergeUnits(desire,o%2,o%3,o%1)
   endif
 #ENDINCLUDE
 endfunction
@@ -11505,7 +11505,7 @@ function GetWeakestEnemy takes nothing returns player
   local integer cstr = 0
   loop
     exitwhen i == c_enemy_total
-    if not IsPlayerObserver(enemy_force[i]) then
+    if not IsPlayerObserver(enemy_force[i]) and GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set cstr = GetUnexactPlayerStrength(enemy_force[i])
       if cstr < minstr and GetBuilding(enemy_force[i]) != null then
         set pmin = i
@@ -11528,7 +11528,7 @@ function GetStrongestEnemy takes nothing returns player
   local integer cstr = 0
   loop
     exitwhen i == c_enemy_total
-    if not IsPlayerObserver(enemy_force[i]) then
+    if not IsPlayerObserver(enemy_force[i]) and GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set cstr = GetUnexactPlayerStrength(enemy_force[i])
       if cstr > maxstr then
         set pmax = i
@@ -11552,7 +11552,7 @@ function GetWeakAndNearEnemy takes nothing returns player
   local unit cbuilding = null
   loop
     exitwhen i == c_enemy_total
-    if not IsPlayerObserver(enemy_force[i]) then
+    if not IsPlayerObserver(enemy_force[i]) and GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set cbuilding = GetBuilding(enemy_force[i])
       if cbuilding != null and UnitAlive(cbuilding) then
         set cstr = GetUnexactPlayerStrength(enemy_force[i]) + GetRangePenalty(cbuilding)
@@ -11610,7 +11610,7 @@ function GetSecondNearestEnemy takes nothing returns player
   local unit cbuilding = null
   loop
     exitwhen i == c_enemy_total
-    if not IsPlayerObserver(enemy_force[i]) then
+    if not IsPlayerObserver(enemy_force[i]) and GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set cbuilding = GetBuilding(enemy_force[i])
       if cbuilding != null and UnitAlive(cbuilding) then
         set cstr = GetRangePenalty(cbuilding)
@@ -11636,6 +11636,39 @@ function GetSecondNearestEnemy takes nothing returns player
     return enemy_force[spmin]
   endif
   return null
+endfunction
+
+function GetNearHumanPlayerEnemy takes nothing returns unit
+  local integer i = 0
+  local integer t = 0
+  local integer p = 30
+  local real dist = 0
+  local real mindistance = 20000  // use to big map - 12 or 24 player map
+  local group g = CreateGroup()
+  loop
+    exitwhen i >= c_enemy_total
+    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(enemy_force[i]) != MAP_CONTROL_COMPUTER and not IsPlayerObserver(enemy_force[i]) then
+      set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(enemy_force[i]))
+      if dist < mindistance then
+        set mindistance = dist
+        set p = i
+      endif
+      set t = t + 1
+    endif
+    set i = i + 1
+  endloop
+  set c_enemy_user_total = t  // update c_enemy_user_total
+  set ru_target[6] = null
+  if p != 30 then
+    call GroupEnumUnitsOfPlayer(g, enemy_force[p], null)
+    set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+    set g = SelectByAlive(g, true)
+    set g = SelectByHidden(g, false)
+    set ru_target[6] = FirstOfGroup(g)
+  endif
+  call DestroyGroup(g)
+  set g = null
+  return ru_target[6]
 endfunction
 
 //============================================================================
@@ -11811,39 +11844,6 @@ function ChooseAttackTarget takes nothing returns unit
     set ru_target[5] = ChooseAnyEnemyTarget()
   endif
   return ru_target[5]
-endfunction
-
-function GetNearHumanPlayerEnemy takes nothing returns unit
-  local integer i = 0
-  local integer t = 0
-  local integer p = 30
-  local real dist = 0
-  local real mindistance = 20000  // use to big map - 12 or 24 player map
-  local group g = CreateGroup()
-  loop
-    exitwhen i >= c_enemy_total
-    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(enemy_force[i]) != MAP_CONTROL_COMPUTER and not IsPlayerObserver(enemy_force[i]) then
-      set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(enemy_force[i]))
-      if dist < mindistance then
-        set mindistance = dist
-        set p = i
-      endif
-      set t = t + 1
-    endif
-    set i = i + 1
-  endloop
-  set c_enemy_user_total = t  // update c_enemy_user_total
-  set ru_target[6] = null
-  if p != 30 then
-    call GroupEnumUnitsOfPlayer(g, enemy_force[p], null)
-    set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
-    set g = SelectByAlive(g, true)
-    set g = SelectByHidden(g, false)
-    set ru_target[6] = FirstOfGroup(g)
-  endif
-  call DestroyGroup(g)
-  set g = null
-  return ru_target[6]
 endfunction
 
 //============================================================================
