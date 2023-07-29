@@ -36,6 +36,10 @@ function RetreatControlJob takes nothing returns nothing
   local integer num_units = 0
   local real ally_strength = 0
   local real enemy_strength = 0
+  local real xa = 0
+  local real ya = 0
+  local real xe = 0
+  local real ye = 0
 
   // local variables used to calculate roughly where the current enemy army is located at
   local integer ally_count = 0
@@ -88,7 +92,7 @@ function RetreatControlJob takes nothing returns nothing
 //		// This is if flee control is turned off as the inbuilt unit flee does not help in low hp race mods
 //		call SetUnitsFlee(false)
 //		call SetHeroesFlee(false)
-//	endif	
+//	endif
 //  else
 //	if (not (major_hero != null and UnitAlive(major_hero)) and ver_heroes) or CaptainRetreating() or (ally_strength * 3) < enemy_strength  then
 //		call DisplayToAll("Retreat control ended")
@@ -100,20 +104,20 @@ function RetreatControlJob takes nothing returns nothing
 //      if disableretreat then
 //		call SetUnitsFlee(false)
 //		call SetHeroesFlee(false)
-//	endif	
+//	endif
 //  endif
 
 
 
 if not desperation_assault and ((CaptainRetreating() and isfleeing) or town_threatened) then     //((major_hero == null or not UnitAlive(major_hero)) and ver_heroes) or  then  //attack_running and
-    call Trace("===Retreat control ended===")
-    set break_attack = attack_running
-    set retreat_controlled = false
-    call SetGroupsFlee(true)
-    if DistanceBetweenPoints_kd(home_location, GetUnitLoc(major_hero)) < 1250 then
-      set isfleeing = false     // home so no need to be retreating. Also prevents bug in the captainretreating condition
-    endif
-    return
+  call Trace("===Retreat control ended===")
+  set break_attack = attack_running
+  set retreat_controlled = false
+  call SetGroupsFlee(true)
+  if DistanceBetweenPoints_kd(home_location, GetUnitLoc(major_hero)) < 1250 then
+    set isfleeing = false     // home so no need to be retreating. Also prevents bug in the captainretreating condition
+  endif
+  return
 endif
 
   set g = CreateGroup()
@@ -131,8 +135,8 @@ endif
 
   call MoveLocation(last_enemy_loc, GetLocationX(enemy_loc), GetLocationY(enemy_loc))
   call MoveLocation(last_ally_loc, GetLocationX(ally_loc), GetLocationY(ally_loc))
-  call MoveLocation(enemy_loc, 0,0)
-  call MoveLocation(ally_loc, 0,0)
+  //call MoveLocation(enemy_loc, 0,0)
+  //call MoveLocation(ally_loc, 0,0)
 
   loop
     set u = FirstOfGroup(g)
@@ -143,15 +147,19 @@ endif
       set unit_life = GetUnitState(u, UNIT_STATE_LIFE)
       set unit_mana = GetUnitState(u, UNIT_STATE_MANA)
       if IsPlayerAlly(GetOwningPlayer(u), ai_player) then
-        //if GetUnitUserData(u) != UNIT_GOING_HOME then 
+        //if GetUnitUserData(u) != UNIT_GOING_HOME then
         if not IsUnitInGroup(u, unit_healing) then //and unit_life > RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) then
           set ally_sum = ally_sum + unit_strength
         endif
-        set ally_loc = GetSumLoc_dd(ally_loc, GetUnitLoc(u))
+        set xa = xa + GetUnitX(u)  // Prevent loc exceeding map range
+        set ya = ya + GetUnitY(u)
+        //set ally_loc = GetSumLoc_dd(ally_loc, GetUnitLoc(u))
         set ally_count = ally_count + 1
       elseif not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
         set enemy_sum = enemy_sum + unit_strength
-        set enemy_loc = GetSumLoc_dd(enemy_loc, GetUnitLoc(u))
+        set xe = xe + GetUnitX(u)
+        set ye = ye + GetUnitY(u)
+        //set enemy_loc = GetSumLoc_dd(enemy_loc, GetUnitLoc(u))
         set enemy_count = enemy_count + 1
       endif
     elseif GetOwningPlayer(u) == Player(PLAYERAGGRESSIVE) and not IsUnitHidden(u) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
@@ -165,8 +173,14 @@ endif
   call DestroyGroup(g)
   set g = null
 
-  set enemy_loc = GetDivisionLoc_d(enemy_loc, I2R(Max(enemy_count, 1)))
-  set ally_loc = GetDivisionLoc_d(ally_loc, I2R(Max(ally_count, 1)))
+  set xe = xe / I2R(Max(enemy_count, 1))
+  set ye = ye / I2R(Max(enemy_count, 1))
+  set xa = xa / I2R(Max(ally_count, 1))
+  set ya = ya / I2R(Max(ally_count, 1))
+  call MoveLocation(enemy_loc, xe,ye)
+  call MoveLocation(ally_loc, xa,ya)
+  //set enemy_loc = GetDivisionLoc_d(enemy_loc, I2R(Max(enemy_count, 1)))
+  //set ally_loc = GetDivisionLoc_d(ally_loc, I2R(Max(ally_count, 1)))
 //  call SetCaptainHome(0, GetLocationX(ally_loc), GetLocationY(ally_loc))
 
   set enemy_strength_sum = enemy_sum
@@ -181,7 +195,7 @@ endif
     call ClearCaptainTargets()
     call CaptainGoHome()
     set isfleeing = true
-  return
+    return
   elseif not desperation_assault and enemy_sum > LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression + added_aggression + added_target_aggression + added_racial_aggression)*ally_sum or (battle_radius == creep_battle_radius and creep_sum - 2 > ally_sum ) then
     call Trace("RETREAT_CONTROL: Allowed to Flee")
     call SetGroupsFlee(true)
@@ -195,7 +209,7 @@ endif
 //    	call Trace("REATREAT_CONTROL: Stay")
     call SetGroupsFlee(false)
     set isfleeing = false
-   // endif
+    // endif
   endif
 
   call TQAddJob(2 * sleep_multiplier, RETREAT_CONTROL, 0)
