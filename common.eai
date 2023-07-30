@@ -3753,11 +3753,27 @@ endfunction
 // (AMAI)	SelectByUserData
 //==========================================================================
 function IsStandardUnit takes unit u returns boolean
-  return (not IsUnitInGroup(u, unit_healing) and not IsUnitInGroup(u, unit_rescueing ) and not IsUnitInGroup(u, unit_harassing ) and not IsUnitInGroup(u, unit_zepplin_move ))
+  if IsUnitInGroup(u, unit_healing) then
+    return false
+  elseif IsUnitInGroup(u, unit_rescueing) then
+    return false
+  elseif IsUnitInGroup(u, unit_harassing) then
+    return false
+  elseif IsUnitInGroup(u, unit_zepplin_move) then
+    return false
+  endif
+  return true
 endfunction
 
 function IsUnitBuying takes unit u returns boolean
-  return IsUnitInGroup(u, unit_buying_tavern) or IsUnitInGroup(u, unit_buying_merc) or IsUnitInGroup(u, unit_buying_item)
+  if IsUnitInGroup(u, unit_buying_item) then
+    return true
+  elseif IsUnitInGroup(u, unit_buying_merc) then
+    return true
+  elseif IsUnitInGroup(u, unit_buying_tavern) then
+    return true
+  endif
+  return false
 endfunction
 
 function SelectByUnitStandard takes group g, boolean has_data returns group
@@ -4578,11 +4594,16 @@ function GetUnitToBuy takes unit buy_place returns unit
   local real newdistance = 0
   set ru_buy = null
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectUnittype(g,UNIT_TYPE_PEON,false)
+  set g = SelectUnittype(g,UNIT_TYPE_STRUCTURE,false)
+  set g = SelectUnittype(g,UNIT_TYPE_SUMMONED,false)
+  set g = SelectByIllusion(g,false)
+  set g = SelectByAlive2(g,true)
   set g = SelectByUnitStandard(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if IsUnitType(u, UNIT_TYPE_STRUCTURE) == false and IsUnitType(u, UNIT_TYPE_PEON) == false and IsUnitType(u, UNIT_TYPE_SUMMONED) == false and not IsUnitIllusion(u) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitInGroup(u, unit_buying_item) and not IsUnitInGroup(u, unit_buying_merc) then
+    if not IsUnitInGroup(u, unit_buying_item) and not IsUnitInGroup(u, unit_buying_merc) then
       set newdistance = DistanceBetweenUnits(buy_place, u)
       if newdistance < distance then
         set distance = newdistance
@@ -4806,8 +4827,6 @@ function GetDensities takes location l, player p, real r returns nothing
 
   set enemy_density = 0
   set ally_density = 0
-  call MoveLocation(ally_density_loc, 0,0)
-  call MoveLocation(enemy_density_loc, 0,0)
   call GroupEnumUnitsInRangeOfLoc(g, l, r, null)
   loop
     set u = FirstOfGroup(g)
@@ -4838,15 +4857,15 @@ function GetDensities takes location l, player p, real r returns nothing
   if ally_density > 0 then
     set xa = xa / ally_density
     set ya = ya / ally_density
-    call MoveLocation(ally_density_loc, xa,ya)
     //set ally_density_loc = GetDivisionLoc_d(ally_density_loc, ally_density)
   endif
+  call MoveLocation(ally_density_loc, xa,ya)  //ally_density is 0 , xa and ya is 0 , xe and ye is same
   if enemy_density > 0 then
     set xe = xe / enemy_density
     set ye = ye / enemy_density
-    call MoveLocation(enemy_density_loc, xe,ye)
     //set enemy_density_loc = GetDivisionLoc_d(enemy_density_loc, enemy_density)
   endif
+  call MoveLocation(enemy_density_loc, xe,ye)
   call DestroyGroup(g)
   set g = null
   set ul = null
