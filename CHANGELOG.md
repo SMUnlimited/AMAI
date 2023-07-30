@@ -128,6 +128,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - TELEPORT will when the teleportation unit dies , send call CaptainGoHome() , no longer send teleportation unit GetUnitXY
   - now can send distant unit go teleportloc , preventing death
 - All search the enemy function no longer use GetBJMaxPlayers() , now use enemy_force[i] , to reduce the number of cycles
+- GetOneOfId and GetOneOfIdNearLoc no longer take Hidden unit
 - Army track change
   - Army track CopyArmy no longer copy same integer , hopes it can improve efficiency
   - Reduced Army track frequency
@@ -188,6 +189,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Adjust UPG_BOMBS BuildAdvUpgr2 chance unitcount to 0.2 , Maximum to 35 , In the test, after building COPTER, the enemy has no AIR , the COPTER no research UPG_BOMBS not useful
 - debugging , chatting , add_tag , add_skill , fixedcomputername only need set globally(c.eai) , no need GlobalSettings.txt secondary settings
 - Remove Duplicates ROC GlobalSettings.txt front_base_distance
+- GetSumLoc no longer used within the loop , prevent loc exceeding map range
 - Zoom
    - zoom now use CAMERA_FIELD_TARGET_DISTANCE form W3C , max is 3000 , min is 1650
    - Observer zoom now is 2500
@@ -225,7 +227,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed some SingleMeleeAttackAM's SetAllianceTarget error
 - Fixed BlockListCheck cannot limitation RefreshNeeded Refresh needed1[unitid] ~ needed3[unitid] , now BlockListCheck normal work , like 2.54
 - Fixed GOBLIN_TINKER abnormal skill learning
-- Fixed ENDURANCE_AURA to AOr2 , C should is Cairne Bloodhoof
 - Fixed Ritual Dagger check(thank Slayer95)
 - Fixed QTLOOP sleep time < 0
 - Fixed GetPlayerHeroStrength BonusStrength always use ai_player
@@ -237,6 +238,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed HEALTH_FOUNTAIN fountain have enemies end job , prevent unit wander
 - Fixed MANA_FOUNTAIN fountain have enemies end job , prevent unit wander
 - Fixed InitAMAIGameCache not properly flush AMAI_AI.w3v
+- Fixed GetArmyOfUnit return , array use the return , cannot return -1 , now return army_num , army_num all data is 0
 
 
 ## [2.6.2] - 2022-09-04

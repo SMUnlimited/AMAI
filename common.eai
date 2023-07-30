@@ -4062,19 +4062,15 @@ endfunction
 //==========================================================================
 function SelectByLocation takes group g, location l, real dist, boolean is_near returns group
   local unit u = null
-  local location unitloc = null
   set rg_selectlocation = CreateGroup()
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set unitloc = GetUnitLoc(u)
-    if (DistanceBetweenPoints(unitloc, l) <= dist) == is_near then
+    if (DistanceBetweenPoints_dk(GetUnitLoc(u), l) <= dist) == is_near then
       call GroupAddUnit(rg_selectlocation, u )
     endif
     call GroupRemoveUnit(g, u )
-    call RemoveLocation(unitloc)
   endloop
-  set unitloc = null
   call DestroyGroup(g)
   return rg_selectlocation
 endfunction
@@ -4191,7 +4187,7 @@ function GroupRecycleGuardPositionByStandard takes group g returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if not IsUnitInGroup(u, unit_healing) and not IsUnitInGroup(u, unit_rescueing ) and not IsUnitInGroup(u, unit_harassing ) and not IsUnitInGroup(u, unit_zepplin_move ) then
+    if IsStandardUnit(u) then
       call RecycleGuardPosition( u )
     endif
     call GroupRemoveUnit(g, u )
@@ -4220,6 +4216,7 @@ endfunction
 function GetOneOfId takes player p, integer id returns unit
   local group g = CreateGroup()
   call GroupEnumUnitsOfPlayer(g, p, null)
+  set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
   loop
     set ru_oneofid = FirstOfGroup(g)
@@ -4247,7 +4244,7 @@ function GetOneOfIdNearLoc takes player p, integer id, location l, real dist ret
   loop
     set ru_oneofid = FirstOfGroup(g)
     exitwhen ru_oneofid == null
-    if GetUnitTypeId(ru_oneofid) == id then
+    if GetUnitTypeId(ru_oneofid) == id and not IsUnitHidden(ru_oneofid) then
       call DestroyGroup(g)
       set g = null
       return ru_oneofid
@@ -4634,7 +4631,7 @@ function GetNearestNeutral takes integer id returns unit
 
 	//loop
 	//	set u = FirstOfGroup(g)
-	//	exitwhen u == null 
+	//	exitwhen u == null
 	//	set l = GetUnitLoc(u)
 	//	if GetUnitTypeId(u) == id then
 	//	//set newdistance = DistanceBetweenPoints(start_loc, l )
@@ -4756,10 +4753,7 @@ function GetFastestToPointOfGroup takes group g, location l returns unit
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set ms = GetUnitMoveSpeed(u)
-    if ms == 0 then
-      set ms = 0.01
-    endif
+    set ms = RMax(GetUnitMoveSpeed(u),0.01)
     set d = DistanceBetweenPoints_dk(GetUnitLoc(u), l) / ms
     if d < sd then
       set sd = d
@@ -5354,6 +5348,7 @@ function IsCreepsAwake takes real x, real y, real radius returns boolean
 
   call DestroyGroup(g)
   set g = null
+  set u = null
   return awake_creeps
 endfunction
 
@@ -5863,7 +5858,7 @@ function BuildBRAtCreep takes nothing returns nothing
       set ua[i] = CreatePathingUnit(ua[i])
       call IssuePointOrder(ua[i], "move", GetUnitX(u), GetUnitY(u))
       set ub[i] = CreatePathingUnitFull(ub[i],ai_player,groundid,GetUnitX(u), GetUnitY(u))
-      call IssueTargetOrder( ub[i], "smart", ua[i] )
+      call IssueTargetOrder(ub[i], "smart", ua[i])  //go in opposite directions , save time
       set uc[i] = u
       set i = i + 1
     endif
@@ -5904,7 +5899,7 @@ function BuildBRAtCreep takes nothing returns nothing
     set uc[i] = null
     set i = i + 1
   endloop
-  if s == ru then
+  if s == ru then  // fail , not found creep
     return
   endif
   set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_rushcreep], loc, 600)
@@ -5930,9 +5925,8 @@ function BuildBRAtCreep takes nothing returns nothing
         call IssueTargetOrder(own_town_mine[0], "unload", u)
         call Sleep(0.01)
       endif
-      call RemoveGuardPosition(u)
+      call RemoveGuardPosition(u)  // no need reset guard , the tree can train
       call IssuePointOrderByIdLoc(u, old_id[racial_rushcreep], loc)
-      call TQAddUnitJob(30, RESET_GUARD_POSITION, 0, u)
     endif
     call DestroyGroup(g)
     set g = null
@@ -5971,7 +5965,6 @@ function MultipleMinefix takes nothing returns boolean
     return false
   endif
   call GroupAddUnit(g, u)
-  call GroupAddUnit(g, mine)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -6767,8 +6760,7 @@ endfunction
 
 //============================================================================
 function AddFrontPoint takes location l, integer groundid returns nothing
-  local unit pathable = null
-  set pathable = CreateUnit(Player(PLAYERPASSIVE), groundid, GetLocationX(l), GetLocationY(l), 270.00)
+  local unit pathable = CreateUnit(Player(PLAYERPASSIVE), groundid, GetLocationX(l), GetLocationY(l), 270.00)
   if DistanceBetweenPoints_dk(GetUnitLoc(pathable), l) <= 200 then
     call CreateDebugTagLoc("Front Point Added", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
     set front_loc[front_loc_num] = Location(GetLocationX(l),GetLocationY(l))
@@ -7134,7 +7126,7 @@ function GetArmyOfUnit takes unit u returns integer
     endif
     set i = i + 1
   endloop
-  return -1
+  return army_num  // array use the return , cannot return -1 , army_num all data is 0
 endfunction
 
 //============================================================================
@@ -10237,17 +10229,13 @@ endfunction
 function ConstructExpansion takes unit peon, integer unitid returns boolean
   local unit u = null
   if ai_time > exp_loc_cache_timeout then
-    if exp_loc_cache != null then
-      call RemoveLocation(exp_loc_cache)
-      set exp_loc_cache = null
-    endif
     set u = CreateUnit(Player(PLAYERPASSIVE), unitid, GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
     if DistanceBetweenUnits(u, current_expansion) > race_max_expa_mine_distance then
       call RemoveUnit(u)
       set u = null
       return false
     endif
-    set exp_loc_cache = GetUnitLoc(u)
+    call MoveLocation(exp_loc_cache,GetUnitX(u), GetUnitY(u))
     set exp_loc_cache_timeout = ai_time + 4
   //  call SetUnitExploded(u, true)
   //  call KillUnit(u)
@@ -10790,21 +10778,18 @@ endfunction
 
 //============================================================================
 function InitHeroInfo takes integer hn returns nothing
-  // if hero_loc[hn] != null then
-  //   call RemoveLocation(hero_loc[hn])
-  // endif
-  // set hero_loc[hn] = Location(GetUnitX(hero_unit[hn]), GetUnitY(hero_unit[hn]))
-  // if hero_enemy_loc[hn] != null then
-  //   call RemoveLocation(hero_enemy_loc[hn])
-  // endif
-  // if hero_ally_loc[hn] != null then
-  //   call RemoveLocation(hero_ally_loc[hn])
-  // endif
-  // set hero_enemy_loc[hn] = Location(0,0)
-  // set hero_ally_loc[hn] = Location(0,0)
-  call MoveLocation(hero_loc[hn],GetUnitX(hero_unit[hn]),GetUnitY(hero_unit[hn]))
-  call MoveLocation(hero_enemy_loc[hn],0,0)
-  call MoveLocation(hero_ally_loc[hn],0,0)
+  if hero_loc[hn] != null then
+    call RemoveLocation(hero_loc[hn])
+  endif
+  set hero_loc[hn] = Location(GetUnitX(hero_unit[hn]), GetUnitY(hero_unit[hn]))
+  if hero_enemy_loc[hn] != null then
+    call RemoveLocation(hero_enemy_loc[hn])
+  endif
+  if hero_ally_loc[hn] != null then
+    call RemoveLocation(hero_ally_loc[hn])
+  endif
+  set hero_enemy_loc[hn] = Location(0,0)
+  set hero_ally_loc[hn] = Location(0,0)
   set hero_hp[hn] = 1
 endfunction
 
@@ -10863,7 +10848,7 @@ function LocalizeNewTown takes integer num returns boolean
   endif
   if u == null then
 //    call DisplayToAll("Debug: New town not found")
-set own_town_loc[num] = null
+    set own_town_loc[num] = null
     set own_town_mine[num] = null
     set own_town_dist[num] = 0
     return false
@@ -12835,11 +12820,9 @@ function ApplyHealingItem takes unit u, item heal_item returns nothing
 //     Orders unit to use the given healing item on a particular unit
 
 	local unit target = null
-	local group urgent = null
-	local group medium = null
+	local group urgent = CopyGroup(urgent_healing_group)
+	local group medium = CopyGroup(medium_healing_group)
 
-	set urgent = CopyGroup(urgent_healing_group)
-	set medium = CopyGroup(medium_healing_group)
 	call RemoveGuardPosition(u)
 	call GroupPointOrder(urgent_healing_group, "move", GetUnitX(u), GetUnitY(u))
 	call GroupPointOrder(medium_healing_group, "move", GetUnitX(u), GetUnitY(u))
