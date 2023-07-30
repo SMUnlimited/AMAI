@@ -107,7 +107,7 @@ Tested with strawbery perl 5.30 and Tk 804.034
   - Coordinates with allies what it will be attacking or will join allies in attacking a target.
   - Human players have access to the Commander, letting you give commands.
   - Asks for aid if running out resources.
-  **Commander Game Modes**
+- **Commander Game Modes**
   - Play matches where humans can only order their allies to victory with the `commander`, or humans and AMAI both directly control the same units and buildings.
 - **Surrenders** : Based on profiles some AI's will give up when it detects its losing, while others will fight to the death.
 - **Chat Support**
