@@ -11,7 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Heroes will attempt to avoid/swap specific items from their inventory or when they already have a specific skill (jzy-chitong56)
   - (DevTools) Can be modified via the ItemCheck.txt
 - New commander mode "Joint Control" which allows the human players to control their AI allies units at the same time as AMAI.
-  - This is like the "Computers Only" option where all human players units and buildings are removed at the start of the game but you have direct control not just with the commander.
+  - This is like the "Computers Only" option where all human players units and buildings are removed at the start of the game but you have direct control.
 - (DevTools) Debug mode will give observers more visibility into the AI's units and hero abilities. (jzy-chitong56)
 
 ### Changed
