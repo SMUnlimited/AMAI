@@ -35,6 +35,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - use -deny control Switch
    - when Deny Unit or Killing by PLAYER_NEUTRAL_AGGRESSIVE or Killing PLAYER_NEUTRAL_AGGRESSIVE, will tip "!"
    - Killing PLAYER_NEUTRAL_AGGRESSIVE not considered situation of competition between different players , is always tip , if perfect function , should only be displayed when unit is snatched
+- New commander mode "Joint Control" which allows the human players to control their AI allies units at the same time as AMAI.
+   - This is like the "Computers Only" option where all human players units and buildings are removed at the start of the game but you have direct control.
 - Strategy Choose Dialog now show translation Strategy name , no Num
    - Strategy name must consistent with file Strategy.txt name
    - Cannot find consistent name Strategy , Dialog will missing button
@@ -207,7 +209,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed BlizzardVAI.eai playercreep num , now is 16/28
 - Fixed ROC Resolve compilation errors, ROC Profile.txt add [Rare Profile]
 - Fixed B.eai playercreep num , now is 16/28
-- Fixed game_mode not equal to ai_only , Pause not cancelled
 - Fixed B2.j and B3.j bj_PLAYER_NEUTRAL_EXTRA and bj_MAX_PLAYER_SLOTS and bj_PLAYER_NEUTRAL_VICTIM not replaced with dynamic variable playerpassive + 1 or playermax
 - Fixed part of set xxx = GetExpansionPeon() lack set xxx = GetExpansionPeon2() when xxx == null
 - Fixed a when AI have too many ally , game stuck or crashed

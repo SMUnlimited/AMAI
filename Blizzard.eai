@@ -5,7 +5,7 @@
 
     // default values
     string language = ""  // Possible values: "" (dialog), "English", "Deutsch", "Swedish", "French", "Spanish", "Romanian", "Russian", "Portuguese", "Norwegian", "Chinese"
-    string game_mode = "" // Possible values: "" (dialog), "commander", "no_human", "ai_only"
+    string game_mode = "" // Possible values: "" (dialog), "commander", "no_human", "ai_only", "shared"
 
     integer array command_number
     integer array command_par1
@@ -50,9 +50,9 @@
     player array commanded_player
 
     string RaceStrategy = null
-    #INCLUDETABLE <$VER$\Races.txt>
+#INCLUDETABLE <$VER$\Races.txt>
     string array %1_StrategyName
-    #ENDINCLUDE
+#ENDINCLUDE
     integer RS_total = 0
     string RS_interrupt = null
     integer Strategydialog = 0
@@ -100,6 +100,7 @@
     trigger game_start_trigger = null
     button commander_mode = null
     button no_human_mode = null
+    button shared_mode = null
     button ai_only_mode = null
 
     dialog language_dialog = null
@@ -147,6 +148,7 @@
     string dlgbutton_commander_language = ""
     string dlgbutton_player_ally = ""
     string dlgbutton_no_human = ""
+    string dlgbutton_shared = ""
     string dlgbutton_ai_only = ""
     boolean debugging = false
     string dglchoose_language = "Choose Language"
@@ -164,7 +166,7 @@
     playercolor        PLAYER_COLOR_SNOWX               = null
     playercolor        PLAYER_COLOR_EMERALDX            = null
     playercolor        PLAYER_COLOR_PEANUTX             = null
-	
+
     //gamecache translation = InitGameCache("Commander.w3v")
     hashtable translation = InitHashtable()
 
@@ -201,37 +203,37 @@ endfunction
 // The Parser (Takes a String, Seperates words, puts in string array)
 //===========================================================================
 function Parser takes string ChatMsg returns nothing
-   //Required Variables
-   local integer Last = 0
-   local integer A = 1
-   local integer I = 0
-   local integer Length = StringLength(ChatMsg)
+  //Required Variables
+  local integer Last = 0
+  local integer A = 1
+  local integer I = 0
+  local integer Length = StringLength(ChatMsg)
 
-   //Pulls Words and places them each in their own Variable
-   loop
-     if (SubStringBJ(ChatMsg,A,A) == " ") then
-       set parsed_command[I] = StringCase(SubStringBJ(ChatMsg, (Last + 1), (A - 1)), true)
-       set Last = A
-       set I = I + 1
-     elseif (SubStringBJ(ChatMsg,A,A) == ":") then
-       if (SubStringBJ(ChatMsg,A+1,A+1) == " ") then
+  //Pulls Words and places them each in their own Variable
+  loop
+    if (SubStringBJ(ChatMsg,A,A) == " ") then
+      set parsed_command[I] = StringCase(SubStringBJ(ChatMsg, (Last + 1), (A - 1)), true)
+      set Last = A
+      set I = I + 1
+    elseif (SubStringBJ(ChatMsg,A,A) == ":") then
+      if (SubStringBJ(ChatMsg,A+1,A+1) == " ") then
         set A = A + 1 // space after the : so include in separator
-       endif 
-       set parsed_command[I] = StringCase(SubStringBJ(ChatMsg, (Last + 1), (A - 1)), true)
-       set Last = A
-       set I = I + 1
-     elseif (A == Length) then
-       set parsed_command[I] = StringCase(SubStringBJ(ChatMsg, (Last + 1), A), true)
-       set I = I + 1
-     endif
-     set A = A + 1
-     exitwhen(A>Length)
-   endloop
-   loop
-     exitwhen I > 6
-     set parsed_command[I] = ""
-     set I = I + 1
-   endloop
+      endif
+      set parsed_command[I] = StringCase(SubStringBJ(ChatMsg, (Last + 1), (A - 1)), true)
+      set Last = A
+      set I = I + 1
+    elseif (A == Length) then
+      set parsed_command[I] = StringCase(SubStringBJ(ChatMsg, (Last + 1), A), true)
+      set I = I + 1
+    endif
+    set A = A + 1
+    exitwhen(A>Length)
+  endloop
+  loop
+    exitwhen I > 6
+    set parsed_command[I] = ""
+    set I = I + 1
+  endloop
 endfunction
 
 //===========================================================================
@@ -354,7 +356,7 @@ function ColorPlayer takes string CompC returns playercolor
     return PLAYER_COLOR_AQUA
   elseif (CompC == "Brown") then
     return PLAYER_COLOR_BROWN
-   else
+  else
     if playermax != 12 then
       if (CompC == "MAROON") then
         return PLAYER_COLOR_MAROONX
@@ -659,16 +661,16 @@ function Convert2Player takes string Comp, boolean all_allowed returns player
     endif
   else
   //Compares the color until we get a match then stores that player
-  loop
-    exitwhen((CColor == GetPlayerColor(Player(j))) or (j > playermax))
-    set j = j + 1
-    if (j > playermax) then
-      call DisplayToTP(color_word_mistyped)
+    loop
+      exitwhen((CColor == GetPlayerColor(Player(j))) or (j > playermax))
+      set j = j + 1
+      if (j > playermax) then
+        call DisplayToTP(color_word_mistyped)
+      endif
+    endloop
+    if j <= playermax then
+      set theplayer = Player(j)
     endif
-  endloop
-  if j <= playermax then
-    set theplayer = Player(j)
-  endif
   endif
 
   set CColor = null
@@ -757,7 +759,7 @@ function W3CDenyTip takes nothing returns nothing
   local texttag t = null
   local string s = cs2s("!",GetPlayerColor(p2))
   if (not (IsUnitType(u1,UNIT_TYPE_STRUCTURE) and GetUnitTypeId(u2) == 'uaco')) and GetUnitTypeId(u2) != 'otot' and GetUnitTypeId(u2) != 'usap' and not IsUnitHidden(u1) then
-    if (IsPlayerAlly(p1,p2) or p1 == Player(playermax) or p2 == Player(playermax)) and p1 != Player(playermax+3) then
+    if (IsPlayerAlly(p1,p2) or p1 == Player(playermax) or p2 == Player(playermax)) and p1 != Player(playerpassive) then
       if p2 == Player(playermax) then
         set s = "|cff323232"+"!"+"|r"
       endif
@@ -803,7 +805,6 @@ function W3CDenyTipControl takes nothing returns nothing
   call TriggerRegisterAnyUnitEventBJ( W3CDeny, EVENT_PLAYER_UNIT_DEATH )
   call TriggerAddAction( W3CDeny, function W3CDenyTip )
 endfunction
-
 
 //===========================================================================
 // Zoom
@@ -876,6 +877,7 @@ function AdjustZoom takes nothing returns nothing
   call TriggerAddAction(AdjustZoomUp , function ZoomUp)
   call TriggerAddAction(AdjustZoomDown , function ZoomDown)
 endfunction
+
 //===========================================================================
 // Map Initialization (Runs all stuff needed to be run after map is loaded)
 //===========================================================================
@@ -907,18 +909,18 @@ function TributeGold takes player Commander, player Comp, integer res_amount ret
     if GetPlayerState(Commander, PLAYER_STATE_RESOURCE_GOLD) >= res_amount then
       call SetPlayerState(Comp, PLAYER_STATE_RESOURCE_GOLD, GetPlayerState(Comp, PLAYER_STATE_RESOURCE_GOLD) + res_amount)
       call SetPlayerState(Commander, PLAYER_STATE_RESOURCE_GOLD, GetPlayerState(Commander, PLAYER_STATE_RESOURCE_GOLD) - res_amount)
-	  call DisplayFromToPlayer(Comp, Commander, I2S(res_amount) + gold_received_thanks)
+      call DisplayFromToPlayer(Comp, Commander, I2S(res_amount) + gold_received_thanks)
     //You don't have enough Gold to share
     else
-	  call DisplayFromToPlayer(Comp, Commander, you_no_gold)
+      call DisplayFromToPlayer(Comp, Commander, you_no_gold)
     endif
   elseif GetPlayerState(Comp, PLAYER_STATE_RESOURCE_GOLD) >= res_amount then
     call SetPlayerState(Comp, PLAYER_STATE_RESOURCE_GOLD, GetPlayerState(Comp, PLAYER_STATE_RESOURCE_GOLD) - res_amount)
     call SetPlayerState(Commander, PLAYER_STATE_RESOURCE_GOLD, GetPlayerState(Commander, PLAYER_STATE_RESOURCE_GOLD) + res_amount)
-	call DisplayFromToPlayer(Comp, Commander, I2S(res_amount) + tribute_of_gold)
+    call DisplayFromToPlayer(Comp, Commander, I2S(res_amount) + tribute_of_gold)
   //I don't have enough Gold to share
   else
-	call DisplayFromToPlayer(Comp, Commander, i_no_gold)
+    call DisplayFromToPlayer(Comp, Commander, i_no_gold)
   endif
 endfunction
 
@@ -1028,7 +1030,7 @@ function ExecuteCommand takes player Comp, integer number returns nothing
   local integer par1 = GetParValue(command_par1[number])
   local integer par2 = GetParValue(command_par2[number])
   local integer par3 = GetParValue(command_par3[number])
-  
+
   if cn == -1000000 or par1 == -1000000 or par2 == -1000000 or par3 == -1000000 then
     return
   endif
@@ -1077,8 +1079,8 @@ function ExecuteDlgCommand takes player Comp, integer number returns nothing
   local integer par1 = GetDlgParValue(command_par1[number])
   local integer par2 = GetDlgParValue(command_par2[number])
   local integer par3 = GetDlgParValue(command_par3[number])
-  
-  if command_par2[number] != -1 then  
+
+  if command_par2[number] != -1 then
     call CommandAI(Comp, par2, par3)
   endif
   if command_number[number] != -1 then
@@ -1160,7 +1162,7 @@ function initLanguage%1 takes nothing returns nothing
   call SaveStr(translation, StringHash(language), StringHash("%1"), "%2")
 #ENDINCLUDE
 
-set RS_interrupt = null
+  set RS_interrupt = null
 #INCLUDETABLE <Languages\%1\Strategy.txt> #ENC:%4 #EFR
 #DEFINE $StrategyName$ %1
 #DEFINE $StrategyNameTrans$ "%2"
@@ -1282,7 +1284,7 @@ function BuildTributeDialogs takes nothing returns nothing
   call TriggerAddAction(t, function TributeDialogResponse)
   //call DisplayToAll("RegsiterButton:" + dlgbutton_tribute)
   call RegisterCDialogButton(DialogAddButton(root_dialog, dlgbutton_tribute, 84), 0, tribute_type_dlg)
-  
+
   set tribute_dlg = DialogCreate()
   call DialogSetMessage(tribute_dlg, dlghdr_tribute_amount)
   loop
@@ -1304,10 +1306,10 @@ function Translation takes string s returns string
   if HaveSavedString(translation, StringHash(language), StringHash(s)) then
     //call DisplayToAll("Translated " + s + " to " + language)
     set translate = LoadStr(translation, StringHash(language), StringHash(s))
-  endif  
+  endif
   if (translate == null or translate == "") and HaveSavedString(translation, StringHash("English"), StringHash(s)) then
     //call DisplayToAll("Translated " + s + " to english FAILSAFE")
-    set translate = LoadStr(translation, StringHash("English"), StringHash(s))  
+    set translate = LoadStr(translation, StringHash("English"), StringHash(s))
   endif
   if (translate == null or translate == "") then
     call TraceToAll("Cannot translate:" + s + " to " + language)
@@ -1364,11 +1366,11 @@ function BuildStartDialog takes player current_player, integer startnum returns 
   call DialogDestroy(start_dialog)
   call DialogSetMessage(d, dlghdr_choose_ally)
   loop
-      exitwhen i >= playermax
-      if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(current_player, Player(i)) then
-        set totalplayers = totalplayers + 1
-      endif
-      set i = i + 1
+    exitwhen i >= playermax
+    if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(current_player, Player(i)) then
+      set totalplayers = totalplayers + 1
+    endif
+    set i = i + 1
   endloop
   call TraceToTP("Max: " + I2S(totalplayers) + " for player: " + I2S(GetPlayerId(current_player)) + " starting page at:" + I2S(startnum))
   set sdbn_length = startnum
@@ -1435,7 +1437,7 @@ function StartDialogResponse takes nothing returns nothing
     call TriggerAddAction(language_trigger, function CommanderLanguageResponse)
     call DialogDisplay(GetTriggerPlayer(), clanguage_dialog, true)
   endif
-  if (b == all_button or sdbn_button[i] == b) then 
+  if (b == all_button or sdbn_button[i] == b) then
     if (sdbn_button[i] == b) then
       if GetPlayerRace(Player(sdbn_number[i])) == RACE_HUMAN then
         set RaceStrategy = "HUMAN"
@@ -1522,11 +1524,11 @@ function BuildPlayerDialog takes player currentplayer, integer startnum returns 
   set pcbn_length = startnum
   set pcbn_paged_length = 0
   loop
-      exitwhen i >= playermax
-      if not IsPlayerObserver(Player(i)) and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING then
-        set totalplayers = totalplayers + 1
-      endif
-      set i = i + 1
+    exitwhen i >= playermax
+    if not IsPlayerObserver(Player(i)) and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING then
+      set totalplayers = totalplayers + 1
+    endif
+    set i = i + 1
   endloop
   call TraceToTP("Max: " + I2S(totalplayers) + " starting page at:" + I2S(startnum))
   if startnum <= 0 then
@@ -1541,7 +1543,7 @@ function BuildPlayerDialog takes player currentplayer, integer startnum returns 
         set ally = " (" + dlgbutton_player_ally + ")"
       else
         set ally = ""
-      endif  
+      endif
       set pcbn_button[pcbn_length] = DialogAddButton(new_dialog, cs2s(GetPlayerName(Player(i)), GetPlayerColor(Player(i))) + ally, IMinBJ(48 + i, 57))
       set pcbn_number[pcbn_length] = i
       set pcbn_length = pcbn_length + 1
@@ -1665,14 +1667,14 @@ function DialogResponse takes nothing returns nothing
       call TriggerRegisterDialogEvent(t, d )
       set last_number_trigger_action = TriggerAddAction(t, function NumberDialogResponse)
       set last_number_trigger = t
-      call DialogDisplay(GetTriggerPlayer(), d, true) 
+      call DialogDisplay(GetTriggerPlayer(), d, true)
     elseif (d == player_dialog) then
       set t = CreateTrigger()
       set d = BuildPlayerDialog(GetTriggerPlayer(), 0)
       call TriggerRegisterDialogEvent(t, d )
       set last_player_trigger_action = TriggerAddAction(t, function PlayerDialogResponse)
       set last_player_trigger = t
-      call DialogDisplay(GetTriggerPlayer(), d, true) 
+      call DialogDisplay(GetTriggerPlayer(), d, true)
     else
       if d == tribute_type_dlg then
         //call BuildTributeDialogs()
@@ -2037,6 +2039,22 @@ function RemoveHumanUnitsAndRes takes nothing returns nothing
 endfunction
 
 //--------------------------------------------------------------------------------
+function ShareWithHumans takes nothing returns nothing
+  local player p = GetEnumPlayer()
+  local integer i = 0
+  if GetPlayerController(p) != MAP_CONTROL_USER then
+    return
+  endif
+  loop
+    exitwhen i >= playermax
+    if p != Player(i) and IsPlayerAlly(Player(i), p) and GetPlayerController(Player(i)) != MAP_CONTROL_USER and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING then
+      call SetPlayerAllianceStateBJ( Player(i), p, bj_ALLIANCE_ALLIED_ADVUNITS )
+    endif
+    set i = i + 1
+  endloop
+  set p = null
+endfunction
+
 function GameStartDlgResponse takes nothing returns nothing
   local timer t = CreateTimer()
   local button cb = GetClickedButton()
@@ -2046,11 +2064,16 @@ function GameStartDlgResponse takes nothing returns nothing
     set game_mode = "no_human"
   elseif cb == ai_only_mode then
     set game_mode = "ai_only"
+  elseif cb == shared_mode then
+    set game_mode = "shared"
   endif
   if cb != ai_only_mode then
     call InitCommanderPart()
-    if cb == no_human_mode then
+    if cb == no_human_mode or cb == shared_mode then
       call ForForce(GetPlayersAll(), function RemoveHumanUnitsAndRes)
+      if (cb == shared_mode) then
+        call ForForce(GetPlayersAll(), function ShareWithHumans)
+      endif
       call SendToAllAIs(53,0)
     endif
   endif
@@ -2104,6 +2127,7 @@ function GameStartDlg takes nothing returns nothing
   set commander_mode = DialogAddButton(game_start_dialog, dlgbutton_commander, 67)
   set no_human_mode = DialogAddButton(game_start_dialog, dlgbutton_no_human, 79)
   set ai_only_mode = DialogAddButton(game_start_dialog, dlgbutton_ai_only, 78)
+  set shared_mode = DialogAddButton(game_start_dialog, dlgbutton_shared, 80)
 
   set game_start_trigger = CreateTrigger()
   call TriggerRegisterDialogEvent(game_start_trigger, game_start_dialog)
@@ -2141,24 +2165,12 @@ function LanguageDefault takes nothing returns nothing
 #ENDINCLUDE
   endif
   call PauseAllUnitsBJ(false)
-  if game_mode != "ai_only" then
-    call GameStartDlg()
-  endif
+  call GameStartDlg()
 endfunction
 
 function LanguageDlg takes nothing returns nothing
   local integer host = GetFirstHuman()
-  local integer i = 0
   call DestroyTimer(last_timer)
-  if debugging and host != -1 and IsPlayerObserver(Player(host)) then
-    loop
-      exitwhen i >= playermax
-      if GetPlayerController(Player(i)) != MAP_CONTROL_USER and GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING then
-        call SetPlayerAllianceStateBJ( Player(i), Player(host), bj_ALLIANCE_ALLIED_ADVUNITS )
-      endif
-      set i = i + 1
-    endloop
-  endif
   // Need to pause computer ai and players
   call PauseAllUnitsBJ(true)
   if language != "" or host == -1 then
