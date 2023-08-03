@@ -234,12 +234,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed first_expansion_chosen now should correctly expressed
 - Fixed IsTargetGood aggression error
 - Fixed SendHomeMoveUnitToLoc repeat run semd home Job
+- Fixed RESET_WINDWALKER JOB self circulation
 - Fixed BUY_NEUTRAL_HERO JOB buying_unit GuardPosition not properly removed
 - Fixed BUY_NEUTRAL timeout no end job
 - Fixed HEALTH_FOUNTAIN fountain have enemies end job , prevent unit wander
 - Fixed MANA_FOUNTAIN fountain have enemies end job , prevent unit wander
 - Fixed InitAMAIGameCache not properly flush AMAI_AI.w3v
 - Fixed GetArmyOfUnit return , array use the return , cannot return -1 , now return army_num , army_num all data is 0
+- Fixed windwalk Order if exist unit skills level
 
 
 ## [2.6.2] - 2022-09-04
