@@ -10,21 +10,24 @@ function TeleportJob takes unit hu returns nothing
 
   call DisplayToAllJobDebug("TELEPORT JOB Start")
   if not UnitAlive(hu) or current_order < 852008 or current_order > 852013 then
-    call CaptainGoHome()
+    if not UnitAlive(hu) then
+      call CaptainGoHome()
+    endif
     set teleporting = false
     return
   endif
   set g = CreateGroup()
+  set tempg = CreateGroup()
   call GroupEnumUnitsInRange(g, GetUnitX(hu), GetUnitY(hu), 2 * teleport_radius, null)
   call GroupRemoveUnit(g, hu)
-  set g = SelectByPlayer(g, ai_player, true)
-  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
-  set tempg = CopyGroup(g)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if DistanceBetweenUnits(hu, u) > teleport_radius then
-      call IssuePointOrder(u, "move", GetUnitX(hu), GetUnitY(hu))
+    if not IsUnitType(u, UNIT_TYPE_PEON) and GetOwningPlayer(u) == ai_player and not IsUnitHidden(u) then
+      if DistanceBetweenUnits(hu, u) > teleport_radius then
+        call IssuePointOrder(u, "move", GetUnitX(hu), GetUnitY(hu))
+        call GroupAddUnit(tempg,u)
+      endif
     endif
     call GroupRemoveUnit(g, u)
   endloop
@@ -35,7 +38,6 @@ function TeleportJob takes unit hu returns nothing
   set tempg = null
   set g = SelectByHidden(g, false)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
-  set g = SelectUnittype(g, UNIT_TYPE_SUMMONED, false)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
   set g = SelectByUnitFree(g, true)
   set g = SelectByUnitStandard(g, true)
