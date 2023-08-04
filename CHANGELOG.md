@@ -114,7 +114,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Balance parameters have not changed
    - Add war3_1.32 mercenaries adjustment , but no use , just add unit to StandardUnits.txt, no use , if you war3 is 1.33+, please run AMAI 3.2.2+
 - Change GetPlayerAntiAirStrength returns form integer to real
-- Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
 - Optimized function XXXFountain code , no use local unit fountain
 - MeleeDifficulty() use difficulty replace
   - official AI code not affected
@@ -164,10 +163,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - now peon can shape shifting Militia
 - BUYTIEM now check distance , prevent being caught alone, some time , army walk but not attack_running , turn over game after Heroes being killed
 - DETECT_DEFEAT JOB add self rescue , first saveyourself , no run kill or desperation_assault
+  - Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
   - Choose self methods based on racial abilities , one ability use one num/mode
   - Not recommended sale item or build(like UD)
   - The function untested , but should can run
   - Add desperation_assault closing mechanism
+  - Chcek Ally will check PLAYER_SLOT_STATE_PLAYING and Observer
 - ZEPPELIN_MOVE now can take POWER FOUNTAIN
 - MANA_FOUNTAIN now can take POWER FOUNTAIN
 - front_base_distance now is dynamic , first is 1100 , and increase according to AI difficulty , front_base_distance = difficulty * 50 + front_base_distance
@@ -241,7 +242,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed MANA_FOUNTAIN fountain have enemies end job , prevent unit wander
 - Fixed InitAMAIGameCache not properly flush AMAI_AI.w3v
 - Fixed GetArmyOfUnit return , array use the return , cannot return -1 , now return army_num , army_num all data is 0
-- Fixed GetHealerId return , array use the return , cannot return -1 , now return healer_length , healer_length all data is 0
+- Fixed GetHealer check GetHealerId return
 - Fixed windwalk Order if exist unit skills level
 
 
