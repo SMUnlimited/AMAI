@@ -243,6 +243,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed MANA_FOUNTAIN fountain have enemies end job , prevent unit wander
 - Fixed InitAMAIGameCache not properly flush AMAI_AI.w3v
 - Fixed GetArmyOfUnit return , array use the return , cannot return -1 , now return army_num , army_num all data is 0
+- Fixed GetHealerId return , array use the return , cannot return -1 , now return healer_length , healer_length all data is 0
 - Fixed windwalk Order if exist unit skills level
 
 
