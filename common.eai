@@ -5417,11 +5417,13 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
   local real strength = 0
   local unit u = null
   local real airsum = 0
+  local player p = null
   call GroupEnumUnitsInRange(g,x,y,radius,null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and GetOwningPlayer(u) != Player(PLAYERAGGRESSIVE) and GetOwningPlayer(u) != Player(PLAYERPASSIVE) and IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and not IsUnitHidden(u) and IsUnitType(u,UNIT_TYPE_STRUCTURE) == false and IsUnitType(u,UNIT_TYPE_PEON) == false and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
+    set p = GetOwningPlayer(u)
+    if UnitAlive(u) and p != Player(PLAYERAGGRESSIVE) and p != Player(PLAYERPASSIVE) and IsPlayerEnemy(ai_player, p) and not IsUnitHidden(u) and IsUnitType(u,UNIT_TYPE_STRUCTURE) == false and IsUnitType(u,UNIT_TYPE_PEON) == false and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
       set strength = GetUnitStrength(u)
       set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
@@ -5432,6 +5434,7 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
   endloop
   call DestroyGroup(g)
   set g = null
+  set p = null
   set air_strength = R2I(airsum + 0.5)
   return R2I(sum + 0.5)
 endfunction
@@ -9524,7 +9527,7 @@ function DynamicBuildUnit takes integer count, integer prio returns nothing
 				call BuildUnit(GetUnitCountDone(old_id[chosen_counter_unit]) + 1, chosen_counter_unit, prio)
 			endif
 		else // structure
-			call BuildUnit(1, chosen_counter_unit, prio*2) 
+			call BuildUnit(1, chosen_counter_unit, prio*2)
 		endif
 	endif
 endfunction
@@ -10817,10 +10820,12 @@ function HeroReviver takes nothing returns nothing
     exitwhen i > 3
     if GetUnitCountDone(old_id[hero[i]]) > 0 then
       if not hero_built[i] then
-        set hero_built[i] = true
         set hero_unit[i] = GetOneOfId(ai_player, old_id[hero[i]])
-        call InitHeroInfo(i)
-        call TQAddJob(1, MICRO_HERO, i)
+        if hero_unit[i] != null then
+          set hero_built[i] = true
+          call InitHeroInfo(i)
+          call TQAddJob(1, MICRO_HERO, i)
+        endif
       endif
     elseif hero_built[i] then
       call BuildUnit(1, hero[i], hero_revive_prio[i])
@@ -10832,18 +10837,13 @@ endfunction
 //============================================================================
 function CheckUnitNewTown takes unit u, integer num returns boolean
   local integer i = 0
-  local location l = GetUnitLoc(u)
   loop
     exitwhen i >= num
-    if own_town_loc[i] != null and town_built[i] and DistanceBetweenPoints(l, own_town_loc[i]) < town_radius then
-      call RemoveLocation(l)
-      set l = null
+    if own_town_loc[i] != null and town_built[i] and DistanceBetweenPoints_dk(GetUnitLoc(u), own_town_loc[i]) < town_radius then
       return false
     endif
     set i = i + 1
   endloop
-  call RemoveLocation(l)
-  set l = null
   return true
 endfunction
 
@@ -12568,7 +12568,7 @@ if not creeping_only then	// Do the normal attack sequence
 
   if not no_player_attack then
 
-    if (c_ally_total + c_enemy_total >= 10 or mapattackdelayed < 8) and c_enemy_user_total > 0 and CaptainIsEmpty() == false then  // player too much or big map , first attack HumanPlayer
+    if (c_ally_total + c_enemy_total >= 10 or mapattackdelayed < 8) and c_enemy_user_total > 0 and CaptainIsEmpty() == false and (tier < 3 or GetRandomInt(0,4) == 0) then  // player too much or big map , first attack HumanPlayer
       set humanhall = GetNearHumanPlayerEnemy()
       if humanhall != null then
         call Chat(C_Attack)
