@@ -338,6 +338,7 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
   local integer selection_num = 2 // that many times a selection is done
   local integer bits_number = selection_num * bits_per_selection // number of bits of integer used
   local timer t = CreateTimer()
+  local location l = null
 
 //  call DisplayToPlayer(sync_p, I2S(sum))
 
@@ -361,12 +362,14 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
 
   // create units to select
   set i = 0
+  set l = GetPlayerStartLocationLoc(sync_p)
   loop
     exitwhen i >= bits_per_selection
-    set sel_unit[i] = CreateUnitAtLoc( sync_p, 'nshf', GetPlayerStartLocationLoc(sync_p), bj_UNIT_FACING )
+    set sel_unit[i] = CreateUnitAtLoc( sync_p, 'nshf', l, bj_UNIT_FACING )
     set i = i + 1
   endloop
-
+  call RemoveLocation(l)
+  set l = null
   // save old selection
   call SyncSelections()
   call GroupEnumUnitsSelected(old_selection, sync_p, null)
@@ -475,7 +478,7 @@ function Convert2Player takes string Comp, boolean all_allowed returns player
 
   elseif (CColor == null) then
    //Makes Sure color was typed Correctly  
-    //Makes sure number is 0 or bigger and 11 or smaller
+    //Makes sure number is 0 - max number of players
     if (S2I(Comp) >= 0) and (S2I(Comp) < GetBJMaxPlayers()) then
       set theplayer = Player(S2I(Comp))
     else
@@ -817,9 +820,10 @@ function initLanguage%1 takes nothing returns nothing
 #INCLUDETABLE <Languages\%1\Commander.txt> #ENC:%4 #EFR
   set %1 = "%2"
 #ENDINCLUDE
+// English backup if translation missing
 #INCLUDETABLE <Languages\English\Commander.txt> #ENC:%4 #EFR
   if %1 == null or %1 == "" then
-    set %1 = "%2" // English backup if translation missing
+    set %1 = "%2"
   endif
 #ENDINCLUDE
 #INCLUDETABLE <Languages\%1\CommandsTrans.txt> #ENC:%4 #EFR
@@ -958,6 +962,7 @@ function Translation takes string s returns string
   endif
   if (translate == null or translate == "") then
     call TraceToAll("Cannot translate:" + s + " to " + language)
+    set translate = null
     return s
   else
     return translate
@@ -978,6 +983,10 @@ endfunction
 
 function CommanderLanguageResponse takes nothing returns nothing
   local button b = GetClickedButton()
+  if language != "English" and language != "" and b != null then
+    set language = "English"
+    call initLanguageEnglish()  // After more than one language change the english backup would not be applied for any missing entries in the new language as they may be set to the old language.
+  endif
   if false then
 #INCLUDETABLE <Languages.txt> #EFR
   elseif b == %1_button then
@@ -1558,7 +1567,6 @@ function InitCommanderPart takes nothing returns nothing
   local integer i = 0
   local trigger commander_trigger = CreateTrigger()
   local trigger cdlg_trigger = CreateTrigger()
-  local timer t = CreateTimer()
 
   loop
     exitwhen i >= GetBJMaxPlayers()
@@ -1572,12 +1580,8 @@ function InitCommanderPart takes nothing returns nothing
   call RegisterCommands()
   call BuildDialogs()
 
-  //Timer that calls MapInit
-  set last_timer = t
-  call TimerStart(t,3.0, false, function MapInit)
   set commander_trigger = null
   set cdlg_trigger = null
-  set t = null
 endfunction
 
 function GetNextPlayableHuman takes integer last returns integer
@@ -1665,6 +1669,13 @@ function ShareWithHumans takes nothing returns nothing
 endfunction
 
 
+function MapInitTimer takes nothing returns nothing
+  local timer t = CreateTimer()
+  set last_timer = t
+  call TimerStart(t,3.0, false, function MapInit)
+  set t = null
+endfunction
+
 function GameStartDlgResponse takes nothing returns nothing
   local button cb = GetClickedButton()
   if cb != ai_only_mode then
@@ -1680,16 +1691,21 @@ function GameStartDlgResponse takes nothing returns nothing
   call DialogDestroy(game_start_dialog)
   call DestroyTrigger(game_start_trigger)
   set cb = null
+  call MapInitTimer()
 endfunction
 
 function GameStartDefault takes nothing returns nothing
   if game_mode != "ai_only" then
     call InitCommanderPart()
-    if game_mode == "no_human" then
+    if game_mode == "no_human" or game_mode == "shared" then
       call ForForce(GetPlayersAll(), function RemoveHumanUnitsAndRes)
+      if (game_mode == "shared") then
+        call ForForce(GetPlayersAll(), function ShareWithHumans)
+      endif
       call SendToAllAIs(53,0)
     endif
   endif
+  call MapInitTimer()
 endfunction
 
 function GameStartDlg takes nothing returns nothing
@@ -1724,6 +1740,11 @@ endfunction
 
 function LanguageDlgResponse takes nothing returns nothing
   local button b = GetClickedButton()
+  if language != "English" and language != "" and b != null then
+    set language = "English"
+    call SendToAllAIs(71,0)
+    call initLanguageEnglish()  // After more than one language change the english backup would not be applied for any missing entries in the new language as they may be set to the old language.
+  endif
   if false then
 #INCLUDETABLE <Languages.txt> #EFR
   elseif b == %1_button then
