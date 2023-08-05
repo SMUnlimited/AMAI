@@ -4,7 +4,6 @@
 #ELSE
 function TeleportJob takes unit hu returns nothing
   local group g = null
-  local group tempg = null
   local unit u = null
   local integer current_order = GetUnitCurrentOrder(hu)
 
@@ -12,12 +11,13 @@ function TeleportJob takes unit hu returns nothing
   if not UnitAlive(hu) or current_order < 852008 or current_order > 852013 then
     if not UnitAlive(hu) then
       call CaptainGoHome()
+    else
+      call AttackMoveXY(R2I(GetLocationX(teleportloc)), R2I(GetLocationY(teleportloc)))
     endif
     set teleporting = false
     return
   endif
   set g = CreateGroup()
-  set tempg = CreateGroup()
   call GroupEnumUnitsInRange(g, GetUnitX(hu), GetUnitY(hu), 2 * teleport_radius, null)
   call GroupRemoveUnit(g, hu)
   loop
@@ -26,22 +26,10 @@ function TeleportJob takes unit hu returns nothing
     if not IsUnitType(u, UNIT_TYPE_PEON) and GetOwningPlayer(u) == ai_player and not IsUnitHidden(u) then
       if DistanceBetweenUnits(hu, u) > teleport_radius then
         call IssuePointOrder(u, "move", GetUnitX(hu), GetUnitY(hu))
-        call GroupAddUnit(tempg,u)
       endif
     endif
     call GroupRemoveUnit(g, u)
   endloop
-  call GroupClear(g)
-  call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  call GroupRemoveGroupAM(tempg,g)
-  call DestroyGroup(tempg)
-  set tempg = null
-  set g = SelectByHidden(g, false)
-  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
-  set g = SelectByUnitFree(g, true)
-  set g = SelectByUnitStandard(g, true)
-  call GroupPointOrder(g, "move", GetLocationX(teleportloc), GetLocationY(teleportloc))
   call DestroyGroup(g)
   set g = null
   call TQAddUnitJob(1, TELEPORT, 0, hu)
