@@ -148,11 +148,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Reduced track track frequency
 - SEND_HOME Adjust exit JOB logic
    - Creating item will judge SlotsFree , prevent create on the ground
-- MICRO_UNITS add DenyUnit
+- MICRO_HERO add wait
+- MICRO_UNITS add set DenyUnit
   - SaveUnit will save 'hphx' and racial_militia string
   - 'ohwd' and 'hphx' is UNIT_TYPE_SUMMONED , so now no exclude UNIT_TYPE_SUMMONED
 - FOCUSFIRE_CONTROL add FOCUS FIRE special_unit , now special_unit have 'hpxe' and 'espv' and 'ngsp' , Phoenix and Soul of Revenge and GoblinSapper
   - Add exclude more Channeling skills ： healingspray , stampederainoffire , magicleash , cloudoffog , unstableconcoction , grabtree , possession , ambush , devour , 852487
+  - Add Deny
 - NEUTRAL_GUARDED JOB just run on CheckNeutralQuick , CheckNeutral run is repeat
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
 - GetWeakestEnemy , GetStrongestEnemy , GetWeakAndNearEnemy , GetSecondNearestEnemy check GetPlayerSlotState
