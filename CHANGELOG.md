@@ -248,6 +248,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed GetArmyOfUnit return , array use the return , cannot return -1 , now return army_num , army_num all data is 0
 - Fixed GetHealer check GetHealerId return
 - Fixed windwalk Order if exist unit skills level
+- Fixed SELL_ZIGGURATS i always greater than ziggarray
 
 
 ## [3.2.2] - 2022-10-05
