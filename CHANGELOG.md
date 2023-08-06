@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) Debug mode will give observers more visibility into the AI's units and hero abilities. (jzy-chitong56)
 
 ### Changed
-- Chinese Translation improvements.
+- Chinese Translation improvements. (jzy-chitong56)
 - Updated MPQEditor to 3.6.0.368 (jzy-chitong56)
 - Language dialog will be available on game start even when the commander is disabled (jzy-chitong56)
 - Updates for latest war3 version (jzy-chitong56)
@@ -28,7 +28,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fix Goblin Tinker not learning abilities after picking the engineering skill. (jzy-chitong56)
 - Fix VSAI more than 12 players support (jzy-chitong56)
 - Memory fixes. (jzy-chitong56)
-- Changing language more than once may not use the english backup correctly. (jzy-chitong56)
+- Changing language more than once may not apply the english backup correctly. (jzy-chitong56)
+- More unicode fixes to languages (jzy-chitong56)
 
 ## [3.2.2] - 2022-10-05
 
