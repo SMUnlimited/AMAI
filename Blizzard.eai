@@ -4,8 +4,8 @@
     //-----------------------------------------------------------------------
 
     // default values
-    string language = ""  // Possible values: "" (dialog), "English", "Deutsch", "Swedish", "French", "Spanish", "Romanian", "Chinese"
-    string game_mode = "" // Possible values: "" (dialog), "commander", "no_human", "ai_only"
+    string language = ""  // Possible values: "" (dialog), "English", "Deutsch", "Swedish", "French", "Spanish", "Romanian", "Russian", "Portuguese", "Norwegian", "Chinese"
+    string game_mode = "" // Possible values: "" (dialog), "commander", "no_human", "ai_only", "shared"
 
     integer array command_number
     integer array command_par1
@@ -48,6 +48,13 @@
     integer array current_player_par
     integer array current_number_par
     player array commanded_player
+    
+    #INCLUDETABLE <$VER$\Races.txt>
+      string array %1_StrategyName
+      integer %1_strategyNum = 0
+    #ENDINCLUDE
+    button strategyBtn = null
+    boolean strategyDialog = false
 
     string array tribute_type
     button tribute_g = null
@@ -829,6 +836,12 @@ function initLanguage%1 takes nothing returns nothing
 #INCLUDETABLE <Languages\%1\CommandsTrans.txt> #ENC:%4 #EFR
   call SaveStr(translation, StringHash(language), StringHash("%1"), "%2")
 #ENDINCLUDE
+#INCLUDETABLE <Languages\%1\Strategy.txt> #ENC:%4 #EFR
+  call SaveStr(translation, StringHash(language), StringHash("%1"), "%2")
+#ENDINCLUDE
+#INCLUDETABLE <Languages\English\Strategy.txt> #ENC:%4 #EFR
+  call SaveStr(translation, StringHash("English"), StringHash("%1"), "%2")
+#ENDINCLUDE
 endfunction
 #ENDINCLUDE
 
@@ -1109,6 +1122,7 @@ function BuildNumberDialog takes player p, integer startnum returns dialog
   local integer maxCount = 25  // Configure this to increase total number options to display
   local integer i = startnum
   local dialog new_dialog = DialogCreate()
+  local string RaceStrategy = null
   //call DisplayToAll("STRAT Max: " + I2S(maxCount) + " for player: " + I2S(GetPlayerId(p)) + " starting page at:" + I2S(i))
   call DestroyLastTrigger(last_number_trigger, last_number_trigger_action)
   set last_number_trigger = null
@@ -1118,9 +1132,27 @@ function BuildNumberDialog takes player p, integer startnum returns dialog
   call DialogSetMessage(new_dialog, dlghdr_choose_number)
   set ndbn_length = startnum
   set ndbn_paged_length = 0
+  
   loop
     exitwhen i >= 9 + startnum or i >= maxCount
-    set ndbn_button[ndbn_length] = DialogAddButton(new_dialog, I2S(i), IMinBJ(48 + i, 57))
+    if (strategyDialog) then
+      if GetPlayerRace(p) == RACE_HUMAN then
+        set RaceStrategy = Translation(HUMAN_StrategyName[i])
+      elseif GetPlayerRace(p) == RACE_ORC then
+        set RaceStrategy = Translation(ORC_StrategyName[i])
+      elseif GetPlayerRace(p) == RACE_UNDEAD then
+        set RaceStrategy = Translation(UNDEAD_StrategyName[i])
+      elseif GetPlayerRace(p) == RACE_NIGHTELF then
+        set RaceStrategy = Translation(ELF_StrategyName[i])
+      endif
+      if RaceStrategy != null then
+        set ndbn_button[ndbn_length] = DialogAddButton(new_dialog, RaceStrategy, IMinBJ(48 + i, 57))
+      else
+        set ndbn_button[ndbn_length] = DialogAddButton(new_dialog, I2S(i), IMinBJ(48 + i, 57))
+      endif
+    else
+      set ndbn_button[ndbn_length] = DialogAddButton(new_dialog, I2S(i), IMinBJ(48 + i, 57))
+    endif
     set ndbn_length = ndbn_length + 1
     set ndbn_paged_length = ndbn_paged_length + 1
     set i = i + 1
@@ -1251,6 +1283,7 @@ function NumberDialogResponse takes nothing returns nothing
     call DialogDisplay(GetTriggerPlayer(), d, true)
   endif
   if (ndbn_button[i] == b) then
+    call TraceToTP("Number picked: " + I2S(i))
     set current_number_par[GetPlayerId(GetTriggerPlayer())] =i
     call ExecuteDialogCommand(commanded_player[GetPlayerId(GetTriggerPlayer())], current_command[GetPlayerId(GetTriggerPlayer())])
   endif
@@ -1281,10 +1314,14 @@ function DialogResponse takes nothing returns nothing
   set d = cdlg_dialog[i]
   set cn = cdlg_number[i]
 
+  set strategyDialog = false
   if d != null then
     set current_command[GetPlayerId(GetTriggerPlayer())] = cn
     if (d == number_dialog) then
       set t = CreateTrigger()
+      if (b == strategyBtn) then 
+        set strategyDialog = true
+      endif
       set d = BuildNumberDialog(commanded_player[GetPlayerId(GetTriggerPlayer())], 0)
       call TriggerRegisterDialogEvent(t, d )
       set last_number_trigger_action = TriggerAddAction(t, function NumberDialogResponse)
@@ -1350,11 +1387,15 @@ endfunction
 function AddCommandDialog takes integer i returns nothing
   local dialog current_dialog = null
   local dialog next_dialog = null
+  local boolean next_dialog_strat = false
   local string current_name = ""
 
   if command_dlg3[i] != "" then
     if command_dlg3[i] == "#" then
       set next_dialog = number_dialog
+    elseif command_dlg2[i] == "s" then
+      set next_dialog = number_dialog
+      set next_dialog_strat = true
     elseif command_dlg3[i] == "e" then
       set next_dialog = player_dialog
     else
@@ -1375,6 +1416,9 @@ function AddCommandDialog takes integer i returns nothing
   if command_dlg2[i] != "" then
     if command_dlg2[i] == "#" then
       set next_dialog = number_dialog
+    elseif command_dlg2[i] == "s" then
+      set next_dialog = number_dialog
+      set next_dialog_strat = true
     elseif command_dlg2[i] == "e" then
       set next_dialog = player_dialog
     else
@@ -1396,7 +1440,12 @@ function AddCommandDialog takes integer i returns nothing
     set current_name = ""
     set current_dialog = FindDialog(current_name)
     if current_dialog != null then
-      call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg1[i], command_hotkey1[i]), i, next_dialog)
+      if next_dialog_strat then
+        set strategyBtn = DialogAddButton(current_dialog, command_dlg1[i], command_hotkey1[i])
+        call RegisterCDialogButton(strategyBtn, i, next_dialog)
+      else
+        call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg1[i], command_hotkey1[i]), i, next_dialog)
+      endif
       set current_dialog = null
       set next_dialog = null
       return
@@ -1770,11 +1819,32 @@ function LanguageDefault takes nothing returns nothing
   call GameStartDlg()
 endfunction
 
+function SetupStrategies takes nothing returns nothing
+// Has to match same order that races.eai makes
+      #SEARCHTREE Strats <$VER$\ELF\Strategy.txt> %1 %13 build_sequence_%1() #EFR
+      #SEARCHLIST Strats
+        set ELF_StrategyName[%row] = "%1"
+      #ENDSEARCHLIST
+      #SEARCHTREE Strats2 <$VER$\HUMAN\Strategy.txt> %1 %13 build_sequence_%1() #EFR
+      #SEARCHLIST Strats2
+        set HUMAN_StrategyName[%row] = "%1"
+      #ENDSEARCHLIST
+      #SEARCHTREE Strats3 <$VER$\ORC\Strategy.txt> %1 %13 build_sequence_%1() #EFR
+      #SEARCHLIST Strats3
+        set ORC_StrategyName[%row] = "%1"
+      #ENDSEARCHLIST
+      #SEARCHTREE Strats4 <$VER$\UNDEAD\Strategy.txt> %1 %13 build_sequence_%1() #EFR
+      #SEARCHLIST Strats4
+        set UNDEAD_StrategyName[%row] = "%1"
+      #ENDSEARCHLIST
+endfunction
+
 function LanguageDlg takes nothing returns nothing
   local integer host = GetFirstHuman()
   call DestroyTimer(last_timer)
   // Need to pause computer ai and players
   call PauseAllUnitsBJ(true)
+  call SetupStrategies()
   
   if language != "" or host == -1 then
     call LanguageDefault()

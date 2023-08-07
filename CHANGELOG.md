@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - New commander mode "Joint Control" which allows the human players to control their AI allies units at the same time as AMAI.
   - This is like the "Computers Only" option where all human players units and buildings are removed at the start of the game but you have direct control.
 - (DevTools) Debug mode will give observers more visibility into the AI's units and hero abilities. (jzy-chitong56)
+- Commander Change strategy dialog now displays the strategy name you can pick for the AI where applicable instead of just a number.
 
 ### Changed
 - Chinese Translation improvements. (jzy-chitong56)
