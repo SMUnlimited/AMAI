@@ -47,7 +47,9 @@ For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.htm
 - After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
 
 ## Notes
-- Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on custom maps (e.g towerdefence), it will make no difference on such maps.
+- Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on completly custom maps (e.g towerdefence), it will make no difference on such maps.
+- Custom melee maps need to be set to latest patch data. Open the map in the Warcraft editor, go to Scenario->Map Options-> and change "Game Data Set" to "Melee (Latest Patch)".
+- Lua maps do not appear to work. Open the map in the Warcraft editor, go to Scenario->Map Options-> and change "Script Language" to Jass, then install AMAI to it. 
 - You may need to run as an administrator if you have issues with maps not displaying any teams.
 
 # Build Requirements
@@ -107,6 +109,8 @@ Tested with strawbery perl 5.30 and Tk 804.034
   - Coordinates with allies what it will be attacking or will join allies in attacking a target.
   - Human players have access to the Commander, letting you give commands.
   - Asks for aid if running out resources.
+- **Commander Game Modes**
+  - Play matches where humans can only order their allies to victory with the `commander`, or humans and AMAI both directly control the same units and buildings.
 - **Surrenders** : Based on profiles some AI's will give up when it detects its losing, while others will fight to the death.
 - **Chat Support**
   - AMAI will taunt enemy players, and share its build strategy with team players.
@@ -131,7 +135,8 @@ You must disable the commander if you want to play on an older version of warcra
 
 1) No Commander - Disables the commander in game
 2) With Commander - Press 'ESC' to bring up the commander menu.
-3) Computers Only - Same as commander except humans do not play, they can only issue orders via the commander to try and make the ally ai win.
+3) Computers Only - Same as commander except humans do not play, humans forces are removed and humans can only issue orders via the commander to try and make the ally ai win.
+4) Joint Control - Same as 'Computers Only' but humans can also directly control there ally ai's forces.
 
 ## Commander Advanced Settings
 
