@@ -712,25 +712,6 @@ function ShowBoard takes nothing returns nothing
 endfunction
 
 //===========================================================================
-// Help Function (Displays help on screen)
-//===========================================================================
-function DisplayHelpToPlayer takes player p, string msg returns nothing
-  if msg == "PAUSE" then
-    call TriggerSleepAction( 15.00 )
-  else
-    call DisplayTimedTextToPlayer(p, 0, 0, 15, msg)
-  endif
-endfunction
-
-function Helpin takes nothing returns nothing
-  local player p = GetTriggerPlayer()
-#INCLUDETABLE <Languages\CommanderHelp.txt>
-  call DisplayHelpToPlayer(p, "%1")
-#ENDINCLUDE
-  set p = null
-endfunction
-
-//===========================================================================
 // W3C UNIT DENY TIP
 //===========================================================================
 function W3CDenyTip takes nothing returns nothing
@@ -861,6 +842,25 @@ function AdjustZoom takes nothing returns nothing
   endloop
   call TriggerAddAction(AdjustZoomUp , function ZoomUp)
   call TriggerAddAction(AdjustZoomDown , function ZoomDown)
+endfunction
+
+//===========================================================================
+// Help Function (Displays help on screen)
+//===========================================================================
+function DisplayHelpToPlayer takes player p, string msg returns nothing
+  if msg == "PAUSE" then
+    call TriggerSleepAction( 15.00 )
+  else
+    call DisplayTimedTextToPlayer(p, 0, 0, 15, msg)
+  endif
+endfunction
+
+function Helpin takes nothing returns nothing
+  local player p = GetTriggerPlayer()
+#INCLUDETABLE <Languages\CommanderHelp.txt>
+  call DisplayHelpToPlayer(p, "%1")
+#ENDINCLUDE
+  set p = null
 endfunction
 
 //===========================================================================
@@ -1118,7 +1118,6 @@ function FindCommand takes nothing returns integer
 
 endfunction
 
-
 #INCLUDETABLE <Languages.txt> #EFR
 function initLanguage%1 takes nothing returns nothing
 #INCLUDETABLE <Languages\%1\Commander.txt> #ENC:%4 #EFR
@@ -1135,7 +1134,7 @@ function initLanguage%1 takes nothing returns nothing
 #ENDINCLUDE
 #INCLUDETABLE <Languages\%1\Strategy.txt> #ENC:%4 #EFR
   call SaveStr(translation, StringHash(language), StringHash("%1"), "%2")
-  #ENDINCLUDE
+#ENDINCLUDE
 #INCLUDETABLE <Languages\English\Strategy.txt> #ENC:%4 #EFR
   call SaveStr(translation, StringHash("English"), StringHash("%1"), "%2")
 #ENDINCLUDE
@@ -2015,12 +2014,13 @@ function ShareWithHumans takes nothing returns nothing
   set p = null
 endfunction
 
+
 function MapInitTimer takes nothing returns nothing
   local timer t = CreateTimer()
   set last_timer = t
   call TimerStart(t,3.0, false, function MapInit)
   set t = null
-endfunction
+  endfunction
 
 function GameStartDlgResponse takes nothing returns nothing
   local button cb = GetClickedButton()
@@ -2054,6 +2054,9 @@ function GameStartDefault takes nothing returns nothing
     call InitCommanderPart()
     if game_mode == "no_human" or game_mode == "shared" then
       call ForForce(GetPlayersAll(), function RemoveHumanUnitsAndRes)
+      if (game_mode == "shared") then
+        call ForForce(GetPlayersAll(), function ShareWithHumans)
+      endif
       call SendToAllAIs(53,0)
     endif
   endif
@@ -2064,7 +2067,6 @@ endfunction
 function GameStartDlg takes nothing returns nothing
   local integer host = GetFirstPlayableHuman()
   local integer p = host
-  local timer t = null
   loop
     if p == -1 or IsPlayerObserver(Player(p)) then
       call MapInitTimer()
@@ -2127,21 +2129,21 @@ function SetupStrategies takes nothing returns nothing
   // Has to match same order that races.eai makes
   #SEARCHTREE Strats <$VER$\ELF\Strategy.txt> %1 %13 build_sequence_%1() #EFR
   #SEARCHLIST Strats
-  set ELF_StrategyName[%row] = "%1"
+    set ELF_StrategyName[%row] = "%1"
   #ENDSEARCHLIST
   #SEARCHTREE Strats2 <$VER$\HUMAN\Strategy.txt> %1 %13 build_sequence_%1() #EFR
   #SEARCHLIST Strats2
-  set HUMAN_StrategyName[%row] = "%1"
+    set HUMAN_StrategyName[%row] = "%1"
   #ENDSEARCHLIST
   #SEARCHTREE Strats3 <$VER$\ORC\Strategy.txt> %1 %13 build_sequence_%1() #EFR
   #SEARCHLIST Strats3
-  set ORC_StrategyName[%row] = "%1"
+    set ORC_StrategyName[%row] = "%1"
   #ENDSEARCHLIST
   #SEARCHTREE Strats4 <$VER$\UNDEAD\Strategy.txt> %1 %13 build_sequence_%1() #EFR
   #SEARCHLIST Strats4
-  set UNDEAD_StrategyName[%row] = "%1"
+    set UNDEAD_StrategyName[%row] = "%1"
   #ENDSEARCHLIST
-  endfunction
+endfunction
 
 function LanguageDlg takes nothing returns nothing
   local integer host = GetFirstHuman()
@@ -2149,6 +2151,7 @@ function LanguageDlg takes nothing returns nothing
   // Need to pause computer ai and players
   call PauseAllUnitsBJ(true)
   call SetupStrategies()
+
   if language != "" or host == -1 then
     //call DisplayToAll("|c0000ffffCMD：|r  -zoom1500")
     call LanguageDefault()
