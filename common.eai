@@ -55,6 +55,8 @@ globals
 
     player  ai_player
 
+    boolean play24 = false
+    boolean skillfix = false
     integer PLAYERPASSIVE = 15
     integer PLAYERAGGRESSIVE = 12
 
@@ -264,10 +266,10 @@ globals
 //==============================================================
 #PRAGMA START VERSION SETTINGS
     real sleep_multiplier = 1  // increases performance by checking stuff not so often
-    integer slm_start = 6  // how many computer players is needed tor the sleep multiplier to start increasing
+    integer slm_start = 4  // how many computer players is needed tor the sleep multiplier to start increasing
     integer slm_end = 10 // how many computer players is needed tor the sleep multiplier to stop increasing
     real slm_start_mult = 1 // how much is the sleep multiplied when it's below the slm_start codition
-    real slm_end_mult = 3  // how much is the sleep multiplied when it's above the slm_end codition
+    real slm_end_mult = 3.2  // how much is the sleep multiplied when it's above the slm_end codition
     real hero_radius = 200  // scanning this small area around hero to detect if the hero gets surrounded by enemy or is in danger of becoming that so it should move
     boolean use_linear_upkeep_saving = false  // should the computers save the upkeep threshold gold over the time above or save it all at once when it get's to the upkeep border?
     integer repair_threshold = 6  // computers only repair buildings if they have more than this many workers
@@ -331,7 +333,7 @@ globals
 
 #PRAGMA START VERSION SETTINGS
    boolean ver_neutral_heroes_available = true  // does the version have neutral heroes ?
-   integer ver_neutral_hero_number = 6  // how many neutral heroes ?
+   integer ver_neutral_hero_number = 0  // how many neutral heroes ?
    boolean ver_only_heroes_buy = false  // can only heroes buy stuff ?
    integer ver_food_limit = 100  // what is the food limit ?
    integer ver_strat_change_enemy_strength_min = 25  // don't allow strategy change unless the maximum strength of all enemy players in the game is above this.
@@ -366,14 +368,15 @@ globals
     integer farm_food2 = 1 // builds another farm at the same time when this near food used to food produced
     integer farm_prio = 400 // priority for farm building
     integer peon_prio = 280 // priority for peon building
-	integer ghoul_prio = 250  // priority for ghoul building
+    integer ghoul_prio = 250  // priority for ghoul building
     integer expa_prio = 200 // priority for expansion building
     integer expa_emergency_prio = 300  // priority for rebuilding an expansion
     integer expa_rebuild_prio = 200 // priority for rebuilding an expansion
-    integer peon_1_mine_number = 14 // maximum number of peons to build when 1 mine is owned (redundent if race uses ghouls)
-    integer peon_2_mines_number = 18 // maximum number of peons to build when 2 mines are owned (redundent if race uses ghouls)
+    integer peon_1_mine_number = 12 // maximum number of peons to build when 1 mine is owned (redundent if race uses ghouls)
+    integer peon_2_mines_number = 17 // maximum number of peons to build when 2 mines are owned (redundent if race uses ghouls)
     integer peon_mines_number = 22  // maximum number of peons to build when more mines are owned (redundent if race uses ghouls)
-    integer min_peon_number_single_mine = 7 // minimum number of peons when 1 mine is owned
+    integer min_peon_number_single_mine = 8 // minimum number of peons when 1 mine is owned
+    integer min_peon_number_double_mine = 13  // minimum number of peons when 2 mines are owned
     integer min_peon_number_multi_mine = 18 // minimum number of peons when more than 1 mine is owned
     integer strat_food_persistence = 2  // * current food use added to priority for current strategy (prevents computers from changing styrategy when having large army)
     integer relevant_strat_change_number = 3   // number of strategies with highest RPs that can be chosen when changing strategy
@@ -427,7 +430,6 @@ globals
     integer race_farms_front_limit = 4  // limit the number of farms at the front to this number
     integer race_farms_at_mine = 0  // the first that many farms will be built at the mine
     real race_max_expa_mine_distance = 850  // the maximum distance between the mine and the expansion building
-    integer min_peon_number_double_mine = 14  // minimum number of peons when 2 mines are owned
     boolean race_has_moonwells = false  // Racial farms have healing properties
 	
 #PRAGMA END RACIAL SETTINGS
@@ -1121,57 +1123,81 @@ endfunction
 	
 //============================================================================
 function c2s takes playercolor c returns string
-if c == PLAYER_COLOR_RED then
-    return "|cffff0402"+ai_name+"|r: "
-elseif c == PLAYER_COLOR_BLUE then
-    return "|cff0042ff"+ai_name+"|r: "
-elseif c == PLAYER_COLOR_CYAN then
-    return "|cff1be6ba"+ai_name+"|r: "
-elseif c == PLAYER_COLOR_PURPLE then
-    return "|cff550081"+ai_name+"|r: "
-elseif c == PLAYER_COLOR_YELLOW then
-    return "|cfffffc00"+ai_name+"|r: "
-elseif c == PLAYER_COLOR_ORANGE then
-    return "|cffff8a0d"+ai_name+"|r: "
-elseif c == PLAYER_COLOR_GREEN then
-    return "|cff20bf00"+ai_name+"|r: "
-elseif c == PLAYER_COLOR_PINK then
-    return "|cffe35baf"+ai_name+"|r: "
-elseif c == PLAYER_COLOR_LIGHT_GRAY then
-    return "|cff949696"+ai_name+"|r: "
-elseif c == PLAYER_COLOR_LIGHT_BLUE then
-    return "|cff81bff1"+ai_name+"|r: "
-elseif c == PLAYER_COLOR_AQUA then
-    return "|cff106247"+ai_name+"|r: "
-else
+  if c == PLAYER_COLOR_RED then
+    set c = null
+    return "|CffFF0000"+ai_name+"|r: "
+  elseif c == PLAYER_COLOR_BLUE then
+    set c = null
+    return "|Cff0064FF"+ai_name+"|r: "
+  elseif c == PLAYER_COLOR_CYAN then
+    set c = null
+    return "|Cff1BE7BA"+ai_name+"|r: "
+  elseif c == PLAYER_COLOR_PURPLE then
+    set c = null
+    return "|Cff550081"+ai_name+"|r: "
+  elseif c == PLAYER_COLOR_YELLOW then
+  set c = null
+    return "|CffFFFC00"+ai_name+"|r: "
+  elseif c == PLAYER_COLOR_ORANGE then
+    set c = null
+    return "|CffFF8A0D"+ai_name+"|r: "
+  elseif c == PLAYER_COLOR_GREEN then
+    set c = null
+    return "|Cff21BF00"+ai_name+"|r: "
+  elseif c == PLAYER_COLOR_PINK then
+    set c = null
+    return "|CffE45CAF"+ai_name+"|r: "
+  elseif c == PLAYER_COLOR_LIGHT_GRAY then
+    set c = null
+    return "|Cff949696"+ai_name+"|r: "
+  elseif c == PLAYER_COLOR_LIGHT_BLUE then
+    set c = null
+    return "|Cff7EBFF1"+ai_name+"|r: "
+  elseif c == PLAYER_COLOR_AQUA then
+    set c = null
+    return "|Cff106247"+ai_name+"|r: "
+  else
     if PLAYERPASSIVE != 15 then
       if c == PLAYER_COLOR_MAROONX then
-        return "|cff9c0000"+ai_name+"|r: "
+        set c = null
+        return "|Cff9C0000"+ai_name+"|r: "
       elseif c == PLAYER_COLOR_NAVYX then
-        return "|cff0000c2"+ai_name+"|r: "
+        set c = null
+        return "|Cff0000C3"+ai_name+"|r: "
       elseif c == PLAYER_COLOR_TURQUOISEX then
-        return "|cff00ebff"+ai_name+"|r: "
+        set c = null
+        return "|Cff00EBFF"+ai_name+"|r: "
       elseif c == PLAYER_COLOR_VIOLETX then
-        return "|cffbd00ff"+ai_name+"|r: "
+        set c = null
+        return "|CffBD00FF"+ai_name+"|r: "
       elseif c == PLAYER_COLOR_WHEATX then
-        return "|cffeccc86"+ai_name+"|r: "
+        set c = null
+        return "|CffECCD87"+ai_name+"|r: "
       elseif c == PLAYER_COLOR_PEACHX then
-        return "|cfff7a48b"+ai_name+"|r: "
+        set c = null
+        return "|CffF7A58B"+ai_name+"|r: "
       elseif c == PLAYER_COLOR_MINTX then
-        return "|cffbfff80"+ai_name+"|r: "
+        set c = null
+        return "|CffBFFF81"+ai_name+"|r: "
       elseif c == PLAYER_COLOR_LAVENDERX then
-        return "|cffdbb8ec"+ai_name+"|r: "
+        set c = null
+        return "|CffDBB9EB"+ai_name+"|r: "
       elseif c == PLAYER_COLOR_COALX then
-        return "|cff4f4f55"+ai_name+"|r: "
+        set c = null
+        return "|Cff4F5055"+ai_name+"|r: "
       elseif c == PLAYER_COLOR_SNOWX then
-        return "|cffecf0ff"+ai_name+"|r: "
+        set c = null
+        return "|CffECF0FF"+ai_name+"|r: "
       elseif c == PLAYER_COLOR_EMERALDX then
-        return "|cff00781e"+ai_name+"|r: "
+        set c = null
+        return "|Cff00781E"+ai_name+"|r: "
       elseif c == PLAYER_COLOR_PEANUTX then
-        return "|cffa46f34"+ai_name+"|r: "
-endif
+        set c = null
+        return "|CffA57033"+ai_name+"|r: "
+      endif
     endif
-    return "|cff4f2b05"+ai_name+"|r: "//Brown
+    set c = null
+    return "|Cff4F2B05"+ai_name+"|r: "//Brown
 endif
 endfunction
 
@@ -1207,11 +1233,11 @@ function CreateDebugTag takes string s, real fontsize, unit u, real lifespan, re
 	call SetTextTagText(tt, s, ( fontsize * 0.023 / 10))  // *0.023/10 creates the correct font size from given real
     call SetTextTagPosUnit(tt, u, 0)	
 	if c == PLAYER_COLOR_RED then
-		call SetTextTagColor(tt, 255, 4, 2, AMAIPercentTo255(100-0))
+		call SetTextTagColor(tt, 255, 0, 0, AMAIPercentTo255(100-0))
 	elseif c == PLAYER_COLOR_BLUE then
-		call SetTextTagColor(tt, 0, 66, 255, AMAIPercentTo255(100-0))
+		call SetTextTagColor(tt, 0, 100, 255, AMAIPercentTo255(100-0))
 	elseif c == PLAYER_COLOR_CYAN then
-		call SetTextTagColor(tt, 27, 230, 186, AMAIPercentTo255(100-0))
+		call SetTextTagColor(tt, 27, 231, 186, AMAIPercentTo255(100-0))
 	elseif c == PLAYER_COLOR_PURPLE then
 		call SetTextTagColor(tt, 85, 0, 129, AMAIPercentTo255(100-0))	
 	elseif c == PLAYER_COLOR_YELLOW then
@@ -1221,41 +1247,41 @@ function CreateDebugTag takes string s, real fontsize, unit u, real lifespan, re
 	elseif c == PLAYER_COLOR_GREEN then
 		call SetTextTagColor(tt, 32, 191, 0, AMAIPercentTo255(100-0))	
 	elseif c == PLAYER_COLOR_PINK then
-		call SetTextTagColor(tt, 227, 91, 175, AMAIPercentTo255(100-0))	
+		call SetTextTagColor(tt, 228, 92, 0, AMAIPercentTo255(100-0))	
 	elseif c == PLAYER_COLOR_LIGHT_GRAY then
-		call SetTextTagColor(tt, 148, 150, 151, AMAIPercentTo255(100-0))	
+		call SetTextTagColor(tt, 148, 150, 150, AMAIPercentTo255(100-0))	
 	elseif c == PLAYER_COLOR_LIGHT_BLUE then
-		call SetTextTagColor(tt, 236, 191, 241, AMAIPercentTo255(100-0))	
+		call SetTextTagColor(tt, 126, 191, 241, AMAIPercentTo255(100-0))	
 	elseif c == PLAYER_COLOR_AQUA then
-		call SetTextTagColor(tt, 16, 98, 71, AMAIPercentTo255(100-0))	
+		call SetTextTagColor(tt, 19, 98, 71, AMAIPercentTo255(100-0))	
     elseif c == PLAYER_COLOR_BROWN then
         call SetTextTagColor(tt, 79, 43, 5, AMAIPercentTo255(100-0))  //Brown
 	else 
 	  if PLAYERPASSIVE != 15 then
 		if c == PLAYER_COLOR_MAROONX then
-		  call SetTextTagColor(tt, 150, 0, 0, AMAIPercentTo255(100-0))
+		  call SetTextTagColor(tt, 156, 0, 0, AMAIPercentTo255(100-0))
 	    elseif c == PLAYER_COLOR_NAVYX then
-		  call SetTextTagColor(tt, 0, 0, 194, AMAIPercentTo255(100-0))
+		  call SetTextTagColor(tt, 0, 0, 195, AMAIPercentTo255(100-0))
 	    elseif c == PLAYER_COLOR_TURQUOISEX then
-		  call SetTextTagColor(tt, 0, 235,255, AMAIPercentTo255(100-0))
+		  call SetTextTagColor(tt, 0, 235, 255, AMAIPercentTo255(100-0))
 	    elseif c == PLAYER_COLOR_VIOLETX then
 		  call SetTextTagColor(tt, 189, 0, 255, AMAIPercentTo255(100-0))
 	    elseif c == PLAYER_COLOR_WHEATX then
-		  call SetTextTagColor(tt, 236, 204, 134, AMAIPercentTo255(100-0))
+		  call SetTextTagColor(tt, 236, 205, 135, AMAIPercentTo255(100-0))
 	    elseif c == PLAYER_COLOR_PEACHX then
-		  call SetTextTagColor(tt, 247, 164, 139, AMAIPercentTo255(100-0))
+		  call SetTextTagColor(tt, 247, 165, 139, AMAIPercentTo255(100-0))
 	    elseif c == PLAYER_COLOR_MINTX then
-		  call SetTextTagColor(tt, 191, 255, 128, AMAIPercentTo255(100-0))
+		  call SetTextTagColor(tt, 191, 255, 129, AMAIPercentTo255(100-0))
 	    elseif c == PLAYER_COLOR_LAVENDERX then
-		  call SetTextTagColor(tt, 219, 194, 236, AMAIPercentTo255(100-0))
+		  call SetTextTagColor(tt, 219, 185, 235, AMAIPercentTo255(100-0))
 	    elseif c == PLAYER_COLOR_COALX then
-		  call SetTextTagColor(tt, 236, 240, 255, AMAIPercentTo255(100-0))
+		  call SetTextTagColor(tt, 79, 80, 85, AMAIPercentTo255(100-0))
 	    elseif c == PLAYER_COLOR_SNOWX then
-		  call SetTextTagColor(tt, 0, 120, 30, AMAIPercentTo255(100-0))
+		  call SetTextTagColor(tt, 236, 240, 255, AMAIPercentTo255(100-0))
 	    elseif c == PLAYER_COLOR_EMERALDX then
-		  call SetTextTagColor(tt, 164, 111, 52, AMAIPercentTo255(100-0))
+		  call SetTextTagColor(tt, 0, 120, 30, AMAIPercentTo255(100-0))
 	    elseif c == PLAYER_COLOR_PEANUTX then
-		call SetTextTagColor(tt, 122, 68, 52, AMAIPercentTo255(100-0))		
+		call SetTextTagColor(tt, 165, 112, 51, AMAIPercentTo255(100-0))		
 	endif
 	endif
 	endif
@@ -1271,62 +1297,87 @@ endfunction
 function ColorText takes player CPlayer returns string
   //Required Variables
   local playercolor PColor = GetPlayerColor(CPlayer)  //Gets the Player's color
-    
+
   //Finds the Nicer Text Version of the Player's Color
   if (PColor == PLAYER_COLOR_RED) then
+    set PColor = null
     return "Red"
   elseif (PColor == PLAYER_COLOR_BLUE) then
+    set PColor = null
     return "Blue"
   elseif (PColor == PLAYER_COLOR_CYAN) then
+    set PColor = null
     return "Cyan"
   elseif (PColor == PLAYER_COLOR_PURPLE) then
+    set PColor = null
     return "Purple"
   elseif (PColor == PLAYER_COLOR_YELLOW) then
+    set PColor = null
     return "Yellow"
   elseif (PColor == PLAYER_COLOR_ORANGE) then
+    set PColor = null
     return "Orange"
   elseif (PColor == PLAYER_COLOR_GREEN) then
+    set PColor = null
     return "Green"
   elseif (PColor == PLAYER_COLOR_PINK) then
+    set PColor = null
     return "Pink"
   elseif (PColor == PLAYER_COLOR_LIGHT_GRAY) then
+    set PColor = null
     return "Light Gray"
   elseif (PColor == PLAYER_COLOR_LIGHT_BLUE) then
+    set PColor = null
     return "Light Blue"
   elseif (PColor == PLAYER_COLOR_AQUA) then
+    set PColor = null
     return "Aqua"
   elseif (PColor == PLAYER_COLOR_BROWN) then
+    set PColor = null
     return "Brown"
   else
 	if PLAYERPASSIVE != 15 then
-      if (PColor == PLAYER_COLOR_MAROONX) then
-    return "Maroon"
-      elseif (PColor == PLAYER_COLOR_NAVYX) then
-    return "Navy"
-      elseif (PColor == PLAYER_COLOR_TURQUOISEX) then
-    return "Turquoise"
-      elseif (PColor == PLAYER_COLOR_VIOLETX) then
-    return "Violet"
-      elseif (PColor == PLAYER_COLOR_WHEATX) then
-    return "Wheat"
-      elseif (PColor == PLAYER_COLOR_PEACHX) then
-    return "Peach"
-      elseif (PColor == PLAYER_COLOR_MINTX) then
-    return "Mint"
-      elseif (PColor == PLAYER_COLOR_LAVENDERX) then
-    return "Lavender"
-      elseif (PColor == PLAYER_COLOR_COALX) then
-    return "Coal"
-      elseif (PColor == PLAYER_COLOR_SNOWX) then
-    return "Snow"
-      elseif (PColor == PLAYER_COLOR_EMERALDX) then
-    return "Emerald"
-      elseif (PColor == PLAYER_COLOR_PEANUTX) then
-    return "Peanut"
+    if (PColor == PLAYER_COLOR_MAROONX) then
+      set PColor = null
+      return "Maroon"
+    elseif (PColor == PLAYER_COLOR_NAVYX) then
+      set PColor = null
+      return "Navy"
+    elseif (PColor == PLAYER_COLOR_TURQUOISEX) then
+      set PColor = null
+      return "Turquoise"
+    elseif (PColor == PLAYER_COLOR_VIOLETX) then
+      set PColor = null
+      return "Violet"
+    elseif (PColor == PLAYER_COLOR_WHEATX) then
+      set PColor = null
+      return "Wheat"
+    elseif (PColor == PLAYER_COLOR_PEACHX) then
+      set PColor = null
+      return "Peach"
+    elseif (PColor == PLAYER_COLOR_MINTX) then
+      set PColor = null
+      return "Mint"
+    elseif (PColor == PLAYER_COLOR_LAVENDERX) then
+      set PColor = null
+      return "Lavender"
+    elseif (PColor == PLAYER_COLOR_COALX) then
+      set PColor = null
+      return "Coal"
+    elseif (PColor == PLAYER_COLOR_SNOWX) then
+      set PColor = null
+      return "Snow"
+    elseif (PColor == PLAYER_COLOR_EMERALDX) then
+      set PColor = null
+      return "Emerald"
+    elseif (PColor == PLAYER_COLOR_PEANUTX) then
+      set PColor = null
+      return "Peanut"
   endif
      endif
   endif
   //Returns text version
+  set PColor = null
   return ""
 endfunction
 
@@ -2875,6 +2926,12 @@ function InitChatArrays%1 takes nothing returns nothing
   set %1 = "%2"
   #ENDINCLUDE
 
+  #INCLUDETABLE <Languages\English\ChatMisc.txt> #ENC:%4
+  if %1 == null or %1 == "" then
+    set %1 = "%2"
+  endif
+  #ENDINCLUDE
+  
 endfunction
 
 #ENDINCLUDE
@@ -3016,7 +3073,7 @@ function Chat takes integer c returns nothing
   if c == C_STRATEGY then
     call DisplayToAlliesImportant( GetCurrentStrategyReport() )
     if not IsPlayerAlly(ai_player,GetLocalPlayer()) then
-      call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport() )
+      call DisplayToObserversImportant( GetCurrentStrategyReport() )
     endif
   else
     if not (chatting or chat_important[c]) then
@@ -4838,16 +4895,17 @@ function GetPlayerHeroStrengthMod takes player p returns integer
   local group g = CreateGroup()
   local unit u = null
   local integer sum = 0
+  local real handicap = GetPlayerStrengthHandicap(p)
   call GroupEnumUnitsOfPlayer(g, p, null)
   set g = SelectUnittype(g, UNIT_TYPE_HERO, true)
   set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set sum = sum + R2I(GetHeroStrength(u) * GetPlayerStrengthHandicap(GetOwningPlayer(u)) * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)))
+    set sum = sum + R2I(GetHeroStrength(u) * handicap * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)))
     call GroupRemoveUnit(g,u)
   endloop
-  set sum = sum + GetPlayerHeroBonusStrength(ai_player)
+  set sum = sum + GetPlayerHeroBonusStrength(p)
   call DestroyGroup(g)
   set g = null
   return sum 
@@ -7190,6 +7248,9 @@ function cmd_attack takes integer cmd, integer data returns nothing
       //call DisplayToAllies(chat_towerrush)
     else
       call DisplayToAllies(chat_no_orc)
+      if not IsPlayerAlly(ai_player,GetLocalPlayer()) then
+        call DisplayToObserversImportant( chat_no_orc )
+      endif
     endif
 
   endif
@@ -7557,11 +7618,17 @@ function InitCreepStrengthArray takes nothing returns nothing
 endfunction
 
 //===========================================================================
-function InitGlobalSettings takes nothing returns nothing
-  if GetPlayerController(Player(14)) != MAP_CONTROL_CREEP and GetPlayerController(Player(14)) != MAP_CONTROL_NEUTRAL and GetPlayerController(Player(14)) != MAP_CONTROL_RESCUABLE then
-	set PLAYERPASSIVE = 27
-	set PLAYERAGGRESSIVE = 24
-	set PLAYER_COLOR_MAROONX             = ConvertPlayerColor(12)
+function GetPatchVersion takes nothing returns nothing
+  local real Patch_Version = 129  //1.29 ~ 1.32 or higher
+  if (JASS_MAX_ARRAY_SIZE <= 8192) then
+    set Patch_Version = 128  // 1.28f or lower
+  endif
+
+  if GetPlayerController(Player(12)) != MAP_CONTROL_CREEP then  // old ver WE make map , the Player(12) is MAP_CONTROL_CREEP , Even running in higher war3
+    set play24 = true
+    set PLAYERPASSIVE = 27
+    set PLAYERAGGRESSIVE = 24
+    set PLAYER_COLOR_MAROONX             = ConvertPlayerColor(12)
     set PLAYER_COLOR_NAVYX               = ConvertPlayerColor(13)
     set PLAYER_COLOR_TURQUOISEX          = ConvertPlayerColor(14)
     set PLAYER_COLOR_VIOLETX             = ConvertPlayerColor(15)
@@ -7574,12 +7641,22 @@ function InitGlobalSettings takes nothing returns nothing
     set PLAYER_COLOR_EMERALDX            = ConvertPlayerColor(22)
     set PLAYER_COLOR_PEANUTX             = ConvertPlayerColor(23)
   endif
+  if Patch_Version == 129 then
+    set skillfix = true
+  endif
+endfunction
+
+function InitGlobalSettings takes nothing returns nothing
+  call GetPatchVersion()
 #INCLUDETABLE <$VER$\GlobalSettings.txt> #EFR
   set %1 = %2
 #ENDINCLUDE
-  if GetPlayerController(Player(14)) != MAP_CONTROL_CREEP and GetPlayerController(Player(14)) != MAP_CONTROL_NEUTRAL and GetPlayerController(Player(14)) != MAP_CONTROL_RESCUABLE then
-	set slm_start = 9
-	set slm_end = 23
+  if play24 == true then
+    set slm_start = 4
+    set slm_end = 18
+  endif
+  if racial_lumber == 0 or race_no_wood_harvest then
+    set front_base_distance = front_base_distance + 100
   endif
 endfunction
 
@@ -7708,63 +7785,63 @@ endfunction
 // AMAI Code
 //============================================================================
 function InitAMAI takes nothing returns nothing
-    if debugging and IsPlayerObserver(GetLocalPlayer()) then
-      call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_HELP_REQUEST,  true)
-      call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_HELP_RESPONSE, true)
-      call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_SHARED_XP,     true)
-      call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_SHARED_SPELLS, true)
-      call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_SHARED_VISION, true)
-      call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_SHARED_CONTROL, true)
-      call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_SHARED_ADVANCED_CONTROL, true)
-    endif
-    set message_add = c2s(GetPlayerColor(ai_player))
-    if race_militia_available then
-      set militia_hall = GetMilitiaHall()
-    endif
-    call InitDigits()
-    set ai_id = Int2Str(GetAiPlayer())
-    call SaveBoolean(com, IS_AMAI, GetAiPlayer(), true)	
-    call InitRaces()
-    if IsGameFFA() then
-      set game_is_ffa = true
-      set attacking_strategy = 5
-    endif
-    call countAllyEnemy()
-    if c_enemy_total == 1 and c_ally_total == 0 then
-      set game_is_1on1 = true
-    endif
-    set sleep_multiplier = sleep_multiplier * LinearInterpolation(I2R(slm_start), I2R(slm_end), slm_start_mult, slm_end_mult, I2R(c_ai_total))
-    set difficulty = MeleeDifficulty()
-    set income_per_mine = income_per_mine * Max(difficulty - 1, 1)
-			call Trace("Init AMAI step 1")
-    call InitNeutralSpecial()
-    call InitHeroArrays()
-    call InitArrays()  // Has been moved to be set before all other code as is only variable declaration
-    call InitChatArrays()
-    call InitChatEvents()
-    call InitTrans()
-    call InitTranslations()
-    call InitRaceNames()
-    call InitCT()
+  if debugging and IsPlayerObserver(GetLocalPlayer()) then
+    call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_HELP_REQUEST,  true)
+    call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_HELP_RESPONSE, true)
+    call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_SHARED_XP,     true)
+    call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_SHARED_SPELLS, true)
+    call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_SHARED_VISION, true)
+    call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_SHARED_CONTROL, true)
+    call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_SHARED_ADVANCED_CONTROL, true)
+  endif
+  set message_add = c2s(GetPlayerColor(ai_player))
+  if race_militia_available then
+    set militia_hall = GetMilitiaHall()
+  endif
+  call InitDigits()
+  set ai_id = Int2Str(GetAiPlayer())
+  call SaveBoolean(com, IS_AMAI, GetAiPlayer(), true)	
+  call InitRaces()
+  if IsGameFFA() then
+    set game_is_ffa = true
+    set attacking_strategy = 5
+  endif
+  call countAllyEnemy()
+  if c_enemy_total == 1 and c_ally_total == 0 then
+    set game_is_1on1 = true
+  endif
+  set sleep_multiplier = sleep_multiplier * LinearInterpolation(I2R(slm_start), I2R(slm_end), slm_start_mult, slm_end_mult, I2R(c_ai_total))
+  set difficulty = MeleeDifficulty()
+  set income_per_mine = income_per_mine * Max(difficulty - 1, 1)
+  call Trace("Init AMAI step 1")
+  call InitNeutralSpecial()
+  call InitHeroArrays()
+  call InitArrays()  // Has been moved to be set before all other code as is only variable declaration
+  call InitChatArrays()
+  call InitChatEvents()
+  call InitTrans()
+  call InitTranslations()
+  call InitRaceNames()
+  call InitCT()
 //    call TestCT()
-    call InitChatVars()
-    call InitCreepStrengthArray()
-    call StopGathering()
-    call InitBuildArrayAM()
-    call InitUpkeep()
-    call InitNeutralBuildings()
-    //call StartThread(function CheckAllNeutrals)
-    call InitHealers()
-    call InitUpgradeTimeArray()
-    call InitPlayerStrengthCache()
-    call SetNearestEnemy()
-    call InitTownBuilt()
-    set max_farms = GetMaxFarms()
-    set mine_loc = GetUnitLoc(own_town_mine[0])
-    
+  call InitChatVars()
+  call InitCreepStrengthArray()
+  call StopGathering()
+  call InitBuildArrayAM()
+  call InitUpkeep()
+  call InitNeutralBuildings()
+  //call StartThread(function CheckAllNeutrals)
+  call InitHealers()
+  call InitUpgradeTimeArray()
+  call InitPlayerStrengthCache()
+  call SetNearestEnemy()
+  call InitTownBuilt()
+  set max_farms = GetMaxFarms()
+  set mine_loc = GetUnitLoc(own_town_mine[0])
+  
 //    call DebugSequenceStart("DebugRun")
 
-    call StartThread(function PathingThread)  
+  call StartThread(function PathingThread)  
 
 
 endfunction
@@ -11271,7 +11348,7 @@ function SetLeadAlly takes nothing returns nothing
 	local integer i = 0
 	local boolean checkdone = false
 	loop
-	   exitwhen i > (PLAYERAGGRESSIVE - 1) or checkdone
+	   exitwhen i >= PLAYERAGGRESSIVE or checkdone
 	   if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER and Player(i) != ai_player and IsPlayerAlly(ai_player, Player(i)) then
 		  set leadally = false
 		  set checkdone = true
@@ -11555,11 +11632,15 @@ endfunction
 function SkillArraysAM takes nothing returns integer
     local integer level = GetHeroLevelAI()
     local integer hn = GetHeroNumber(GetHeroId())
-
     if level > max_hero_level then
         set max_hero_level = level
     endif
-
+    if skillfix == true then    //Assisted Hero Learning Skills , for war3 1.31 bug
+      if hero_unit[hn] == null then
+        set hero_unit[hn] = GetOneOfId(ai_player, old_id[hero[hn]])
+      endif
+      call SelectHeroSkill( hero_unit[hn], skills[(hn - 1) * HERO_LEVEL_NUMBER + level] )
+    endif
     return skills[(hn - 1) * HERO_LEVEL_NUMBER + level]
 endfunction
 
@@ -11893,7 +11974,7 @@ function universal_attack_sequence takes nothing returns nothing
     endif
 
     set needs_exp        = take_exp and (ai_strength > exp_strength)
-    set has_siege = ai_strength > 60
+    set has_siege        = ai_strength > 60
   #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bsiege\b/
     set has_siege        = has_siege or TownCountDone(%1) > 0
   #ENDINCLUDE
@@ -13643,9 +13724,24 @@ endfunction
 //============================================================================
 function SkillArrays takes nothing returns integer
     local integer level = GetHeroLevelAI()
-
     if level > max_hero_level then
         set max_hero_level = level
+    endif
+
+    if skillfix == true then
+      if hero_unit[1] == null then
+        set hero_unit[1] = GetOneOfId(ai_player, hero_id)
+      endif
+      if hero_unit[2] == null then
+        set hero_unit[2] = GetOneOfId(ai_player, hero_id2)
+      endif
+      if hero_unit[3] == null then
+        set hero_unit[3] = GetOneOfId(ai_player, hero_id3)
+      endif
+      call SelectHeroSkill( hero_unit[1], skills1[level] )
+      call SelectHeroSkill( hero_unit[2], skills2[level] )
+      call SelectHeroSkill( hero_unit[3], skills3[level] )
+      return 0
     endif
 
     if GetHeroId() == hero_id then
@@ -13716,10 +13812,11 @@ function PickMeleeHero takes race raceid returns integer
     local integer last
     local integer array heroes
     local integer i
-
-    call InitGlobalSettings()
-	call InitAiUnits()	// This function makes all unit ids go back to there originals
-	
+    call GetPatchVersion()
+    // if IsAMAI then
+    //   call InitGlobalSettings()  // repeat
+    // endif
+	call InitAiUnits()  // This function makes all unit ids go back to there originals
    set i = ver_neutral_hero_number
     //------------------------------------------------------------------------
     if raceid == RACE_HUMAN then
@@ -13773,7 +13870,7 @@ function PickMeleeHero takes race raceid returns integer
 	if VersionCompatible(VERSION_FROZEN_THRONE) then
 		set third  = GetRandomInt(i+1,last-2)
 	else
-		set third = 1
+		set third = i+1
     endif
     set hero_id        = heroes[first]
     set heroes[first]  = heroes[last]
