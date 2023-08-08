@@ -47,9 +47,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Strategy Choose Dialog now show translation Strategy name , no Num
    - Strategy name must consistent with file Strategy.txt name
    - Cannot find consistent name Strategy , Dialog will missing button
-   - Common.eai have new code help find cmd Strategy(even if missing button)
    - Strategy name button will identify ROC and TFT
-   - Because search translation , now compile B.J need take more time(Poor code level)
 - New commander mode "Joint Control" which allows the human players to control their AI allies units at the same time as AMAI.
    - This is like the "Computers Only" option where all human players units and buildings are removed at the start of the game but you have direct control.
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
@@ -234,7 +232,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed Ritual Dagger check(thank Slayer95)
 - Fixed QTLOOP sleep time < 0
 - Fixed GetPlayerHeroStrength BonusStrength always use ai_player
-- Fixed TeleportJob self circulation
 - Fixed first_expansion_chosen now should correctly expressed
 - Fixed IsTargetGood aggression error
 - Fixed SendHomeMoveUnitToLoc repeat run semd home Job
