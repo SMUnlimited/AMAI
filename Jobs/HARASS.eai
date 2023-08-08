@@ -207,43 +207,41 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
     else
       call GroupEnumUnitsInRange(g,GetUnitX(FirstOfGroup(harasser)),GetUnitY(FirstOfGroup(harasser)),harass_radius_flee_ranged,null)
     endif
-    //set g = SelectByAlive(g, true)
+    set g = SelectByAlive(g, true)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if UnitAlive(u) then
-        if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitTower(u) and avoiding_towers then
-          set towersdetected = true
+      if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitTower(u) and avoiding_towers then
+        set towersdetected = true
+      endif
+      if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) and GetOwningPlayer(u) != Player(PLAYERAGGRESSIVE) and IsUnitType(u, UNIT_TYPE_PEON) == false then
+        set strength_sum = strength_sum + GetUnitStrength(u)
+      elseif IsUnitInGroup(u, harasser) then
+        if ht == HARASS_TARGET_LOCATION then
+          call CreateDebugTag("Distraction: Harrasing Opponent Location", 10, u, 3.00, 1.50)
+        else
+          call CreateDebugTag("Harassing Opponent", 10, u, 3.00, 1.50)
         endif
-        if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) and GetOwningPlayer(u) != Player(PLAYERAGGRESSIVE) and IsUnitType(u, UNIT_TYPE_PEON) == false then
-          set strength_sum = strength_sum + GetUnitStrength(u)
-        elseif IsUnitInGroup(u, harasser) then
-          if ht == HARASS_TARGET_LOCATION then
-            call CreateDebugTag("Distraction: Harrasing Opponent Location", 10, u, 3.00, 1.50)
-          else
-            call CreateDebugTag("Harassing Opponent", 10, u, 3.00, 1.50)
-          endif
-          //if GetUnitState(u, UNIT_STATE_LIFE) <= GetUnitState(u, UNIT_STATE_MAX_LIFE) * flee_percent then
+        //if GetUnitState(u, UNIT_STATE_LIFE) <= GetUnitState(u, UNIT_STATE_MAX_LIFE) * flee_percent then
 
-          if GetUnitState(u, UNIT_STATE_LIFE) <= RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) and not IsUnitInGroup(u, unit_healing) and IsUnitType(u, UNIT_TYPE_HERO) == false then // Not used on heroes as micro hero is in control of that
-            call GroupAddUnit(unit_healing, u)
-            call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
-            call TQAddUnitJob(0.5, SEND_HOME, 50, u)
-            call GroupRemoveUnit(harasser, u)
-            call GroupRemoveUnit(unit_harassing, u)
-          elseif IsUnitInGroup(u, unit_healing) then // Another system moved unit to healing
-            call GroupRemoveUnit(harasser, u)
-            call GroupRemoveUnit(unit_harassing, u)
-          else
-            //call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
-            //call TQAddUnitJob(0.5, SEND_HOME, R2I(flee_percent * GetUnitState(u, UNIT_STATE_MAX_LIFE)), u)
-            set harass_num = harass_num + 1
-            set player_sum = player_sum + GetUnitStrength(u)
-          endif
-          //else
-
-          //endif
+        if GetUnitState(u, UNIT_STATE_LIFE) <= RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) and not IsUnitInGroup(u, unit_healing) and IsUnitType(u, UNIT_TYPE_HERO) == false then // Not used on heroes as micro hero is in control of that
+          call GroupAddUnit(unit_healing, u)
+          call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
+          call TQAddUnitJob(0.5, SEND_HOME, 50, u)
+          call GroupRemoveUnit(harasser, u)
+          call GroupRemoveUnit(unit_harassing, u)
+        elseif IsUnitInGroup(u, unit_healing) then // Another system moved unit to healing
+          call GroupRemoveUnit(harasser, u)
+          call GroupRemoveUnit(unit_harassing, u)
+        else
+          //call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
+          //call TQAddUnitJob(0.5, SEND_HOME, R2I(flee_percent * GetUnitState(u, UNIT_STATE_MAX_LIFE)), u)
+          set harass_num = harass_num + 1
+          set player_sum = player_sum + GetUnitStrength(u)
         endif
+        //else
+
+        //endif
       endif
       call GroupRemoveUnit(g, u)
     endloop
