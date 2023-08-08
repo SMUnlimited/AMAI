@@ -7092,7 +7092,11 @@ function GetHealer takes nothing returns unit
     set ru_hp = FirstOfGroup(healer_group)
     exitwhen ru_hp == null
     set id = GetHealerId(GetUnitTypeId(ru_hp))
-    exitwhen id != -1 and (GetUnitState(ru_hp, UNIT_STATE_MANA) >= healer_mana_cost[id]) and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id]))
+    if id != -1 then
+      if GetUnitState(ru_hp, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) then
+        return ru_hp
+      endif
+    endif
     call GroupRemoveUnit(healer_group, ru_hp)
   endloop
   return ru_hp
@@ -9845,10 +9849,12 @@ function UpgradeBuilding takes integer qty, integer unitid, integer town, intege
   endif
   if bloc != BLOC_STD then
     call GroupEnumUnitsInRangeOfLoc(g, GetBuildLocation(bloc), 800, null)
+    set g = SelectByPlayer(g, ai_player, true)
+    set g = SelectByAlive(g, true)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if UnitAlive(u) and GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == old_id[needed1[unitid]] then
+      if GetUnitTypeId(u) == old_id[needed1[unitid]] then
         if IssueImmediateOrderById(u, old_id[unitid]) then
           set num = num + 1
           if num >= qty then
@@ -9864,10 +9870,12 @@ function UpgradeBuilding takes integer qty, integer unitid, integer town, intege
   endif
   call GroupClear(g)
   call GroupEnumUnitsInRangeOfLoc(g, own_town_loc[current_town], 2000, null)
+  set g = SelectByPlayer(g, ai_player, true)
+  set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == old_id[needed1[unitid]] then
+    if GetUnitTypeId(u) == old_id[needed1[unitid]] then
       if IssueImmediateOrderById(u, old_id[unitid]) then
         set num = num + 1
         if num >= qty then
@@ -11261,9 +11269,11 @@ function GetNearAlliedStrength takes unit target returns real
   local real dist = DistanceBetweenPoints(unitloc, ally_loc) + 600
   loop
     exitwhen i >= army_num
-    if Player(army_owner[i]) != ai_player and IsPlayerAlly(ai_player, Player(army_owner[i])) and army_loc[i] != null then
-      if DistanceBetweenPoints(unitloc, army_loc[i]) > dist and DistanceBetweenPoints(unitloc, army_future[i]) < 1300 then
-        set sum = sum + army_strength[i]
+    if army_loc[i] != null then
+      if Player(army_owner[i]) != ai_player and IsPlayerAlly(ai_player, Player(army_owner[i])) then
+        if DistanceBetweenPoints(unitloc, army_loc[i]) > dist and DistanceBetweenPoints(unitloc, army_future[i]) < 1300 then
+          set sum = sum + army_strength[i]
+        endif
       endif
     endif
     set i = i + 1
@@ -11281,9 +11291,11 @@ function GetNearerAlliedStrength takes unit target returns real
   local real dist = DistanceBetweenPoints(unitloc, ally_loc) + 600
   loop
     exitwhen i >= army_num
-    if Player(army_owner[i]) != ai_player and IsPlayerAlly(ai_player, Player(army_owner[i])) and army_loc[i] != null then
-      if DistanceBetweenPoints(unitloc, army_loc[i]) <= dist and DistanceBetweenPoints(unitloc, army_future[i]) < 1600 then
-        set sum = sum + army_strength[i]
+    if army_loc[i] != null then
+      if Player(army_owner[i]) != ai_player and IsPlayerAlly(ai_player, Player(army_owner[i])) then
+        if DistanceBetweenPoints(unitloc, army_loc[i]) <= dist and DistanceBetweenPoints(unitloc, army_future[i]) < 1600 then
+          set sum = sum + army_strength[i]
+        endif
       endif
     endif
     set i = i + 1
@@ -11451,10 +11463,11 @@ function BRRush takes nothing returns nothing
   local group g = CreateGroup()
   local integer i = 0
   call GroupEnumUnitsInRange(g,GetUnitX(rushcreep_target), GetUnitY(rushcreep_target),800,null)
+  set g = SelectByAlive(g,true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or i == 1
-    if UnitAlive(u) and GetOwningPlayer(u) != Player(PLAYERAGGRESSIVE) and IsPlayerEnemy(ai_player,GetOwningPlayer(u)) then
+    if GetOwningPlayer(u) != Player(PLAYERAGGRESSIVE) and IsPlayerEnemy(ai_player,GetOwningPlayer(u)) then
       set i = 1  // have other player
     elseif GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == 'eaom' then
       set utemp = u
