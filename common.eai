@@ -164,9 +164,6 @@ globals
     constant integer RACE_NUMBER = %row
 #ENDINCLUDE
 
-#INCLUDETABLE <$VER$\Races.txt>
-    string array %1_StrategyName
-#ENDINCLUDE
 #DEFINE $HEROLEVELNUM$ 0
 #INCLUDETABLE <$VER$\HeroLevels.txt>
 #DEFINE $HEROLEVELNUM$ %row
@@ -3012,29 +3009,6 @@ function InitTranslations takes nothing returns nothing
 endfunction
 
 //============================================================================
-function InitStrategy takes nothing returns nothing
-#INCLUDETABLE <$VER$\Races.txt>
-#DEFINE $Race$ %1
-  #INCLUDETABLE <$VER$\$Race$\Strategy.txt> #EFR
-  set $Race$_StrategyName[#EVAL{%row-1}] = "%1"
-  #ENDINCLUDE
-#ENDINCLUDE
-endfunction
-
-function FindStrategy takes integer racenum , integer strategynum returns string
-  if own_race == R_ELF then
-    return ELF_StrategyName[strategynum]
-  elseif own_race == R_HUMAN then
-    return HUMAN_StrategyName[strategynum]
-  elseif own_race == R_ORC then
-    return ORC_StrategyName[strategynum]
-  elseif own_race == R_UNDEAD then
-    return UNDEAD_StrategyName[strategynum]
-  endif
-  return null
-endfunction
-
-//============================================================================
 function GetStrategyTxt takes integer stratnum, string txt returns string
   local string trans = null
   if HaveSavedInteger(translation_map, StringHash(language), StringHash(txt+strategy_name[stratnum])) then
@@ -3292,8 +3266,8 @@ endfunction
 function GetTeleportLandPoint takes location l returns location
   local group g = CreateGroup()
   local unit u = null
-  local real x = 0
-  local real y = 0
+  local real x = GetLocationX(l)
+  local real y = GetLocationY(l)
   call GroupEnumUnitsInRangeOfLoc(g, l, 900, null)
   call RemoveLocation(teleportloc)
   loop
@@ -3303,17 +3277,17 @@ function GetTeleportLandPoint takes location l returns location
       set x = GetUnitX(u)
       set y = GetUnitY(u)
       set teleportloc = Location(x,y)
-      set u = null
       call DestroyGroup(g)
       set g = null
+      set u = null
       return Location(x,y)
     endif
     call GroupRemoveUnit(g, u)
   endloop
+  set teleportloc = Location(x,y)
   call DestroyGroup(g)
   set g = null
-  set teleportloc = Location(GetLocationX(l), GetLocationY(l))
-  return Location(GetLocationX(l), GetLocationY(l))
+  return Location(x,y)
 endfunction
 
 //============================================================================
@@ -5923,7 +5897,6 @@ function MakeExpansionList takes nothing returns nothing
   local integer array traveltime
   local boolean array patherdone
   local integer i = 0
-  local integer totalpathers = 0
   local group tempg = null
   local integer checks = 0	// Number of times unit has stayed at same position
   local boolean pathingdone = true
@@ -5950,7 +5923,6 @@ function MakeExpansionList takes nothing returns nothing
     endif
     set i = i + 1
   endloop
-  set totalpathers = i
   call DestroyGroup(tempg)
   call Trace("Find Expansions Created")
   loop
@@ -7621,20 +7593,11 @@ function cmd_misc takes integer cmd, integer data returns nothing
 
   elseif cmd == 70 then // change strategy
     if data < rp_strat_length then
-      set s = FindStrategy(own_race,data)
-      loop
-        exitwhen i >= rp_strat_length
-        if strategy_name[i] == s then  //Find StrategyName
-          set strategy = i
-          set chosen_strategy = strategy
-          set s = null
-          return
-        endif
-        set i = i + 1
-      endloop
-      set s = null
+      set strategy = data
+      set chosen_strategy = strategy
+    else
+      call DisplayToAllies(invalid_strategy_number)
     endif
-    call DisplayToAllies(invalid_strategy_number)
 
   elseif cmd == 71 then // change language
     if false then
@@ -8144,7 +8107,6 @@ function InitAMAI takes nothing returns nothing
   call InitPlayerStrengthCache()
   call SetNearestEnemy()
   call InitTownBuilt()
-  call InitStrategy()
   set max_farms = GetMaxFarms()
   set mine_loc = GetUnitLoc(own_town_mine[0])
 
