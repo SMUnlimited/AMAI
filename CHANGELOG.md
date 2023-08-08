@@ -40,9 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Strategy Choose Dialog now show translation Strategy name , no Num
    - Strategy name must consistent with file Strategy.txt name
    - Cannot find consistent name Strategy , Dialog will missing button
-   - Common.eai have new code help find cmd Strategy(even if missing button)
    - Strategy name button will identify ROC and TFT
-   - Because search translation , now compile B.J need take more time(Poor code level)
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join unregistered (like non own racial) units and heros (but excess heros may not be able to learn skills) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
 - Buy NEUTRAL HERO add judge neutral_guarded[NEUTRAL_TAVERN] to StartUnitAM, call GetNeutralHero recalculate heros , guarantee to change train ownrace hero at the first time
