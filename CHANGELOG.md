@@ -88,6 +88,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Add SleepInCombatAM Maximum number of loop , to avoid when AI moveing army in large map , easily change target , but AI no go to the target(add variables mapattackdelayed)
 - Add GetTeleportLandPoint , AI use teleport , the army is land to hall , due to the terrain and trees , the army cannot expand , the code can help AI find a enemy unit , land to unit loc , due to enemy point is outside , wide terrain , the army can expand
 - Add new attack mode , on maps with more than 10 players , or big map , AI will first attack human players hall , to avoid china call 【内卷】 , like AI internal conflict , no attack human player
+- Add CheckCreepsByRadius search creep too far ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION , some map like (4)Avalanche_LV , the creep and gold distance > 650 , neutral build check too
 - Add Ally Shopping , when BuyItem() return false , if item is HealingItem and buy_type is RACIAL_ITEM and AI have 1000 gold , then will go Random Ally's Random Shop Shopping
 - New job Item Expansion
    - Now can configuration Item Expansion , like ORC can buy TINY_GREAT_HALL
@@ -163,7 +164,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - ANCIENT EXPANSION change
   - add judgment , when expansion location have unit , judgment the unit OwningPlayer , if player is AGGRESSIVE ,just set ancient_exp_state to 4 , else build
   - if no mine , set ancient_exp_state to 1 , and check all hall tree , use move tree expansion
-- GetExpFoe added judgment search creep in mine range 1500 ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION , some map like (4)Avalanche_LV , the creep and gold distance > 650
 - Militia_Expansion now check water_expansion , no take water_expansion
 - Militia_Expansion and Militia_Expansion JOB now use Militia ability
   - now peon can shape shifting Militia
@@ -245,6 +245,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed GetHealer check GetHealerId return
 - Fixed windwalk Order if exist unit skills level
 - Fixed SELL_ZIGGURATS i always greater than ziggarray
+- Fixed GetEnemyAllyStrength check Observer
 
 
 ## [3.2.2] - 2022-10-05
