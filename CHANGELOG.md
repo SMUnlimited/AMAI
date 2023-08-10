@@ -162,6 +162,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Militia_Expansion and Militia_Expansion JOB now use Militia ability
   - now peon can shape shifting Militia
 - BUYTIEM now check distance , prevent being caught alone, some time , army walk but not attack_running , turn over game after Heroes being killed
+- RETREAT_CONTROL no majorhero just retreat
 - DETECT_DEFEAT JOB add self rescue , first saveyourself , no run kill or desperation_assault
   - Optimized KillYourself code , now judge first destroy_buildings_on_defeat , not judging in the loop
   - Choose self methods based on racial abilities , one ability use one num/mode
@@ -245,7 +246,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed windwalk Order if exist unit skills level
 - Fixed SELL_ZIGGURATS i always greater than ziggarray
 - Fixed GetEnemyAllyStrength check Observer
-- Fixed RETREAT_CONTROL not take unit add to group when majorhero is null
 
 
 ## [2.6.2] - 2022-09-04
