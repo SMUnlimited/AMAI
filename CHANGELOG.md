@@ -245,6 +245,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed windwalk Order if exist unit skills level
 - Fixed SELL_ZIGGURATS i always greater than ziggarray
 - Fixed GetEnemyAllyStrength check Observer
+- Fixed RETREAT_CONTROL not take unit add to group when majorhero is null
 
 
 ## [2.6.2] - 2022-09-04
