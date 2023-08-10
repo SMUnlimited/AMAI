@@ -496,6 +496,7 @@ globals
     string array digit_map
 
     integer mapattackdelayed = 8  //used for the attack delay of the big map , prevent AI from losing targets when attacking in the big map
+    boolean firstattackhp = false  //big map or more player first attack human player?
 
     integer array player_race
     integer array player_race_pref
@@ -8445,7 +8446,9 @@ function InitAMAI takes nothing returns nothing
   call InitTownBuilt()
   set max_farms = GetMaxFarms()
   set mine_loc = GetUnitLoc(own_town_mine[0])
-
+  if (c_ally_total + c_enemy_total >= 10 or mapattackdelayed < 8) and c_enemy_user_total > 0 then
+    set firstattackhp = true
+  endif
 //    call DebugSequenceStart("DebugRun")
 
 
@@ -11967,22 +11970,25 @@ function GetNearHumanPlayerEnemy takes nothing returns unit
   local real dist = 0
   local real mindistance = 20000  // use to big map - 12 or 24 player map
   local group g = CreateGroup()
-  loop
-    exitwhen i >= c_enemy_total
-    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(enemy_force[i]) != MAP_CONTROL_COMPUTER then
-      set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(enemy_force[i]))
-      if dist < mindistance then
-        set mindistance = dist
-        set p = i
+  if rushedplayer == null or GetPlayerSlotState(rushedplayer) != PLAYER_SLOT_STATE_PLAYING then
+    loop
+      exitwhen i >= c_enemy_total
+      if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(enemy_force[i]) != MAP_CONTROL_COMPUTER then
+        set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(enemy_force[i]))
+        if dist < mindistance then
+          set mindistance = dist
+          set p = i
+          set rushedplayer = enemy_force[i]
+        endif
+        set t = t + 1
       endif
-      set t = t + 1
-    endif
-    set i = i + 1
-  endloop
+      set i = i + 1
+    endloop
+  endif
   set c_enemy_user_total = t  // update c_enemy_user_total
   set ru_target[6] = null
   if p != 30 then
-    call GroupEnumUnitsOfPlayer(g, enemy_force[p], null)
+    call GroupEnumUnitsOfPlayer(g, rushedplayer, null)
     set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
     set g = SelectByAlive(g, true)
     set g = SelectByHidden(g, false)
@@ -12594,9 +12600,14 @@ if not creeping_only then	// Do the normal attack sequence
   endif
 
   if not no_player_attack then
-
-    if (c_ally_total + c_enemy_total >= 10 or mapattackdelayed < 8) and c_enemy_user_total > 0 and CaptainIsEmpty() == false and (tier < 3 or GetRandomInt(0,4) == 0) then  // player too much or big map , first attack HumanPlayer
+    if firstattackhp then  // player too much or big map , first attack HumanPlayer
       set humanhall = GetNearHumanPlayerEnemy()
+      if tier > 2 then  // attack no longer working , the human player survived
+        set firstattackhp = (GetRandomInt(0,4) < 2)
+        if firstattackhp == false then
+          set rushedplayer = null
+        endif
+      endif
       if humanhall != null then
         call Chat(C_Attack)
         call SetAllianceTarget(humanhall)
