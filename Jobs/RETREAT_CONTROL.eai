@@ -109,27 +109,28 @@ function RetreatControlJob takes nothing returns nothing
 
 
 
-if not desperation_assault and ((CaptainRetreating() and isfleeing) or town_threatened) then     //((major_hero == null or not UnitAlive(major_hero)) and ver_heroes) or  then  //attack_running and
-  call Trace("===Retreat control ended===")
-  set break_attack = attack_running
-  set retreat_controlled = false
-  call SetGroupsFlee(true)
-  if DistanceBetweenPoints_kd(home_location, GetUnitLoc(major_hero)) < 1250 then
-    set isfleeing = false     // home so no need to be retreating. Also prevents bug in the captainretreating condition
+  if not desperation_assault and ((CaptainRetreating() and isfleeing) or town_threatened) then     //((major_hero == null or not UnitAlive(major_hero)) and ver_heroes) or  then  //attack_running and
+    call Trace("===Retreat control ended===")
+    set break_attack = attack_running
+    set retreat_controlled = false
+    call SetGroupsFlee(true)
+    if DistanceBetweenPoints_kd(home_location, GetUnitLoc(major_hero)) < 1250 then
+      set isfleeing = false     // home so no need to be retreating. Also prevents bug in the captainretreating condition
+    endif
+    return
   endif
-  return
-endif
 
   set g = CreateGroup()
   if main_army == -1 or army_loc[main_army] == null or (GetLocationX(army_loc[main_army]) == 0 and GetLocationY(army_loc[main_army]) == 0 )then
     if major_hero == null then
       call Trace("No major hero in retreat control")
+    else
+      call GroupEnumUnitsInRange(g,GetUnitX(major_hero),GetUnitY(major_hero),battle_radius,null)
     endif
-    call GroupEnumUnitsInRange(g,GetUnitX(major_hero),GetUnitY(major_hero),battle_radius,null)
   else
     call GroupEnumUnitsInRange(g, GetLocationX(army_loc[main_army]), GetLocationY(army_loc[main_army]), battle_radius, null)
   endif
-
+  set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
 
@@ -141,7 +142,7 @@ endif
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and not IsUnitHidden(u) then
+    if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then
       //call Trace("RETREAT_CONTROL: At least 1 unit detected")
       set unit_strength = GetUnitStrength(u)
       set unit_life = GetUnitState(u, UNIT_STATE_LIFE)
@@ -162,11 +163,10 @@ endif
         //set enemy_loc = GetSumLoc_dd(enemy_loc, GetUnitLoc(u))
         set enemy_count = enemy_count + 1
       endif
-    elseif GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and not IsUnitHidden(u) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
-      set unit_strength = GetUnitStrength(u)
+    elseif GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
       set unit_life = GetUnitState(u, UNIT_STATE_LIFE)
       set unit_mana = GetUnitState(u, UNIT_STATE_MANA)
-      set creep_sum = creep_sum + unit_strength
+      set creep_sum = creep_sum + GetUnitStrength(u)
     endif
     call GroupRemoveUnit(g,u)
   endloop
