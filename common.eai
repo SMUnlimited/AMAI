@@ -2650,7 +2650,6 @@ function GetProjectedLoc_dd takes location l, location v, real r returns locatio
   local real y = GetLocationY(returnloc)
   set loc = null
   set loc2 = null
-  set v = null
   call RemoveLocation(returnloc)
   set returnloc = null
   return Location(x, y)
@@ -3967,10 +3966,12 @@ endfunction
 function GetOneOfId takes player p, integer id returns unit
   local group g = CreateGroup()
   call GroupEnumUnitsOfPlayer(g, p, null)
+  set g = SelectByHidden(g, false)
+  set g = SelectByAlive(g, true)
   loop
     set ru_oneofid = FirstOfGroup(g)
     exitwhen ru_oneofid == null
-    if UnitAlive(ru_oneofid) and not IsUnitHidden(ru_oneofid) and GetUnitTypeId(ru_oneofid) == id then
+    if GetUnitTypeId(ru_oneofid) == id then  //UnitAlive(ru_oneofid) and not IsUnitHidden(ru_oneofid) and
       call DestroyGroup(g)
       set g = null
       return ru_oneofid
@@ -3988,10 +3989,13 @@ endfunction
 function GetOneOfIdNearLoc takes player p, integer id, location l, real dist returns unit
   local group g = CreateGroup()
   call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
+  set g = SelectByPlayer(g, p, true)
+  set g = SelectByHidden(g, false)
+  set g = SelectByAlive(g, true)
   loop
     set ru_oneofid = FirstOfGroup(g)
     exitwhen ru_oneofid == null
-    if UnitAlive(ru_oneofid) and GetOwningPlayer(ru_oneofid) == p and GetUnitTypeId(ru_oneofid) == id and not IsUnitHidden(ru_oneofid) then
+    if GetUnitTypeId(ru_oneofid) == id then  //UnitAlive(ru_oneofid) and GetOwningPlayer(ru_oneofid) == p and not IsUnitHidden(ru_oneofid) 
       call DestroyGroup(g)
       set g = null
       return ru_oneofid
@@ -5273,7 +5277,8 @@ function GetLocationStrength takes real x, real y, real radius returns real
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then  //UnitAlive(u) and not IsUnitHidden(u) and IsUnitType(u,UNIT_TYPE_PEON) == false and
+    if not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
+    //if UnitAlive(u) and not IsUnitHidden(u) and IsUnitType(u,UNIT_TYPE_PEON) == false and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
       set strength = GetUnitStrength(u)
       set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
@@ -5765,6 +5770,8 @@ function MultipleMinefix takes nothing returns boolean
     endif
     call GroupRemoveUnit(g, u)
   endloop
+  call DestroyGroup(g)
+  set g = null
   if race_manual_loading and TownCount(race_manual_loading_mine) < 1 then
     set u = GetOneOfIdNearLoc(ai_player,old_id[racial_expansion],home_location,1500)
     if u != null then
@@ -5778,8 +5785,6 @@ function MultipleMinefix takes nothing returns boolean
     set not_taken_expansion = mine
     set b = false
   endif
-  call DestroyGroup(g)
-  set g = null
   set mine = null
   return b
 endfunction
