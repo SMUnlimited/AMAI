@@ -5844,33 +5844,6 @@ function AddWaterExpansion takes unit u returns nothing
   set water_expansion_list_length = water_expansion_list_length + 1
 endfunction
 
-//==============================================================
-function RemoveExpansion takes nothing returns nothing
-  local integer i = 0
-  loop
-    exitwhen i >= expansion_list_length
-    set expansion_list[i] = null
-    set expansion_dist[i] = 0
-    if expansion_ancient[i] != null then
-      call RemoveLocation(expansion_ancient[i])
-      set expansion_ancient[i] = null
-    endif
-    call DestroyGroup(expansion_creeps[i])
-    set expansion_creeps[i] = null
-    set i = i + 1
-  endloop
-  set i = 0
-  loop
-    exitwhen i >= water_expansion_list_length
-    set water_expansion_list[i] = null
-    call DestroyGroup(water_expansion_creeps[i])
-    set water_expansion_creeps[i] = null
-    set i = i + 1
-  endloop
-  set expansion_list_length = 0
-  set water_expansion_list_length = 0
-endfunction
-
 //============================================================================
 function CheckExpansionTaken takes unit expa returns boolean
   local group g = null
@@ -5974,9 +5947,6 @@ function MakeExpansionList takes nothing returns nothing
   //local integer groundid = 'ewsp'
   //local real distance = 0
 
-  if expansion_list_length > 0 then  // excrete
-    call RemoveExpansion()
-  endif
   call GroupEnumUnitsOfType(g, "goldmine", null)
 //  call GroupRemoveUnit(g, current_expansion) // because quick expansion adds mine already
 
@@ -6394,7 +6364,6 @@ endfunction
 function ChooseExpansion takes nothing returns nothing
   local integer i = 0
   local integer exp_chosen = 0
-  set first_expansion_chosen = false
   set exp_number = 0
   loop
     exitwhen i >= expansion_list_length
@@ -6542,7 +6511,6 @@ function CheckFastExpansion takes nothing returns nothing
     //call RemoveLocation(l)
     //set l = null
   endif
-  set p_exp_first_time[profile] = -100
 endfunction
 
 //============================================================================
@@ -7355,13 +7323,12 @@ function CheckAllNeutralsQuick takes nothing returns nothing
 endfunction
 //============================================================================
 function PathingThread takes nothing returns nothing
-
+  local integer i = 0
+  local integer t = 0
   call SetAIArray()
 //  set command_wait = 0.5
 //  set command_wait = 3
-  if front_loc_num == 0 then  // no need repeated acquisition
-    call ComputeFrontPoints()
-  endif
+  call ComputeFrontPoints()
 //  call Sleep(3)
 //  call PingFrontPoints()
   //set current_expansion = GetExpNearestMin()  // Rough guide to what first expansion should be
@@ -7371,10 +7338,29 @@ function PathingThread takes nothing returns nothing
   set active_expansion = water_expansion_list_length + expansion_list_length > c_enemy_total + c_ally_total + 1  // have more mine , should positive Expansion
   set first_expansion_chosen = true
   call ChooseExpansion()
-  if p_exp_first_time[profile] != -100 then  // no need repeated run
-    call CheckFastExpansion()
-  endif
+  call CheckFastExpansion()
   call CheckAllNeutrals() // The more advanced new system check
+  loop // no need repeated run
+    call Sleep(6 * sleep_multiplier)
+    if t == 5 then
+      loop
+        exitwhen i >= NEUTRAL_COUNT
+        if neutral_guarded[i] then
+          call NeutralGuardedJob(i)
+        endif
+        set i = i + 1
+      endloop
+      set t = -1
+      set i = 0
+    endif
+    if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null then
+      call NeutralEnemyCheckJob(NEUTRAL_HEALING_FOUNTAIN)
+    endif
+    if nearest_neutral[NEUTRAL_MANA_FOUNTAIN] != null then
+      call NeutralEnemyCheckJob(NEUTRAL_MANA_FOUNTAIN)
+    endif
+    set t = t + 1
+  endloop
 
 endfunction
 
@@ -8621,7 +8607,7 @@ function remove_hero takes integer h returns nothing
   local integer i = h
   set hero_number = hero_number - 1
   loop
-    exitwhen i  >= hero_number
+    exitwhen i >= hero_number
     set hero_rp[i] = hero_rp[i + 1]
     set all_heroes[i] = all_heroes[i + 1]
     set i = i + 1
@@ -10611,9 +10597,7 @@ function LocalizeNewTown takes integer num returns boolean
   endloop
   call DestroyGroup(g)
   set g = null
-  if own_town_loc[num] != null then
-    call RemoveLocation(own_town_loc[num])
-  endif
+  call RemoveLocation(own_town_loc[num])
   if u == null then
 //    call DisplayToAll("Debug: New town not found")
     set own_town_loc[num] = null
