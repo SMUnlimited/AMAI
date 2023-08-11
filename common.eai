@@ -6517,6 +6517,9 @@ endfunction
 //============================================================================
 function AddFrontPoint takes location l, integer groundid returns nothing
   local unit pathable = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(l), GetLocationY(l), 270.00)
+  if front_loc_num == 0 and front_loc[0] != null then
+    call RemoveLocation(front_loc[0])  // prevent GetBuildLocation amd BuildAtSpecialLoc set location
+  endif
   if DistanceBetweenPoints_dk(GetUnitLoc(pathable), l) <= 200 then
     call CreateDebugTagLoc("Front Point Added", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
     set front_loc[front_loc_num] = Location(GetLocationX(l),GetLocationY(l))
@@ -9605,7 +9608,7 @@ function GetBuildLocation takes integer bloc returns location
   if bloc == BLOC_MINE then
     return mine_loc
   endif
-  return front_loc[GetRandomInt(0, front_loc_num - 1)]
+  return front_loc[GetRandomInt(0, Max(front_loc_num - 1,0))]
 endfunction
 
 //============================================================================
@@ -9726,7 +9729,11 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
     if bloc == BLOC_FRONT and DistanceBetweenPoints(l,home_location) >= front_base_distance + 400 then
       call Trace("BuildatspecialLoc: Build loc too far , fix build loc")
       call RemoveLocation(l)
-      set l = AIGetProjectedLoc(front_loc[GetRandomInt(0, front_loc_num - 1)], home_location, 200, 0)
+      if front_loc[0] != null
+        set l = AIGetProjectedLoc(front_loc[GetRandomInt(0, front_loc_num - 1)], home_location, 200, 0)
+      else
+        set l = GetLocationInDistanceFromBaseToLoc(home_location, front_base_distance)
+      endif
     endif
     if not IssuePointOrderByIdLoc(peon, old_id[unitid], l) then
       //call Trace("Building at special point")
