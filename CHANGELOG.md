@@ -130,6 +130,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - All search the enemy function no longer use GetBJMaxPlayers() , now use enemy_force[i] , to reduce the number of cycles
 - GetOneOfId and GetOneOfIdNearLoc no longer take Hidden unit
 - Neutral Enemy and Guarded Job check mechanism adjustment
+  - add check POWER_FOUNTAIN and HEALWARD
   - when PathingThread done , check job not in automatic loop , PathingThread regular check will be conducted
   - use pathing_done mark PathingThread done
 - Army track change
@@ -175,6 +176,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Chcek Ally will check PLAYER_SLOT_STATE_PLAYING and Observer
 - ZEPPELIN_MOVE now can take POWER FOUNTAIN
 - MANA_FOUNTAIN now can take POWER FOUNTAIN
+- GetBuildLocation return home_location , when not take front_loc[0] , prevent leakage and build location(0,0)
 - front_base_distance now is dynamic , first is 1100 , and increase according to AI difficulty , front_base_distance = difficulty * 50 + front_base_distance
   - if race no use racial_lumber or race no harvest wood , front_base_distance additional additions 100
 - BuildAtSpecialLoc generate a new placeholder build，home_location always create war_tree, prevent blocking of your home
