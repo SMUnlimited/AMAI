@@ -28,9 +28,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Spirit Walkers key building should be the Tauren Totem (Slayer95)
 - Fix Goblin Tinker not learning abilities after picking the engineering skill. (jzy-chitong56)
 - Fix VSAI more than 12 players support (jzy-chitong56)
-- Memory fixes. (jzy-chitong56)
+- Various memory leak fixes. (jzy-chitong56)
 - Changing language more than once may not apply the english backup correctly. (jzy-chitong56)
 - More unicode fixes to languages (jzy-chitong56)
+- If creep cannot be found but expects one, will temporarily widen scan range just to be sure. (jzy-chitong56)
+- Fixed an issue where hero flee rules could reference an invalid array address possibly killing the thread. (jzy-chitong56)
+- Combat response has been given a boost and if it takes too long it will force attack to be re-evaluated.
+- Small map strategy boost takes account of the actual map size and not just player count.
 
 ## [3.2.2] - 2022-10-05
 

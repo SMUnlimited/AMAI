@@ -497,6 +497,7 @@ globals
     integer neutral_zeppelin = 0
     integer tp_item = 0
     integer tiernum = 3
+    integer mapSize = 0
 
     integer array hero
 	integer array hero_skills // The skill line chosen for the hero, major, minor or rare
@@ -1096,7 +1097,7 @@ endfunction
 // Properly clear the game caches to make sure they are empty on use
 function InitAMAIGameCache takes nothing returns nothing
 	//call FlushGameCache(InitGameCache("AMAI_TM.w3v"))
-  call FlushGameCache(InitGameCache("AMAI_AI.w3v"))
+  call FlushGameCache(amaiCache)
 	//call FlushGameCache(InitGameCache("AMAI_Com.w3v"))
 	//call FlushGameCache(InitGameCache("AMAI_Set.w3v"))
 	//call FlushGameCache(InitGameCache("AMAI_CVM.w3v"))
@@ -1462,7 +1463,7 @@ endfunction
 
 //============================================================================
 function DisplayToObservers takes string s returns nothing
-  if IsPlayerObserver(GetLocalPlayer()) then
+  if IsPlayerObserver(GetLocalPlayer()) and not IsPlayerAlly(ai_player,GetLocalPlayer()) then
     call DisplayTimedTextToPlayer(GetLocalPlayer(),0,0,15,message_add+s)
     call StartSound(chatSound)
   endif
@@ -1470,7 +1471,7 @@ endfunction
 
 //============================================================================
 function DisplayToObserversImportant takes string s returns nothing
-  if IsPlayerObserver(GetLocalPlayer()) then
+  if IsPlayerObserver(GetLocalPlayer()) and not IsPlayerAlly(ai_player,GetLocalPlayer())  then
     call DisplayTimedTextToPlayer(GetLocalPlayer(),0,0,15,message_add+s)
     call StartSound(importantSound)
   endif
@@ -2357,16 +2358,30 @@ function InitMapSizeVars takes nothing returns nothing
   local real a = (x/1000)*(y/1000)
   call SetChatVarR("MapSizeX", x)
   call SetChatVarR("MapSizeY", y)
-  if a < 120 then
+  if a < 90 then
+    call SetChatVar("MapSize", "extrasmall")
+    set mapSize = 0
+  elseif a < 120 then
     call SetChatVar("MapSize", "tiny")
+    set mapSize = 1
   elseif a < 240 then
     call SetChatVar("MapSize", "small")
+    set mapSize = 2
   elseif a < 380 then
     call SetChatVar("MapSize", "medium")
+    set mapSize = 3
   elseif a < 540 then
     call SetChatVar("MapSize", "large")
-  else
+    set mapSize = 4
+  elseif a < 960 then
+    call SetChatVar("MapSize", "extralarge")
+    set mapSize = 5
+  elseif a < 2048 then
     call SetChatVar("MapSize", "huge")
+    set mapSize = 6
+  else
+    call SetChatVar("MapSize", "legendary")
+    set mapSize = 7
   endif
 endfunction
 
@@ -3256,7 +3271,7 @@ function countAllyEnemy takes nothing returns nothing
   set i = 0
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING then
+    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(Player(i)) then
       if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER then
         set c_ai_total = c_ai_total + 1
       endif
@@ -3828,7 +3843,7 @@ function GroupRecycleGuardPositionByStandard takes group g returns nothing
      loop
        set u = FirstOfGroup(g)
        exitwhen u == null
-       if not IsUnitInGroup(u, unit_healing) and not IsUnitInGroup(u, unit_rescueing ) and not IsUnitInGroup(u, unit_harassing ) and not IsUnitInGroup(u, unit_zepplin_move ) then
+       if IsStandardUnit(u) then
           call RecycleGuardPosition( u )
 	   endif
        call GroupRemoveUnit(g, u )
@@ -3859,11 +3874,10 @@ function GetOneOfId takes player p, integer id returns unit
    local unit u = null
    local group g = CreateGroup()     
    call GroupEnumUnitsOfPlayer(g, p, null)
-   set g = SelectByAlive(g, true)
    loop
      set u = FirstOfGroup(g)
      exitwhen u == null
-     if GetUnitTypeId(u) == id then
+     if UnitAlive(u) and not IsUnitHidden(u) and GetUnitTypeId(u) == id then
        call DestroyGroup(g)
        set g = null
        return u
@@ -3882,12 +3896,10 @@ function GetOneOfIdNearLoc takes player p, integer id, location l, real dist ret
    local unit u = null
    local group g = CreateGroup()     
    call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
-   set g = SelectByPlayer(g, p, true)
-   set g = SelectByAlive(g, true)
    loop
      set u = FirstOfGroup(g)
      exitwhen u == null
-     if GetUnitTypeId(u) == id then
+     if UnitAlive(u) and not IsUnitHidden(u) and GetUnitTypeId(u) == id and GetOwningPlayer(u) == p  then
        call DestroyGroup(g)
        set g = null
        return u
@@ -4413,23 +4425,16 @@ function GetFastestToPointOfGroup takes group g, location l returns unit
      local unit nu = null
      local real sd = 1000000
      local real ms = 0
-	 local location unitloc = null
      loop
        set u = FirstOfGroup(g)
        exitwhen u == null
-       set ms = GetUnitMoveSpeed(u)
-       if ms == 0 then
-         set ms = 0.01
-       endif
-	   set unitloc = GetUnitLoc(u)
-       set d = DistanceBetweenPoints(unitloc, l) / ms
+       set ms = RMax(GetUnitMoveSpeed(u),0.01)
+       set d = DistanceBetweenPoints_dk(GetUnitLoc(u), l) / ms
        if d < sd then
           set sd = d
           set nu = u
        endif
        call GroupRemoveUnit(g, u )
-	   call RemoveLocation(unitloc)
-	   set unitloc = null
      endloop
      return nu
 endfunction
@@ -4852,7 +4857,7 @@ function GetPlayerHeroStrengthMod takes player p returns integer
     set sum = sum + R2I(GetHeroStrength(u) * GetPlayerStrengthHandicap(GetOwningPlayer(u)) * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)))
     call GroupRemoveUnit(g,u)
   endloop
-  set sum = sum + GetPlayerHeroBonusStrength(ai_player)
+  set sum = sum + GetPlayerHeroBonusStrength(p)
   call DestroyGroup(g)
   set g = null
   set u = null
@@ -6060,27 +6065,32 @@ endfunction
 
 //============================================================================
 function GetExpFoe takes nothing returns unit
-  local group g = null
+  local group g = CopyGroup(current_expansion_creeps)
   local group t = null
   local unit u = null
   local location l = GetUnitLoc(current_expansion)
+  local real i = 0
   //call Trace("Copy group")
   
-  set g = CopyGroup(current_expansion_creeps)
   set g = SelectByAlive(g, true)
   set u = GetNearestOfGroup(g, l)
   if l != null then
-	call RemoveLocation(l)
-	set l = null
+    call RemoveLocation(l)
+    set l = null
   endif
   if u == null then
-	set t = CreateGroup()
-    call GroupEnumUnitsInRange(t, GetUnitX(current_expansion), GetUnitY(current_expansion), expansion_radius, null)
-    set t = SelectByPlayer(t, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
-    set t = SelectByAlive(t, true) 	
-	set u = FirstOfGroup(t)
-	call DestroyGroup(t)
-    set t = null
+    loop
+      exitwhen u != null
+      exitwhen i > 1
+      set t = CreateGroup()
+      call GroupEnumUnitsInRange(t, GetUnitX(current_expansion), GetUnitY(current_expansion), expansion_radius * (i*1.5), null)
+      set t = SelectByPlayer(t, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
+      set t = SelectByAlive(t, true) 	
+      set u = FirstOfGroup(t)
+      call DestroyGroup(t)
+      set t = null
+      set i = i + 1
+    endloop
   endif
   call DestroyGroup(g)
   set g = null
@@ -6788,13 +6798,13 @@ if neutral_available[nn] == true then
 //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "checkneutral")
     set nearest_neutral[nn] = GetNearestNeutral(neutral_id[nn])
 //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "finished check")
+    if neutral_guards[nn] != null then
+      call DestroyGroup(neutral_guards[nn])
+    endif
     set neutral_guards[nn] = GetCreepGuardGroup(nn)
     set neutral_guarded[nn] = GetNeutralGuard(nn) != null
     set neutral_night_buy[nn] = CanCreepGuardsSleep(nn)
     // set neutral_night_buy[nn] = not no_sleep
-    if neutral_guarded[nn] then
-      call TQAddJob(30 * sleep_multiplier, NEUTRAL_GUARDED, nn)
-    endif
 	
 	if nearest_neutral[nn] != null then
 	  call Trace("Neutral Pathing ID done: " + Int2Str(nn)) 
@@ -7189,8 +7199,10 @@ function cmd_attack takes integer cmd, integer data returns nothing
     if race_towerrush_available then
       call StartTowerRush(1)
       call DisplayToAllies(chat_towerrush)
+      call DisplayToObservers( chat_towerrush )
     else
       call DisplayToAllies(chat_no_orc)
+      call DisplayToObservers( chat_no_orc )
     endif
 
   endif
@@ -7562,6 +7574,9 @@ function InitGlobalSettings takes nothing returns nothing
 #INCLUDETABLE <$VER$\GlobalSettings.txt> #EFR
   set %1 = %2
 #ENDINCLUDE
+  if racial_lumber == 0 or race_no_wood_harvest then
+    set front_base_distance = front_base_distance + 100
+  endif
 endfunction
 
 //===========================================================================
@@ -7895,7 +7910,7 @@ endfunction
 //============================================================================
 function SmallMapsAdd takes nothing returns nothing
   local integer i = 0
-  if GetPlayers() > 3 then
+  if GetPlayers() > 3 or mapSize >= 3  then
     return
   endif
   loop
@@ -10424,30 +10439,39 @@ endfunction
 function SleepInCombatAM takes nothing returns nothing
     local integer count = 0
     local integer attack_length_counter = 0
-	call Trace("SleepInCombat")
+    call Trace("SleepInCombat")
     loop
-	    exitwhen town_threatened
-		exitwhen break_attack
-        loop
-            exitwhen not CaptainInCombat(true)  // goal is cleared
-			exitwhen CaptainIsEmpty()			// duh
+      exitwhen town_threatened
+      exitwhen break_attack
+      exitwhen not CaptainInCombat(true)  // goal is cleared
+      exitwhen CaptainIsEmpty()// duh
+      exitwhen town_threat_break and town_threatened
+      exitwhen break_attack
+      exitwhen R2I(count/sleep_multiplier) >= 900 // Took longer than 15 mins to attack something is wrong
+        //loop
+
             //exitwhen captain_flee and CaptainRetreating()
-			//exitwhen isfleeing and CaptainRetreating()
+      //exitwhen isfleeing and CaptainRetreating()
 //            call CaptainAttack(GetLocationX(last_ally_loc), GetLocationY(last_ally_loc))
-            call Sleep(1 * sleep_multiplier)
-            exitwhen town_threat_break and town_threatened
-            exitwhen break_attack			
+            //call Sleep(1 * sleep_multiplier)
+
             //set attack_length_counter = attack_length_counter + 1
             //if attack_length_counter > attack_reform_length then
             //  set attack_length_counter = 0
             //  call FormGroupAM(2)
             //endif
-        endloop
+        //endloop
         //call Sleep(1)
         set count = count + 1
-        exitwhen count >= 8
+        call Sleep(1 * sleep_multiplier)
     endloop
-	call Trace("exit SleepInCombat")
+    set count = 0
+    loop
+      exitwhen count >= 8
+      set count = count + 1
+      call Sleep(1)
+    endloop
+    call Trace("exit SleepInCombat")
 endfunction
 
 //============================================================================
