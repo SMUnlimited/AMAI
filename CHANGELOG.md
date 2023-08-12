@@ -134,11 +134,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - when PathingThread done , check job not in automatic loop , PathingThread regular check will be conducted
   - use pathing_done mark PathingThread done
 - Army track change
+  - Optimization judgment
   - Army track CopyArmy no longer copy same integer , hopes it can improve efficiency
   - Reduced Army track frequency
-  - set town_threatened avoid most_threatened_town is -1
   - only check ai_player UnitStandard , check other player Standard will let FirstOfGroup is null , and Hopefully fix laggy and collapse
 - Town track change
+  - Optimization judgment
   - Town track CopyTown no longer copy same integer , hopes it can improve efficiency
   - Town track SeedNewTownAtLoc town_num incremental now need TrackTown(town_num) return true
   - Reduced track track frequency
