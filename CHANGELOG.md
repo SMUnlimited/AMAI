@@ -13,9 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - New commander mode "Joint Control" which allows the human players to control their AI allies units at the same time as AMAI.
   - This is like the "Computers Only" option where all human players units and buildings are removed at the start of the game but you have direct control.
 - (DevTools) Debug mode will give observers more visibility into the AI's units and hero abilities. (jzy-chitong56)
+- Commander Change strategy dialog now displays the strategy name you can pick for the AI where applicable instead of just a number.
 
 ### Changed
-- Chinese Translation improvements.
+- Chinese Translation improvements. (jzy-chitong56)
+- Updated MPQEditor to 3.6.0.368 (jzy-chitong56)
+- Language dialog will be available on game start even when the commander is disabled (jzy-chitong56)
+- Updates for latest war3 version (jzy-chitong56)
 
 ### Removed
 - (DevTools) Old non-working installer has now been removed now we have new version in place.
@@ -23,6 +27,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Fixed
 - Spirit Walkers key building should be the Tauren Totem (Slayer95)
 - Fix Goblin Tinker not learning abilities after picking the engineering skill. (jzy-chitong56)
+- Fix VSAI more than 12 players support (jzy-chitong56)
+- Various memory leak fixes. (jzy-chitong56)
+- Changing language more than once may not apply the english backup correctly. (jzy-chitong56)
+- More unicode fixes to languages (jzy-chitong56)
+- If creep cannot be found but expects one, will temporarily widen scan range just to be sure. (jzy-chitong56)
+- Fixed an issue where hero flee rules could reference an invalid array address possibly killing the thread. (jzy-chitong56)
+- Combat response has been given a boost and if it takes too long it will force attack to be re-evaluated.
+- Small map strategy boost takes account of the actual map size and not just player count.
 
 ## [3.2.2] - 2022-10-05
 
