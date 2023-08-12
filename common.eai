@@ -4268,6 +4268,12 @@ function GetNearestNeutralQuick takes integer id returns unit
   endloop
   call DestroyGroup(g)
   set g = null
+  if id == neutral_id[NEUTRAL_HEALWARD] then
+    if IsUnitType(ru_distraction[0], UNIT_TYPE_SUMMONED) then
+      set ru_distraction[0] = null
+      return null
+    endif
+  endif
   return ru_distraction[0]
 endfunction
 
@@ -6517,9 +6523,6 @@ endfunction
 //============================================================================
 function AddFrontPoint takes location l, integer groundid returns nothing
   local unit pathable = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(l), GetLocationY(l), 270.00)
-  if front_loc_num == 0 and front_loc[0] != null then
-    call RemoveLocation(front_loc[0])  // prevent GetBuildLocation amd BuildAtSpecialLoc set location
-  endif
   if DistanceBetweenPoints_dk(GetUnitLoc(pathable), l) <= 200 then
     call CreateDebugTagLoc("Front Point Added", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
     set front_loc[front_loc_num] = Location(GetLocationX(l),GetLocationY(l))
@@ -7320,9 +7323,14 @@ function CheckAllNeutralsQuick takes nothing returns nothing
   if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null then
     call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALING_FOUNTAIN)
   endif
-
   if nearest_neutral[NEUTRAL_MANA_FOUNTAIN] != null then
     call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_MANA_FOUNTAIN)
+  endif
+  if nearest_neutral[NEUTRAL_POWER_FOUNTAIN] != null then
+    call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_POWER_FOUNTAIN)
+  endif
+  if nearest_neutral[NEUTRAL_HEALWARD] != null then
+    call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALWARD)
   endif
 endfunction
 //============================================================================
@@ -7363,6 +7371,12 @@ function PathingThread takes nothing returns nothing
     endif
     if nearest_neutral[NEUTRAL_MANA_FOUNTAIN] != null then
       call NeutralEnemyCheckJob(NEUTRAL_MANA_FOUNTAIN)
+    endif
+    if nearest_neutral[NEUTRAL_POWER_FOUNTAIN] != null then
+      call NeutralEnemyCheckJob(NEUTRAL_POWER_FOUNTAIN)
+    endif
+    if nearest_neutral[NEUTRAL_HEALWARD] != null then
+      call NeutralEnemyCheckJob(NEUTRAL_HEALWARD)
     endif
     set t = t + 1
   endloop
@@ -9608,7 +9622,10 @@ function GetBuildLocation takes integer bloc returns location
   if bloc == BLOC_MINE then
     return mine_loc
   endif
-  return front_loc[GetRandomInt(0, Max(front_loc_num - 1,0))]
+  if front_loc[0] != null then
+    return front_loc[GetRandomInt(0, front_loc_num - 1)]
+  endif
+  return home_location
 endfunction
 
 //============================================================================
@@ -9702,9 +9719,16 @@ endfunction
 function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc returns integer
   local unit peon = GetExpansionPeon()
   local unit utemp1 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], home_location, 270.0)  //utemp is seat, leave a passage , unit can ensure correct position
-  local unit utemp2 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], front_loc[0], 270.0)
-  local unit u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], GetBuildLocation(bloc), 270.0)
-  local location l = Location(GetUnitX(u),GetUnitY(u))
+  local unit utemp2 = null
+  local unit u = null
+  local location l = null
+  if front_loc[0] != null then
+    set utemp2 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], front_loc[0], 270.0)
+  else
+    set utemp2 = CreateUnitAtLoc(Player(PLAYERPASSIVE), old_id[unitid], home_location, 270.0)
+  endif
+  set u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], GetBuildLocation(bloc), 270.0)
+  set l = Location(GetUnitX(u),GetUnitY(u))
   call RemoveUnit(utemp1)
   set utemp1 = null
   call RemoveUnit(utemp2)
@@ -9728,11 +9752,9 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
   else
     if bloc == BLOC_FRONT and DistanceBetweenPoints(l,home_location) >= front_base_distance + 400 then
       call Trace("BuildatspecialLoc: Build loc too far , fix build loc")
-      call RemoveLocation(l)
       if front_loc[0] != null then
+        call RemoveLocation(l)
         set l = AIGetProjectedLoc(front_loc[GetRandomInt(0, front_loc_num - 1)], home_location, 200, 0)
-      else
-        set l = GetLocationInDistanceFromBaseToLoc(home_location, front_base_distance)
       endif
     endif
     if not IssuePointOrderByIdLoc(peon, old_id[unitid], l) then
