@@ -57,12 +57,12 @@ function TeleportHome takes integer hn returns nothing
       endif
       set i = i + 1
     endloop
-    call ClearCaptainTargets()
     call CaptainAttack(GetLocationX(teleport_loc), GetLocationY(teleport_loc))
   else
     call CaptainGoHome()
     set teleport_loc = GetTeleportLandPoint(home_location)
   endif
+  call ClearCaptainTargets()
   call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(teleport_loc), GetLocationY(teleport_loc))
   call RemoveLocation(teleport_loc)
   set teleport_loc = null
@@ -191,6 +191,7 @@ function MicroHeroJob takes integer hn returns nothing
   local real new_hp = 0.0
   local real teleportdistance = 0.0
   local integer current_order = 0
+  local integer armyOfHero = GetArmyOfUnit(hero_unit[hn])
 
   call DisplayToAllJobDebug("MICRO_HERO Job start")
 
@@ -240,22 +241,26 @@ function MicroHeroJob takes integer hn returns nothing
     set teleportdistance = DistanceBetweenPoints(hero_loc[hn], town_loc[most_threatened_town])
     if not teleporting and GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) < RMax(flee_health_percentage * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE), flee_minimum_health) and not IsUnitInGroup(hero_unit[hn], unit_healing) then
       call SaveHero(hn)
-    elseif not teleporting and town_threatened and town_threat[most_threatened_town] >= teleport_min_threat and teleportdistance > LinearInterpolation(teleport_low_threat, teleport_high_threat, teleport_low_threat_distance, teleport_high_threat_distance, town_threat[most_threatened_town]) and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 and town_can_tp[most_threatened_town] and army_strength[GetArmyOfUnit(hero_unit[hn])] >= teleport_army_min_strength then
-      if LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] * 0.75 then
-        //call PingMinimap(GetLocationX(hero_loc[hn]), GetLocationY(hero_loc[hn]), 10.00)
-        //call PingMinimap(GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]), 10.00)	
-        //call DisplayToAll("Protection Town Portal: " + Int2Str(R2I(teleportdistance)))
-        call CreateDebugTag("HERO: Teleporting to threatened town", 10, hero_unit[hn], 4.00, 2.00)
-        call TeleportToLoc(hero_unit[hn], town_loc[most_threatened_town])
-      elseif DistanceBetweenPoints(hero_loc[hn], home_location) > 2500 then
-        call CreateDebugTag("HERO: Teleporting home town too threatened", 10, hero_unit[hn], 4.00, 2.00)
+    endif
+    if armyOfHero >= 0 then
+      if not teleporting and town_threatened and town_threat[most_threatened_town] >= teleport_min_threat and teleportdistance > LinearInterpolation(teleport_low_threat, teleport_high_threat, teleport_low_threat_distance, teleport_high_threat_distance, town_threat[most_threatened_town]) and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 and town_can_tp[most_threatened_town] and army_strength[armyOfHero] >= teleport_army_min_strength then
+        if LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] * 0.75 then
+          //call PingMinimap(GetLocationX(hero_loc[hn]), GetLocationY(hero_loc[hn]), 10.00)
+          //call PingMinimap(GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]), 10.00)	
+          //call DisplayToAll("Protection Town Portal: " + Int2Str(R2I(teleportdistance)))
+          call CreateDebugTag("HERO: Teleporting to threatened town", 10, hero_unit[hn], 4.00, 2.00)
+          call TeleportToLoc(hero_unit[hn], town_loc[most_threatened_town])
+        elseif DistanceBetweenPoints(hero_loc[hn], home_location) > 2500 then
+          call CreateDebugTag("HERO: Teleporting home town too threatened", 10, hero_unit[hn], 4.00, 2.00)
+          call TeleportHome(hn)
+        endif
+      // Next statement detects when the main army is outmatched and so teleports back to home base
+      elseif not teleporting and attack_running and IsUnitInRangeXY(hero_unit[hn],GetLocationX(army_loc[main_army]), GetLocationY(army_loc[main_army]), battle_radius) and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 and army_strength[armyOfHero] >= teleport_army_min_strength and CaptainRetreating() and isfleeing and DistanceBetweenPoints(hero_loc[hn], home_location) > teleport_low_threat_distance then
+        call CreateDebugTag("HERO: Army outmatched-teleporting home", 10, hero_unit[hn], 4.00, 2.00)
         call TeleportHome(hn)
       endif
-      // Next statement detects when the main army is outmatched and so teleports back to home base
-    elseif not teleporting and attack_running and IsUnitInRangeXY(hero_unit[hn],GetLocationX(army_loc[main_army]), GetLocationY(army_loc[main_army]), battle_radius) and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 and army_strength[GetArmyOfUnit(hero_unit[hn])] >= teleport_army_min_strength and CaptainRetreating() and isfleeing and DistanceBetweenPoints(hero_loc[hn], home_location) > teleport_low_threat_distance then
-      call CreateDebugTag("HERO: Army outmatched-teleporting home", 10, hero_unit[hn], 4.00, 2.00)
-      call TeleportHome(hn)
-    elseif not teleporting and hero_enemy_density[hn] > 5 and IsUnitInGroup(hero_unit[hn], unit_healing) and DistanceBetweenPoints(hero_dir[hn],hero_loc[hn]) <= 225 then
+    endif
+    if not teleporting and hero_enemy_density[hn] > 5 and IsUnitInGroup(hero_unit[hn], unit_healing) and DistanceBetweenPoints(hero_dir[hn],hero_loc[hn]) <= 225 then
       call CreateDebugTag("HERO: Surround Detection Teleportation", 10, hero_unit[hn], 4.00, 2.00)
       call TeleportHome(hn)
     endif
