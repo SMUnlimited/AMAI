@@ -13,7 +13,6 @@
     integer town_num = 0
     real town_radius = 2500
     group in_town_group = CreateGroup()
-    group temp_town_group = null
 #ELSE
 function CopyTown takes integer from, integer to returns nothing
   set town_owner[to] = town_owner[from]
@@ -59,14 +58,13 @@ function TrackTown takes integer num returns boolean
   set town_count[num] = 0
   set town_can_tp[num] = false
   call GroupEnumUnitsInRangeOfLoc(g, town_loc[num], town_radius, null)
-  call BlzGroupRemoveGroupFast(in_town_group,g)
   set g = SelectByPlayer(g, Player(town_owner[num]), true)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   set g = SelectByAlive2(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    //if not IsUnitInGroup(u, in_town_group) then  //GetUnitState(u, UNIT_STATE_LIFE) > 0 and GetOwningPlayer(u) == Player(town_owner[num]) and IsUnitType(u, UNIT_TYPE_STRUCTURE) and 
+    if not IsUnitInGroup(u, in_town_group) then  //GetUnitState(u, UNIT_STATE_LIFE) > 0 and GetOwningPlayer(u) == Player(town_owner[num]) and IsUnitType(u, UNIT_TYPE_STRUCTURE) and 
       call GroupAddUnit(town_group[num], u)
       call GroupAddUnit(in_town_group, u)
       set x = x + GetUnitX(u)  // Prevent loc exceeding map range
@@ -77,7 +75,7 @@ function TrackTown takes integer num returns boolean
       if IsUnitType(u, UNIT_TYPE_TOWNHALL) then //and UnitAlive(u) then
         set town_can_tp[num] = true
       endif
-    //endif
+    endif
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
@@ -91,9 +89,6 @@ function TrackTown takes integer num returns boolean
     //set l = null
     return false
   endif
-  if temp_town_group != null then
-    call BlzGroupRemoveGroupFast(town_group[num],temp_town_group)
-  endif
   //    call PingMinimapEx(GetLocationX(l), GetLocationY(l), 9, 0, 0, 255, false)
   set x = x / Max(town_count[num], 1)
   set y = y / Max(town_count[num], 1)
@@ -106,7 +101,6 @@ endfunction
 function TrackExistingTowns takes nothing returns nothing
   local integer i = 0
   local integer first_free = 0
-  set temp_town_group = null
   loop
     exitwhen i >= town_num
     call GroupClear(town_group[i])
@@ -141,16 +135,14 @@ function SeedNewTownsForPlayer takes integer p returns nothing
   local group g = CreateGroup()
   local unit u = null
   call GroupEnumUnitsOfPlayer(g, Player(p), null)
-  call BlzGroupRemoveGroupFast(in_town_group,g)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   set g = SelectByAlive(g,true)
-  set temp_town_group = g
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    //if not IsUnitInGroup(u, in_town_group) then  //IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and
+    if not IsUnitInGroup(u, in_town_group) then  //IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and
       call SeedNewTownAtLoc(GetUnitLoc(u), p)
-    //endif
+    endif
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)

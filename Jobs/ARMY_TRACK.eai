@@ -10,7 +10,6 @@
     real army_radius = 1200
     real army_future_mult = 3
     group in_army_group = CreateGroup()
-    group temp_army_group = null
     integer main_army = -1
 
 #ELSE
@@ -36,7 +35,6 @@ function TrackArmy takes integer num returns boolean
   set army_count[num] = 0
 
   call GroupEnumUnitsInRangeOfLoc(g, army_loc[num], army_radius, null)
-  call BlzGroupRemoveGroupFast(in_army_group,g)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
   set g = SelectByPlayer(g, Player(army_owner[num]), true)
@@ -49,7 +47,7 @@ function TrackArmy takes integer num returns boolean
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    //if not IsUnitInGroup(u, in_army_group) then
+    if not IsUnitInGroup(u, in_army_group) then
     //if UnitAlive(u) and GetOwningPlayer(u) == Player(army_owner[num]) and not (IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitType(u, UNIT_TYPE_PEON) or IsUnitInGroup(u, in_army_group)) then
       //if (Player(army_owner[num]) != ai_player and IsUnitInvisible(u, ai_player)) or (Player(army_owner[num]) == ai_player and not IsStandardUnit(u)) then
         // Fix using invisible units to exploit amai to force defend its town
@@ -65,7 +63,7 @@ function TrackArmy takes integer num returns boolean
       set army_count[num] = army_count[num] + 1
       set army_strength[num] = army_strength[num] + GetUnitStrength(u)
       //endif
-    //endif
+    endif
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
@@ -83,9 +81,6 @@ function TrackArmy takes integer num returns boolean
     //call RemoveLocation(l)
     //set l = null
     return false
-  endif
-  if temp_army_group != null then
-    call BlzGroupRemoveGroupFast(army_group[num],temp_army_group)
   endif
   set x = x / Max(army_count[num], 1)
   set y = y / Max(army_count[num], 1)
@@ -105,7 +100,6 @@ endfunction
 function TrackExistingArmies takes nothing returns nothing
   local integer i = 0
   local integer first_free = 0
-  set temp_army_group = null
   loop
     exitwhen i >= army_num
     call GroupClear(army_group[i])
@@ -147,23 +141,21 @@ function SeedNewArmiesForPlayer takes integer p returns nothing
   local group g = CreateGroup()
   local unit u = null
   call GroupEnumUnitsOfPlayer(g, Player(p), null)
-  call BlzGroupRemoveGroupFast(in_army_group,g)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
   if Player(p) == ai_player then
     set g = SelectByUnitStandard(g, true)   // Hopefully fix issues of heroes doing other things not making false armies
   endif
   set g = SelectByAlive(g, true)
-  set temp_army_group = g
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    //if not IsUnitInGroup(u, in_army_group) then
-    if IsUnitType(u, UNIT_TYPE_HERO) or major_hero == u or GetRandomInt(0, 30) == 1 then
-    //if UnitAlive(u) and not IsUnitInGroup(u, in_army_group) and (IsUnitType(u, UNIT_TYPE_HERO) or major_hero == u or (GetRandomInt(0, 30) == 1 and not (IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitType(u, UNIT_TYPE_PEON)))) then
-      call SeedNewArmyAtLoc(Location(GetUnitX(u), GetUnitY(u)), p)
+    if not IsUnitInGroup(u, in_army_group) then
+      if IsUnitType(u, UNIT_TYPE_HERO) or major_hero == u or GetRandomInt(0, 30) == 1 then
+      //if UnitAlive(u) and not IsUnitInGroup(u, in_army_group) and (IsUnitType(u, UNIT_TYPE_HERO) or major_hero == u or (GetRandomInt(0, 30) == 1 and not (IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitType(u, UNIT_TYPE_PEON)))) then
+        call SeedNewArmyAtLoc(Location(GetUnitX(u), GetUnitY(u)), p)
+      endif
     endif
-    //endif
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
