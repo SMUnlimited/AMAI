@@ -20,7 +20,7 @@ sub process_dir {
       } else {
         print "Installing AMAI without Commander to $dirname/$filename\n";
       }
-			system "MPQEditor htsize \"$dirname/$filename\" 128";
+			system "MPQEditor htsize \"$dirname/$filename\" 64";
 			system "MPQEditor a \"$dirname/$filename\" Scripts\\TFT\\*.ai Scripts";
       if (!(defined($commander)) || $commander eq "true") {
         system "MPQEditor a \"$dirname/$filename\" Scripts\\Blizzard.j Scripts\\Blizzard.j";
