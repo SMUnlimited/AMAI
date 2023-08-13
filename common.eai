@@ -3073,14 +3073,16 @@ function DisplayChat takes boolean ally, boolean enemy, boolean obs, boolean imp
   loop
     exitwhen i >= GetBJMaxPlayers()
     set p = Player(i)
-    if (GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) != MAP_CONTROL_COMPUTER and ((ally and IsPlayerAlly(p, ai_player)) or (enemy and IsPlayerEnemy(p, ai_player) and not IsPlayerObserver(p)))) or (obs and IsPlayerObserver(p)) then
-      set rand = std_rand
-      loop
-        exitwhen (chat_list_eq[rand] == COMPARE_TRUE) or (chat_list_eq[rand] == COMPARE_EQ and chat_list_race[rand] == race_name[player_race[i]]) or (chat_list_eq[rand] == COMPARE_UNEQ and chat_list_race[rand] != race_name[player_race[i]])
-        set rand = GetRandomInt(0, chat_list_length - 1)
-      endloop
-      call SetChatVarsPlayer(p)
-      call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)
+    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) != MAP_CONTROL_COMPUTER then
+      if ((ally and IsPlayerAlly(p, ai_player)) or (enemy and IsPlayerEnemy(p, ai_player) and not IsPlayerObserver(p))) or (obs and IsPlayerObserver(p)) then
+        set rand = std_rand
+        loop
+          exitwhen (chat_list_eq[rand] == COMPARE_TRUE) or (chat_list_eq[rand] == COMPARE_EQ and chat_list_race[rand] == race_name[player_race[i]]) or (chat_list_eq[rand] == COMPARE_UNEQ and chat_list_race[rand] != race_name[player_race[i]])
+          set rand = GetRandomInt(0, chat_list_length - 1)
+        endloop
+        call SetChatVarsPlayer(p)
+        call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)
+      endif
     endif
     set i = i + 1
   endloop
@@ -3364,6 +3366,7 @@ function countAllyEnemy takes nothing returns nothing
   local integer i = 0
   local boolean self_came = false
   local boolean next_came = false
+  local player p = null
 
   loop
     exitwhen i > RACE_NUMBER
@@ -3375,20 +3378,19 @@ function countAllyEnemy takes nothing returns nothing
   set i = 0
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(Player(i)) then
-      if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER then
+    set p = Player(i)
+    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(p) then
+      if GetPlayerController(p) == MAP_CONTROL_COMPUTER then
         set c_ai_total = c_ai_total + 1
       endif
-      if IsPlayerAlly(ai_player,Player(i)) then
+      if IsPlayerAlly(ai_player,p) then
+        set own_force[force_number] = p
+        set force_number = force_number + 1
         if i == GetAiPlayer() then
           set self_came = true
           set next_came = true
-          set own_force[force_number] = Player(i)
-          set force_number = force_number + 1
         else
-          if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER then
-            set own_force[force_number] = Player(i)
-            set force_number = force_number + 1
+          if GetPlayerController(p) == MAP_CONTROL_COMPUTER then
             if not self_came then
               set first_ai = false
             elseif next_came then
@@ -3402,17 +3404,18 @@ function countAllyEnemy takes nothing returns nothing
           set c_ally[player_race[i]] = c_ally[player_race[i]] + 1
           set c_ally_total = c_ally_total + 1
         endif
-      elseif IsPlayerEnemy(ai_player,Player(i)) then
-        if GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER then
+      elseif IsPlayerEnemy(ai_player,p) then
+        if GetPlayerController(p) != MAP_CONTROL_COMPUTER then
           set c_enemy_user_total = c_enemy_user_total + 1
         endif
         set c_enemy[player_race_pref[i]] = c_enemy[player_race_pref[i]] + 1
-        set enemy_force[c_enemy_total] = Player(i)
+        set enemy_force[c_enemy_total] = p
         set c_enemy_total = c_enemy_total + 1
       endif
     endif
     set i = i + 1
   endloop
+  set p = null
   set no_ai_ally = first_ai and next_ai == 0
 endfunction
 
@@ -4583,9 +4586,9 @@ function GetUnitToBuy takes unit buy_place returns unit
   set g = SelectUnittype(g, UNIT_TYPE_SUMMONED, false)
   set g = SelectByIllusion(g, false)
   set g = SelectByHidden(g, false)
+  set g = SelectByAlive2(g, true)
   set g = SelectByUnitStandard(g, true)
   set g = SelectByUnitFree(g, true)
-  set g = SelectByAlive2(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -4760,9 +4763,11 @@ function GetMajorHeroReplacement_d takes location l returns unit
 
   loop
     exitwhen i > 3
-    if hero_built[i] and UnitAlive(hero_unit[i]) and IsUnitInRangeLoc(hero_unit[i], l, battle_radius) and not IsUnitInGroup(hero_unit[i], unit_healing) then
-      call RemoveLocation(l)
-      return hero_unit[i]
+    if hero_built[i] and UnitAlive(hero_unit[i]) then
+      if IsUnitInRangeLoc(hero_unit[i], l, battle_radius) and not IsUnitInGroup(hero_unit[i], unit_healing) then
+        call RemoveLocation(l)
+        return hero_unit[i]
+      endif
     endif
     set i = i + 1
   endloop
@@ -4776,8 +4781,10 @@ function GetMajorHeroReplacement_k takes location l returns unit
 
   loop
     exitwhen i > 3
-    if hero_built[i] and UnitAlive(hero_unit[i]) and IsUnitInRangeLoc(hero_unit[i], l, battle_radius) and not IsUnitInGroup(hero_unit[i], unit_healing) then
-      return hero_unit[i]
+    if hero_built[i] and UnitAlive(hero_unit[i]) then
+      if IsUnitInRangeLoc(hero_unit[i], l, battle_radius) and not IsUnitInGroup(hero_unit[i], unit_healing) then
+        return hero_unit[i]
+      endif
     endif
     set i = i + 1
   endloop
@@ -4817,8 +4824,10 @@ function GetDensities takes location l, player p, real r returns nothing
 
   set enemy_density = 0
   set ally_density = 0
-  call MoveLocation(ally_density_loc, 0,0)
-  call MoveLocation(enemy_density_loc, 0,0)
+  call RemoveLocation(ally_density_loc)
+  call RemoveLocation(enemy_density_loc)
+  set ally_density_loc = Location(0,0)
+  set enemy_density_loc = Location(0,0)
   call GroupEnumUnitsInRangeOfLoc(g, l, r, null)
   loop
     set u = FirstOfGroup(g)
@@ -4849,13 +4858,15 @@ function GetDensities takes location l, player p, real r returns nothing
   if ally_density > 0 then
     set xa = xa / ally_density
     set ya = ya / ally_density
-    call MoveLocation(ally_density_loc, xa,ya)
+    call RemoveLocation(ally_density_loc)
+    set ally_density_loc = Location(xa,ya)
     //set ally_density_loc = GetDivisionLoc_d(ally_density_loc, ally_density)
   endif
   if enemy_density > 0 then
     set xe = xe / enemy_density
     set ye = ye / enemy_density
-    call MoveLocation(enemy_density_loc, xe,ye)
+    call RemoveLocation(enemy_density_loc)
+    set enemy_density_loc = Location(xe,ye)
     //set enemy_density_loc = GetDivisionLoc_d(enemy_density_loc, enemy_density)
   endif
   call DestroyGroup(g)
@@ -10020,7 +10031,8 @@ function ConstructExpansion takes unit peon, integer unitid returns boolean
       set u = null
       return false
     endif
-    call MoveLocation(exp_loc_cache,GetUnitX(u), GetUnitY(u))
+    call RemoveLocation(exp_loc_cache)
+    set exp_loc_cache = Location(GetUnitX(u), GetUnitY(u))
     set exp_loc_cache_timeout = ai_time + 4
   //  call SetUnitExploded(u, true)
   //  call KillUnit(u)
@@ -10220,8 +10232,8 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
     return true
   endif
   loop
-    exitwhen i >= GetBJMaxPlayers()
-    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and ai_player != Player(i) and IsPlayerAlly(ai_player,Player(i)) and not IsPlayerObserver(Player(i)) then
+    exitwhen i >= force_number
+    if GetPlayerSlotState(own_force[i]) == PLAYER_SLOT_STATE_PLAYING and ai_player != own_force[i] and not IsPlayerObserver(own_force[i]) then
       set per[m] = i
       set m = m + 1
     endif
@@ -11734,7 +11746,6 @@ function GetNearHumanPlayerEnemy takes nothing returns unit
       set i = i + 1
     endloop
   endif
-  set c_enemy_user_total = t  // update c_enemy_user_total
   set ru_target[6] = null
   if p != 30 then
     call GroupEnumUnitsOfPlayer(g, rushedplayer, null)
@@ -11791,17 +11802,22 @@ function GetEnemyAllyStrength takes player tp returns integer
   local integer i = 0
   local integer ally_sum = 0
   local integer enemy_sum = 0
+  local player p = null
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(Player(i)) and Player(i) != ai_player and Player(i) != tp then
-      if IsPlayerAlly(Player(i), ai_player) then
-        set ally_sum = ally_sum + R2I(GetPlayerStrength(Player(i)))
-      elseif IsPlayerAlly(Player(i), tp) then
-        set enemy_sum = enemy_sum + GetUnexactPlayerStrength(Player(i))
+    set p = Player(i)
+    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(p) then
+      if p != ai_player and p != tp then
+        if IsPlayerAlly(p, ai_player) then
+          set ally_sum = ally_sum + R2I(GetPlayerStrength(p))
+        elseif IsPlayerAlly(p, tp) then
+          set enemy_sum = enemy_sum + GetUnexactPlayerStrength(p)
+        endif
       endif
     endif
     set i = i + 1
   endloop
+  set p = null
   return (enemy_sum - ally_sum)/2
 endfunction
 
@@ -12045,19 +12061,20 @@ endfunction
 function SetLeadAlly takes nothing returns nothing
   local integer i = 0
   local boolean checkdone = false
+  local player p = null
   loop
-    exitwhen i >= GetBJMaxPlayers() or checkdone
-    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER and Player(i) != ai_player and IsPlayerAlly(ai_player, Player(i)) then
-      set leadally = false
-      set checkdone = true
-      set i = i + 1
-    elseif Player(i) == ai_player then
-      set leadally = true
-      set checkdone = true
-      set i = i + 1
-    else
-      set i = i + 1
+    exitwhen i >= force_number or checkdone
+    set p = own_force[i]
+    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
+      if GetPlayerController(p) == MAP_CONTROL_COMPUTER and p != ai_player then
+        set leadally = false
+        set checkdone = true
+      elseif p == ai_player then
+        set leadally = true
+        set checkdone = true
+      endif
     endif
+    set i = i + 1
   endloop
 endfunction
 //============================================================================
@@ -12560,8 +12577,10 @@ function GetArmyHealthState takes nothing returns real
       endif
       set count = count + 1
       set hid = GetHealerId(GetUnitTypeId(u))
-      if hid != -1 and GetUnitState(u, UNIT_STATE_MANA) >= (healer_mana_cost[hid] * 2) / 3 and ((healer_upg_id[hid] == 0) or (GetUpgradeLevel(healer_upg_id[hid]) >= healer_upg_level[hid])) then
-        call GroupAddUnit(healer_group, u)
+      if hid != -1 then
+        if GetUnitState(u, UNIT_STATE_MANA) >= (healer_mana_cost[hid] * 2) / 3 and ((healer_upg_id[hid] == 0) or (GetUpgradeLevel(healer_upg_id[hid]) >= healer_upg_level[hid])) then
+          call GroupAddUnit(healer_group, u)
+        endif
       endif
       if uhs < 0.5 then
         call GroupAddUnit(urgent_healing_group, u)
@@ -12578,7 +12597,11 @@ function GetArmyHealthState takes nothing returns real
   endloop
   call DestroyGroup(g)
   set g = null
-  set fountain_available = race_use_fountain and neutral_available[hFountainID] and nearest_neutral[hFountainID] != null and (not neutral_guarded[hFountainID] or (neutral_night_buy[hFountainID] and GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18))
+  if nearest_neutral[hFountainID] == null or neutral_guarded[hFountainID] or not neutral_available[hFountainID] or not race_use_fountain then
+    set fountain_available = false
+  else
+    set fountain_available = neutral_night_buy[hFountainID] and GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18
+  endif
   if count == 0 then
     return 1.0
   endif
