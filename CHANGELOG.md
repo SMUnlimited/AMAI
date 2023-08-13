@@ -241,7 +241,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed first_expansion_chosen now should correctly expressed
 - Fixed IsTargetGood aggression error
 - Fixed SendHomeMoveUnitToLoc repeat run semd home Job
-- Fixed RESET_WINDWALKER JOB self circulation
 - Fixed BUY_NEUTRAL_HERO JOB buying_unit GuardPosition not properly removed
 - Fixed BUY_NEUTRAL timeout no end job
 - Fixed HEALTH_FOUNTAIN fountain have enemies end job , prevent unit wander
