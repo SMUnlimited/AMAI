@@ -477,8 +477,6 @@ globals
 
     string array digit_map
 
-    integer mapattackdelayed = 8  //used for the attack delay of the big map , prevent AI from losing targets when attacking in the big map
-    boolean firstattackhp = false  //big map or more player first attack human player?
 
     integer array player_race
     integer array player_race_pref
@@ -514,6 +512,8 @@ globals
     integer neutral_zeppelin = 0
     integer tp_item = 0
     integer tiernum = 3
+    integer mapSize = 0
+    boolean firstattackhp = false  //big map or more player first attack human player?
 
     integer array hero
     integer array hero_skills // The skill line chosen for the hero, major, minor or rare
@@ -1536,7 +1536,7 @@ endfunction
 
 //============================================================================
 function DisplayToObservers takes string s returns nothing
-  if IsPlayerObserver(GetLocalPlayer()) then
+  if IsPlayerObserver(GetLocalPlayer()) and not IsPlayerAlly(ai_player,GetLocalPlayer()) then
     call DisplayTimedTextToPlayer(GetLocalPlayer(),0,0,15,message_add+s)
     call StartSound(chatSound)
   endif
@@ -1544,7 +1544,7 @@ endfunction
 
 //============================================================================
 function DisplayToObserversImportant takes string s returns nothing
-  if IsPlayerObserver(GetLocalPlayer()) then
+  if IsPlayerObserver(GetLocalPlayer()) and not IsPlayerAlly(ai_player,GetLocalPlayer()) then
     call DisplayTimedTextToPlayer(GetLocalPlayer(),0,0,15,message_add+s)
     call StartSound(importantSound)
   endif
@@ -2464,24 +2464,28 @@ function InitMapSizeVars takes nothing returns nothing
   call SetChatVarR("MapSizeY", y)
   if a < 90 then
     call SetChatVar("MapSize", "extrasmall")
+    set mapSize = 0
   elseif a < 120 then
     call SetChatVar("MapSize", "tiny")
+    set mapSize = 1
   elseif a < 240 then
     call SetChatVar("MapSize", "small")
+    set mapSize = 2
   elseif a < 380 then
     call SetChatVar("MapSize", "medium")
+    set mapSize = 3
   elseif a < 540 then
     call SetChatVar("MapSize", "large")
-    set mapattackdelayed = 8 - difficulty
+    set mapSize = 4
   elseif a < 960 then
     call SetChatVar("MapSize", "extralarge")
-    set mapattackdelayed = 7 - difficulty
+    set mapSize = 5
   elseif a < 2048 then
     call SetChatVar("MapSize", "huge")
-    set mapattackdelayed = 6 - difficulty
+    set mapSize = 6
   else
     call SetChatVar("MapSize", "legendary")
-    set mapattackdelayed = 5 - difficulty
+    set mapSize = 7
   endif
 endfunction
 
@@ -3092,9 +3096,7 @@ function Chat takes integer c returns nothing
 
   if c == C_STRATEGY then
     call DisplayToAlliesImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport() )
-    if not IsPlayerAlly(ai_player,GetLocalPlayer()) then
-      call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport() )
-    endif
+    call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport() )
   else
     if not (chatting or chat_important[c]) then
       return
@@ -7556,9 +7558,7 @@ function cmd_attack takes integer cmd, integer data returns nothing
       //call DisplayToAllies(chat_towerrush)
     else
       call DisplayToAllies(chat_no_towerrush)
-      if not IsPlayerAlly(ai_player,GetLocalPlayer()) then
-        call DisplayToObserversImportant( chat_no_towerrush )
-      endif
+      call DisplayToObserversImportant( chat_no_towerrush )
     endif
 
   endif
@@ -7717,6 +7717,7 @@ function InitCheckHarvest takes nothing returns nothing
   local integer i = GOLD_MINE
   local integer c = 0
   local integer p = 0
+  local real check = 0
   local real distance = 0
   if race_manual_loading then
     set i = race_manual_loading_mine
@@ -7730,9 +7731,9 @@ function InitCheckHarvest takes nothing returns nothing
     exitwhen u == null
     if GetResourceAmount(u) > 0 then
       if GetUnitTypeId(u) == old_id[GOLD_MINE] then
-        set i = R2I(DistanceBetweenPoints_kd(home_location,GetUnitLoc(u)))  // human and orc need find closest mine
-        if i <= distance then
-          set distance = i
+        set check = DistanceBetweenPoints_kd(home_location,GetUnitLoc(u))  // human and orc need find closest mine
+        if check <= distance then
+          set distance = check
           set own_town_mine[0] = u  // fix home_location mine
         endif
         set c = c + 1
@@ -7748,7 +7749,7 @@ function InitCheckHarvest takes nothing returns nothing
     call GroupRemoveUnit(g, u)
   endloop
   if p == 2 then
-    if c == 2 and race_uses_mine_expansion then
+    if c == 2 and i != GOLD_MINE then
       set first_town_mine = 1 // mode one , have more mine , but one player have one mine(like (4)synergybigpaved.w3x) , just fix UD harvest
     elseif c > 2 then
       set first_town_mine = 2  // mode three , have more mine , but one player have more mine , fix harvest and expensive
@@ -7756,12 +7757,12 @@ function InitCheckHarvest takes nothing returns nothing
   elseif c > 1 and p == 0 then
     set first_town_mine = 3 // mode two, have more mine , but one play have this mine , fix harvest and expensive - prior take closest home_location mine
   endif
-  if first_town_mine == 0 and race_uses_mine_expansion then
+  if first_town_mine == 0 and i != GOLD_MINE then
     set first_town_mine = 1  // just one mine , but now cannot harvest , need fix UD harvest
     // some map home_location 1500 radius just one mine , but old war3 (maybe 1.24~1.28 , 1.36 no this bug) UD and ELF still cannot harvest(maybe need 2300 radius no more mine)
   endif
-  if (i == GOLD_MINE and first_town_mine == 3) or race_uses_mine_expansion then
-    call TQAddJob(2, HARVEST_CHECK, 0)  // use job fix harvest , ELF always run harvest job
+  if (i == GOLD_MINE and first_town_mine == 3) or i != GOLD_MINE then
+    call TQAddJob(2, HARVEST_CHECK, 0)  // use job fix harvest
   endif
   call DestroyGroup(g)
   set g = null
@@ -8178,7 +8179,7 @@ function InitAMAI takes nothing returns nothing
   call InitTownBuilt()
   set max_farms = GetMaxFarms()
   set mine_loc = GetUnitLoc(own_town_mine[0])
-  if (c_ally_total + c_enemy_total >= 10 or mapattackdelayed < 8) and c_enemy_user_total > 0 then
+  if (c_ally_total + c_enemy_total >= 10 or mapSize > 3) and c_enemy_user_total > 0 then
     set firstattackhp = true
   endif
 //    call DebugSequenceStart("DebugRun")
@@ -8215,7 +8216,7 @@ function AMAI takes code heroes, code peons, code attacks returns nothing
     call StartThread(function cmd_loop)
     //call Trace("cmd_loop")
     if GetMinesOwned() > 1 then
-      call InitCheckHarvest()  // now home_location distance 1500 have more mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix , ELF no need , because ELF always run harvest job
+      call InitCheckHarvest()  // now home_location distance 1500 have more mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix , ELF no need
     endif
 endfunction
 
@@ -8326,7 +8327,7 @@ endfunction
 //============================================================================
 function SmallMapsAdd takes nothing returns nothing
   local integer i = 0
-  if GetPlayers() > 3 or mapattackdelayed != 8 then  // tiny small medium mapsize's mapattackdelayed not 8 , some 1V1 maybe use big map
+  if GetPlayers() > 3 or mapSize >= 3 then
     return
   endif
   loop
@@ -11034,32 +11035,39 @@ endfunction
 
 //============================================================================
 function SleepInCombatAM takes nothing returns nothing
-    local integer count = 0
-    local integer attack_length_counter = 0
-    call Trace("SleepInCombat")
-    loop
-      exitwhen town_threatened
-      exitwhen break_attack
-      loop
-        exitwhen not CaptainInCombat(true)  // goal is cleared
-        exitwhen CaptainIsEmpty()  // duh
-        //exitwhen captain_flee and CaptainRetreating()
-        //exitwhen isfleeing and CaptainRetreating()
-//            call CaptainAttack(GetLocationX(last_ally_loc), GetLocationY(last_ally_loc))
-        call Sleep(1 * sleep_multiplier)
-        exitwhen town_threat_break and town_threatened
-        exitwhen break_attack
-        //set attack_length_counter = attack_length_counter + 1
-        //if attack_length_counter > attack_reform_length then
-        //  set attack_length_counter = 0
-        //  call FormGroupAM(2)
-        //endif
-      endloop
-      //call Sleep(1)
-      set count = count + 1
-      exitwhen count >= mapattackdelayed
-    endloop
-    call Trace("exit SleepInCombat")
+  local integer count = 0
+  local integer attack_length_counter = 0
+  call Trace("SleepInCombat")
+  loop
+    exitwhen town_threatened
+    exitwhen break_attack
+    exitwhen not CaptainInCombat(true)  // goal is cleared
+    exitwhen CaptainIsEmpty()// duh
+    exitwhen town_threat_break and town_threatened
+    exitwhen break_attack
+    exitwhen R2I(count/sleep_multiplier) >= 900 // Took longer than 15 mins to attack something is wrong
+    //loop
+      //exitwhen captain_flee and CaptainRetreating()
+      //exitwhen isfleeing and CaptainRetreating()
+      //call CaptainAttack(GetLocationX(last_ally_loc), GetLocationY(last_ally_loc))
+      //call Sleep(1 * sleep_multiplier)
+      //set attack_length_counter = attack_length_counter + 1
+      //if attack_length_counter > attack_reform_length then
+        //set attack_length_counter = 0
+        //call FormGroupAM(2)
+      //endif
+    //endloop
+    //call Sleep(1)
+    set count = count + 1
+    call Sleep(1 * sleep_multiplier)
+  endloop
+  set count = 0
+  loop
+    exitwhen count >= 8
+    set count = count + 1
+    call Sleep(1)
+  endloop
+  call Trace("exit SleepInCombat")
 endfunction
 
 //============================================================================
@@ -11297,7 +11305,7 @@ function BRRush takes nothing returns nothing
     call IssuePointOrderLoc( utemp, "root", buildloc)  //root tree
     call RemoveLocation(buildloc)
     set buildloc = null
-    call TQAddUnitJob(10, RESET_GUARD_POSITION, 0, utemp)  // prevent no root
+    //call TQAddUnitJob(10, RESET_GUARD_POSITION, 0, utemp)  // prevent no root
   else
     call AttackMoveKill(rushcreep_target)
     call ReformUntilTargetDeadAM(rushcreep_target, true)
