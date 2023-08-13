@@ -246,7 +246,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed HEALTH_FOUNTAIN fountain have enemies end job , prevent unit wander
 - Fixed MANA_FOUNTAIN fountain have enemies end job , prevent unit wander
 - Fixed InitAMAIGameCache not properly flush AMAI_AI.w3v
-- Fixed GetArmyOfUnit return , array use the return , cannot return -1 , now return army_num , army_num all data is 0
 - Fixed GetHealer check GetHealerId return
 - Fixed windwalk Order if exist unit skills level
 - Fixed SELL_ZIGGURATS i always greater than ziggarray
