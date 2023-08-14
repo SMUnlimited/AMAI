@@ -966,7 +966,9 @@ globals
     
     unit array water_expansion_list
     integer water_expansion_list_length = 0
-    
+    group water_expansion = CreateGroup()
+    group array water_expansion_creeps
+
     unit expansion_peon = null
     location exp_loc_cache = Location(0,0)
     integer exp_loc_cache_timeout = 0
@@ -5545,6 +5547,8 @@ endfunction
 //==============================================================
 function AddWaterExpansion takes unit u returns nothing
   set water_expansion_list[water_expansion_list_length] = u
+  call GroupAddUnit(water_expansion, u)
+  set water_expansion_creeps[water_expansion_list_length] = GetExpFoeGroup(u)  // group of the the creeps that guard this mine
   set water_expansion_list_length = water_expansion_list_length + 1
 endfunction
 
@@ -5712,7 +5716,7 @@ function MakeExpansionList takes nothing returns nothing
             call RemoveUnit(pather[i])
             set pather[i] = null
             set patherdone[i] = true
-            //      call AddWaterExpansion(u)
+            call AddWaterExpansion(u)
           endif
         else
           set checks = 0	// means unit is moving and not standing still
@@ -9559,14 +9563,17 @@ endfunction
 
 //============================================================================
 function IsWaterExpansion takes unit u returns boolean
-  local integer i = 0
-  loop
-    exitwhen i == water_expansion_list_length
-    if water_expansion_list[i] == u then
-      return true
-    endif
-    set i = i + 1
-  endloop
+  //local integer i = 0
+  // loop
+  //   exitwhen i == water_expansion_list_length
+  //   if water_expansion_list[i] == u then
+  //     return true
+  //   endif
+  //   set i = i + 1
+  // endloop
+  if IsUnitInGroup(u,water_expansion) then
+    return true
+  endif
   return false
 endfunction
 
@@ -11229,28 +11236,31 @@ endfunction
 // Militia Expansion melee attack
 //============================================================================
 function Militia_Expansion takes integer m returns nothing
-     local group g = CreateGroup()
-     local group tempg = CreateGroup()
+     local group g = null
+     local group tempg = null
      local unit u = null
      local real x = 0
      local real y = 0
      local unit efoe = GetExpFoe()
      local integer t = 0
-
+     if IsUnitInGroup(current_expansion,water_expansion) then  //is WaterExpansion
+       set efoe = null
+       return
+     endif
+     set g = CreateGroup()
      set break_attack = false  // to persuade attack system to hopefully not exit early and do the reforming behaviour
      set militia_check_enabled = false
      //call BuildExpa( TownCount(racial_expansion)+1, racial_expansion, farm_prio + 50 )
      call DisplayToAlliesChat(militia_expansion_chat)
      call GroupEnumUnitsOfPlayer(g, ai_player, null)
      set g = SelectNumberOfId(g, 100, old_id[racial_peon] )
-	 set g = SelectByAlive(g, true)
-	 set tempg = g
-     set g = GetNearestSubGroupOfGroup(tempg, home_location, m)
-	 call DestroyGroup(tempg)
-	 set tempg = null
-     set expansion_peon = FirstOfGroup(g)
-     call AddAbilityToGroup(CopyGroup(g), race_militia_ability)
-     call GroupImmediateOrder(g, "militia" )
+     set g = SelectByAlive(g, true)
+     set tempg = GetNearestSubGroupOfGroup(g, home_location, m)
+     call DestroyGroup(g)
+     set g = null
+     set expansion_peon = FirstOfGroup(tempg)
+     call AddAbilityToGroup(CopyGroup(tempg), race_militia_ability)
+     call GroupImmediateOrder(tempg, "militia" )
      call RemoveInjuries()
      call FormGroupAM(4)
      loop
@@ -11259,41 +11269,41 @@ function Militia_Expansion takes integer m returns nothing
        call Sleep(2)
        set t = t + 1
      endloop
-	 //call AddAssault(m, old_id[racial_militia])   // Lil problem with adding assaults. For some reasons
+     //call AddAssault(m, old_id[racial_militia])   // Lil problem with adding assaults. For some reasons
      //call AttackMoveKill(efoe)
      set x = GetUnitX(current_expansion)
      set y = GetUnitY(current_expansion)
-     call GroupPointOrder(g, "attack", x, y )
+     call GroupPointOrder(tempg, "attack", x, y )
      set town_threat_break = false
      //set captain_flee = false
-	 //call SetCaptainHome(ATTACK_CAPTAIN, GetUnitX(efoe), GetUnitY(efoe)) //
+     //call SetCaptainHome(ATTACK_CAPTAIN, GetUnitX(efoe), GetUnitY(efoe)) //
      //call AttackMoveKillCreep(efoe)
-	set attack_running = true
-	//if not retreat_controlled then
-    //  call Trace("===Retreat control started===")
-    //  set retreat_controlled = true
-    //  call SetGroupsFlee(false)
-    //  call SetTargetHeroes(false)
-    //  call TQAddJob(2 * sleep_multiplier, RETREAT_CONTROL, 0)
-    //endif
-    call AttackMoveKill(efoe)
-    call SleepUntilTargetDeadAM(efoe, true)
-    call Chat(C_Done)
-    call SleepInCombatAM()
-	call Trace("===Attack Fully Finished===")
-	set x = GetLocationX(home_location)
-    set y = GetLocationY(home_location)
-	call GroupPointOrder(g, "move", x, y )
-    call GroupImmediateOrder(g, "militiaoff" )	
-    set attack_running = false
-	 //call SetCaptainHome(ATTACK_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
+     set attack_running = true
+     //if not retreat_controlled then
+     //  call Trace("===Retreat control started===")
+     //  set retreat_controlled = true
+     //  call SetGroupsFlee(false)
+     //  call SetTargetHeroes(false)
+     //  call TQAddJob(2 * sleep_multiplier, RETREAT_CONTROL, 0)
+     //endif
+     call AttackMoveKill(efoe)
+     call SleepUntilTargetDeadAM(efoe, true)
+     call Chat(C_Done)
+     call SleepInCombatAM()
+     call Trace("===Attack Fully Finished===")
+     set x = GetLocationX(home_location)
+     set y = GetLocationY(home_location)
+     call GroupPointOrder(tempg, "move", x, y )
+     call GroupImmediateOrder(tempg, "militiaoff" )	
+     set attack_running = false
+     //call SetCaptainHome(ATTACK_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
      set militia_check_enabled = true
      set town_threat_break = true
      //set captain_flee = true
      //set militia = false
      set take_exp = false
-     call DestroyGroup(g)
-     set g = null
+     call DestroyGroup(tempg)
+     set tempg = null
      set efoe = null
      set u = null
 endfunction
