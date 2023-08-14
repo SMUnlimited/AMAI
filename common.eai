@@ -5486,6 +5486,14 @@ function BuildLumberMillAtBase takes nothing returns boolean
 	return false
 endfunction
 
+// Prevent some map creeps too far away
+function CheckCreepsByRadius takes group g , unit u , real n returns nothing
+  call GroupClear(g)
+  call GroupEnumUnitsInRange(g, GetUnitX(u), GetUnitY(u), n, null)
+  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
+  set g = SelectByAlive(g, true)
+endfunction
+
 //=============================================================================
 //  Gets the groups of creeps guarding the specified mine (or other structure)
 function GetExpFoeGroup takes unit mine returns group
@@ -5494,6 +5502,9 @@ function GetExpFoeGroup takes unit mine returns group
   call GroupEnumUnitsInRange(g, GetUnitX(mine), GetUnitY(mine), expansion_radius, null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set g = SelectByAlive(g, true)
+  if FirstOfGroup(g) == null then
+    call CheckCreepsByRadius(g,mine,RMax(1500,expansion_radius))
+  endif
   return g
 endfunction
 
@@ -5507,6 +5518,9 @@ function GetCreepGuardGroup takes integer nn returns group
   call GroupEnumUnitsInRange(g, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), 750, null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set g = SelectByAlive(g, true)
+  if FirstOfGroup(g) == null then
+    call CheckCreepsByRadius(g,nearest_neutral[nn],1000)
+  endif
   return g
 endfunction
 
@@ -5585,7 +5599,7 @@ function GetExpNearestMin takes nothing returns unit
 	local unit nearmine = null
 	local unit secondmine = null
 	local location l = null
-    local group g = CreateGroup()
+	local group g = CreateGroup()
 	local integer rand = GetRandomInt(1,4)
 
 
@@ -6114,15 +6128,6 @@ function GetNeutralGuard takes integer nn returns unit
   set u = GetNearestOfGroup(g, l)  
   call RemoveLocation(l)
   set l = null
-  if u == null then
-	set t = CreateGroup()
-    call GroupEnumUnitsInRange(t, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), expansion_radius, null)
-    set t = SelectByPlayer(t, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
-    set t = SelectByAlive(t, true) 	
-	set u = FirstOfGroup(t)
-	call DestroyGroup(t)
-    set t = null
-  endif  
   call DestroyGroup(g)
   set g = null
   return u
@@ -6145,20 +6150,6 @@ function CanCreepGuardsSleep takes integer nn returns boolean
   endloop
   call DestroyGroup(g)
   set g = null
-  if u == null then
-  	set t = CreateGroup()
-    call GroupEnumUnitsInRange(t, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), 750, null)
-    set t = SelectByPlayer(t, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
-    set t = SelectByAlive(t, true) 	
-    loop
-		set u = FirstOfGroup(t)
-		exitwhen u == null
-	    exitwhen not UnitCanSleep(u)
-        call GroupRemoveUnit(t, u)
-	endloop
-	call DestroyGroup(t)
-    set t = null
-  endif  
   if u == null then 
     return true
   endif  
