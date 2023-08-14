@@ -762,10 +762,11 @@ globals
 
 #INCLUDETABLE <$VER$\Strengths.txt>
     real enemy_%1		= 0
-	real ally_%1		= 0
+    real ally_%1		= 0
 #ENDINCLUDE
     
     unit build_zeppelin = null
+    unit zeppelin_peon = null
 
     boolean array town_built
     location array own_town_loc
@@ -773,7 +774,7 @@ globals
     unit array own_town_mine
 
     integer attacking_ghouls          = 0
-	integer harvesting_ghouls		= 0
+    integer harvesting_ghouls		= 0
 
     integer ai_time = 0
 
@@ -821,11 +822,11 @@ globals
     string chat_towerrush = ""
     string chat_no_orc = ""
     string invalid_strategy_number = ""
-	string chat_dynamic_counter = "and countering "
+    string chat_dynamic_counter = "and countering "
     string militia_expansion_chat = ""
     
     //gamecache translation_map = InitGameCache("AMAI_TM.w3v")
-	hashtable translation_map = InitHashtable()
+    hashtable translation_map = InitHashtable()
     string array translation
     integer translation_length = 0
     
@@ -880,7 +881,7 @@ globals
 // (AMAI)  Variables for controlling the AI (different states)
 //===========================================================================
 
-	boolean creeping_only = false
+    boolean creeping_only = false
 
     boolean break_attack 	= false
     boolean go_home		= false
@@ -920,7 +921,7 @@ globals
 
     string ai_name = "Computer"
     integer own_race = 0
-	real taunt_rate = 1.00 // how man % of the time computers taunt, set by profiles. Recommended values 0.50 to 1.50
+    real taunt_rate = 1.00 // how man % of the time computers taunt, set by profiles. Recommended values 0.50 to 1.50
     integer taunt_start_time = 60  // the time for the computers to start taunting (in seconds * 5)
     integer farm_food = 8 // build farm when this near food used to food produced
     integer strat_persistence = 1000  // extra priority to the current strategy to make computer not change strategy too fast  
@@ -958,9 +959,9 @@ globals
     //rect playable_rect = Rect(path_left, path_bottom, path_right, path_top)
 
     unit array expansion_list
-	location array expansion_ancient
+    location array expansion_ancient
     real array expansion_dist
-	group array expansion_creeps
+    group array expansion_creeps
     integer expansion_list_length = 0
     
     unit array water_expansion_list
@@ -974,8 +975,8 @@ globals
     integer array exp_rp
     unit array exp_unit
     real array exp_dist
-	location array exp_ancient
-	group array exp_creeps
+    location array exp_ancient
+    group array exp_creeps
 	
     group current_expansion_creeps = CreateGroup()
     unit current_expansion = null
@@ -1012,10 +1013,10 @@ globals
     boolean no_counter = true
     string array strengthtext
     #INCLUDETABLE <$VER$\Strengths.txt>
-      integer array dyanti_%1
-      integer totalanti_%1 = 0
-      integer array dychance_%1
-      integer totalchance_%1 = 0
+    integer array dyanti_%1
+    integer totalanti_%1 = 0
+    integer array dychance_%1
+    integer totalchance_%1 = 0
     #ENDINCLUDE	
 
 endglobals
@@ -6045,7 +6046,6 @@ function ChooseExpansion takes nothing returns nothing
   local integer exp_chosen = 0
   
   set exp_number = 0
-  set first_expansion_chosen = true
   loop
     exitwhen i >= expansion_list_length
     if GetResourceAmount(expansion_list[i]) > 2 * GetUnitGoldCost2(racial_expansion) and not CheckExpansionTaken(expansion_list[i]) then
@@ -6747,12 +6747,12 @@ function TQLoop takes nothing returns nothing
     exitwhen player_defeated
     if tq_length > 0 then
       if not TQHandleOnce() then
-        call Sleep(RMin(tq_time[1] - TimerGetElapsed(tq_timer) + 0.05 ,1))
-	  else
-	    call Sleep(0.05)
+        call Sleep(RMin(RMax(tq_time[1] - TimerGetElapsed(tq_timer) + 0.05,0.05) ,1))
+      else
+        call Sleep(0.05)
       endif
     else
-	  call Trace("TQLOOP: No job is ready to fire")
+      call Trace("TQLOOP: No job is ready to fire")
       call Sleep(sleep_multiplier)
     endif
   endloop
@@ -6784,11 +6784,11 @@ if neutral_available[nn] == true then
     set neutral_night_buy[nn] = CanCreepGuardsSleep(nn)
     // set neutral_night_buy[nn] = not no_sleep
 	
-	if nearest_neutral[nn] != null then
-	  call Trace("Neutral Pathing ID done: " + Int2Str(nn)) 
-	else
-	  call Trace("Neutral Pathing ID done (no pathable neutral): " + Int2Str(nn))
-	endif
+    if nearest_neutral[nn] != null then
+      call Trace("Neutral Pathing ID done: " + Int2Str(nn)) 
+    else
+      call Trace("Neutral Pathing ID done (no pathable neutral): " + Int2Str(nn))
+    endif
 endif
 
 endfunction
@@ -6855,6 +6855,7 @@ function InitNeutralBuildings takes nothing returns nothing
     elseif GetUnitTypeId(u) == neutral_id[NEUTRAL_MARKETPLACE] then
     	set neutral_available[NEUTRAL_MARKETPLACE] = true
     elseif not mercfound then
+        set i = 0
 	loop
 		set i = i + 1
       	if GetUnitTypeId(u) == camp[i] then
@@ -6863,8 +6864,9 @@ function InitNeutralBuildings takes nothing returns nothing
 	      exitwhen mercfound or i >= j
 	endloop
     elseif not roostfound then
-      loop
-      	set k = k + 1
+        set k = 0
+        loop
+		set k = k + 1
 		if GetUnitTypeId(u) == roost[k] then
 			set roostfound = true
     		endif
@@ -6919,7 +6921,7 @@ if roostfound then
   #ENDFOR
 #AFTERINCLUDE
   endif
-	set dragon_number = $DRAGONTYPENUM$
+  set dragon_number = $DRAGONTYPENUM$
 #ENDINCLUDE
 
   
@@ -6931,22 +6933,22 @@ endfunction
 
 //==========================================================================
 function CheckAllNeutrals takes nothing returns nothing
-    local integer i = 0
+  local integer i = 0
 
-  call Sleep(5)
   loop
     exitwhen i >= NEUTRAL_COUNT
     call CheckNeutral(i)
     set i = i + 1
+    call Sleep(0.1)
   endloop
 
-  if nearest_neutral[GetHealthFountainID()] != null then
-    call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALING_FOUNTAIN)
-  endif
+  //if nearest_neutral[GetHealthFountainID()] != null then
+    //call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALING_FOUNTAIN)  // CheckNeutralQuick call once
+  //endif
 
-  if nearest_neutral[GetManaFountainID()] != null then
-    call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_MANA_FOUNTAIN)
-  endif
+  //if nearest_neutral[GetManaFountainID()] != null then
+    //call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_MANA_FOUNTAIN)
+  //endif
 endfunction
 
 //============================================================================
@@ -6959,6 +6961,9 @@ if neutral_available[nn] == true then
 
 //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "checkneutral")
     set nearest_neutral[nn] = GetNearestNeutralQuick(neutral_id[nn])
+    if neutral_guards[nn] != null then
+      call DestroyGroup(neutral_guards[nn])
+    endif
     set neutral_guards[nn] = GetCreepGuardGroup(nn)
 //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "finished check")
     set neutral_guarded[nn] = GetNeutralGuard(nn) != null
@@ -6971,7 +6976,7 @@ endfunction
 
 //============================================================================
 function CheckAllNeutralsQuick takes nothing returns nothing
-	local integer i = 0
+  local integer i = 0
 	
   loop
     exitwhen i >= NEUTRAL_COUNT
@@ -6979,13 +6984,19 @@ function CheckAllNeutralsQuick takes nothing returns nothing
     set i = i + 1
   endloop
 
- // if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null then
- //   call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALING_FOUNTAIN)
- // endif
+  if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null then
+    call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALING_FOUNTAIN)
+  endif
 
- // if nearest_neutral[NEUTRAL_MANA_FOUNTAIN] != null then
- //   call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_MANA_FOUNTAIN)
- // endif
+  if nearest_neutral[NEUTRAL_MANA_FOUNTAIN] != null then
+    call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_MANA_FOUNTAIN)
+  endif
+  if nearest_neutral[NEUTRAL_POWER_FOUNTAIN] != null then
+    call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_POWER_FOUNTAIN)
+  endif
+  //if nearest_neutral[NEUTRAL_HEALWARD] != null then  //Next pull submission , Presets
+    //call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALWARD)
+  //endif
  endfunction
 //============================================================================
 function PathingThread takes nothing returns nothing
@@ -7000,6 +7011,7 @@ function PathingThread takes nothing returns nothing
   call CheckAllNeutralsQuick() // Old system check
   call MakeExpansionList()
   set water_map = water_expansion_list_length >= expansion_list_length
+  set first_expansion_chosen = true
   call ChooseExpansion()
   call CheckFastExpansion()
   call CheckAllNeutrals() // The more advanced new system check
@@ -7714,7 +7726,7 @@ function InitAMAI takes nothing returns nothing
     set sleep_multiplier = sleep_multiplier * LinearInterpolation(I2R(slm_start), I2R(slm_end), slm_start_mult, slm_end_mult, I2R(c_ai_total))
     set difficulty = MeleeDifficulty()
     set income_per_mine = income_per_mine * Max(difficulty - 1, 1)
-			call Trace("Init AMAI step 1")
+    call Trace("Init AMAI step 1")
     call InitNeutralSpecial()
     call InitHeroArrays()
     call InitArrays()  // Has been moved to be set before all other code as is only variable declaration
@@ -9560,29 +9572,36 @@ endfunction
 
 //============================================================================
 function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
+  if zeppelin_peon == null or not UnitAlive(zeppelin_peon) then
+    set zeppelin_peon = peon
+  endif
+  // Disabled just in case
   if build_zeppelin == null or not UnitAlive(build_zeppelin) then
-    set build_zeppelin = GetUnusedZeppelinNearUnit(peon)
-	// Disabled just in case
-	set build_zeppelin = null
+    set build_zeppelin = GetUnusedZeppelinNearUnit(zeppelin_peon)
     if build_zeppelin == null then
       call Trace("No Zeppelin found for transporting peon")
+      call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       return false
     endif
     call GroupAddUnit(unit_zepplin_move, build_zeppelin)
   endif
-  if IsUnitInTransport(peon, build_zeppelin) then
+  if IsUnitInTransport(zeppelin_peon, build_zeppelin) then
     if DistanceBetweenUnits(build_zeppelin, target) > 300 then
       call IssuePointOrder(build_zeppelin, "move", GetUnitX(target), GetUnitY(target))
     else
-      call IssueTargetOrder(build_zeppelin, "unload", peon)
+      call IssueTargetOrder(build_zeppelin, "unload", zeppelin_peon)
+      call Sleep(1.2)  //unload time
+      call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
+      set build_zeppelin = null
+      return true
     endif
   else
-    if DistanceBetweenUnits(peon, target) < 400 then
+    if DistanceBetweenUnits(zeppelin_peon, target) < 400 then
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       set build_zeppelin = null
       return true
     else
-      call IssueTargetOrder(peon, "smart", build_zeppelin)
+      call IssueTargetOrder(zeppelin_peon, "smart", build_zeppelin)
     endif
   endif
   return false
@@ -9661,16 +9680,17 @@ function StartExpansionAM takes integer qty, integer hall returns integer
 //  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Peon Got")
 
   if peon != null then
-    if IsWaterExpansion(current_expansion) then
+    if IsWaterExpansion(current_expansion) or DistanceBetweenUnits(peon,current_expansion) > 6000 or IsUnitLoaded(zeppelin_peon) then
       if not BuildMovePeonZeppelin(peon, current_expansion) then
-	    call Trace("AMAIStartexpa: Is a water expansion")
+        call Trace("AMAIStartexpa: Is a water expansion")
         set peon = null
         return BUILT_SOME
       endif
+      set peon = zeppelin_peon
     endif
-	set exp_time_count = ai_time	// This sets time to next expansion to current time so it waits enough time before starting another expansion 
+    set exp_time_count = ai_time	// This sets time to next expansion to current time so it waits enough time before starting another expansion 
     if race_uses_mine_expansion then
-	  call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon)
+      call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon)
       call IssueTargetOrderById(peon, old_id[hall], current_expansion)
     else
       call ConstructExpansion(peon,old_id[hall])
@@ -9689,8 +9709,8 @@ function BuyItem takes integer qty, integer id returns boolean
     return true
   endif
   if shop_ordered then
-      //call Trace("Already ordered to get an item")
-	return true
+    //call Trace("Already ordered to get an item")
+    return true
   endif
   set shop_wanted = qty
   if buy_type[id] == BT_RACIAL_ITEM then
@@ -9701,8 +9721,8 @@ function BuyItem takes integer qty, integer id returns boolean
     set shop_distance_limit = merchant_distance_limit
   endif
   if shop_unit != null then
-	set shop_ordered = true
-	call TQAddJob(0, BUY_ITEM, id)
+    set shop_ordered = true
+    call TQAddJob(0, BUY_ITEM, id)
   endif
   return true
 endfunction
@@ -9734,7 +9754,7 @@ function StartEmergencyItem takes integer ask_qty, integer itemid returns intege
 
   if (needed1[itemid] != 0 and TownCountDone(needed1[itemid]) < 1) or (needed2[itemid] != 0 and TownCountDone(needed2[itemid]) < 1) or (needed3[itemid] != 0 and TownCountDone(needed3[itemid]) < 1) then
     call Trace("Emergency item not enough requirements to buy item")
-	return CANNOT_BUILD
+    return CANNOT_BUILD
   endif  
   
   set gold = gold - gold_cost
@@ -9783,7 +9803,7 @@ function StartItem takes integer ask_qty, integer itemid returns integer
   endif
 
   if available_time[itemid] > ai_time or GetSlotsFree() <= 0 or (buy_type[itemid] == BT_MERCHANT_ITEM and neutral_guarded[NEUTRAL_MERCHANT] and ((daytime >= 5 and daytime < 18) or not neutral_night_buy[NEUTRAL_MERCHANT])) then
-		return BUILT_SOME
+    return BUILT_SOME
   endif
 
   if (needed1[itemid] != 0 and TownCountDone(needed1[itemid]) < 1) or (needed2[itemid] != 0 and TownCountDone(needed2[itemid]) < 1) or (needed3[itemid] != 0 and TownCountDone(needed3[itemid]) < 1) then
@@ -9924,6 +9944,7 @@ local integer mines = GetMinesOwned()
 local integer gold_left = GetGoldOwned()
 local boolean exp_prepared = false
 local boolean rebuild = false
+local unit u = null
 
 if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
   call ChooseExpansion()
@@ -9932,9 +9953,9 @@ if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(
     return
   endif
 endif
-
+set u = GetExpFoe()
 if mines < 2 and ai_time - exp_time_count > exp_first_time then
-  if GetExpFoe() != null then
+  if u != null then
     set take_exp = true
     //if attacking_expansion then
     //  set exp_prepared = true
@@ -9943,20 +9964,21 @@ if mines < 2 and ai_time - exp_time_count > exp_first_time then
   else
     set take_exp = false
     set exp_prepared = true
-	  call Trace("ExpansionBuilder:Ready to expand to mine 2")	
+    call Trace("ExpansionBuilder:Ready to expand to mine 2")	
   endif
 endif
 
 if mines < 3 and ai_time - exp_time_count > exp_second_time then
-    if GetExpFoe() != null then
+    if u != null then
         set take_exp = true
     else
         set take_exp = false
         set exp_prepared = true
-	  call Trace("ExpansionBuilder:Ready to expand to mine 3")		
+        call Trace("ExpansionBuilder:Ready to expand to mine 3")		
     endif
 endif
 
+set u = null
 if not exp_prepared then
 	set rebuild = CheckExpansionRebuild()
 	if rebuild then
@@ -9969,7 +9991,7 @@ if mines < 1 or gold_left < 2000 or exp_prepared then
   if mines < 1 or gold_left < 2000 then
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_emergency_prio)
   elseif rebuild then
-	call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_rebuild_prio)
+    call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_rebuild_prio)
   else
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_prio)
   endif
@@ -10000,10 +10022,12 @@ function HeroReviver takes nothing returns nothing
     exitwhen i > 3
     if GetUnitCountDone(old_id[hero[i]]) > 0 then
         if not hero_built[i] then
-          set hero_built[i] = true
           set hero_unit[i] = GetOneOfId(ai_player, old_id[hero[i]])
-          call InitHeroInfo(i)
-          call TQAddJob(1, MICRO_HERO, i)
+          if hero_unit[i] != null then
+            set hero_built[i] = true
+            call InitHeroInfo(i)
+            call TQAddJob(1, MICRO_HERO, i)
+          endif
         endif
     elseif hero_built[i] then
         call BuildUnit(1, hero[i], hero_revive_prio[i])
@@ -11068,12 +11092,12 @@ endfunction
 
 //============================================================================
 function IsTargetGood takes unit target, integer attacker_bonus returns boolean
-  set added_target_aggression = attacker_bonus
-  set added_racial_aggression = GetRaceAggression(target)
   if target != null then
-	return GetTargetStrength(target) + GetEnemyAllyStrength(GetOwningPlayer(target)) + GetTowerFactor(target) <= own_strength + attacking_aggression + added_aggression + added_racial_aggression + attacker_bonus
+    set added_target_aggression = attacker_bonus
+    set added_racial_aggression = GetRaceAggression(target)
+    return GetTargetStrength(target) + GetEnemyAllyStrength(GetOwningPlayer(target)) + GetTowerFactor(target) <= own_strength + attacking_aggression + added_aggression + added_racial_aggression + attacker_bonus
   else
-	return false
+    return false
   endif
 endfunction
 
@@ -11083,7 +11107,7 @@ function ChooseEnemyExpansionTarget takes nothing returns unit
     set target = GetEnemyExpansion()
     if target != null then
       if IsTargetGood(target, expansion_target_bonus) then
-	  	call Trace("Hardcoded enemy expansion target chosen")
+        call Trace("Hardcoded enemy expansion target chosen")
         return target
       else
         set target = null
@@ -11110,7 +11134,7 @@ function ChooseEnemyBaseTarget takes nothing returns unit
     set target = GetEnemyBase()
     if target != null then
       if IsTargetGood(target, comp_chosen_target_bonus) then
-	    call Trace("Hardcoded Enemy Base Target chosen")
+        call Trace("Hardcoded Enemy Base Target chosen")
         return target
       else
         set target = null
@@ -11160,20 +11184,15 @@ endfunction
 
 function ChooseAnyEnemyTarget takes nothing returns unit
   local unit u = ChooseAnEnemyTarget()
-  if attacking_strategy == 3 then
-    if IsTargetGood(u,0) then
-      set alli_target = GetBuilding(GetStrongestEnemy())
-      return u
-    endif
-  endif
-  if IsTargetGood(u, 0) then
+  if IsTargetGood(u,0) then
     call Trace("Enemy Advanced Target Chosen")
     set alli_target = u
+    if attacking_strategy == 3 then
+      set alli_target = GetBuilding(GetStrongestEnemy())
+    endif
     return u
-  else
-    set u = null
-    return null
   endif
+  return null
 endfunction
 
 //============================================================================
@@ -11182,13 +11201,13 @@ function ChooseAttackTarget takes nothing returns unit
 	//call DisplayToAll("Choosing attack target")
     if GetRandomReal(0.0,1.0) <= comp_chosen_target_rate then
        set target = null
-	else
-		set target = ChooseEnemyExpansionTarget()
-		if target == null then
-			//call DisplayToAll("Attack enemy Base")
-			set target = ChooseEnemyBaseTarget()
-		endif
-		set alli_target = target	
+    else
+       set target = ChooseEnemyExpansionTarget()
+       if target == null then
+         //call DisplayToAll("Attack enemy Base")
+         set target = ChooseEnemyBaseTarget()
+       endif
+       set alli_target = target	
     endif	
 
     if target == null then
@@ -11211,14 +11230,14 @@ endfunction
 //============================================================================
 function Militia_Expansion takes integer m returns nothing
      local group g = CreateGroup()
-	 local group tempg = CreateGroup()
+     local group tempg = CreateGroup()
      local unit u = null
      local real x = 0
      local real y = 0
      local unit efoe = GetExpFoe()
      local integer t = 0
 
-	 set break_attack = false  // to persuade attack system to hopefully not exit early and do the reforming behaviour
+     set break_attack = false  // to persuade attack system to hopefully not exit early and do the reforming behaviour
      set militia_check_enabled = false
      //call BuildExpa( TownCount(racial_expansion)+1, racial_expansion, farm_prio + 50 )
      call DisplayToAlliesChat(militia_expansion_chat)
