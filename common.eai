@@ -4767,11 +4767,9 @@ function GetMajorHeroReplacement_d takes location l returns unit
 
   loop
     exitwhen i > 3
-    if hero_built[i] and UnitAlive(hero_unit[i]) then
-      if IsUnitInRangeLoc(hero_unit[i], l, battle_radius) and not IsUnitInGroup(hero_unit[i], unit_healing) then
-        call RemoveLocation(l)
-        return hero_unit[i]
-      endif
+    if hero_built[i] and UnitAlive(hero_unit[i]) and IsUnitInRangeLoc(hero_unit[i], l, battle_radius) and not IsUnitInGroup(hero_unit[i], unit_healing) then
+      call RemoveLocation(l)
+      return hero_unit[i]
     endif
     set i = i + 1
   endloop
@@ -4785,10 +4783,8 @@ function GetMajorHeroReplacement_k takes location l returns unit
 
   loop
     exitwhen i > 3
-    if hero_built[i] and UnitAlive(hero_unit[i]) then
-      if IsUnitInRangeLoc(hero_unit[i], l, battle_radius) and not IsUnitInGroup(hero_unit[i], unit_healing) then
-        return hero_unit[i]
-      endif
+    if hero_built[i] and UnitAlive(hero_unit[i]) and IsUnitInRangeLoc(hero_unit[i], l, battle_radius) and not IsUnitInGroup(hero_unit[i], unit_healing) then
+      return hero_unit[i]
     endif
     set i = i + 1
   endloop
@@ -6473,16 +6469,6 @@ function CanCreepGuardsSleep takes integer nn returns boolean
     exitwhen not UnitCanSleep(u)
     call GroupRemoveUnit(g, u)
   endloop
-  if u == null then
-    call GroupClear(g)
-    call GroupEnumUnitsInRange(g, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), 750, null)
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null
-      exitwhen not UnitCanSleep(u) and GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and UnitAlive(u)
-      call GroupRemoveUnit(g, u)
-    endloop
-  endif
   call DestroyGroup(g)
   set g = null
   if u == null then
@@ -9330,39 +9316,47 @@ function AddHarass takes integer groupnum, integer qty, integer unitid returns n
   set harass_size[groupnum] = harass_size[groupnum] + 1
 endfunction
 
-function AddHarassUnittype takes integer groupnum, integer harassnum, group harasser, integer key returns group
-  local group g = CreateGroup()
+function AddHarassUnittype takes integer groupnum, integer harassnum, group g, group harasser, integer key returns nothing
+  local group cg = CopyGroup(g)
   local unit u = null
   local real player_sum = 0
-  call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  set g = SelectByUnitStandard(g, true)
-  set g = SelectByUnitFree(g, true)
-  set g = SelectByFullHealth(g, true)
-  set g = SelectNumberOfId(g, harass_qty[harassnum*max_harass_groups + groupnum], old_id[harass_units[harassnum*max_harass_groups + groupnum]])
+  set cg = SelectNumberOfId(cg, harass_qty[harassnum*max_harass_groups + groupnum], old_id[harass_units[harassnum*max_harass_groups + groupnum]])
   loop
-    set u = FirstOfGroup(g)
+    set u = FirstOfGroup(cg)
     exitwhen u == null
     call GroupAddUnit(unit_harassing, u)
     call RemoveGuardPosition(u)
     call GroupAddUnit(harasser,u)
     set player_sum = player_sum + GetUnitStrength(u)
+    call GroupRemoveUnit(cg,u)
     call GroupRemoveUnit(g,u)
   endloop
-  call DestroyGroup(g)
-  set g = null
+  call DestroyGroup(cg)
+  set cg = null
   call SaveReal(additional_info, key, START_STRENGTH, player_sum)
-  return harasser
 endfunction
 
 function StartHarass takes integer groupnum, integer harass_target, boolean avoid_towers, real strength_limit, real flee_percent, integer flee_number, real lx, real ly returns nothing
   local integer i = 0
   local group harasser = CreateGroup()
+  local group g = CreateGroup()
   local integer key = GetHandleId(harasser)
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectByUnitStandard(g, true)
+  set g = SelectByUnitFree(g, true)
+  set g = SelectByFullHealth(g, true)
   loop
-    exitwhen i >= harass_size[groupnum]
-    set harasser = AddHarassUnittype(groupnum, i, harasser, key)
+    exitwhen i >= harass_size[groupnum] or FirstOfGroup(g) == null
+    call AddHarassUnittype(groupnum, i , g, harasser, key)
     set i = i + 1
   endloop
+  call DestroyGroup(g)
+  set g = null
+  if FirstOfGroup(harasser) == null then
+    call DestroyGroup(harasser)
+    set harasser = null
+    return
+  endif
   set harass_time[groupnum] = ai_time
   call SaveBoolean(additional_info, key, AVOID_TOWERS, avoid_towers)
   //if avoid_towers and GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_tower_check_radius) > 0
@@ -9807,10 +9801,8 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
     local integer nn = GetNeutralNumber(unitid)
 
-    if town != -1 then
-      if (not town_built[town] or (unitid != racial_expansion and TownCountTown(racial_expansion, town) <= 0)) then
-        return BUILT_ALL
-      endif
+    if town != -1 and (not town_built[town] or (unitid != racial_expansion and TownCountTown(racial_expansion, town) <= 0)) then
+      return BUILT_ALL
     endif
 
     if buy_type[unitid] > BT_RACIAL_ITEM and (ai_time < available_time[unitid] or (neutral_guarded[nn] and ((daytime >= 5 and daytime < 18) or not neutral_night_buy[nn] or (buy_type[unitid] != BT_NEUTRAL_HERO and not ver_mercs_night_buy)))) then
@@ -10059,10 +10051,7 @@ function IsWaterExpansion takes unit u returns boolean
   //   endif
   //   set i = i + 1
   // endloop
-  if IsUnitInGroup(u,water_expansion) then
-    return true
-  endif
-  return false
+  return IsUnitInGroup(u,water_expansion)
 endfunction
 
 //============================================================================
@@ -11731,35 +11720,16 @@ function GetSecondNearestEnemy takes nothing returns player
 endfunction
 
 function GetNearHumanPlayerEnemy takes nothing returns unit
-  local integer i = 0
-  local integer t = 0
-  local integer p = 30
-  local real dist = 0
-  local real mindistance = 20000  // use to big map - 12 or 24 player map
   local group g = CreateGroup()
   if nearest_human_enemy == null or GetPlayerSlotState(nearest_human_enemy) != PLAYER_SLOT_STATE_PLAYING then
-    loop
-      exitwhen i >= c_enemy_total
-      if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(enemy_force[i]) != MAP_CONTROL_COMPUTER then
-        set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(enemy_force[i]))
-        if dist < mindistance then
-          set mindistance = dist
-          set p = i
-          set nearest_human_enemy = enemy_force[i]
-        endif
-        set t = t + 1
-      endif
-      set i = i + 1
-    endloop
+    call SetNearestEnemy()
   endif
   set ru_target[6] = null
-  if p != 30 then
-    call GroupEnumUnitsOfPlayer(g, nearest_human_enemy, null)
-    set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
-    set g = SelectByAlive(g, true)
-    set g = SelectByHidden(g, false)
-    set ru_target[6] = FirstOfGroup(g)
-  endif
+  call GroupEnumUnitsOfPlayer(g, nearest_human_enemy, null)
+  set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+  set g = SelectByAlive(g, true)
+  set g = SelectByHidden(g, false)
+  set ru_target[6] = FirstOfGroup(g)
   call DestroyGroup(g)
   set g = null
   return ru_target[6]
@@ -12583,10 +12553,8 @@ function GetArmyHealthState takes nothing returns real
       endif
       set count = count + 1
       set hid = GetHealerId(GetUnitTypeId(u))
-      if hid != -1 then
-        if GetUnitState(u, UNIT_STATE_MANA) >= (healer_mana_cost[hid] * 2) / 3 and ((healer_upg_id[hid] == 0) or (GetUpgradeLevel(healer_upg_id[hid]) >= healer_upg_level[hid])) then
-          call GroupAddUnit(healer_group, u)
-        endif
+      if hid != -1 and GetUnitState(u, UNIT_STATE_MANA) >= (healer_mana_cost[hid] * 2) / 3 and ((healer_upg_id[hid] == 0) or (GetUpgradeLevel(healer_upg_id[hid]) >= healer_upg_level[hid])) then
+        call GroupAddUnit(healer_group, u)
       endif
       if uhs < 0.5 then
         call GroupAddUnit(urgent_healing_group, u)
