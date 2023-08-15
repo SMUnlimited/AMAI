@@ -180,6 +180,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Add desperation_assault closing mechanism
   - Chcek Ally will check PLAYER_SLOT_STATE_PLAYING and Observer
 - HARASS add exit job mechanism
+- Harrass job add cleaning mechanism , cleaning harrass group die unit
 - ZEPPELIN_MOVE now can take POWER FOUNTAIN
 - MANA_FOUNTAIN now can take POWER FOUNTAIN
 - GetBuildLocation return home_location , when not take front_loc[0] , prevent leakage and build location(0,0)
