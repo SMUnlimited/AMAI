@@ -2445,7 +2445,7 @@ endfunction
 
 //============================================================================
 function FoodAvail takes integer base returns integer
-  return GetFoodMade(racial_farm) * TownCount(racial_farm) + GetFoodMade(base) * TownCount(base)
+  return GetFoodMade(old_id[racial_farm]) * TownCount(racial_farm) + GetFoodMade(old_id[base]) * TownCount(base)
 endfunction
 
 //_________________________________________________________________________________________________________________________________________________
@@ -2668,7 +2668,11 @@ endfunction
 
 //============================================================================
 function GetAngleBetweenLocs takes location l1, location l2 returns real
-  return Acos(l_smult_kk(l1, l2) / (GetLengthOfLoc(l1) * GetLengthOfLoc(l2)))
+  local real i = GetLengthOfLoc(l1) * GetLengthOfLoc(l2)
+  if i == 0 then
+    set i = 1
+  endif
+  return Acos(l_smult_kk(l1, l2) / i)
 endfunction
 
 //==============================================================
@@ -3738,27 +3742,11 @@ endfunction
 // (AMAI)	SelectByUserData
 //==========================================================================
 function IsStandardUnit takes unit u returns boolean
-  if IsUnitInGroup(u, unit_healing) then
-    return false
-  elseif IsUnitInGroup(u, unit_rescueing) then
-    return false
-  elseif IsUnitInGroup(u, unit_harassing) then
-    return false
-  elseif IsUnitInGroup(u, unit_zepplin_move) then
-    return false
-  endif
-  return true
+  return not IsUnitInGroup(u, unit_healing) and not IsUnitInGroup(u, unit_rescueing) and not IsUnitInGroup(u, unit_harassing) and not IsUnitInGroup(u, unit_zepplin_move)
 endfunction
 
 function IsUnitBuying takes unit u returns boolean
-  if IsUnitInGroup(u, unit_buying_item) then
-    return true
-  elseif IsUnitInGroup(u, unit_buying_merc) then
-    return true
-  elseif IsUnitInGroup(u, unit_buying_tavern) then
-    return true
-  endif
-  return false
+  return IsUnitInGroup(u, unit_buying_item) or IsUnitInGroup(u, unit_buying_merc) or IsUnitInGroup(u, unit_buying_tavern)
 endfunction
 
 function SelectByUnitStandard takes group g, boolean has_data returns group
@@ -4825,10 +4813,6 @@ function GetDensities takes location l, player p, real r returns nothing
 
   set enemy_density = 0
   set ally_density = 0
-  call RemoveLocation(ally_density_loc)
-  call RemoveLocation(enemy_density_loc)
-  set ally_density_loc = Location(0,0)
-  set enemy_density_loc = Location(0,0)
   call GroupEnumUnitsInRangeOfLoc(g, l, r, null)
   loop
     set u = FirstOfGroup(g)
@@ -4856,19 +4840,23 @@ function GetDensities takes location l, player p, real r returns nothing
     endif
     call GroupRemoveUnit(g, u)
   endloop
+  call RemoveLocation(ally_density_loc)
   if ally_density > 0 then
     set xa = xa / ally_density
     set ya = ya / ally_density
-    call RemoveLocation(ally_density_loc)
     set ally_density_loc = Location(xa,ya)
     //set ally_density_loc = GetDivisionLoc_d(ally_density_loc, ally_density)
+  else
+    set ally_density_loc = Location(0,0)
   endif
+  call RemoveLocation(enemy_density_loc)
   if enemy_density > 0 then
     set xe = xe / enemy_density
     set ye = ye / enemy_density
-    call RemoveLocation(enemy_density_loc)
     set enemy_density_loc = Location(xe,ye)
     //set enemy_density_loc = GetDivisionLoc_d(enemy_density_loc, enemy_density)
+  else
+    set enemy_density_loc = Location(0,0)
   endif
   call DestroyGroup(g)
   set g = null
@@ -14581,9 +14569,9 @@ function PickMeleeHero takes race raceid returns integer
     local integer last
     local integer array heroes
     local integer i
-    // if IsAMAI then
-    //   call InitGlobalSettings()  // repeat
-    // endif
+#INCLUDETABLE <$VER$\GlobalSettings.txt> #EFR #COND '%1' eq 'ver_neutral_hero_number' 
+    set %1 = %2
+#ENDINCLUDE
     call InitAiUnits()  // This function makes all unit ids go back to there originals
     set i = ver_neutral_hero_number
     //------------------------------------------------------------------------
