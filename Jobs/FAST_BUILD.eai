@@ -5,7 +5,6 @@
     real next_expansion_x = 0
     real next_expansion_y = 0
     boolean expansion_changed = false
-    unit ru_getbuildingbuilt = null          // used to GetBuildingBuilt
 
 #ELSE
 //***************************************************************
@@ -32,7 +31,7 @@ function GetFastBuildPeasantNumber takes nothing returns integer
   endif
 endfunction
 
-function GetBuildingBuilt takes nothing returns unit
+function GetBuildingBuilt takes unit u returns unit
   local group g = CreateGroup()
   if expansion_changed then
     call GroupEnumUnitsInRange(g, last_expansion_x, last_expansion_y, 1000, null)
@@ -41,15 +40,14 @@ function GetBuildingBuilt takes nothing returns unit
   endif
   set g = SelectByPlayer(g, ai_player, true)
   set g = SelectNumberOfId(g, 1, old_id[racial_hall[1]])
-  set ru_getbuildingbuilt = FirstOfGroup(g)
+  set u = FirstOfGroup(g)
   call DestroyGroup(g)
   set g = null
-  return ru_getbuildingbuilt
+  return u
 endfunction
 
 function FastBuildBuilding takes nothing returns nothing
-  local unit u = GetBuildingBuilt()
-  local group tempg = null
+  local unit u = GetBuildingBuilt(u)
   local group g = null
   local location unitloc = null
 
@@ -58,27 +56,25 @@ function FastBuildBuilding takes nothing returns nothing
     return
   endif
   set unitloc = Location(GetUnitX(u),GetUnitY(u))
-  set tempg = CreateGroup()
+  set g = CreateGroup()
   call Trace("Town hall is being built")
-  call GroupEnumUnitsOfPlayer(tempg, ai_player,null)
-  set tempg = SelectNumberOfId(tempg, 50, old_id[racial_militia] )
-  set tempg = SelectByAlive(tempg, true)
-  if FirstOfGroup(tempg) == null then
-    call GroupClear(tempg)
-    call GroupEnumUnitsOfPlayer(tempg, ai_player, null)
-    set tempg = SelectNumberOfId(tempg, 50, old_id[racial_peon] )
-    set tempg = SelectByAlive(tempg, true)
+  call GroupEnumUnitsOfPlayer(g, ai_player,null)
+  set g = SelectNumberOfId(g, 50, old_id[racial_militia] )
+  set g = SelectByAlive(g, true)
+  if FirstOfGroup(g) == null then
+    call GroupClear(g)
+    call GroupEnumUnitsOfPlayer(g, ai_player, null)
+    set g = SelectNumberOfId(g, 50, old_id[racial_peon] )
+    set g = SelectByAlive(g, true)
   endif
   //call GroupClear(g)
-  set g = GetNearestSubGroupOfGroup(tempg, unitloc, GetFastBuildPeasantNumber())
+  set g = GetNearestSubGroupOfGroup(g, unitloc, GetFastBuildPeasantNumber())
   call GroupTargetOrder(g, "repair", u)
   call Trace("Fast Build Town Hall")
   set town_hall_built = true
   call RemoveLocation(unitloc)
-  call DestroyGroup(tempg)
   call DestroyGroup(g)
   set unitloc = null
-  set tempg = null
   set g = null
   set u = null
 endfunction
