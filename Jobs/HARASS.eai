@@ -7,7 +7,7 @@
     integer array harass_size
     integer distraction_group = 0
 #ELSE
-function GetHarassPeonTarget takes unit ru, unit u returns unit
+function GetHarassPeonTarget takes unit ru, unit u returns nothing
   local group g = CreateGroup()
   local location unitloc = Location(GetUnitX(u),GetUnitY(u))
   local player p = GetNearestEnemyToLoc_k(unitloc)
@@ -17,16 +17,15 @@ function GetHarassPeonTarget takes unit ru, unit u returns unit
   set g = SelectByAlive(g, true)
   set g = SelectByLoaded(g, false)
   set g = SelectByHidden(g, false) // Hopefully to get peons not currently building
-  set ru = GetNearestOfGroup(g, unitloc)
+  call GetNearestOfGroup(ru, g, unitloc)
   call RemoveLocation(unitloc)
   call DestroyGroup(g)
   set unitloc = null
   set g = null
   set p = null
-  return ru
 endfunction
 
-function GetHarassExpansionTarget takes unit ru, unit u returns unit
+function GetHarassExpansionTarget takes unit ru, unit u returns nothing
   local group g = CreateGroup()
   local location unitloc = Location(GetUnitX(u),GetUnitY(u))
   local player p = GetNearestEnemyToLoc_k(unitloc)
@@ -35,7 +34,7 @@ function GetHarassExpansionTarget takes unit ru, unit u returns unit
   set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
   set g = SelectByLocation(g, baseloc, 1000, false)
   set g = SelectByAlive(g, true)
-  set ru = GetNearestOfGroup(g, unitloc)
+  call GetNearestOfGroup(ru, g, unitloc)
   call RemoveLocation(unitloc)
   call RemoveLocation(baseloc)
   call DestroyGroup(g)
@@ -43,20 +42,18 @@ function GetHarassExpansionTarget takes unit ru, unit u returns unit
   set baseloc = null
   set g = null
   set p = null
-  return ru
 endfunction
 
-function GetHarassLocationTarget takes unit ru, real x, real y returns unit
+function GetHarassLocationTarget takes unit ru, real x, real y returns nothing
   local group g = CreateGroup()
   call GroupEnumUnitsInRange(g, x, y, 1000, null)
   set g = SelectByEnemy(g, ai_player, true)
   set g = SelectByAlive(g, true)
-  set ru = GetLeastHPUnitOfGroup(g)
+  call GetLeastHPUnitOfGroup(ru,g)
   set g = null
-  return ru
 endfunction
 
-function GetHarassMainHallTarget takes unit ru, unit u returns unit
+function GetHarassMainHallTarget takes unit ru, unit u returns nothing
   local group g = CreateGroup()
   local location unitloc = Location(GetUnitX(u),GetUnitY(u))
   local player p = GetNearestEnemyToLoc_k(unitloc)
@@ -66,7 +63,7 @@ function GetHarassMainHallTarget takes unit ru, unit u returns unit
   set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
   set g = SelectByLocation(g, baseloc, 1000, true)
   set g = SelectByAlive(g, true)
-  set ru = GetNearestOfGroup(g, unitloc)
+  call GetNearestOfGroup(ru, g, unitloc)
   call RemoveLocation(unitloc)
   call RemoveLocation(baseloc)
   call DestroyGroup(g)
@@ -74,7 +71,6 @@ function GetHarassMainHallTarget takes unit ru, unit u returns unit
   set baseloc = null
   set g = null
   set p = null
-  return ru
 endfunction
 
 function GroupOrderWindWalkInstant_d takes group g returns nothing
@@ -136,7 +132,7 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
   endif
   set distance = DistanceBetweenPoints_dk(GetUnitLoc(hu), home_location)
   if state_retreat and distance > 1000 then
-    call GroupOrderWindWalkInstant_d(CopyGroup(harasser))
+    call GroupOrderWindWalkInstant_d(CopyGroup(harasser,g))
     call GroupPointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
     call TQAddGroupJob(3 * sleep_multiplier, HARASS, ht, target, harasser)
     //call GroupRemoveUnit(unit_harassing, hu)
@@ -162,7 +158,7 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
 
   if target == null or not UnitAlive(target) or hiddencount > 2 then
     if target != null then
-      call GroupOrderWindWalkInstant_d(CopyGroup(harasser))
+      call GroupOrderWindWalkInstant_d(CopyGroup(harasser,g))
     endif
     if ht == HARASS_TARGET_PEONS then
       call GetHarassPeonTarget(target, hu)
@@ -268,7 +264,7 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
       endif
       if DistanceBetweenUnits(hu, target) > 650 then
         if DistanceBetweenUnits(hu, target) <= 5000 then
-          call GroupOrderWindWalkInstant_d(CopyGroup(harasser))
+          call GroupOrderWindWalkInstant_d(CopyGroup(harasser,g))
         endif
         call CreateDebugTag("HARASS: Move to Target unit", 10, target, 3.00, 1.50)
         call GroupPointOrder(harasser, "move", GetUnitX(target), GetUnitY(target))
