@@ -17,15 +17,17 @@ function PeonMineCheck takes unit mine returns boolean
   endif
   if race_manual_loading then
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
-    set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
+    set g = SelectById(g, old_id[race_manual_loading_wisp], true)
     set g = SelectByAlive(g, true)
+    set tempg = CreateGroup()
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
       if IsUnitInTransport(u, mine) then
         set savewisp = u
         set i = i + 1
-        //call RecycleGuardPosition(u)
+      elseif not IsUnitHidden(u) then
+        call GroupAddUnit(tempg, u)
       endif
       call GroupRemoveUnit(g, u)
     endloop
@@ -38,21 +40,21 @@ function PeonMineCheck takes unit mine returns boolean
       set delaywisps = ver_optimal_gold - 2
     endif
     if i < delaywisps then
-      call GroupEnumUnitsOfPlayer(g, ai_player, null)
-      set g = SelectById(g, old_id[race_manual_loading_wisp], true)
-      set g = SelectByLoaded(g, false)
-      call GroupRemoveUnit(g, savewisp)
-      set g = GetNearestSubGroupOfGroup(g, unitloc, delaywisps - i)
+      set tempg = SelectByLoaded(tempg, false)
+      set tempg = SelectUnittype(tempg, UNIT_TYPE_STRUCTURE, false)  //  Preventing Tree Transformation
+      set tempg = GetNearestSubGroupOfGroup(tempg, unitloc, delaywisps - i)
       //call GroupRemoveGuardPositionInstant(g) // this gets wisps to come off the trees.
       //call GroupTargetOrder(g, "harvest", mine)
       loop  //use accurate quantity control , prevent any wips harvestmine , but mine no vacancies
-        set u = FirstOfGroup(g)
+        set u = FirstOfGroup(tempg)
         exitwhen u == null or i == delaywisps
         call IssueTargetOrder(u, "harvest", mine)
         set i = i + 1
-        call GroupRemoveUnit(g, u)
+        call GroupRemoveUnit(tempg, u)
       endloop
     endif
+    call DestroyGroup(tempg)
+    set tempg = null
     set savewisp = null
   elseif race_uses_mine_expansion then
     set delaywisps = Min(ver_optimal_gold,peond)

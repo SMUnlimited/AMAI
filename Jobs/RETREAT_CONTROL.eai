@@ -138,9 +138,6 @@ function RetreatControlJob takes nothing returns nothing
   else
     call GroupEnumUnitsInRange(g, GetLocationX(army_loc[main_army]), GetLocationY(army_loc[main_army]), battle_radius, null)
   endif
-  set g = SelectByHidden(g, false)
-  set g = SelectByAlive(g, true)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
 
   call RemoveLocation(last_enemy_loc)
   set last_enemy_loc = Location(GetLocationX(enemy_loc), GetLocationY(enemy_loc))
@@ -152,31 +149,33 @@ function RetreatControlJob takes nothing returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then
-      //call Trace("RETREAT_CONTROL: At least 1 unit detected")
-      set unit_strength = GetUnitStrength(u)
-      set unit_life = GetUnitState(u, UNIT_STATE_LIFE)
-      set unit_mana = GetUnitState(u, UNIT_STATE_MANA)
-      if IsPlayerAlly(GetOwningPlayer(u), ai_player) then
-        //if GetUnitUserData(u) != UNIT_GOING_HOME then
-        if not IsUnitInGroup(u, unit_healing) then //and unit_life > RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) then
-          set ally_sum = ally_sum + unit_strength
+    if UnitAlive(u) and not IsUnitHidden(u) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+      if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then
+        //call Trace("RETREAT_CONTROL: At least 1 unit detected")
+        set unit_strength = GetUnitStrength(u)
+        set unit_life = GetUnitState(u, UNIT_STATE_LIFE)
+        set unit_mana = GetUnitState(u, UNIT_STATE_MANA)
+        if IsPlayerAlly(GetOwningPlayer(u), ai_player) then
+          //if GetUnitUserData(u) != UNIT_GOING_HOME then
+          if not IsUnitInGroup(u, unit_healing) then //and unit_life > RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) then
+            set ally_sum = ally_sum + unit_strength
+          endif
+          set xa = xa + GetUnitX(u)  // Prevent loc exceeding map range
+          set ya = ya + GetUnitY(u)
+          //set ally_loc = GetSumLoc_dd(ally_loc, GetUnitLoc(u))
+          set ally_count = ally_count + 1
+        elseif not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
+          set enemy_sum = enemy_sum + unit_strength
+          set xe = xe + GetUnitX(u)
+          set ye = ye + GetUnitY(u)
+          //set enemy_loc = GetSumLoc_dd(enemy_loc, GetUnitLoc(u))
+          set enemy_count = enemy_count + 1
         endif
-        set xa = xa + GetUnitX(u)  // Prevent loc exceeding map range
-        set ya = ya + GetUnitY(u)
-        //set ally_loc = GetSumLoc_dd(ally_loc, GetUnitLoc(u))
-        set ally_count = ally_count + 1
-      elseif not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
-        set enemy_sum = enemy_sum + unit_strength
-        set xe = xe + GetUnitX(u)
-        set ye = ye + GetUnitY(u)
-        //set enemy_loc = GetSumLoc_dd(enemy_loc, GetUnitLoc(u))
-        set enemy_count = enemy_count + 1
+      elseif GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
+        set unit_life = GetUnitState(u, UNIT_STATE_LIFE)
+        set unit_mana = GetUnitState(u, UNIT_STATE_MANA)
+        set creep_sum = creep_sum + GetUnitStrength(u)
       endif
-    elseif GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
-      set unit_life = GetUnitState(u, UNIT_STATE_LIFE)
-      set unit_mana = GetUnitState(u, UNIT_STATE_MANA)
-      set creep_sum = creep_sum + GetUnitStrength(u)
     endif
     call GroupRemoveUnit(g,u)
   endloop
