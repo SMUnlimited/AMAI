@@ -4016,7 +4016,7 @@ endfunction
 //==========================================================================
 function GetMineNearLoc takes unit u, location l, real dist returns unit
   local group g = null
-  local integer i = GOLD_MINE
+  local integer i = 0
   local real distance = 1500
   if DistanceBetweenPoints(l , home_location) < 500 then
     if own_town_mine[0] != null and GetResourceAmount(own_town_mine[0]) > 0 then
@@ -5787,9 +5787,12 @@ function GetExpFoeGroup takes group g , unit mine returns group
 endfunction
 
 function GetCreepGuardGroup takes group g , integer nn returns group
+  if g != null then
+    call DestroyGroup(g)
+  endif
   if nearest_neutral[nn] == null then
     set g = null
-    return null
+    return g
   endif
   set g = CreateGroup()
   call GroupEnumUnitsInRange(g, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), 750, null)
@@ -5825,7 +5828,7 @@ endfunction
 function CheckExpansionTaken takes unit expa returns boolean
   local group g = null
   local unit u = null
-  if expa == not_taken_expansion then // Used in the ancient expansion and item expansion system
+  if expa == not_taken_expansion or expa == null then // Used in the ancient expansion and item expansion system
     return false
   endif
   set g = CreateGroup()
@@ -5865,8 +5868,8 @@ function GetExpNearestMin takes unit ru returns unit
 local real distance = 0
 local real seconddistance = 0
 local unit u = null
-local unit uexp1 = null
-local unit uexp2 = null
+local unit nearmine = null
+local unit secondmine = null
 local real mindistance = 10000  // max distance away the first mine can be
 local real secMaxDistance = 6000  // max distance range second mine must be in
 local group g = CreateGroup()
@@ -5879,14 +5882,14 @@ loop
     set distance = DistanceBetweenPoints_dk(GetUnitLoc(u), home_location)
     if distance < mindistance then
       if mindistance < secMaxDistance then
-        set uexp1 = uexp2
+        set secondmine = nearmine
         set seconddistance = mindistance
       endif
       set mindistance = distance
-      set uexp2 = u
+      set nearmine = u
     elseif distance < seconddistance and distance <= secMaxDistance then
       set seconddistance = distance
-      set uexp1 = u
+      set secondmine = u
     endif
   endif
   call GroupRemoveUnit(g, u)
@@ -5894,24 +5897,24 @@ endloop
 call DestroyGroup(g)
 set g = null
 
-if uexp1 != null then
+if secondmine != null then
 	if rand <= 3 then
-		set uexp1 = null
-		set ru = uexp2
-		set uexp2 = null
+		set secondmine = null
+		set ru = nearmine
+		set nearmine = null
 		return ru
 	else
-		set uexp2 = null
-		set ru = uexp1
-		set uexp1 = null
+		set nearmine = null
+		set ru = secondmine
+		set secondmine = null
 		return ru
 	endif
 else
-	set uexp1 = null
-	set ru = uexp2
-	set uexp2 = null
+	set secondmine = null
+	set ru = nearmine
+	set nearmine = null
+  return ru
 endif
-return ru
 endfunction
 
 //==============================================================
@@ -6214,9 +6217,12 @@ endfunction
 //============================================================================
 // Returns true if we need to rebuild an expansion and no enemies are around
 function CheckExpansionRebuild takes nothing returns boolean
-  local group g = CreateGroup()
+  local group g = null
   local unit u = null
-
+  if current_expansion == null then
+    return false
+  endif
+  set g= CreateGroup()
   call GroupEnumUnitsInRange(g, GetUnitX(current_expansion), GetUnitY(current_expansion), expansion_taken_radius, null)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   //set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)  // no need the Select
@@ -6385,7 +6391,7 @@ endfunction
 function GetExpFoe takes unit u returns unit
   local group g = null
   local location l = null
-  local real i = expansion_radius
+  //local real i = expansion_radius
   //call Trace("Copy group")
   if current_expansion == null then
     return null
@@ -6426,9 +6432,9 @@ endfunction
 function CanCreepGuardsSleep takes integer nn returns boolean
   local group g = null
   local unit u = null
-
+  local boolean = false
   if nearest_neutral[nn] == null then
-    return false
+    return b
   endif
   set g = CopyGroup(neutral_guards[nn],g)
   loop
@@ -6439,11 +6445,9 @@ function CanCreepGuardsSleep takes integer nn returns boolean
   endloop
   call DestroyGroup(g)
   set g = null
-  if u == null then
-    return true
-  endif
+  set b = (u == null)
   set u = null
-  return false
+  return b
 endfunction
 
 //============================================================================
@@ -7078,9 +7082,6 @@ function CheckNeutral takes integer nn returns nothing
     //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "checkneutral")
     set nearest_neutral[nn] = GetNearestNeutral(nearest_neutral[nn],neutral_id[nn])
     //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "finished check")
-    if neutral_guards[nn] != null then
-      call DestroyGroup(neutral_guards[nn])
-    endif
     set neutral_guards[nn] = GetCreepGuardGroup(neutral_guards[nn],nn)
     set neutral_guarded[nn] = GetNeutralGuard(nn)
     set neutral_night_buy[nn] = CanCreepGuardsSleep(nn)
@@ -7266,9 +7267,6 @@ if neutral_available[nn] == true then
 
 //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "checkneutral")
   set nearest_neutral[nn] = GetNearestNeutralQuick(nearest_neutral[nn],neutral_id[nn])
-  if neutral_guards[nn] != null then
-    call DestroyGroup(neutral_guards[nn])
-  endif
   set neutral_guards[nn] = GetCreepGuardGroup(neutral_guards[nn],nn)
 //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "finished check")
   set neutral_guarded[nn] = GetNeutralGuard(nn)
