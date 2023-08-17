@@ -61,8 +61,8 @@ function GetHarassMainHallTarget takes unit ru, unit u returns nothing
 
   call GroupEnumUnitsOfPlayer(g, p, null)
   set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
-  set g = SelectByLocation(g, baseloc, 1000, true)
   set g = SelectByAlive(g, true)
+  set g = SelectByLocation(g, baseloc, 1000, true)
   call GetNearestOfGroup(ru, g, unitloc)
   call RemoveLocation(unitloc)
   call RemoveLocation(baseloc)
@@ -87,7 +87,6 @@ function GroupOrderWindWalkInstant_d takes group g returns nothing
 		call GroupRemoveUnit(g, u)
 	endloop
 	call DestroyGroup(g)
-	set g = null
 endfunction
 
 function HarassJob takes integer ht, unit targ, group harasser returns nothing
@@ -138,6 +137,7 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
     //call GroupRemoveUnit(unit_harassing, hu)
     set target = null
     set hu = null
+    set g = null
     return
   elseif state_retreat then
     call SaveBoolean(additional_info, key, STATE_RETREAT , false)
@@ -159,6 +159,7 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
   if target == null or not UnitAlive(target) or hiddencount > 2 then
     if target != null then
       call GroupOrderWindWalkInstant_d(CopyGroup(harasser,g))
+      set g = null
     endif
     if ht == HARASS_TARGET_PEONS then
       call GetHarassPeonTarget(target, hu)
@@ -202,41 +203,42 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
     else
       call GroupEnumUnitsInRange(g,GetUnitX(hu),GetUnitY(hu),harass_radius_flee_ranged,null)
     endif
-    set g = SelectByAlive(g, true)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitTower(u) and avoiding_towers then
-        set towersdetected = true
-      endif
-      if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsUnitType(u, UNIT_TYPE_PEON) == false then
-        set strength_sum = strength_sum + GetUnitStrength(u)
-      elseif IsUnitInGroup(u, harasser) then
-        if ht == HARASS_TARGET_LOCATION then
-          call CreateDebugTag("Distraction: Harrasing Opponent Location", 10, u, 3.00, 1.50)
-        else
-          call CreateDebugTag("Harassing Opponent", 10, u, 3.00, 1.50)
+      if UnitAlive(u) then
+        if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitTower(u) and avoiding_towers then
+          set towersdetected = true
         endif
-        //if GetUnitState(u, UNIT_STATE_LIFE) <= GetUnitState(u, UNIT_STATE_MAX_LIFE) * flee_percent then
+        if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsUnitType(u, UNIT_TYPE_PEON) == false then
+          set strength_sum = strength_sum + GetUnitStrength(u)
+        elseif IsUnitInGroup(u, harasser) then
+          if ht == HARASS_TARGET_LOCATION then
+            call CreateDebugTag("Distraction: Harrasing Opponent Location", 10, u, 3.00, 1.50)
+          else
+            call CreateDebugTag("Harassing Opponent", 10, u, 3.00, 1.50)
+          endif
+          //if GetUnitState(u, UNIT_STATE_LIFE) <= GetUnitState(u, UNIT_STATE_MAX_LIFE) * flee_percent then
 
-        if GetUnitState(u, UNIT_STATE_LIFE) <= RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) and not IsUnitInGroup(u, unit_healing) and IsUnitType(u, UNIT_TYPE_HERO) == false then // Not used on heroes as micro hero is in control of that
-          call GroupAddUnit(unit_healing, u)
-          call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
-          call TQAddUnitJob(0.5, SEND_HOME, 50, u)
-          call GroupRemoveUnit(harasser, u)
-          call GroupRemoveUnit(unit_harassing, u)
-        elseif IsUnitInGroup(u, unit_healing) then // Another system moved unit to healing
-          call GroupRemoveUnit(harasser, u)
-          call GroupRemoveUnit(unit_harassing, u)
-        else
-          //call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
-          //call TQAddUnitJob(0.5, SEND_HOME, R2I(flee_percent * GetUnitState(u, UNIT_STATE_MAX_LIFE)), u)
-          set harass_num = harass_num + 1
-          set player_sum = player_sum + GetUnitStrength(u)
+          if GetUnitState(u, UNIT_STATE_LIFE) <= RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) and not IsUnitInGroup(u, unit_healing) and IsUnitType(u, UNIT_TYPE_HERO) == false then // Not used on heroes as micro hero is in control of that
+            call GroupAddUnit(unit_healing, u)
+            call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
+            call TQAddUnitJob(0.5, SEND_HOME, 50, u)
+            call GroupRemoveUnit(harasser, u)
+            call GroupRemoveUnit(unit_harassing, u)
+          elseif IsUnitInGroup(u, unit_healing) then // Another system moved unit to healing
+            call GroupRemoveUnit(harasser, u)
+            call GroupRemoveUnit(unit_harassing, u)
+          else
+            //call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
+            //call TQAddUnitJob(0.5, SEND_HOME, R2I(flee_percent * GetUnitState(u, UNIT_STATE_MAX_LIFE)), u)
+            set harass_num = harass_num + 1
+            set player_sum = player_sum + GetUnitStrength(u)
+          endif
+          //else
+
+          //endif
         endif
-        //else
-
-        //endif
       endif
       call GroupRemoveUnit(g, u)
     endloop
@@ -265,6 +267,7 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
       if DistanceBetweenUnits(hu, target) > 650 then
         if DistanceBetweenUnits(hu, target) <= 5000 then
           call GroupOrderWindWalkInstant_d(CopyGroup(harasser,g))
+          set g = null
         endif
         call CreateDebugTag("HARASS: Move to Target unit", 10, target, 3.00, 1.50)
         call GroupPointOrder(harasser, "move", GetUnitX(target), GetUnitY(target))
