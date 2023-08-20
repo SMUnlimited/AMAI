@@ -52,7 +52,7 @@ function BuyItemJob takes integer id returns nothing
   local real time_next_try = 0
   local real dist = 0
   local boolean healing = false
-  local integer detectedenemies = GetLocationNonCreepStrength(GetUnitX(shop_sent), GetUnitY(shop_sent), 1000) 
+  local integer detectedenemies = 0
 
   call DisplayToAllJobDebug("BUY_ITEM JOB START")
 
@@ -71,6 +71,9 @@ function BuyItemJob takes integer id returns nothing
 
   // moved here to prevent a job crash
   if shop_sent == null or not UnitAlive(shop_sent) then
+    if UnitAlive(shop_sent) then
+      call GroupRemoveUnit(unit_buying_item, shop_sent)
+    endif
     set ismoving = false
     if retreat_home then
       call Trace("Running Home end but item job")
@@ -145,7 +148,9 @@ function BuyItemJob takes integer id returns nothing
   endif
 
 // Enemies are present so get home before they harm us
+  set detectedenemies = GetLocationNonCreepStrength(GetUnitX(shop_sent), GetUnitY(shop_sent), 1000)
   if detectedenemies >= GetUnitStrength(shop_sent) and GetUnitTypeId(shop_unit) != old_id[racial_shop] then
+    call RemoveGuardPosition(shop_sent)
     call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
     //call TQAddUnitJob(GetTimeToReachLoc(shop_sent, home_location), RESET_GUARD_POSITION, 1, shop_sent)
     set retreat_home = true
@@ -205,14 +210,14 @@ function BuyItemJob takes integer id returns nothing
     endif
     set time_next_try = 0.5
   else
-    call CreateDebugTag("move to item shop", 10, shop_sent, 3.00, 1.50) 
+    call CreateDebugTag("move to item shop", 10, shop_sent, 3.00, 1.50)
     if ismoving == false then
       set ismoving = true
       call IssuePointOrder(shop_sent, "move", GetUnitX(shop_unit), GetUnitY(shop_unit))
     elseif GetUnitCurrentOrder(shop_sent) == OrderId("stop") or GetUnitCurrentOrder(shop_sent) != OrderId("move") then
       call IssuePointOrder(shop_sent, "move", GetUnitX(shop_unit), GetUnitY(shop_unit))
     endif
-    set time_next_try = 4
+    set time_next_try = Min(4, Max(R2I(dist / buy_distance),1))
   endif
 
   call TQAddJob(time_next_try, BUY_ITEM, id)
