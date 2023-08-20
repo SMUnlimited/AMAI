@@ -85,7 +85,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Note: the build will let ELF build tree to later , but seems unable to improve , even if when tree quantity greater than 1 build the rushcreep tree
 - Add SleepInCombatAM Maximum number of loop , to avoid when AI moveing army in large map , easily change target , but AI no go to the target(add variables mapattackdelayed)
 - Add GetTeleportLandPoint , AI use teleport , the army is land to hall , due to the terrain and trees , the army cannot expand , the code can help AI find a enemy unit , land to unit loc , due to enemy point is outside , wide terrain , the army can expand
-- Add new attack mode , on maps with more than 10 players , or big map , AI will first attack human players hall , to avoid china call 【内卷】 , like AI internal conflict , no attack human player
+- Add new attack mode , on maps with more than 10 players , or big map , or small map and human player only 2 or 1 , AI will first attack human players hall , to avoid china call 【内卷】 , like AI internal conflict , no attack human player
 - Add CheckCreepsByRadius search creep too far ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION , some map like (4)Avalanche_LV , the creep and gold distance > 650 , neutral build check too
 - Add Ally Shopping , when BuyItem() return false , if item is HealingItem and buy_type is RACIAL_ITEM and AI have 1000 gold , then will go Random Ally's Random Shop Shopping
 - New job Item Expansion
@@ -122,6 +122,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - MeleeDifficulty() use difficulty replace
   - official AI code not affected
 - Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will 'smoothly'
+- ZEPPELIN_FOLLOW will Remove follow_zeppelin out of Group , prevent affecting the current command
 - Build peon have compensate , when startloc have more mine
 - If race_manual_loading or race_uses_mine_expansion , GetMinesHarvested will return TownCountDone(mine)
 - Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1 peon HarvestWood(ELF is 2)
@@ -129,6 +130,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
 - function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency
+- Buy JOB now use dynamic time_next_try , prevent waiting after moving to the shop
 - ComputeFrontPoints and CheckFastExpansion just run once , this code no need repeated
 - TELEPORT will when the teleportation unit dies , send call CaptainGoHome() , no longer send teleportation unit GetUnitXY
   - now can send distant unit go teleportloc , preventing death
@@ -150,6 +152,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Reduced track track frequency
 - SEND_HOME Adjust exit JOB logic
    - Creating item will judge SlotsFree , prevent create on the ground
+   - Fixed repeat remove GuardPosition
+   - Stop at Shop buy item no longer recycle directly GuardPosition
 - MICRO_HERO add wait
 - MICRO_UNITS add set DenyUnit
   - SaveUnit will save 'hphx' and racial_militia string

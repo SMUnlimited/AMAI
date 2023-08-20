@@ -1046,10 +1046,6 @@ globals
     integer totalchance_%1 = 0
     #ENDINCLUDE
 
-//==============================================================
-// (AMAI) globals tetuns variables to eliminate tetuns local unit , group and location variables
-//==============================================================
-    item ri_itemtype = null                                // used to GetItemOfType
 endglobals
 
 
@@ -4946,11 +4942,12 @@ function GetPlayerHeroStrengthMod takes player p returns integer
   local real handicap = GetPlayerStrengthHandicap(p)
   call GroupEnumUnitsOfPlayer(g, p, null)
   set g = SelectUnittype(g, UNIT_TYPE_HERO, true)
-  set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set sum = sum + R2I(GetHeroStrength(u) * handicap * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)))
+    if UnitAlive(u) then
+      set sum = sum + R2I(GetHeroStrength(u) * handicap * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)))
+    endif
     call GroupRemoveUnit(g,u)
   endloop
   set sum = sum + GetPlayerHeroBonusStrength(p)
@@ -5766,11 +5763,12 @@ function MultipleMinefix takes nothing returns boolean
 endfunction
 
 // Prevent some map creeps too far away
-function CheckCreepsByRadius takes group g , unit u , real n returns nothing
+function CheckCreepsByRadius takes group g , unit u , real n returns group
   call GroupClear(g)
   call GroupEnumUnitsInRange(g, GetUnitX(u), GetUnitY(u), n, null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set g = SelectByAlive(g, true)
+  return g
 endfunction
 
 //=============================================================================
@@ -5781,7 +5779,7 @@ function GetExpFoeGroup takes group g , unit mine returns group
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set g = SelectByAlive(g, true)
   if FirstOfGroup(g) == null then
-    call CheckCreepsByRadius(g,mine,RMax(1500,expansion_radius))
+    set g = CheckCreepsByRadius(g,mine,RMax(1500,expansion_radius))
   endif
   return g
 endfunction
@@ -5798,8 +5796,8 @@ function GetCreepGuardGroup takes group g , integer nn returns group
   call GroupEnumUnitsInRange(g, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), 750, null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set g = SelectByAlive(g, true)
-  if FirstOfGroup(g) == null then
-    call CheckCreepsByRadius(g,nearest_neutral[nn],1000)
+  if FirstOfGroup(g) == null and nn != NEUTRAL_TAVERN then
+    set g = CheckCreepsByRadius(g,nearest_neutral[nn],1000)
   endif
   return g
 endfunction
@@ -6678,15 +6676,14 @@ function GetItemOfTypeOnUnit takes integer id, unit u returns item
 endfunction
 
 //============================================================================
-function GetItemOfType takes integer id returns item
+function GetItemOfType takes item t, integer id returns item
   local integer i = 1
-  set ri_itemtype = null
   loop
     exitwhen i > 3
     if hero_built[i] then
-      set ri_itemtype = GetItemOfTypeOnUnit(id, hero_unit[i])
-      if ri_itemtype != null then
-        return ri_itemtype
+      set t = GetItemOfTypeOnUnit(id, hero_unit[i])
+      if t != null then
+        return t
       endif
     endif
     set i = i + 1
@@ -8144,7 +8141,7 @@ function InitAMAI takes nothing returns nothing
   call InitTownBuilt()
   set max_farms = GetMaxFarms()
   set mine_loc = GetUnitLoc(own_town_mine[0])
-  if (c_ally_total + c_enemy_total >= 10 or mapSize > 3) and c_enemy_user_total > 0 then
+  if (c_ally_total + c_enemy_total >= 10 or mapSize > 3 or (mapSize < 3 and c_enemy_user_total < 3)) and c_enemy_user_total > 0 then
     set firstattackhp = true
   endif
 //    call DebugSequenceStart("DebugRun")
@@ -9318,11 +9315,6 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   endloop
   call DestroyGroup(g)
   set g = null
-  if FirstOfGroup(harasser) == null then
-    call DestroyGroup(harasser)
-    set harasser = null
-    return
-  endif
   set harass_time[groupnum] = ai_time
   call SaveBoolean(additional_info, key, AVOID_TOWERS, avoid_towers)
   //if avoid_towers and GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_tower_check_radius) > 0
@@ -10040,13 +10032,11 @@ function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
       call IssueTargetOrder(build_zeppelin, "unload", zeppelin_peon)
       call Sleep(1.2)  //unload time
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
-      set build_zeppelin = null
       return true
     endif
   else
     if DistanceBetweenUnits(zeppelin_peon, target) < 400 then
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
-      set build_zeppelin = null
       return true
     else
       call IssueTargetOrder(zeppelin_peon, "smart", build_zeppelin)
@@ -10578,10 +10568,8 @@ function CheckUnitNewTown takes unit u, integer num returns boolean
   local integer i = 0
   loop
     exitwhen i >= num
-    if own_town_loc[i] != null then
-      if town_built[i] and DistanceBetweenPoints_dk(GetUnitLoc(u), own_town_loc[i]) < town_radius then
-        return false
-      endif
+    if town_built[i] and own_town_loc[i] != null and DistanceBetweenPoints_dk(GetUnitLoc(u), own_town_loc[i]) < town_radius then
+      return false
     endif
     set i = i + 1
   endloop
@@ -11242,11 +11230,10 @@ function BRRush takes nothing returns nothing
   local group g = CreateGroup()
   local integer i = 0
   call GroupEnumUnitsInRange(g,GetUnitX(rushcreep_target), GetUnitY(rushcreep_target),800,null)
-  set g = SelectByAlive(g,true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or i == 1
-    if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsPlayerEnemy(ai_player,GetOwningPlayer(u)) then
+    if UnitAlive(u) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsPlayerEnemy(ai_player,GetOwningPlayer(u)) then
       set i = 1  // have other player
     elseif GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == 'eaom' then
       set utemp = u
@@ -11726,7 +11713,8 @@ endfunction
 
 //============================================================================
 function GetRaceAggression takes unit target returns integer
-  return race_aggression[(GetRace(GetOwningPlayer(target))-1) * tiernum + tier - 1]
+  local integer i = Max((GetRace(GetOwningPlayer(target))-1) * tiernum + tier - 1,0)
+  return race_aggression[i]
 endfunction
 
 //============================================================================
@@ -11891,11 +11879,11 @@ function Militia_Expansion takes integer m returns nothing
   local unit u = null
   local unit efoe = null
   local integer t = 0
-  if IsUnitInGroup(current_expansion,water_expansion) then  //is WaterExpansion
+  set efoe = GetExpFoe(efoe)
+  if efoe == null or IsUnitInGroup(current_expansion,water_expansion) then  //is WaterExpansion
     set efoe = null
     return
   endif
-  set efoe = GetExpFoe(efoe)
   set g = CreateGroup()
   set break_attack = false  // to persuade attack system to hopefully not exit early and do the reforming behaviour
   set militia_check_enabled = false
@@ -11956,41 +11944,43 @@ endfunction
 // (AMAI) Defending
 //============================================================================
 function SleepUntilTownDefended takes integer ai_strength returns nothing
-	local integer defense_length_counter = 0
-	set own_strength = ai_strength
-	call Trace("==Sleep Defend Town==" )
-	loop
-		exitwhen not town_threatened
-		exitwhen player_defeated
-		if LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] then
-			if town_threat[most_threatened_town] >= teleport_low_threat then
-				if not teleporting then
-					call AttackMoveXY(R2I(GetLocationX(town_loc[most_threatened_town])), R2I(GetLocationY(town_loc[most_threatened_town])))
-				endif
-			endif
-			call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
-		else
-			//call Trace("Town threatened - retreat" )
-			//if town_threat[most_threatened_town] >= teleport_low_threat then
-				if not teleporting then
-					call AttackMoveXY(R2I(GetLocationX(home_location)), R2I(GetLocationY(home_location)))
-				endif
-				set defense_length_counter = defense_length_counter + 1
-				if defense_length_counter > attack_reform_length then
-					set defense_length_counter = 0
-					call FormGroupAM(2)
-				endif
-			//endif
-			call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
-			//call ClearCaptainTargets()
-			//call CaptainGoHome()
-		endif
-		call Sleep(2*sleep_multiplier)
-		set own_strength = GetOwnStrength()
-	endloop
-	call Trace("==exit Sleep Defend Town==")
-	call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
-endfunction
+  local integer defense_length_counter = 0
+  set own_strength = ai_strength
+  call Trace("==Sleep Defend Town==" )
+  loop
+    exitwhen not town_threatened
+    exitwhen player_defeated
+    if town_loc[most_threatened_town] != null then
+      if LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] then
+        if town_threat[most_threatened_town] >= teleport_low_threat then
+          if not teleporting then
+            call AttackMoveXY(R2I(GetLocationX(town_loc[most_threatened_town])), R2I(GetLocationY(town_loc[most_threatened_town])))
+          endif
+        endif
+        call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
+      endif
+    else
+      //call Trace("Town threatened - retreat" )
+      //if town_threat[most_threatened_town] >= teleport_low_threat then
+        if not teleporting then
+          call AttackMoveXY(R2I(GetLocationX(home_location)), R2I(GetLocationY(home_location)))
+        endif
+        set defense_length_counter = defense_length_counter + 1
+        if defense_length_counter > attack_reform_length then
+          set defense_length_counter = 0
+          call FormGroupAM(2)
+        endif
+      //endif
+      call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
+      //call ClearCaptainTargets()
+      //call CaptainGoHome()
+    endif
+    call Sleep(2*sleep_multiplier)
+    set own_strength = GetOwnStrength()
+  endloop
+  call Trace("==exit Sleep Defend Town==")
+  call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
+  endfunction
 
 function SetLeadAlly takes nothing returns nothing
   local integer i = 0
@@ -12221,7 +12211,7 @@ if not creeping_only then	// Do the normal attack sequence
       call AttackMoveKillCreep(creep)
       set item_attack_running = false
       set creep = null
-    else
+    elseif item_exp_state > 0 then
       call AttackMoveKillXYAAM(R2I(GetLocationX(item_exp_guard_loc)),R2I(GetLocationY(item_exp_guard_loc)))  //Prevent the army from leaving before using the item , so no set item_attack_running
     endif
     return
@@ -12645,7 +12635,7 @@ function HealArmy takes nothing returns nothing
       set mh_item = GetHealingItem()
     endif
     if mh_item > 0 then
-      set mh_i = GetItemOfType(mh_item)
+      set mh_i = GetItemOfType(mh_i,mh_item)
       if mh_i != null then
         set u = GetItemHero(mh_i)
         if u != null then
@@ -12683,15 +12673,19 @@ endfunction
 function universal_attack_sequence takes nothing returns nothing
   local boolean needs_exp = false
   local boolean has_siege = false
-  local integer ai_strength = GetOwnStrength()
+  local integer ai_strength = 0
   local integer ai_antiair_strength = air_strength
-  local integer exp_strength = GetExpansionStrength()
+  local integer exp_strength = 0
 
   if hero_unit[1] == null and ver_heroes and not desperation_assault then
     call Sleep(sleep_multiplier)
     return
   endif
-
+  set ai_strength = GetOwnStrength()
+  if current_expansion != null then
+    set exp_strength = GetExpansionStrength()
+  endif
+  set most_threatened_town = Max(most_threatened_town,0)
   if major_hero == null or not UnitAlive(major_hero) or not IsStandardUnit(major_hero) or (IsUnitType(major_hero, UNIT_TYPE_HERO) == false and ver_heroes) then
     set major_hero = GetMajorHero(major_hero)
   endif
