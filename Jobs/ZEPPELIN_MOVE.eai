@@ -38,6 +38,7 @@ function ZeppelinMoveJob takes integer target, unit hu, group z returns nothing
   local integer clearvars = 0  //=1.. Zepplin system can now finish so return
   if GetUnitState(hu, UNIT_STATE_LIFE) <= 0 then
     call GroupRemoveUnit(unit_rescueing, zep)
+    call TQAddUnitJob(2, RESET_GUARD_POSITION, 80, hu)
     call DestroyGroup(z)
     set zep = null
     return
@@ -66,14 +67,13 @@ function ZeppelinMoveJob takes integer target, unit hu, group z returns nothing
       call CreateDebugTag("unload unit", 10, zep, 3.00, 1.50)
       call AddZepFinishingJob(target, 1,hu)
     endif
-  elseif not IsUnitInTransport(hu,zep) and (zepdropping or GetUnitState(hu,UNIT_STATE_LIFE)>= GetUnitState(hu,UNIT_STATE_MAX_LIFE)) then
+  elseif not IsUnitInTransport(hu,zep) and (zepdropping or GetUnitState(hu,UNIT_STATE_LIFE)>= GetUnitState(hu,UNIT_STATE_MAX_LIFE) * 0.8) then
+    call TQAddUnitJob(2, RESET_GUARD_POSITION, 80, hu)
     set zepdropping = false
-    call GroupRemoveUnit(unit_rescueing, zep)
     set clearvars = 1
   elseif not zepdropping then
     if DistanceBetweenPoints(heroloc, tl) < 1500 then //or DistanceBetweenPoints(zeploc, ally_loc) > 1300 then
       call AddZepFinishingJob(target, 1,hu)
-      call GroupRemoveUnit(unit_rescueing, zep)
       set clearvars = 1
     else
       call CreateDebugTag("Pick up unit", 10, zep, 3.00, 1.50)
@@ -87,11 +87,13 @@ function ZeppelinMoveJob takes integer target, unit hu, group z returns nothing
   set zeploc = null
   call RemoveLocation(heroloc)
   set heroloc = null
-  set zep = null
   if clearvars == 1 then
+    call GroupRemoveUnit(unit_rescueing, zep)
+    set zep = null
     call DestroyGroup(z)
     return
   endif
+  set zep = null
   call TQAddGroupJob(2, ZEPPELIN_MOVE, target, hu, z)
 endfunction
 #ENDIF
