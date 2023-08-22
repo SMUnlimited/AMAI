@@ -5473,20 +5473,41 @@ function BuildLumberMillAtBase takes nothing returns boolean
 	return false
 endfunction
 
-//=============================================================================
-function CheckExpansionChosen takes unit mine returns boolean
-  local group g = CreateGroup()
-  local boolean b = false
-  call GroupEnumUnitsInRange(g, GetUnitX(mine), GetUnitY(mine), expansion_taken_radius, null)
-  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), false)
-  set g = SelectByEnemy(g,ai_player, true)
-  set g = SelectByAlive(g, true)
-  if FirstOfGroup(g) == null then
-    set b = true  // the mine no player and creep , can take
+//============================================================================
+function CheckExpansionTaken takes unit expa returns boolean
+  local group g = null
+  local unit u = null
+  if expa == not_taken_expansion or expa == null then // Used in the ancient expansion and item expansion system
+    return false
+  endif
+  set g = CreateGroup()
+  call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
+  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  // set g = SelectByAlive(g, true)
+  set g = SelectByAlive2(g, true)
+  if BlzGroupGetSize(g) > 1 then
+    call GroupRemoveUnit(g, expa)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
+        call DestroyGroup(g)
+        set g = null
+        set u = null
+        return true
+      elseif GetOwningPlayer(u) != ai_player and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then		// Creeps dosn't mean expansion is taken
+        call DestroyGroup(g)
+        set g = null
+        set u = null
+        return true
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
   endif
   call DestroyGroup(g)
   set g = null
-  return b
+  return false
 endfunction
 
 // Prevent some map creeps too far away
@@ -5539,7 +5560,7 @@ function AddExpansion takes unit u, real d returns nothing
   endif
   set expansion_creeps[expansion_list_length] = GetExpFoeGroup(u)  // group of the the creeps that guard this mine
   if first_expansion_chosen == false then
-    set first_expansion_chosen = expansion_creeps[expansion_list_length] != null or CheckExpansionChosen(u)
+    set first_expansion_chosen = (expansion_creeps[expansion_list_length] != null) or (CheckExpansionTaken(u) == false)
   endif
   set expansion_list_length = expansion_list_length + 1
 endfunction
@@ -5550,46 +5571,6 @@ function AddWaterExpansion takes unit u returns nothing
   call GroupAddUnit(water_expansion, u)
   set water_expansion_creeps[water_expansion_list_length] = GetExpFoeGroup(u)  // group of the the creeps that guard this mine
   set water_expansion_list_length = water_expansion_list_length + 1
-endfunction
-
-//============================================================================
-function CheckExpansionTaken takes unit expa returns boolean
-  local group g = CreateGroup()
-  local unit u = null
-  if expa == not_taken_expansion then // Used in the ancient expansion system
-    return false
-  endif
-  call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
-  set g = SelectByAlive(g, true)
-  set g = SelectByAlive2(g, true)
-  call GroupRemoveUnit(g, expa)
-  if FirstOfGroup(g) == null then
-    call DestroyGroup(g)
-    set g = null
-    return false
-  else
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null 
-      if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
-        call DestroyGroup(g)
-        set g = null
-        set u = null
-        return true
-	elseif GetOwningPlayer(u) != ai_player and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then		// Creeps dosn't mean expansion is taken
-        call DestroyGroup(g)
-        set g = null
-        set u = null
-        return true
-      endif
-      call GroupRemoveUnit(g, u)
-    endloop
-    call DestroyGroup(g)
-    set g = null
-    return false
-  endif
 endfunction
 
 //==============================================================
