@@ -504,7 +504,7 @@ globals
     integer array skills
     integer array tempskills
     integer array allskills
-    integer first_choosable_hero = 0
+    integer choosable_hero = 0
     boolean array hero_built
     integer array hero_revive_prio
     unit array hero_unit
@@ -642,7 +642,7 @@ globals
     integer max_farms = 0
 
     integer exp_time_count = 0
-    integer exp_first_time = 30
+    integer exp_time = 30
     integer exp_second_time = 180
     real expansion_taken_radius = 1000  // the radius around a mine where enemy or allied buildings are considered as possessing that mine (it is considered taken then)
 
@@ -689,10 +689,10 @@ globals
     integer array strategy_type
     integer strategy_type_used_penalty = 30
     integer array strategy_tier
-    integer array strategy_first_exp_time
+    integer array strategy_exp_time
     integer array strategy_second_exp_time
-    integer array strategy_first_hero
-    integer array strategy_first_hero_bonus
+    integer array strategy_hero
+    integer array strategy_hero_bonus
     integer array strategy_second_hero
     integer array strategy_second_hero_bonus
 	integer array strategy_third_hero
@@ -753,7 +753,7 @@ globals
     integer strat_prev		= 0 // strategy chosen by the ai before this one
     integer hero_prev		= 0 // hero chosen by the ai before this one
     integer picked_hero		= 0
-    boolean first_ai		= true
+    boolean ai		= true
     integer next_ai		= 0
     boolean no_ai_ally	= false
     boolean no_ally_ctrl 	= true
@@ -935,7 +935,7 @@ globals
     integer array p_uncertainty  // adds or subtracts this value to the enemies strength every so often. reccomended 5 to 15
     integer array p_minimum_attack_strength  // How much strength required before amai can start attacking. reccomended 3 to 6
     integer array p_farm_food  // How much food to have left before building a new farm
-    integer array p_exp_first_time  // Make amai build expansion earlier or later by this number of seconds. reccomended -10 to 10
+    integer array p_exp_time  // Make amai build expansion earlier or later by this number of seconds. reccomended -10 to 10
     integer array p_exp_second_time
     integer array p_strat_persistence  // How persistance amai is to keep its current strategy. reccomended 1.05 to 2.00
     integer array p_expansion_target_bonus  // aggression bonus for expansion targets
@@ -5448,7 +5448,7 @@ function GetLumberLocationAtBase takes nothing returns location
 	else
 		set groundid = old_id[racial_peon]
 	endif
-    set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(home_location), GetLocationY(home_location))
+	set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(home_location), GetLocationY(home_location))
 	call IssueImmediateOrder(u, "autoharvestlumber")
 	call Sleep(5.00)
 	set l = GetUnitLoc(u)
@@ -5469,8 +5469,24 @@ function BuildLumberMillAtBase takes nothing returns boolean
 		set u = null
 		return IssuePointOrderByIdLoc(peon, old_id[racial_lumber], buildloc)
 	endif
-  set peon = null
+	set peon = null
 	return false
+endfunction
+
+//=============================================================================
+function CheckExpansionChosen takes unit mine returns boolean
+  local group g = CreateGroup()
+  local boolean b = false
+  call GroupEnumUnitsInRange(g, GetUnitX(mine), GetUnitY(mine), expansion_taken_radius, null)
+  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), false)
+  set g = SelectByEnemy(g,ai_player, true)
+  set g = SelectByAlive(g, true)
+  if FirstOfGroup(g) == null then
+    set b = true  // the mine no player and creep , can take
+  endif
+  call DestroyGroup(g)
+  set g = null
+  return b
 endfunction
 
 // Prevent some map creeps too far away
@@ -5482,7 +5498,6 @@ function CheckCreepsByRadius takes group g , unit u , real n returns group
   return g
 endfunction
 
-//=============================================================================
 //  Gets the groups of creeps guarding the specified mine (or other structure)
 function GetExpFoeGroup takes unit mine returns group
   local group g = CreateGroup()
@@ -5526,6 +5541,9 @@ function AddExpansion takes unit u, real d returns nothing
 	set expansion_ancient[expansion_list_length] = null
   endif
   set expansion_creeps[expansion_list_length] = GetExpFoeGroup(u)  // group of the the creeps that guard this mine
+  if first_expansion_chosen == false then
+    set first_expansion_chosen = expansion_creeps[expansion_list_length] != null or CheckExpansionChosen(u)
+  endif
   set expansion_list_length = expansion_list_length + 1
 endfunction
 
@@ -7013,7 +7031,7 @@ function PathingThread takes nothing returns nothing
   call CheckAllNeutralsQuick() // Old system check
   call MakeExpansionList()
   set water_map = water_expansion_list_length >= expansion_list_length
-  set first_expansion_chosen = true
+  set first_expansion_chosen = first_expansion_chosen == true or (water_expansion_list_length > 0)  // no expansion but have water expansion , can take expansion
   call ChooseExpansion()
   call CheckFastExpansion()
   call CheckAllNeutrals() // The more advanced new system check
