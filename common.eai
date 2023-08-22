@@ -4438,7 +4438,11 @@ function GetNearestSubGroupOfGroup takes group rg, location l, integer n returns
   local integer ru = 0
   local unit u = null
   local real d = 0
-  local group g = rg
+  local group g = null
+  if n == 0 then
+    return rg
+  endif
+  set g = rg
   set rg = CreateGroup()
   loop
     set u = FirstOfGroup(g)
@@ -4459,9 +4463,9 @@ function GetNearestSubGroupOfGroup takes group rg, location l, integer n returns
   endloop
   set i = size - Min(n, size)
   loop
-    exitwhen i >= size
-    if ru == i then
-      call GroupAddUnit(rg, ua[i])
+    exitwhen ru > size
+    if i < size then
+      call GroupAddUnit(rg, ua[ru])
       set i = i + 1
     endif
     set ua[ru] = null
@@ -4688,7 +4692,7 @@ function GetUnitHero takes unit u returns unit
   set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
-    exitwhen u == null 
+    exitwhen u == null
     if IsStandardUnit(u) then
     //if IsUnitType(u, UNIT_TYPE_STRUCTURE) == false and IsUnitType(u, UNIT_TYPE_PEON) == false then
       call DestroyGroup(g)
@@ -5762,6 +5766,43 @@ function MultipleMinefix takes nothing returns boolean
   return b
 endfunction
 
+//============================================================================
+function CheckExpansionTaken takes unit expa returns boolean
+  local group g = null
+  local unit u = null
+  if expa == not_taken_expansion or expa == null then // Used in the ancient expansion and item expansion system
+    return false
+  endif
+  set g = CreateGroup()
+  call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
+  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  // set g = SelectByAlive(g, true)
+  set g = SelectByAlive2(g, true)
+  if BlzGroupGetSize(g) > 1 then
+    call GroupRemoveUnit(g, expa)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
+        call DestroyGroup(g)
+        set g = null
+        set u = null
+        return true
+      elseif GetOwningPlayer(u) != ai_player and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then		// Creeps dosn't mean expansion is taken
+        call DestroyGroup(g)
+        set g = null
+        set u = null
+        return true
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+  endif
+  call DestroyGroup(g)
+  set g = null
+  return false
+endfunction
+
 // Prevent some map creeps too far away
 function CheckCreepsByRadius takes group g , unit u , real n returns group
   call GroupClear(g)
@@ -5771,7 +5812,6 @@ function CheckCreepsByRadius takes group g , unit u , real n returns group
   return g
 endfunction
 
-//=============================================================================
 //  Gets the groups of creeps guarding the specified mine (or other structure)
 function GetExpFoeGroup takes group g , unit mine returns group
   set g = CreateGroup()
@@ -5811,6 +5851,9 @@ function AddExpansion takes unit u, real d returns nothing
     set expansion_ancient[expansion_list_length] = GetBuildLocationInDistanceFromLoc_d(old_id[racial_expansion], GetUnitLoc(u), ver_creeps_attack_buildings_dist + 500)
   endif
   set expansion_creeps[expansion_list_length] = GetExpFoeGroup(expansion_creeps[expansion_list_length],u)  // group of the the creeps that guard this mine
+  if first_expansion_chosen == false then
+    set first_expansion_chosen = (expansion_creeps[expansion_list_length] != null) or (CheckExpansionTaken(u) == false)
+  endif
   set expansion_list_length = expansion_list_length + 1
 endfunction
 
@@ -5820,43 +5863,6 @@ function AddWaterExpansion takes unit u returns nothing
   call GroupAddUnit(water_expansion, u)
   set water_expansion_creeps[water_expansion_list_length] = GetExpFoeGroup(water_expansion_creeps[water_expansion_list_length],u)  // group of the the creeps that guard this mine
   set water_expansion_list_length = water_expansion_list_length + 1
-endfunction
-
-//============================================================================
-function CheckExpansionTaken takes unit expa returns boolean
-  local group g = null
-  local unit u = null
-  if expa == not_taken_expansion or expa == null then // Used in the ancient expansion and item expansion system
-    return false
-  endif
-  set g = CreateGroup()
-  call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
-  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  // set g = SelectByAlive(g, true)
-  set g = SelectByAlive2(g, true)
-  if BlzGroupGetSize(g) > 1 then
-    call GroupRemoveUnit(g, expa)
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null
-      if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
-        call DestroyGroup(g)
-        set g = null
-        set u = null
-        return true
-      elseif GetOwningPlayer(u) != ai_player and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then		// Creeps dosn't mean expansion is taken
-        call DestroyGroup(g)
-        set g = null
-        set u = null
-        return true
-      endif
-      call GroupRemoveUnit(g, u)
-    endloop
-  endif
-  call DestroyGroup(g)
-  set g = null
-  return false
 endfunction
 
 //==============================================================
@@ -6217,9 +6223,6 @@ endfunction
 function CheckExpansionRebuild takes nothing returns boolean
   local group g = null
   local unit u = null
-  if current_expansion == null then
-    return false
-  endif
   set g= CreateGroup()
   call GroupEnumUnitsInRange(g, GetUnitX(current_expansion), GetUnitY(current_expansion), expansion_taken_radius, null)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
@@ -6391,9 +6394,6 @@ function GetExpFoe takes unit u returns unit
   local location l = null
   //local real i = expansion_radius
   //call Trace("Copy group")
-  if current_expansion == null then
-    return null
-  endif
   set l = GetUnitLoc(current_expansion)
   set g = CopyGroup(current_expansion_creeps,g)
   set g = SelectByAlive(g, true)
@@ -7312,7 +7312,7 @@ function PathingThread takes nothing returns nothing
   call MakeExpansionList()
   set water_map = water_expansion_list_length >= expansion_list_length
   set active_expansion = water_expansion_list_length + expansion_list_length > c_enemy_total + c_ally_total + 1  // have more mine , should positive Expansion
-  set first_expansion_chosen = true
+  set first_expansion_chosen = first_expansion_chosen == true or (water_expansion_list_length > 0)  // no expansion but have water expansion , can take expansion
   call ChooseExpansion()
   call CheckFastExpansion()
   call CheckAllNeutrals() // The more advanced new system check
@@ -8246,10 +8246,7 @@ endfunction
 
 //============================================================================
 function GetKeyUpgradeAdd takes integer sn returns integer
-  if sn != 0 then
-    return KeyAddTimeModify(GetKeyUpgradeAddExt(key_upgrade1[sn]) + GetKeyUpgradeAddExt(key_upgrade2[sn]))
-  endif
-  return 0
+  return KeyAddTimeModify(GetKeyUpgradeAddExt(key_upgrade1[sn]) + GetKeyUpgradeAddExt(key_upgrade2[sn]))
 endfunction
 
 //============================================================================
@@ -9210,7 +9207,7 @@ function BuildAnti%1Strength takes nothing returns nothing
 			exitwhen choice <= chance or i >= totalanti_%1
 			set i = i + 1
 		endloop
-		if i >= totalanti_%1 then
+		if i >= totalanti_%1 and i > 0 then
 			set u = dyanti_%1[i-1]
 		else
 			set u = dyanti_%1[i]
@@ -10069,10 +10066,6 @@ function StartExpansionAM takes integer qty, integer hall returns integer
       return BUILT_ALL
     endif
   endif
-  if CheckExpansionTaken(current_expansion) then
-    set current_expansion = null
-  endif
-  // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Taken Checked")
 
   if current_expansion == null then
     call ChooseExpansion()
@@ -10081,6 +10074,11 @@ function StartExpansionAM takes integer qty, integer hall returns integer
       return BUILT_ALL
     endif
   endif
+  if CheckExpansionTaken(current_expansion) then
+    set current_expansion = null
+  endif
+  // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Taken Checked")
+
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion choosen")
   set u = GetExpFoe(u)
   if u != null then
@@ -12484,6 +12482,7 @@ function GetArmyHealthState takes nothing returns real
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
+  set g = SelectUnittype(g, UNIT_TYPE_SUMMONED, false)
   set g = SelectByIllusion(g, false)
   set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
@@ -12573,22 +12572,30 @@ function ApplyHealingItem takes unit u, item heal_item returns nothing
 	call GroupPointOrder(medium_healing_group, "move", GetUnitX(u), GetUnitY(u))
 	call GroupPointOrder(small_healing_group, "move", GetUnitX(u), GetUnitY(u))
 	call Sleep(5 * sleep_multiplier)
-	loop
-		exitwhen not UnitHasItem(u, heal_item)
-		set target = FirstOfGroup(urgent)
-		if target != null then
-			call UnitUseItemTarget(u, heal_item, target)
-			call GroupRemoveUnit(urgent, target)
-		else
-			set target = FirstOfGroup(medium)
-			if target != null then
-				call UnitUseItemTarget(u, heal_item, target)
-				call GroupRemoveUnit(medium, target)
-			endif
-		endif
-		exitwhen target == null
-		call Sleep(2 * sleep_multiplier)
-	endloop
+  if GetItemTypeId(heal_item) != old_id[RITUAL_DAGGER] then  //prevent killing high health units
+    loop
+      exitwhen not UnitHasItem(u, heal_item)
+      set target = FirstOfGroup(urgent)
+      if target != null then
+        call UnitUseItemTarget(u, heal_item, target)
+        call GroupRemoveUnit(urgent, target)
+      else
+        set target = FirstOfGroup(medium)
+        if target != null then
+          call UnitUseItemTarget(u, heal_item, target)
+          call GroupRemoveUnit(medium, target)
+        endif
+      endif
+      exitwhen target == null
+      call Sleep(2 * sleep_multiplier)
+    endloop
+  else
+    set target = FirstOfGroup(urgent)
+    if target != null then
+      call UnitUseItemTarget(u, heal_item, target)
+      call GroupRemoveUnit(urgent, target)
+    endif
+  endif
 	call RecycleGuardPosition(u)
 	call DestroyGroup(urgent)
 	call DestroyGroup(medium)
