@@ -431,6 +431,7 @@ globals
     integer race_farms_at_mine = 0  // the first that many farms will be built at the mine
     real race_max_expa_mine_distance = 850  // the maximum distance between the mine and the expansion building
     boolean race_has_moonwells = false  // Racial farms have healing properties
+    integer groundid = 'ewsp'  // Used to create path units, must be different from race peon
 
 #PRAGMA END RACIAL SETTINGS
 
@@ -785,8 +786,6 @@ globals
     real ally_%1 = 0
 #ENDINCLUDE
 
-    unit build_zeppelin = null
-    unit zeppelin_peon = null
 
     boolean array town_built
     location array own_town_loc
@@ -994,6 +993,7 @@ globals
     boolean active_expansion = false
 
     unit expansion_peon = null
+    unit build_zeppelin = null
     location exp_loc_cache = Location(0,0)
     integer exp_loc_cache_timeout = 0
 
@@ -3395,10 +3395,9 @@ endfunction
 //==========================================================================
 function CopyGroup takes group sg , group cg returns group
   set cg = CreateGroup()
-  if FirstOfGroup(sg) == null then
-    return cg
+  if FirstOfGroup(sg) != null then
+    call BlzGroupAddGroupFast(sg,cg)
   endif
-  call BlzGroupAddGroupFast(sg,cg)
   return cg
 endfunction
 
@@ -4156,10 +4155,10 @@ function CreatePathingUnitFull takes unit u, player p, integer id, real x, real 
 endfunction
 
 function CreatePathingUnit takes unit u returns unit
-  local integer groundid = 'ewsp'
-  if GetPlayerRace(ai_player) == RACE_NIGHTELF then
-    set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
-  endif
+  // local integer groundid = 'ewsp'
+  // if GetPlayerRace(ai_player) == RACE_NIGHTELF then
+  //   set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
+  // endif
   // Have to use ai_player as larger maps the passive player ai is restricted at such large numbers of units with orders being paused for seconds then continuing. Appears to be hardcoded into the warcraft 3 engine.
   set u = CreatePathingUnitFull(u, ai_player, groundid, GetLocationX(home_location), GetLocationY(home_location))
   return u
@@ -4170,7 +4169,7 @@ function CanPathToLoc takes location locA, location target, pathingtype path ret
 // This function returns the time to path to a location. If positive its pathable, if negative
 // its unpathable.
 
-    local integer groundid = 'ewsp'
+    //local integer groundid = 'ewsp'
     local integer seaid = 'hdes'
     local integer amphibiousid = 'nsnp'
     local integer flyid = 'hgyr'
@@ -4181,9 +4180,9 @@ function CanPathToLoc takes location locA, location target, pathingtype path ret
     local real totaltime = 0
     //local location prev_loc = null
     local integer checks = 0	// Number of times unit has stayed at same position
-    if GetPlayerRace(ai_player) == RACE_NIGHTELF then
-      set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
-    endif
+    // if GetPlayerRace(ai_player) == RACE_NIGHTELF then
+    //   set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
+    // endif
     if path == PATHING_TYPE_WALKABILITY then
       set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(locA), GetLocationY(locA))
     elseif path == PATHING_TYPE_FLOATABILITY then
@@ -4464,8 +4463,8 @@ function GetNearestSubGroupOfGroup takes group rg, location l, integer n returns
   set i = size - Min(n, size)
   loop
     exitwhen ru > size
-    if i < size then
-      call GroupAddUnit(rg, ua[ru])
+    if ru == i and i < size then
+      call GroupAddUnit(rg, ua[i])
       set i = i + 1
     endif
     set ua[ru] = null
@@ -5204,17 +5203,20 @@ function GetLocationEnemyStructures takes real x, real y, real radius returns in
   local group g = CreateGroup()
   local integer sum = 0
   local unit u = null
+  local player p = null
   call GroupEnumUnitsInRange(g,x,y,radius,null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if IsUnitType(u,UNIT_TYPE_STRUCTURE) == true and GetUnitState(u, UNIT_STATE_LIFE) > 0 and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and not IsUnitHidden(u) then
+    set p = GetOwningPlayer(u)
+    if IsUnitType(u,UNIT_TYPE_STRUCTURE) == true and GetUnitState(u, UNIT_STATE_LIFE) > 0 and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerEnemy(ai_player, p) and not IsUnitHidden(u) then
       set sum = sum + 1
     endif
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
   set g = null
+  set p = null
   return sum
 endfunction
 
@@ -5458,16 +5460,16 @@ endfunction
 
 //============================================================================
 function GetLocationInDistanceFromLoc takes location loc, real dist returns location
-  local integer groundid = 'ewsp'
+  //local integer groundid = 'ewsp'
   local real distance = 0
   local real x = 0
   local real y = 0
   local unit u = null
   //local real checktime = 0
   local boolean exitloop = false
-  if GetPlayerRace(ai_player) == RACE_NIGHTELF then
-    set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
-  endif
+  // if GetPlayerRace(ai_player) == RACE_NIGHTELF then
+  //   set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
+  // endif
   set u = CreatePathingUnitFull(u,Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(loc),GetLocationY(loc))
   call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
   //set checktime = GetTimeToReachLoc(u, home_location)
@@ -5554,15 +5556,15 @@ endfunction
 // Gets the best location to build a lumber mill building
 //============================================================================
 function GetLumberLocationAtBase takes nothing returns location
-  local integer groundid = old_id[racial_peon]	//human peasant
+  local integer ground_id = old_id[racial_peon]	//human peasant
   local real distance = 0
   local real x = 0
   local real y = 0
   local unit u = null
   if race_has_ghouls then
-    set groundid = old_id[racial_ghoul]
+    set ground_id = old_id[racial_ghoul]
   endif
-  set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(home_location), GetLocationY(home_location))
+  set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), ground_id, GetLocationX(home_location), GetLocationY(home_location))
   call IssueImmediateOrder(u, "autoharvestlumber")
   call Sleep(5.00)
   set x = GetUnitX(u)
@@ -5606,7 +5608,7 @@ function BuildBRAtCreep takes nothing returns nothing
   local integer r = 0
   local integer s = 0
   local integer ru = 0
-  local integer groundid = 'ewsp'
+  //local integer groundid = 'ewsp'
   local real distance = 3200
   local group g = CreateGroup()
   local unit u = null
@@ -5614,9 +5616,9 @@ function BuildBRAtCreep takes nothing returns nothing
   local unit array ub
   local unit array uc
   local location loc = null
-  if GetPlayerRace(ai_player) == RACE_NIGHTELF then
-    set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
-  endif
+  // if GetPlayerRace(ai_player) == RACE_NIGHTELF then
+  //   set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
+  // endif
   call GroupEnumUnitsInRange(g,GetLocationX(home_location), GetLocationY(home_location),distance,null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set g = SelectUnittype(g, UNIT_TYPE_FLYING, false)
@@ -6494,7 +6496,7 @@ function CheckFastExpansion takes nothing returns nothing
 endfunction
 
 //============================================================================
-function AddFrontPoint takes location l, integer groundid returns nothing
+function AddFrontPoint takes location l returns nothing
   local unit pathable = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(l), GetLocationY(l), 270.00)
   if DistanceBetweenPoints_dk(GetUnitLoc(pathable), l) <= 200 then
     call CreateDebugTagLoc("Front Point Added", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
@@ -6520,10 +6522,6 @@ function ComputeFrontPoints takes nothing returns nothing
   local boolean array patherdone
   local location l = null
   local real distance = 0
-  local integer groundid = 'ewsp'
-  if GetPlayerRace(ai_player) == RACE_NIGHTELF then
-    set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
-  endif
   loop
     exitwhen i >= c_enemy_total
     set p = enemy_force[i]
@@ -6551,11 +6549,11 @@ function ComputeFrontPoints takes nothing returns nothing
             call RemoveUnit(u[i])
             set u[i] = null
             set patherdone[i] = true
-            call AddFrontPoint(Location(GetLocationX(l),GetLocationY(l)),groundid)
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, 90),groundid)
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, -90),groundid)
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, 80),groundid)
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, -80),groundid)
+            call AddFrontPoint(Location(GetLocationX(l),GetLocationY(l)))
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, 90))
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, -90))
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, 80))
+            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, -80))
           elseif GetUnitState(u[i], UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u[i]) == OrderId("stop") or GetUnitCurrentOrder(u[i]) != OrderId("move") then
             set patherdone[i] = true
             call RemoveUnit(u[i])
@@ -10012,34 +10010,36 @@ endfunction
 
 //============================================================================
 function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
-  if zeppelin_peon == null or not UnitAlive(zeppelin_peon) then
-    set zeppelin_peon = peon
+  if expansion_peon == null or not UnitAlive(expansion_peon) then
+    set expansion_peon = peon
   endif
   // Disabled just in case
   if build_zeppelin == null or not UnitAlive(build_zeppelin) then
-    set build_zeppelin = GetUnusedZeppelinNearUnit(build_zeppelin, zeppelin_peon)
+    if not UnitAlive(build_zeppelin) then
+      call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
+    endif
+    set build_zeppelin = GetUnusedZeppelinNearUnit(build_zeppelin, expansion_peon)
     if build_zeppelin == null then
       call Trace("No Zeppelin found for transporting peon")
-      call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       return false
     endif
     call GroupAddUnit(unit_zepplin_move, build_zeppelin)
   endif
-  if IsUnitInTransport(zeppelin_peon, build_zeppelin) then
+  if IsUnitInTransport(expansion_peon, build_zeppelin) then
     if DistanceBetweenUnits(build_zeppelin, target) > 300 then
       call IssuePointOrder(build_zeppelin, "move", GetUnitX(target), GetUnitY(target))
     else
-      call IssueTargetOrder(build_zeppelin, "unload", zeppelin_peon)
+      call IssueTargetOrder(build_zeppelin, "unload", expansion_peon)
       call Sleep(1.2)  //unload time
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       return true
     endif
   else
-    if DistanceBetweenUnits(zeppelin_peon, target) < 400 then
+    if DistanceBetweenUnits(expansion_peon, target) < 400 then
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       return true
     else
-      call IssueTargetOrder(zeppelin_peon, "smart", build_zeppelin)
+      call IssueTargetOrder(expansion_peon, "smart", build_zeppelin)
     endif
   endif
   return false
@@ -10123,13 +10123,13 @@ function StartExpansionAM takes integer qty, integer hall returns integer
 //  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Peon Got")
 
   if peon != null then
-    if IsWaterExpansion(current_expansion) or DistanceBetweenUnits(peon,current_expansion) > 6000 or IsUnitLoaded(zeppelin_peon) then
+    if IsWaterExpansion(current_expansion) or DistanceBetweenUnits(peon,current_expansion) > 6000 or IsUnitLoaded(expansion_peon) then
       if not BuildMovePeonZeppelin(peon, current_expansion) then
         call Trace("AMAIStartexpa: Is a water expansion")
         set peon = null
         return BUILT_SOME
       endif
-      set peon = zeppelin_peon
+      set peon = expansion_peon
     endif
     set exp_time_count = ai_time	// This sets time to next expansion to current time so it waits enough time before starting another expansion 
     if race_uses_mine_expansion then
@@ -11368,7 +11368,8 @@ function AttackMoveTowerRush takes nothing returns nothing
 		exitwhen CaptainIsEmpty()       // all units died
 		if towers_built <= 4 then
 			//call SetCaptainHome(BOTH_CAPTAINS, R2I(first_tower_point_x), R2I(first_tower_point_y))
-			call AttackMoveXY(R2I(first_tower_point_x), R2I(first_tower_point_y))
+			//call AttackMoveXY(R2I(first_tower_point_x), R2I(first_tower_point_y))
+			call AttackMoveKill(builder[20])
 		elseif towers_built <= 6 then
 			//call SetCaptainHome(BOTH_CAPTAINS, R2I(second_attack_point_x), R2I(second_attack_point_y))
 			call AttackMoveXY(R2I(second_attack_point_x), R2I(second_attack_point_y))
@@ -11495,6 +11496,7 @@ function CreepAttack takes integer str returns nothing
   endif
   call FormGroupAM(3)
   call AttackMoveKillCreep(target)
+  call SetAllianceTarget(null)
   set target = null
 endfunction
 
@@ -11811,7 +11813,7 @@ function ChooseAnEnemyTarget takes unit u returns unit
     set target_enemy = GetFFAEnemy()
     //call Trace("Choosing FFA Enemy")
   else
-    set target_enemy = GetWeakAndNearEnemy()
+    set target_enemy = GetWeakAndNearEnemy()  // target_enemy 可能为空
     //call Trace("Choosing weakest closest Enemy")
   endif
   call GroupEnumUnitsOfPlayer(g, target_enemy, null)
@@ -11894,7 +11896,7 @@ function Militia_Expansion takes integer m returns nothing
   set g = SelectNumberOfId(g, 100, old_id[racial_peon] )
   set g = SelectByAlive(g, true)
   set g = GetNearestSubGroupOfGroup(g, home_location, m)
-  set expansion_peon = FirstOfGroup(g)
+  //set expansion_peon = FirstOfGroup(g)
   call AddAbilityToGroup(CopyGroup(g,cg), race_militia_ability)
   call GroupImmediateOrder(g, race_militia_unitstring)
   call RemoveInjuries()
@@ -12684,7 +12686,7 @@ function universal_attack_sequence takes nothing returns nothing
   local boolean needs_exp = false
   local boolean has_siege = false
   local integer ai_strength = 0
-  local integer ai_antiair_strength = air_strength
+  //local integer ai_antiair_strength = 0
   local integer exp_strength = 0
 
   if hero_unit[1] == null and ver_heroes and not desperation_assault then
@@ -12692,6 +12694,7 @@ function universal_attack_sequence takes nothing returns nothing
     return
   endif
   set ai_strength = GetOwnStrength()
+  //set ai_antiair_strength = air_strength
   if current_expansion != null then
     set exp_strength = GetExpansionStrength()
   endif
@@ -12722,7 +12725,7 @@ function universal_attack_sequence takes nothing returns nothing
     set break_attack = false
     set isfleeing = false
     call FormGroupAM(1)
-    call SleepUntilTownDefended(GetOwnStrength())
+    call SleepUntilTownDefended(ai_strength)
     call SleepInCombatAM()
   elseif not towerrush and not ancient_expanding and not militia_expanding and not item_expanding then
     call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))

@@ -44,12 +44,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - use -deny control Switch
    - when Deny Unit or Killing by PLAYER_NEUTRAL_AGGRESSIVE or Killing PLAYER_NEUTRAL_AGGRESSIVE, will tip "!"
    - Killing PLAYER_NEUTRAL_AGGRESSIVE not considered situation of competition between different players , is always tip , if perfect function , should only be displayed when unit is snatched
+- New commander mode "Joint Control" which allows the human players to control their AI allies units at the same time as AMAI.
+   - This is like the "Computers Only" option where all human players units and buildings are removed at the start of the game but you have direct control.
 - Strategy Choose Dialog now show translation Strategy name , no Num
    - Strategy name must consistent with file Strategy.txt name
    - Cannot find consistent name Strategy , Dialog will missing button
    - Strategy name button will identify ROC and TFT
-- New commander mode "Joint Control" which allows the human players to control their AI allies units at the same time as AMAI.
-   - This is like the "Computers Only" option where all human players units and buildings are removed at the start of the game but you have direct control.
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join unregistered (like non own racial) units and heros (but excess heros may not be able to learn skills) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
 - Buy NEUTRAL HERO add judge neutral_guarded[NEUTRAL_TAVERN] to StartUnitAM, call GetNeutralHero recalculate heros , guarantee to change train ownrace hero at the first time
@@ -122,7 +122,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - MeleeDifficulty() use difficulty replace
   - official AI code not affected
 - Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will 'smoothly'
+- (DevTools) Independent Path Unit ID
 - ZEPPELIN_FOLLOW will Remove follow_zeppelin out of Group , prevent affecting the current command
+- GetArmyHealthState no take UNIT_TYPE_SUMMONED
 - Build peon have compensate , when startloc have more mine
 - If race_manual_loading or race_uses_mine_expansion , GetMinesHarvested will return TownCountDone(mine)
 - Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1 peon HarvestWood(ELF is 2)
@@ -257,7 +259,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed SELL_ZIGGURATS i always greater than ziggarray
 - Fixed GetEnemyAllyStrength check Observer
 - Fixed InitBuildArrayAM and SetBuildAllAMCore denominators are 0
-
+- Fixed cannot use RITUAL_DAGGER
+- Fixed MILITIA_EXPAND GetNearestSubGroupOfGroup take 4 peon
 
 
 ## [3.2.2] - 2022-10-05
