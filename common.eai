@@ -765,8 +765,6 @@ globals
     real ally_%1		= 0
 #ENDINCLUDE
     
-    unit build_zeppelin = null
-    unit zeppelin_peon = null
 
     boolean array town_built
     location array own_town_loc
@@ -970,6 +968,7 @@ globals
     group array water_expansion_creeps
 
     unit expansion_peon = null
+    unit build_zeppelin = null
     location exp_loc_cache = Location(0,0)
     integer exp_loc_cache_timeout = 0
     
@@ -9558,34 +9557,36 @@ endfunction
 
 //============================================================================
 function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
-  if zeppelin_peon == null or not UnitAlive(zeppelin_peon) then
-    set zeppelin_peon = peon
+  if expansion_peon == null or not UnitAlive(expansion_peon) then
+    set expansion_peon = peon
   endif
   // Disabled just in case
   if build_zeppelin == null or not UnitAlive(build_zeppelin) then
-    set build_zeppelin = GetUnusedZeppelinNearUnit(zeppelin_peon)
+    if not UnitAlive(build_zeppelin) then
+      call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
+    endif
+    set build_zeppelin = GetUnusedZeppelinNearUnit(expansion_peon)
     if build_zeppelin == null then
       call Trace("No Zeppelin found for transporting peon")
-      call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       return false
     endif
     call GroupAddUnit(unit_zepplin_move, build_zeppelin)
   endif
-  if IsUnitInTransport(zeppelin_peon, build_zeppelin) then
+  if IsUnitInTransport(expansion_peon, build_zeppelin) then
     if DistanceBetweenUnits(build_zeppelin, target) > 300 then
       call IssuePointOrder(build_zeppelin, "move", GetUnitX(target), GetUnitY(target))
     else
-      call IssueTargetOrder(build_zeppelin, "unload", zeppelin_peon)
+      call IssueTargetOrder(build_zeppelin, "unload", expansion_peon)
       call Sleep(1.2)  //unload time
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       return true
     endif
   else
-    if DistanceBetweenUnits(zeppelin_peon, target) < 400 then
+    if DistanceBetweenUnits(expansion_peon, target) < 400 then
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       return true
     else
-      call IssueTargetOrder(zeppelin_peon, "smart", build_zeppelin)
+      call IssueTargetOrder(expansion_peon, "smart", build_zeppelin)
     endif
   endif
   return false
@@ -9664,13 +9665,13 @@ function StartExpansionAM takes integer qty, integer hall returns integer
 //  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Peon Got")
 
   if peon != null then
-    if IsWaterExpansion(current_expansion) or DistanceBetweenUnits(peon,current_expansion) > 6000 or IsUnitLoaded(zeppelin_peon) then
+    if IsWaterExpansion(current_expansion) or DistanceBetweenUnits(peon,current_expansion) > 6000 or IsUnitLoaded(expansion_peon) then
       if not BuildMovePeonZeppelin(peon, current_expansion) then
         call Trace("AMAIStartexpa: Is a water expansion")
         set peon = null
         return BUILT_SOME
       endif
-      set peon = zeppelin_peon
+      set peon = expansion_peon
     endif
     set exp_time_count = ai_time	// This sets time to next expansion to current time so it waits enough time before starting another expansion 
     if race_uses_mine_expansion then
@@ -11234,7 +11235,7 @@ function Militia_Expansion takes integer m returns nothing
      set tempg = GetNearestSubGroupOfGroup(g, home_location, m)
      call DestroyGroup(g)
      set g = null
-     set expansion_peon = FirstOfGroup(tempg)
+     //set expansion_peon = FirstOfGroup(tempg)
      call AddAbilityToGroup(CopyGroup(tempg), race_militia_ability)
      call GroupImmediateOrder(tempg, "militia" )
      call RemoveInjuries()
