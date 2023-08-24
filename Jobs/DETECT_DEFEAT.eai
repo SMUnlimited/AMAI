@@ -142,10 +142,13 @@ function CheckDefeated takes nothing returns nothing
   local integer farm_food = GetFoodMade(old_id[racial_farm])
   local integer farm_count = TownCount(racial_farm)
   local integer farm_cost = GetUnitGoldCost2(racial_farm)
+  local integer food_use = FoodUsed()
+  local integer gold = GetGold()
   local integer mines = GetMinesOwned()
   local integer agg = p_surrender[profile]
   local group g = CreateGroup()
   local unit u = null
+  local player p = null
   local real enemy_sum = 0
   local real player_sum = GetPlayerStrength(ai_player)
   local real ally_sum = 0
@@ -162,7 +165,8 @@ function CheckDefeated takes nothing returns nothing
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if UnitAlive(u) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerEnemy(ai_player, GetOwningPlayer(u)) then
+      set p = GetOwningPlayer(u)
+      if UnitAlive(u) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerEnemy(ai_player, p) then
         set enemy_sum = enemy_sum + GetUnitStrength(u)
       endif
       call GroupRemoveUnit(g,u)
@@ -174,20 +178,21 @@ function CheckDefeated takes nothing returns nothing
   if c_ally_total > 0 then
     loop
       exitwhen i >= GetBJMaxPlayers()
-      if IsPlayerAlly(ai_player,Player(i)) and  GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(Player(i)) then
-        set ally_sum = ally_sum + GetPlayerStrength(Player(i))
+      set p = Player(i)
+      if IsPlayerAlly(ai_player,p) and  GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(p) then
+        set ally_sum = ally_sum + GetPlayerStrength(p)
       endif
       set i = i + 1
     endloop
   endif
-
+  set p = null
 // Have nothing left checks
   if GetPlayerUnitCount(ai_player, true) == 0 and GetPlayerStructureCount(ai_player, true) == 0 then
     call KillYourself(no_ai_ally)
     return
   endif
 
-  if FoodUsed() == 0 and hall_count == 0 then
+  if food_use == 0 and hall_count == 0 then
     if (agg <= 0) then
       if SaveYourself() then
         return
@@ -199,7 +204,7 @@ function CheckDefeated takes nothing returns nothing
     endif
   endif
 
-  if FoodUsed() < 6 and hall_count == 0 and worker_count == 0 then
+  if food_use < 6 and hall_count == 0 and worker_count == 0 then
     if (agg <= 1) then
       if SaveYourself() then
         return
@@ -218,22 +223,22 @@ function CheckDefeated takes nothing returns nothing
   endif
 
   // Key Resource issues
-  if hall_count == 0 and GetGold() < hall_cost then
+  if hall_count == 0 and gold < hall_cost then
     set gold_problem_level = hall_cost
     call Defeated()
     return
   endif
-  if (farm_count * farm_food) < FoodUsed() and mines == 0 and GetGold() < farm_cost and worker_count == 0 then
+  if (farm_count * farm_food) < food_use and mines == 0 and gold < farm_cost and worker_count == 0 then
     set gold_problem_level = farm_cost
     call Defeated()
     return
   endif
-  if worker_count == 0 and GetGold() < worker_cost and hall_count >= 1 then
+  if worker_count == 0 and gold < worker_cost and hall_count >= 1 then
     set gold_problem_level = worker_cost
     call Defeated()
     return
   endif
-  if mines == 0 and GetGold() < expa_cost and (expa_count - expa_done_count) == 0 and player_sum < 10 then
+  if mines == 0 and gold < expa_cost and (expa_count - expa_done_count) == 0 and player_sum < 10 then
     set gold_problem_level = expa_cost
     call Defeated()
     return
