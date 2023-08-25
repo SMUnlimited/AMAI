@@ -261,6 +261,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed InitBuildArrayAM and SetBuildAllAMCore denominators are 0
 - Fixed cannot use RITUAL_DAGGER
 - Fixed MILITIA_EXPAND GetNearestSubGroupOfGroup take 4 peon
+- Fixed exp_prepared keep open after opening
+- Fixed CheckExpansionRebuild o check creep
 
 
 ## [3.2.2] - 2022-10-05

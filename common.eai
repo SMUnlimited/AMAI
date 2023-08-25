@@ -4709,8 +4709,11 @@ function GetUnitHero takes unit u returns unit
 endfunction
 
 function GetUnitHeroReplacement takes unit u , location l returns unit
-  local group g = CreateGroup()
-
+  local group g = null
+  if l == null then
+    return null
+  endif
+  set g = CreateGroup()
   call GroupEnumUnitsOfPlayer(g,ai_player,null)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
@@ -5470,6 +5473,9 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
   local unit u = null
   //local real checktime = 0
   local boolean exitloop = false
+  if loc == null then
+    return null
+  endif
   // if GetPlayerRace(ai_player) == RACE_NIGHTELF then
   //   set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
   // endif
@@ -5674,7 +5680,7 @@ function BuildBRAtCreep takes nothing returns nothing
     set uc[i] = null
     set i = i + 1
   endloop
-  if s == ru then  // fail , not found creep
+  if s == ru or loc == null then  // fail , not found creep
     return
   endif
   set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_rushcreep], loc, 600)
@@ -5857,7 +5863,7 @@ function AddExpansion takes unit u, real d returns nothing
   endif
   set expansion_creeps[expansion_list_length] = GetExpFoeGroup(expansion_creeps[expansion_list_length],u)  // group of the the creeps that guard this mine
   if first_expansion_chosen == false then
-    set first_expansion_chosen = (expansion_creeps[expansion_list_length] != null) or (CheckExpansionTaken(u) == false)
+    set first_expansion_chosen = (expansion_creeps[expansion_list_length] != null) or (expansion_creeps[expansion_list_length] == null and CheckExpansionTaken(u) == false)
   endif
   set expansion_list_length = expansion_list_length + 1
 endfunction
@@ -6398,18 +6404,17 @@ function GetExpFoe takes unit u returns unit
   local location l = null
   //local real i = expansion_radius
   //call Trace("Copy group")
-  set current_expansion_creeps = SelectByAlive(current_expansion_creeps, true)
   if FirstOfGroup(current_expansion_creeps) != null then
-  set l = GetUnitLoc(current_expansion)
-  set g = CopyGroup(current_expansion_creeps,g)
-  set g = SelectByAlive(g, true)
-  set u = GetNearestOfGroup(u, g, l)
-  call RemoveLocation(l)
-  set l = null
-  call DestroyGroup(g)
-  set g = null
-  //call Trace("Have a foe")
-  return u
+    set l = GetUnitLoc(current_expansion)
+    set current_expansion_creeps = SelectByAlive(current_expansion_creeps, true)
+    set g = CopyGroup(current_expansion_creeps,g)
+    set u = GetNearestOfGroup(u, g, l)
+    call RemoveLocation(l)
+    set l = null
+    call DestroyGroup(g)
+    set g = null
+    //call Trace("Have a foe")
+    return u
   endif
   return null
 endfunction
@@ -6419,12 +6424,11 @@ function GetNeutralGuard takes integer nn returns boolean
   local location l = null
   local unit u = null
   local boolean b = false
-  set neutral_guards[nn] = SelectByAlive(neutral_guards[nn], true)
   if nearest_neutral[nn] == null or FirstOfGroup(neutral_guards[nn]) == null then
     return b
   endif
+  set neutral_guards[nn] = SelectByAlive(neutral_guards[nn], true)
   set g = CopyGroup(neutral_guards[nn],g)
-  set g = SelectByAlive(g, true)
   set l = GetUnitLoc(nearest_neutral[nn])
   set u = GetNearestOfGroup(u, g, l)
   call RemoveLocation(l)
@@ -10476,7 +10480,7 @@ if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(
     return
   endif
 endif
-
+set exp_prepared = false
 if first_town_mine > 0 and (race_uses_mine_expansion or race_manual_loading) then  //home_location have multiple mine , fix GetMinesOwned bug(ELF and UD)
   if race_manual_loading then
     set i = race_manual_loading_mine
@@ -10513,14 +10517,13 @@ if mines < 3 and ai_time - exp_time_count > exp_second_time then
   endif
 endif
 
-set u = null
-if not exp_prepared then
+if not exp_prepared and u == null then
   set rebuild = CheckExpansionRebuild()
   if rebuild then
     set exp_prepared = true
   endif
 endif
-
+set u = null
 if mines < 1 or gold_left < 2000 or exp_prepared then
   call Trace("ExpansionBuilder: Putting mine on build list")
   if mines < 1 or gold_left < 2000 then
