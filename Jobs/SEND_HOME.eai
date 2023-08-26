@@ -22,17 +22,12 @@ function SendHomeMoveUnitToLoc takes unit u, integer p, location l returns nothi
 endfunction
 
 function SomeUnitHasHealingItem takes unit ru, unit u, integer rhi returns unit
-  local group g = null
-
-  if rhi == 0 then
-    return null
-  endif
-  set g = CreateGroup()
+  local group g = CreateGroup()
   call GroupEnumUnitsInRange(g, GetUnitX(u), GetUnitY(u), 400, null)
   loop
     set ru = FirstOfGroup(g)
-    exitwhen ru == null
-    if UnitAlive(ru) and GetOwningPlayer(ru) == ai_player and rhi != 0 and GetItemNumberOnUnit(rhi, ru) > 0 then
+    exitwhen ru == null or rhi == 0
+    if UnitAlive(ru) and GetOwningPlayer(ru) == ai_player and GetItemNumberOnUnit(rhi, ru) > 0 then
       call DestroyGroup(g)
       set g = null
       return ru
@@ -84,13 +79,13 @@ local unit otherhero = null
   if GetUnitState(u, UNIT_STATE_LIFE) <= 0 then
     call CreateDebugTag("SEND_HOME unit dead", 10, u, 3.00, 1.50)
     call TQAddUnitJob(2, RESET_GUARD_POSITION, p, u)
-  elseif GetUnitState(u, UNIT_STATE_LIFE) >= GetUnitState(u, UNIT_STATE_MAX_LIFE) * (I2R(p)/100) and GetUnitCurrentOrder(u) != OrderId("cannibalize") then
+  elseif GetUnitState(u, UNIT_STATE_LIFE) >= GetUnitState(u, UNIT_STATE_MAX_LIFE) * (I2R(50)/100) and GetUnitCurrentOrder(u) != OrderId("cannibalize") then
     call CreateDebugTag("SEND_HOME Healed", 10, u, 3.00, 1.50)
     call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
   elseif racial_healing_item != 0 and GetItemNumberOnUnit(racial_healing_item, u) > 0 then
     call CreateDebugTag("Hero: Use healing item", 10, u, 3.00, 2.00)
-    if GetItemInstantType(racial_healing_item) == ITEMTYPE_CONTINUOUS and DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) >= 1200 then
-      call SendHomeMoveUnitToLoc(u,p,home_location)  // This should be required for all regenerative type healing items
+    if GetItemInstantType(racial_healing_item) == ITEMTYPE_CONTINUOUS and DistanceBetweenPoints_dk(GetUnitLoc(u), own_town_loc[p]) >= 1200 then
+      call SendHomeMoveUnitToLoc(u,p,own_town_loc[p])  // This should be required for all regenerative type healing items
       call TQAddUnitJob(Max(3,GetItemHealingTime(racial_healing_item)), SEND_HOME, p, u) // Have to add delay as continous healing items run out then
     else  // ITEMTYPE_SUDDEN just end job , if need send home , hero job will call again
       call CreateDebugTag("Hero: Use healing item , end Job", 10, u, 3.00, 1.50)
@@ -126,11 +121,11 @@ local unit otherhero = null
       //call RecycleGuardPosition(u)
     endif
   else
-    if DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) >= 1200 then
-      call SendHomeMoveUnitToLoc(u,p,home_location)
+    if DistanceBetweenPoints_dk(GetUnitLoc(u), own_town_loc[p]) >= 1200 then
+      call SendHomeMoveUnitToLoc(u,p,own_town_loc[p])
     else
       set g = CreateGroup()
-      call GroupEnumUnitsInRangeOfLoc(g, home_location, 1000, null)
+      call GroupEnumUnitsInRangeOfLoc(g, own_town_loc[p], 1000, null)
       set g = SelectByAlive(g, false)
       set g = SelectUnittype(g,UNIT_TYPE_STRUCTURE,false)
       set g = SelectUnittype(g,UNIT_TYPE_DEAD,true)
