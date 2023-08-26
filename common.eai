@@ -792,6 +792,7 @@ globals
     real array own_town_dist
     unit array own_town_mine
     integer first_town_mine = 0
+    integer exist_town = 0
 
     integer attacking_ghouls = 0
     integer harvesting_ghouls = 0
@@ -1833,7 +1834,7 @@ function GetExpansionPeon2 takes unit u returns unit
   endloop
   call DestroyGroup(g)
   set g = null
-  return null
+  return u
 endfunction
 
 //============================================================================
@@ -3988,7 +3989,7 @@ function GetOneOfId takes unit u, player p, integer id returns unit
   endloop
   call DestroyGroup(g)
   set g = null
-  return null
+  return u
 endfunction
 
 //==========================================================================
@@ -4009,7 +4010,7 @@ function GetOneOfIdNearLoc takes unit u, player p, integer id, location l, real 
   endloop
   call DestroyGroup(g)
   set g = null
-  return null
+  return u
 endfunction
 
 //==========================================================================
@@ -4051,7 +4052,7 @@ function GetMineNearLoc takes unit u, location l, real dist returns unit
   endloop
   call DestroyGroup(g)
   set g = null
-  return null
+  return u
 endfunction
 
 //==========================================================================
@@ -4293,7 +4294,7 @@ function GetNearestNeutral takes unit ru, integer id returns unit
   local boolean pathingdone = true
   local real totaltime = 0
   //local integer groundid = 'ewsp'
-
+  set ru = null
 //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "get nearest neutral start")
 
 
@@ -4418,6 +4419,7 @@ function GetNearestOfGroup takes unit ru, group g, location l returns unit
   local real d = 0
   local unit u = null
   local real sd = 1000000
+  set ru = null
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -4485,6 +4487,7 @@ function GetFarestOfGroup takes unit ru, group g, location l returns unit
   local real d = 0
   local unit u = null
   local real sd = 0
+  set ru = null
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -4506,6 +4509,7 @@ function GetFastestToPointOfGroup takes unit ru, group g, location l returns uni
   local unit u = null
   local real sd = 1000000
   local real ms = 0
+  set ru = null
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -4527,6 +4531,7 @@ function GetLeastHPUnitOfGroup takes unit ru, group g returns unit
   local real hp = 0
   local unit u = null
   local real lhp = 1000000
+  set ru = null
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -4570,6 +4575,7 @@ function GetUnitToBuy takes unit ru, unit buy_place returns unit
   local unit u = null
   local real distance = 10000
   local real newdistance = 0
+  set ru = null
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
@@ -4705,15 +4711,11 @@ function GetUnitHero takes unit u returns unit
   endloop
   call DestroyGroup(g)
   set g = null
-  return null
+  return u
 endfunction
 
 function GetUnitHeroReplacement takes unit u , location l returns unit
-  local group g = null
-  if l == null then
-    return null
-  endif
-  set g = CreateGroup()
+  local group g = CreateGroup()
   call GroupEnumUnitsOfPlayer(g,ai_player,null)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
@@ -4731,7 +4733,7 @@ function GetUnitHeroReplacement takes unit u , location l returns unit
   endloop
   call DestroyGroup(g)
   set g = null
-  return null
+  return u
 endfunction
 
 function GetMajorHero takes unit u returns unit
@@ -6402,12 +6404,11 @@ endfunction
 function GetExpFoe takes unit u returns unit
   local group g = null
   local location l = null
-  //local real i = expansion_radius
-  //call Trace("Copy group")
   if FirstOfGroup(current_expansion_creeps) != null then
     set l = GetUnitLoc(current_expansion)
     set current_expansion_creeps = SelectByAlive(current_expansion_creeps, true)
     set g = CopyGroup(current_expansion_creeps,g)
+    //call Trace("Copy group")
     set u = GetNearestOfGroup(u, g, l)
     call RemoveLocation(l)
     set l = null
@@ -6858,7 +6859,7 @@ function GetHealer takes unit u returns unit
     endif
     call GroupRemoveUnit(healer_group, u)
   endloop
-  return null
+  return u
 endfunction
 
 //============================================================================
@@ -8376,6 +8377,9 @@ endfunction
 function normalize_rp_strat takes nothing returns nothing
   local integer i = 0
   local integer sum = sum_rp_strat(rp_strat_length)
+  if sum == 0 then
+    set sum = 1
+  endif
   loop
     exitwhen i >= rp_strat_length
     set rp_strat[i] = (rp_strat[i] * rp_strat_normal) / sum
@@ -8401,6 +8405,9 @@ function display_rp_strat takes nothing returns nothing
   local integer sum = 0
   if balancing then
     set sum = sum_rp_strat(rp_strat_length)
+    if sum == 0 then
+      set sum = 1
+    endif
     loop
       exitwhen i >= rp_strat_length
       call DisplayToAll(GetStrategyName(i)+": "+Int2Str(R2I(I2R(100 * rp_strat[i]) / I2R(sum)))+" %")
@@ -10087,17 +10094,11 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   endif
   if CheckExpansionTaken(current_expansion) then
     set current_expansion = null
+    return BUILT_ALL
   endif
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Taken Checked")
 
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion choosen")
-  set u = GetExpFoe(u)
-  if u != null then
-    set take_exp = true
-    set u = null
-  else
-    set take_exp = false
-  endif
 
   set gold_cost = GetUnitGoldCost2(hall)
   set wood_cost = GetUnitWoodCost2(hall)
@@ -10119,7 +10120,8 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   if total_wood <= 0 and not (wood_cost == 0) then
     return NOT_ENOUGH_RES
   endif
-
+  set take_exp = (GetExpFoe(u) != null)
+  set u = null
   if take_exp or total_gold <= 0 or total_wood <= 0 then
     return BUILT_SOME
   endif
@@ -10588,10 +10590,31 @@ function CheckUnitNewTown takes unit u, integer num returns boolean
 endfunction
 
 //============================================================================
+function LocalizeOldTown takes integer num returns boolean
+  local group g = CreateGroup()
+  local unit u = null
+  call GroupEnumUnitsInRange(g, GetLocationX(own_town_loc[num]), GetLocationY(own_town_loc[num]), 1200, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if GetOwningPlayer(u) == ai_player and not IsUnitHidden(u) and UnitAlive(u) and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+      call DestroyGroup(g)
+      set g = null
+      set u = null
+      return true
+    endif
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  return false
+endfunction
+
 function LocalizeNewTown takes integer num returns boolean
   local group g = CreateGroup()
   local unit u = null
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectByHidden(g,false)
+  set g = SelectByAlive(g,false)
   set g = SelectById(g, old_id[racial_expansion], true)
   loop
     set u = FirstOfGroup(g)
@@ -10620,13 +10643,21 @@ endfunction
 //============================================================================
 function CheckTownBuilt takes nothing returns nothing
   local integer i = 0
+  set exist_town = 0
   loop
     exitwhen i >= max_towns
     if not town_built[i] then
       if (TownCountEx(racial_expansion, true, i) > 0 and not (TownCountEx(racial_expansion, true, 50) > 0)) then
         if LocalizeNewTown(i) then
           set town_built[i] = true
+          set exist_town = exist_town + 1
         endif
+      endif
+    else
+      if LocalizeOldTown(i) == true then  // prevent town from being dismantled completely
+        set exist_town = exist_town + 1
+      else
+        set town_built[i] = false
       endif
     endif
     set i = i + 1
@@ -11462,7 +11493,7 @@ function GetFittingCreep takes unit u, integer str returns unit
   endif
 
   if u == null then
-    return null
+    return u
   endif
 
   //call Trace("Our strength: " + Int2Str(str))

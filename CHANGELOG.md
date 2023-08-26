@@ -57,7 +57,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Water_expansion improvement judgment methods , now have a gorup record , just need judgment expansion on the gorup , no need loop
 - if have Water_expansion or racial_lumber == 0 or race_no_wood_harvest , ZEPPELIN_FOLLOW no run GroupRemoveGuardPositionInstant , then AI can take Water_expansion or help ELF fix building blockage
   - Now AI can use ZEPPELIN attack Water_expansion creeps
-  - when TownCountDone(neutral_zeppelin) > 1 , just Remove follow_zeppelin Guard Position, help Job continue , other zeppelin help AI fix building blockage
+  - Remove follow_zeppelin Guard Position, help Job continue , other zeppelin help AI fix building blockage
+- Add LocalizeOldTown check ture town_built , prevent town from being dismantled completely
 - When peon and current_expansion Distance too far , AI will use BuildMovePeonZeppelin
 - Add active_expansion , if mine outnumber player , AI will more aggressive take expansion (ExpansionBuilder)
 - NEUTRAL Build Healing add Healing_Ward(ohwd)
@@ -132,12 +133,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
 - function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency
+- GetBuildingBuilt no take hidden and die
+- FastBuildBuilding , TryMilitiaExpansionFoot no take die
 - Buy JOB now use dynamic time_next_try , prevent waiting after moving to the shop
 - ComputeFrontPoints and CheckFastExpansion just run once , this code no need repeated
 - TELEPORT will when the teleportation unit dies , send call CaptainGoHome() , no longer send teleportation unit GetUnitXY
   - now can send distant unit go teleportloc , preventing death
 - All search the enemy function no longer use GetBJMaxPlayers() , now use enemy_force[i] , to reduce the number of cycles
-- GetOneOfId and GetOneOfIdNearLoc no longer take Hidden unit
+- GetOneOfId and GetOneOfIdNearLoc no longer take hidden unit
 - Neutral Enemy and Guarded Job check mechanism adjustment
   - add check POWER_FOUNTAIN and HEALWARD
   - when PathingThread done , check job not in automatic loop , PathingThread regular check will be conducted
@@ -145,17 +148,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Army track change
   - Optimization judgment
   - Army track CopyArmy no longer copy same integer , hopes it can improve efficiency
-  - Reduced Army track frequency
   - only check ai_player UnitStandard , check other player Standard will let FirstOfGroup is null , and Hopefully fix laggy and collapse
 - Town track change
   - Optimization judgment
   - Town track CopyTown no longer copy same integer , hopes it can improve efficiency
   - Town track SeedNewTownAtLoc town_num incremental now need TrackTown(town_num) return true
-  - Reduced track track frequency
 - SEND_HOME Adjust exit JOB logic
    - Creating item will judge SlotsFree , prevent create on the ground
    - Fixed repeat remove GuardPosition
    - Stop at Shop buy item no longer recycle directly GuardPosition
+   - No longer transfer health points , now transfer town number , then hypovolemia unit can move other town , prevent players kill all at once
 - MICRO_HERO add wait
 - MICRO_UNITS add set DenyUnit
   - SaveUnit will save 'hphx' and racial_militia string
@@ -199,6 +201,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - SmallMapsAdd now check mapsize , prevent 1V1 use of big maps
 - CheckTownBuilt max_towns take Max(max_towns,TownCountDone(racial_expansion)) , town_built[i] take have town
 - SleepUntilTownDefended and SleepInCombatAM no longer running simultaneously , the code seem to be in conflict
+- LocalizeNewTown no take hidden and die
 - Strategy additional Improvements
   - Remove SAC_PIT, UPG_SKEL_LIFE from Undead builds(thank Slayer95)
   - AddUnitToAntiXX Computational UpgradeLevel
