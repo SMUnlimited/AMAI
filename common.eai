@@ -722,19 +722,19 @@ globals
     integer tavernguarded = 0  // buy neutral hero tavern guarded judgments , just run once
 
     integer tier = 0
-    integer own_strength	= 0
-    integer uncertainty	= 10
-    integer tower_factor	= 10
+    integer own_strength = 0
+    integer uncertainty = 10
+    integer tower_factor = 10
     integer array race_aggression
     integer array b_race_aggression
     integer added_aggression = 0  // aggression added when upkeep becomes higher
-    boolean h_siege	= false
+    boolean h_siege = false
     unit alli_target = null
     integer expansion_target_bonus = 7
     integer comp_chosen_target_bonus = 5
     real comp_chosen_target_rate = 0.5
 
-    boolean balancing	= false
+    boolean balancing = false
 
 //==============================================================
 // (AMAI)  Healing System Globals
@@ -792,7 +792,8 @@ globals
     real array own_town_dist
     unit array own_town_mine
     integer first_town_mine = 0
-    integer exist_town = 0
+    location array exist_town
+    integer exist_town_num = 0
 
     integer attacking_ghouls = 0
     integer harvesting_ghouls = 0
@@ -4420,18 +4421,17 @@ function GetNearestOfGroup takes unit ru, group g, location l returns unit
   local unit u = null
   local real sd = 1000000
   set ru = null
-  if l != null then
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null
-      set d = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
-      if d < sd then
-        set sd = d
-        set ru = u
-      endif
-      call GroupRemoveUnit(g, u )
-    endloop
-  endif
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null or l == null
+    set d = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
+    if d < sd then
+      set sd = d
+      set ru = u
+    endif
+    call GroupRemoveUnit(g, u )
+  endloop
+  set u = null
   return ru
 endfunction
 
@@ -4469,7 +4469,7 @@ function GetNearestSubGroupOfGroup takes group rg, location l, integer n returns
   endloop
   set i = size - Min(n, size)
   loop
-    exitwhen ru > size
+    exitwhen ru > size or (ru == size and size == 1)
     if ru == i and i < size then
       call GroupAddUnit(rg, ua[i])
       set i = i + 1
@@ -10589,25 +10589,6 @@ function CheckUnitNewTown takes unit u, integer num returns boolean
 endfunction
 
 //============================================================================
-function LocalizeOldTown takes integer num returns boolean
-  local group g = CreateGroup()
-  local unit u = null
-  call GroupEnumUnitsInRange(g, GetLocationX(own_town_loc[num]), GetLocationY(own_town_loc[num]), 1200, null)
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    if GetOwningPlayer(u) == ai_player and not IsUnitHidden(u) and UnitAlive(u) and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
-      call DestroyGroup(g)
-      set g = null
-      set u = null
-      return true
-    endif
-  endloop
-  call DestroyGroup(g)
-  set g = null
-  return false
-endfunction
-
 function LocalizeNewTown takes integer num returns boolean
   local group g = CreateGroup()
   local unit u = null
@@ -10639,24 +10620,45 @@ function LocalizeNewTown takes integer num returns boolean
   return true
 endfunction
 
+function LocalizeOldTown takes integer num returns boolean
+  local group g = CreateGroup()
+  local unit u = null
+  call GroupEnumUnitsInRange(g, GetLocationX(own_town_loc[num]), GetLocationY(own_town_loc[num]), 1200, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if GetOwningPlayer(u) == ai_player and not IsUnitHidden(u) and UnitAlive(u) and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+      call DestroyGroup(g)
+      set g = null
+      set u = null
+      return true
+    endif
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  return false
+endfunction
+
 //============================================================================
 function CheckTownBuilt takes nothing returns nothing
   local integer i = 0
-  set exist_town = 0
+  set exist_town_num = 0
   loop
     exitwhen i >= max_towns
     if not town_built[i] then
       if (TownCountEx(racial_expansion, true, i) > 0 and not (TownCountEx(racial_expansion, true, 50) > 0)) then
         if LocalizeNewTown(i) then
           set town_built[i] = true
-          set exist_town = exist_town + 1
+          set exist_town[exist_town_num] = own_town_loc[i]
+          set exist_town_num = exist_town_num + 1
         endif
       endif
     else
-      if LocalizeOldTown(i) == true then  // prevent town from being dismantled completely
-        set exist_town = exist_town + 1
+      if LocalizeOldTown(i) then  // prevent town from being dismantled completely
+        set exist_town[exist_town_num] = own_town_loc[i]
+        set exist_town_num = exist_town_num + 1
       else
-        set town_built[i] = false
+        set exist_town[exist_town_num] = null
       endif
     endif
     set i = i + 1
