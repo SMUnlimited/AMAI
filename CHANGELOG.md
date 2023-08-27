@@ -216,6 +216,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Adjust UPG_BOMBS BuildAdvUpgr2 chance unitcount to 0.2 , Maximum to 35 , In the test, after building COPTER, the enemy has no AIR , the COPTER no research UPG_BOMBS not useful
 - Remove Duplicates ROC GlobalSettings.txt front_base_distance
 - GetSumLoc no longer used within the loop , prevent loc exceeding map range
+- PathingThread Thread adjust to Last Run , prevent set own_town_mine[0] selecting too many path units
 - AMAI VS AI
    - BlizzardVAI.eai ai script file read race.txt 1% and 2%
 
@@ -265,7 +266,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed cannot use RITUAL_DAGGER
 - Fixed MILITIA_EXPAND GetNearestSubGroupOfGroup take 4 peon
 - Fixed exp_prepared keep open after opening
-- Fixed CheckExpansionRebuild o check creep
+- Fixed CheckExpansionRebuild no check creep
+- Fixed needs_exp take player Taken current_expansion
 
 
 ## [3.2.2] - 2022-10-05
