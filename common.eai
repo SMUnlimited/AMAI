@@ -3247,7 +3247,7 @@ function GetTeleportLandPoint takes location l returns location
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null  //Find a enemy unit , land to unit loc , prevent army land to hall , cannot expand
-    if IsPlayerEnemy(ai_player,GetOwningPlayer(u)) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitInvisible(u, ai_player) and not IsUnitHidden(u) then
+    if not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitInvisible(u, ai_player) and IsPlayerEnemy(ai_player,GetOwningPlayer(u)) and not IsUnitHidden(u) then
       set x = GetUnitX(u)
       set y = GetUnitY(u)
       set teleportloc = Location(x,y)
@@ -5113,7 +5113,7 @@ function IsCreepsAwake takes real x, real y, real radius returns boolean
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or awake_creeps
-    if UnitAlive(u) and GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
+    if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and UnitAlive(u)then
       set awake_creeps = not IsUnitType(u, UNIT_TYPE_SLEEPING)
     endif
     call GroupRemoveUnit(g,u)
@@ -5137,7 +5137,7 @@ function GetLocationCreepStrength takes real x, real y, real radius returns inte
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and not IsUnitHidden(u) then
+    if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and UnitAlive(u) and not IsUnitHidden(u) then
       //call Trace("Getting unit strength begin")
       set strength = GetUnitStrength(u)
       set sum = sum + strength
@@ -5167,7 +5167,7 @@ function GetLocationCreepAirStrength takes real x, real y, real radius returns i
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and not IsUnitHidden(u) then
+    if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and UnitAlive(u) and not IsUnitHidden(u) then
       if IsUnitType(u, UNIT_TYPE_FLYING) then
         set airsum = airsum + GetUnitStrength(u)
       endif
@@ -5192,7 +5192,7 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
     set u = FirstOfGroup(g)
     exitwhen u == null
     set p = GetOwningPlayer(u)
-    if UnitAlive(u) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerEnemy(ai_player, p) and not IsUnitHidden(u) and IsUnitType(u,UNIT_TYPE_STRUCTURE) == false and IsUnitType(u,UNIT_TYPE_PEON) == false and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
+    if IsUnitType(u,UNIT_TYPE_PEON) == false and IsUnitType(u,UNIT_TYPE_STRUCTURE) == false and not IsUnitHidden(u) and UnitAlive(u) and IsPlayerEnemy(ai_player, p) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != Player(PLAYER_NEUTRAL_PASSIVE) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
       set strength = GetUnitStrength(u)
       set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
@@ -5219,7 +5219,7 @@ function GetLocationEnemyStructures takes real x, real y, real radius returns in
     set u = FirstOfGroup(g)
     exitwhen u == null
     set p = GetOwningPlayer(u)
-    if IsUnitType(u,UNIT_TYPE_STRUCTURE) == true and GetUnitState(u, UNIT_STATE_LIFE) > 0 and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerEnemy(ai_player, p) and not IsUnitHidden(u) then
+    if IsUnitType(u,UNIT_TYPE_STRUCTURE) == true and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) and IsPlayerEnemy(ai_player, p) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != Player(PLAYER_NEUTRAL_PASSIVE) then
       set sum = sum + 1
     endif
     call GroupRemoveUnit(g,u)
@@ -5265,7 +5265,7 @@ function GetLocationStrength takes real x, real y, real radius returns real
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and IsUnitType(u,UNIT_TYPE_PEON) == false and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
+    if IsUnitType(u,UNIT_TYPE_PEON) == false and UnitAlive(u) and not IsUnitHidden(u) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
       set strength = GetUnitStrength(u)
       set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
@@ -7749,6 +7749,7 @@ function InitTownBuilt takes nothing returns nothing
   endloop
   set town_built[0] = true
   set own_town_loc[0] = Location(GetLocationX(home_location), GetLocationY(home_location))
+  set exist_town[0] = Location(GetLocationX(home_location), GetLocationY(home_location))
   set own_town_dist[0] = 0
   set own_town_mine[0] = GetMineNearLoc(own_town_mine[0] ,home_location, 1500)
 endfunction
@@ -8140,7 +8141,6 @@ function InitAMAI takes nothing returns nothing
   call InitBuildArrayAM()
   call InitUpkeep()
   call InitNeutralBuildings()
-  call StartThread(function PathingThread)
   //call StartThread(function ExpansionThread)
   //call StartThread(function CheckAllNeutrals)
   call InitHealers()
@@ -8154,7 +8154,7 @@ function InitAMAI takes nothing returns nothing
     set firstattackhp = true
   endif
 //    call DebugSequenceStart("DebugRun")
-
+  call StartThread(function PathingThread)  //prevent set own_town_mine[0] selecting too many path units
 
 endfunction
 
@@ -9625,7 +9625,7 @@ function UpgradeBuilding takes integer qty, integer unitid, integer town, intege
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if UnitAlive(u) and GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == old_id[needed1[unitid]] then
+      if GetUnitTypeId(u) == old_id[needed1[unitid]] and UnitAlive(u) and GetOwningPlayer(u) == ai_player then
         if IssueImmediateOrderById(u, old_id[unitid]) then
           set num = num + 1
           if num >= qty then
@@ -9645,7 +9645,7 @@ function UpgradeBuilding takes integer qty, integer unitid, integer town, intege
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if UnitAlive(u) and GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == old_id[needed1[unitid]] then
+      if GetUnitTypeId(u) == old_id[needed1[unitid]] and UnitAlive(u) and GetOwningPlayer(u) == ai_player then
         if IssueImmediateOrderById(u, old_id[unitid]) then
           set num = num + 1
           if num >= qty then
@@ -10197,7 +10197,7 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
   endif
   loop
     exitwhen i >= force_number
-    if GetPlayerSlotState(own_force[i]) == PLAYER_SLOT_STATE_PLAYING and ai_player != own_force[i] and not IsPlayerObserver(own_force[i]) then
+    if GetPlayerSlotState(own_force[i]) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(own_force[i]) and ai_player != own_force[i] then
       set per[m] = i
       set m = m + 1
     endif
@@ -10474,12 +10474,16 @@ local boolean exp_prepared = false
 local boolean rebuild = false
 local unit u = null
 
-if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
+if first_expansion_chosen and current_expansion == null then
   call ChooseExpansion()
   if current_expansion == null then
     call Trace("ExpansionBuilder: No mine available")
     return
   endif
+endif
+if CheckExpansionTaken(current_expansion) then
+  set current_expansion = null
+  return
 endif
 set exp_prepared = false
 if first_town_mine > 0 and (race_uses_mine_expansion or race_manual_loading) then  //home_location have multiple mine , fix GetMinesOwned bug(ELF and UD)
@@ -10621,13 +10625,17 @@ function LocalizeNewTown takes integer num returns boolean
 endfunction
 
 function LocalizeOldTown takes integer num returns boolean
-  local group g = CreateGroup()
+  local group g = null
   local unit u = null
+  if num == 0 and not pathing_done then  //Prevent selecting too many path detection units at the beginning of the game
+    return true
+  endif
+  set g = CreateGroup()
   call GroupEnumUnitsInRange(g, GetLocationX(own_town_loc[num]), GetLocationY(own_town_loc[num]), 1200, null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetOwningPlayer(u) == ai_player and not IsUnitHidden(u) and UnitAlive(u) and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+    if IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetOwningPlayer(u) == ai_player and not IsUnitHidden(u) and UnitAlive(u) then
       call DestroyGroup(g)
       set g = null
       set u = null
@@ -10649,15 +10657,16 @@ function CheckTownBuilt takes nothing returns nothing
       if (TownCountEx(racial_expansion, true, i) > 0 and not (TownCountEx(racial_expansion, true, 50) > 0)) then
         if LocalizeNewTown(i) then
           set town_built[i] = true
-          set exist_town[exist_town_num] = own_town_loc[i]
+          call RemoveLocation(exist_town[exist_town_num])
+          set exist_town[exist_town_num] = Location(GetLocationX(own_town_loc[i]),GetLocationY(own_town_loc[i]))
           set exist_town_num = exist_town_num + 1
         endif
       endif
     else
       if LocalizeOldTown(i) then  // prevent town from being dismantled completely
-        set exist_town[exist_town_num] = own_town_loc[i]
         set exist_town_num = exist_town_num + 1
       else
+        call RemoveLocation(exist_town[exist_town_num])
         set exist_town[exist_town_num] = null
       endif
     endif
@@ -10938,7 +10947,7 @@ function AttackGroupAddUnknown takes nothing returns nothing
     set u = FirstOfGroup(g)
     exitwhen u == null
     set id = GetUnitTypeId(u)
-    if id != 'ngir' and (IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) or IsUnitType(u, UNIT_TYPE_ATTACKS_GROUND)) then
+    if (IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) or IsUnitType(u, UNIT_TYPE_ATTACKS_GROUND)) and id != 'ngir' then
       call AddAssault(60,id)  //other hero and unit , like other race and custom
     endif
     call GroupRemoveUnit(g, u)
@@ -12291,7 +12300,7 @@ if not creeping_only then	// Do the normal attack sequence
     // take expansions as needed
     //
     if needs_exp then
-      if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
+      if first_expansion_chosen and (current_expansion == null or not CheckExpansionTaken(current_expansion)) then
         call ChooseExpansion()
         if current_expansion == null then
           return
