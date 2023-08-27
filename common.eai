@@ -10628,29 +10628,6 @@ function LocalizeNewTown takes integer num returns boolean
   return true
 endfunction
 
-function LocalizeOldTown takes integer num returns boolean
-  local group g = null
-  local unit u = null
-  if num == 0 and not pathing_done then  //Prevent selecting too many path detection units at the beginning of the game
-    return true
-  endif
-  set g = CreateGroup()
-  call GroupEnumUnitsInRange(g, GetLocationX(own_town_loc[num]), GetLocationY(own_town_loc[num]), 1200, null)
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    if IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetOwningPlayer(u) == ai_player and not IsUnitHidden(u) and UnitAlive(u) then
-      call DestroyGroup(g)
-      set g = null
-      set u = null
-      return true
-    endif
-  endloop
-  call DestroyGroup(g)
-  set g = null
-  return false
-endfunction
-
 //============================================================================
 function CheckTownBuilt takes nothing returns nothing
   local integer i = 0
@@ -10661,18 +10638,13 @@ function CheckTownBuilt takes nothing returns nothing
       if (TownCountEx(racial_expansion, true, i) > 0 and not (TownCountEx(racial_expansion, true, 50) > 0)) then
         if LocalizeNewTown(i) then
           set town_built[i] = true
-          call RemoveLocation(exist_town[exist_town_num])
-          set exist_town[exist_town_num] = Location(GetLocationX(own_town_loc[i]),GetLocationY(own_town_loc[i]))
-          set exist_town_num = exist_town_num + 1
         endif
       endif
-    else
-      if LocalizeOldTown(i) then  // prevent town from being dismantled completely
-        set exist_town_num = exist_town_num + 1
-      else
-        call RemoveLocation(exist_town[exist_town_num])
-        set exist_town[exist_town_num] = null
-      endif
+    endif
+    if own_town_loc[i] != null then  // prevent town from being dismantled completely
+      call RemoveLocation(exist_town[exist_town_num])
+      set exist_town[exist_town_num] = Location(GetLocationX(own_town_loc[i]),GetLocationY(own_town_loc[i]))
+      set exist_town_num = exist_town_num + 1
     endif
     set i = i + 1
   endloop
