@@ -267,7 +267,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed MILITIA_EXPAND GetNearestSubGroupOfGroup take 4 peon
 - Fixed exp_prepared keep open after opening
 - Fixed CheckExpansionRebuild no check creep
-- Fixed needs_exp take player Taken current_expansion
 
 
 ## [3.2.2] - 2022-10-05
