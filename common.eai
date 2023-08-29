@@ -8183,8 +8183,6 @@ function AMAI takes code heroes, code peons, code attacks returns nothing
     call SetHeroLevels(heroes)
     call Trace("heros set")
     call Sleep(0.1)
-    // Job Thread
-    call StartThread(function TQLoop)
     //call Trace("TQLoop")
     call StartThread(peons)
     //call Trace("peons")
@@ -8195,6 +8193,8 @@ function AMAI takes code heroes, code peons, code attacks returns nothing
     if GetMinesOwned() > 1 then
       call InitCheckHarvest()  // now home_location distance 1500 have more mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix
     endif
+    // Job Thread
+    call StartThread(function TQLoop)
 endfunction
 
 //============================================================================
@@ -10483,7 +10483,7 @@ local boolean exp_prepared = false
 local boolean rebuild = false
 local unit u = null
 
-if first_expansion_chosen and current_expansion == null then
+if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
   call ChooseExpansion()
   if current_expansion == null then
     call Trace("ExpansionBuilder: No mine available")
@@ -10591,13 +10591,18 @@ endfunction
 //============================================================================
 function CheckUnitNewTown takes unit u, integer num returns boolean
   local integer i = 0
+  local location l = GetUnitLoc(u)
   loop
     exitwhen i >= num
-    if town_built[i] and own_town_loc[i] != null and DistanceBetweenPoints_dk(GetUnitLoc(u), own_town_loc[i]) < town_radius then
+    if town_built[i] and own_town_loc[i] != null and DistanceBetweenPoints(l, own_town_loc[i]) < town_radius then
+      call RemoveLocation(l)
+      set l = null
       return false
     endif
     set i = i + 1
   endloop
+  call RemoveLocation(l)
+  set l = null
   return true
 endfunction
 
@@ -11824,7 +11829,7 @@ function ChooseEnemyBaseTarget takes unit u returns unit
   if u != null and IsTargetGood(u, comp_chosen_target_bonus) then
     call Trace("Hardcoded Enemy Base Target chosen")
   endif
-  return u
+  return null
 endfunction
 
 //============================================================================
