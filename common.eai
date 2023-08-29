@@ -966,6 +966,7 @@ globals
     integer water_expansion_list_length = 0
     group water_expansion = CreateGroup()
     group array water_expansion_creeps
+    group far_expansion = CreateGroup()
 
     unit expansion_peon = null
     unit build_zeppelin = null
@@ -5497,11 +5498,13 @@ function CheckExpansionTaken takes unit expa returns boolean
         call DestroyGroup(g)
         set g = null
         set u = null
+        call GroupRemoveUnit(far_expansion, expa)
         return true
       elseif GetOwningPlayer(u) != ai_player and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then		// Creeps dosn't mean expansion is taken
         call DestroyGroup(g)
         set g = null
         set u = null
+        call GroupRemoveUnit(far_expansion, expa)
         return true
       endif
       call GroupRemoveUnit(g, u)
@@ -9651,15 +9654,17 @@ function StartExpansionAM takes integer qty, integer hall returns integer
 
  // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion rescources sorted")
 
-    set peon = GetExpansionPeon()
-	if peon == null then
-		set peon = GetExpansionPeon2()
-	endif
+  set peon = GetExpansionPeon()
+  if peon == null then
+    set peon = GetExpansionPeon2()
+  endif
 
-//  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Peon Got")
-
+  //  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Peon Got")
+  if not IsUnitInGroup(current_expansion, water_expansion) and DistanceBetweenUnits(peon,current_expansion) > 6000 and not IsUnitInGroup(current_expansion, far_expansion) then
+    call GroupAddUnit(far_expansion, current_expansion)
+  endif
   if peon != null then
-    if IsWaterExpansion(current_expansion) or DistanceBetweenUnits(peon,current_expansion) > 6000 or IsUnitLoaded(expansion_peon) then
+    if IsWaterExpansion(current_expansion) or IsUnitInGroup(current_expansion, far_expansion) then
       if not BuildMovePeonZeppelin(peon, current_expansion) then
         call Trace("AMAIStartexpa: Is a water expansion")
         set peon = null
@@ -11811,10 +11816,10 @@ function GetArmyHealthState takes nothing returns real
   endloop
   call DestroyGroup(g)
   set g = null
-  if nearest_neutral[hFountainID] == null or neutral_guarded[hFountainID] or not neutral_available[hFountainID] or not race_use_fountain then
+  if nearest_neutral[hFountainID] != null or not neutral_available[hFountainID] or not race_use_fountain then
     set fountain_available = false
   else
-    set fountain_available = neutral_night_buy[hFountainID] and GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18
+    set fountain_available = (neutral_night_buy[hFountainID] and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6)) or not neutral_guarded[hFountainID]
   endif
   if count == 0 then
     return 1.0
