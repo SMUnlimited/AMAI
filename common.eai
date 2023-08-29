@@ -1831,7 +1831,7 @@ function GetExpansionPeon2 takes unit u returns unit
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) and (GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == 0) and not IsUnitLoaded(u) then  // and not IsUnitInGroup(u, unit_buying_tavern) and not IsUnitInGroup(u, unit_buying_merc) and not IsUnitInGroup(u, unit_buying_item) and not IsUnitInGroup(u, unit_zepplin_move))  // if too much IsUnitInGroup , the game will laggy and collapse
+    if GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) and (GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == 0) and not IsUnitHidden(u) and not IsUnitLoaded(u) then  // and not IsUnitInGroup(u, unit_buying_tavern) and not IsUnitInGroup(u, unit_buying_merc) and not IsUnitInGroup(u, unit_buying_item) and not IsUnitInGroup(u, unit_zepplin_move))  // if too much IsUnitInGroup , the game will laggy and collapse
       call DestroyGroup(g)
       set g = null
       return u
@@ -3047,16 +3047,14 @@ function DisplayChat takes boolean ally, boolean enemy, boolean obs, boolean imp
   loop
     exitwhen i >= GetBJMaxPlayers()
     set p = Player(i)
-    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) != MAP_CONTROL_COMPUTER then
-      if ((ally and IsPlayerAlly(p, ai_player)) or (enemy and IsPlayerEnemy(p, ai_player) and not IsPlayerObserver(p))) or (obs and IsPlayerObserver(p)) then
-        set rand = std_rand
-        loop
-          exitwhen (chat_list_eq[rand] == COMPARE_TRUE) or (chat_list_eq[rand] == COMPARE_EQ and chat_list_race[rand] == race_name[player_race[i]]) or (chat_list_eq[rand] == COMPARE_UNEQ and chat_list_race[rand] != race_name[player_race[i]])
-          set rand = GetRandomInt(0, chat_list_length - 1)
-        endloop
-        call SetChatVarsPlayer(p)
-        call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)
-      endif
+    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) != MAP_CONTROL_COMPUTER and ((ally and IsPlayerAlly(p, ai_player)) or (enemy and IsPlayerEnemy(p, ai_player) and not IsPlayerObserver(p))) or (obs and IsPlayerObserver(p)) then
+      set rand = std_rand
+      loop
+        exitwhen (chat_list_eq[rand] == COMPARE_TRUE) or (chat_list_eq[rand] == COMPARE_EQ and chat_list_race[rand] == race_name[player_race[i]]) or (chat_list_eq[rand] == COMPARE_UNEQ and chat_list_race[rand] != race_name[player_race[i]])
+        set rand = GetRandomInt(0, chat_list_length - 1)
+      endloop
+      call SetChatVarsPlayer(p)
+      call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)
     endif
     set i = i + 1
   endloop
@@ -4277,7 +4275,7 @@ function GetNearestNeutralQuick takes unit ru, integer id returns unit
   endloop
   call DestroyGroup(g)
   set g = null
-  if id == neutral_id[NEUTRAL_HEALWARD] and ru != null and IsUnitType(ru, UNIT_TYPE_SUMMONED) then
+  if ru != null and IsUnitType(ru, UNIT_TYPE_SUMMONED) then  //prevent NEUTRAL_HEALWARD is SUMMONED
     set ru = null
   endif
   return ru
@@ -4298,7 +4296,7 @@ function GetNearestNeutral takes unit ru, integer id returns unit
   local integer i = 0
   local integer checks = 0
   local boolean pathingdone = true
-  local real totaltime = 0
+  //local real totaltime = 0
   //local integer groundid = 'ewsp'
   set ru = null
 //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "get nearest neutral start")
@@ -4339,7 +4337,7 @@ function GetNearestNeutral takes unit ru, integer id returns unit
   //set distance = 10000000
 
   loop
-    set totaltime = totaltime + 3
+    //set totaltime = totaltime + 3
     set pathingdone = true
     set tempg = CopyGroup(g,tempg)
     set i = 0
@@ -4475,7 +4473,7 @@ function GetNearestSubGroupOfGroup takes group rg, location l, integer n returns
   endloop
   set i = size - Min(n, size)
   loop
-    exitwhen ru > size or (ru == size and size == 1)
+    exitwhen ru > size
     if ru == i and i < size then
       call GroupAddUnit(rg, ua[i])
       set i = i + 1
@@ -4705,6 +4703,7 @@ function GetUnitHero takes unit u returns unit
   call GroupEnumUnitsOfPlayer(g,ai_player,null)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
+set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
@@ -4727,6 +4726,7 @@ function GetUnitHeroReplacement takes unit u , location l returns unit
   call GroupEnumUnitsOfPlayer(g,ai_player,null)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
+set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
   set g = SelectByUnitStandard(g, true)
   loop
@@ -5597,6 +5597,7 @@ function BuildLumberMillAtBase takes nothing returns boolean
   local location buildloc = GetLumberLocationAtBase()
   local unit u = null
   local unit peon = GetExpansionPeon()
+  local boolean b = false
   if buildloc != null then
     if peon == null then
       set peon = GetExpansionPeon2(peon)
@@ -5606,17 +5607,15 @@ function BuildLumberMillAtBase takes nothing returns boolean
     set buildloc = Location(GetUnitX(u),GetUnitY(u))
     call RemoveUnit(u)
     set u = null
-    call IssuePointOrderByIdLoc(peon, old_id[racial_lumber], buildloc)
+    set b = IssuePointOrderByIdLoc(peon, old_id[racial_lumber], buildloc)
     call RemoveLocation(buildloc)
     set buildloc = null
-    set peon = null
-    return true
   endif
   set peon = null
   if TownCount(racial_hall[2]) > 0 and GetUnitCount(racial_lumber) == 0 then
     set racial_lumber = -1  //Prevent always cannot build
   endif
-  return false
+  return b
 endfunction
 
 //============================================================================
@@ -5801,27 +5800,25 @@ function CheckExpansionTaken takes unit expa returns boolean
   set g = SelectByAlive(g, true)
   set g = SelectByAlive2(g, true)
   call GroupRemoveUnit(g, expa)
-  if FirstOfGroup(g) != null then
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null
-      if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
-        call DestroyGroup(g)
-        set g = null
-        set u = null
-        call GroupRemoveUnit(far_expansion, expa)
-        return true
-      elseif GetOwningPlayer(u) != ai_player and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then		// Creeps dosn't mean expansion is taken
-        call DestroyGroup(g)
-        set g = null
-        set u = null
-        call GroupRemoveUnit(far_expansion, expa)
-        return true
-      endif
-      call GroupRemoveUnit(g, u)
-    endloop
+  loop
+  set u = FirstOfGroup(g)
+  exitwhen u == null
+  if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
+    call DestroyGroup(g)
+    set g = null
+    set u = null
+    call GroupRemoveUnit(far_expansion, expa)
+    return true
+  elseif GetOwningPlayer(u) != ai_player and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then		// Creeps dosn't mean expansion is taken
+    call DestroyGroup(g)
+    set g = null
+    set u = null
+    call GroupRemoveUnit(far_expansion, expa)
+    return true
   endif
-  call DestroyGroup(g)
+  call GroupRemoveUnit(g, u)
+endloop
+call DestroyGroup(g)
   set g = null
   return false
 endfunction
@@ -5895,10 +5892,10 @@ function GetExpNearestMin takes unit ru returns unit
 local real distance = 0
 local real seconddistance = 0
 local unit u = null
-local unit nearmine = null
-local unit secondmine = null
 local real mindistance = 10000  // max distance away the first mine can be
 local real secMaxDistance = 6000  // max distance range second mine must be in
+local unit nearmine = null
+local unit secondmine = null
 local group g = CreateGroup()
 local integer rand = GetRandomInt(1,4)
 call GroupEnumUnitsOfType(g, "goldmine", null)
@@ -5940,7 +5937,7 @@ else
 	set secondmine = null
 	set ru = nearmine
 	set nearmine = null
-  return ru
+	return ru
 endif
 endfunction
 
@@ -6167,7 +6164,7 @@ loop
 		set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
 		set g = SelectByAlive(g, true)
 		set g = SelectByHidden(g, false)
-		if FirstOfGroup(g) == null then
+		if FirstOfGroup(g) == null and GetPlayerRace(enemy_force[i]) == RACE_UNDEAD then
 			call GroupClear(g)
 			call GroupEnumUnitsOfPlayer(g, enemy_force[i], null)
 			set g = SelectById(g, 'ugol', true)  //some human UD player donot build TOWNHALL
