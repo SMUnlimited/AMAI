@@ -114,7 +114,7 @@ function RetreatControlJob takes nothing returns nothing
     set break_attack = attack_running
     set retreat_controlled = false
     call SetGroupsFlee(true)
-    if DistanceBetweenPoints_kd(home_location, GetUnitLoc(major_hero)) < 1250 then
+    if major_hero != null and UnitAlive(major_hero) and DistanceBetweenPoints_kd(home_location, GetUnitLoc(major_hero)) < 1250 then
       set isfleeing = false     // home so no need to be retreating. Also prevents bug in the captainretreating condition
     endif
     return
@@ -122,7 +122,7 @@ function RetreatControlJob takes nothing returns nothing
 
   set g = CreateGroup()
   if main_army == -1 or army_loc[main_army] == null or (GetLocationX(army_loc[main_army]) == 0 and GetLocationY(army_loc[main_army]) == 0 )then
-    if major_hero == null then
+    if major_hero == null or not UnitAlive(major_hero) then
       call Trace("No major hero in retreat control")
     else
       call GroupEnumUnitsInRange(g,GetUnitX(major_hero),GetUnitY(major_hero),battle_radius,null)
@@ -191,22 +191,20 @@ function RetreatControlJob takes nothing returns nothing
   //call Trace("RETREAT_CONTROL: Our strength: " + Int2Str(R2I(ally_strength_sum)))
   //call Trace("RETREAT_CONTROL: Enemy strength: " + Int2Str(R2I(enemy_strength_sum)))
 
-  if not desperation_assault then
-    if enemy_sum > LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple2,ver_flee_multiple3,attacking_aggression + added_aggression + added_target_aggression + added_racial_aggression)*ally_sum or (town_threatened and attack_running) then
-      call Trace("RETREAT_CONTROL: Flee!!!!")
-      set break_attack = attack_running
-      set retreat_controlled = false
-      call ClearCaptainTargets()
-      call CaptainGoHome()
-      set isfleeing = true
-      return
-    elseif enemy_sum > LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression + added_aggression + added_target_aggression + added_racial_aggression)*ally_sum or (battle_radius == creep_battle_radius and creep_sum - 2 > ally_sum ) then
-      call Trace("RETREAT_CONTROL: Allowed to Flee")
-      call SetGroupsFlee(true)
-      set isfleeing = true
-      //call ClearCaptainTargets()
-      //call CaptainGoHome()
-    endif
+  if not desperation_assault and enemy_sum > LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple2,ver_flee_multiple3,attacking_aggression + added_aggression + added_target_aggression + added_racial_aggression)*ally_sum or (town_threatened and attack_running) then
+    call Trace("RETREAT_CONTROL: Flee!!!!")
+    set break_attack = attack_running
+    set retreat_controlled = false
+    call ClearCaptainTargets()
+    call CaptainGoHome()
+    set isfleeing = true
+    return
+  elseif not desperation_assault and enemy_sum > LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression + added_aggression + added_target_aggression + added_racial_aggression)*ally_sum or (battle_radius == creep_battle_radius and creep_sum - 2 > ally_sum ) then
+    call Trace("RETREAT_CONTROL: Allowed to Flee")
+    call SetGroupsFlee(true)
+    set isfleeing = true
+    //call ClearCaptainTargets()
+    //call CaptainGoHome()
   else
     //if town_threatened and town_threat[most_threatened_town] >= teleport_high_threat then
 
