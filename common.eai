@@ -4275,7 +4275,7 @@ function GetNearestNeutralQuick takes unit ru, integer id returns unit
   endloop
   call DestroyGroup(g)
   set g = null
-  if ru != null and IsUnitType(ru, UNIT_TYPE_SUMMONED) then  //prevent NEUTRAL_HEALWARD is SUMMONED
+  if ru != null and GetUnitTypeId(u) == neutral_id[NEUTRAL_HEALWARD] and IsUnitType(ru, UNIT_TYPE_SUMMONED) then
     set ru = null
   endif
   return ru
@@ -4316,12 +4316,12 @@ function GetNearestNeutral takes unit ru, integer id returns unit
 //call GroupClear(g)
   call GroupEnumUnitsOfPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), null)
 //call GroupRemoveUnit(g, unit_nearest)
-set ru = null
+  set ru = null
   set tempg = CopyGroup(g,tempg)
   loop
     set u = FirstOfGroup(tempg)
     exitwhen u == null
-    if GetUnitTypeId(u) == id then
+    if GetUnitTypeId(u) == id and not IsUnitType(ru, UNIT_TYPE_SUMMONED) then  //prevent neutral_id[NEUTRAL_HEALWARD]
       set pather[i] = CreatePathingUnit(pather[i])
       call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
       if (ModuloInteger(i,10) == 0) then
@@ -5119,7 +5119,7 @@ function IsCreepsAwake takes real x, real y, real radius returns boolean
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or awake_creeps
-    if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and UnitAlive(u)then
+    if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and UnitAlive(u) then
       set awake_creeps = not IsUnitType(u, UNIT_TYPE_SLEEPING)
     endif
     call GroupRemoveUnit(g,u)
@@ -5626,7 +5626,6 @@ function BuildBRAtCreep takes nothing returns nothing
   local integer r = 0
   local integer s = 0
   local integer ru = 0
-  //local integer groundid = 'ewsp'
   local real distance = 3200
   local group g = CreateGroup()
   local unit u = null
@@ -5634,9 +5633,6 @@ function BuildBRAtCreep takes nothing returns nothing
   local unit array ub
   local unit array uc
   local location loc = null
-  // if GetPlayerRace(ai_player) == RACE_NIGHTELF then
-  //   set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
-  // endif
   call GroupEnumUnitsInRange(g,GetLocationX(home_location), GetLocationY(home_location),distance,null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set g = SelectUnittype(g, UNIT_TYPE_FLYING, false)
@@ -6432,8 +6428,8 @@ function GetNeutralGuard takes integer nn returns boolean
   if nearest_neutral[nn] == null or FirstOfGroup(neutral_guards[nn]) == null then
     return b
   endif
-    set g = CopyGroup(neutral_guards[nn],g)
-set g = SelectByAlive(g, true)
+  set g = CopyGroup(neutral_guards[nn],g)
+  set g = SelectByAlive(g, true)
   set l = GetUnitLoc(nearest_neutral[nn])
   set u = GetNearestOfGroup(u, g, l)
   call RemoveLocation(l)
@@ -6452,7 +6448,7 @@ function CanCreepGuardsSleep takes integer nn returns boolean
   if nearest_neutral[nn] == null then
     return b
   endif
-if FirstOfGroup(neutral_guards[nn]) == null then
+  if FirstOfGroup(neutral_guards[nn]) == null then
     return true
   endif
   set g = CopyGroup(neutral_guards[nn],g)
@@ -12564,7 +12560,7 @@ function GetArmyHealthState takes nothing returns real
   if nearest_neutral[hFountainID] != null or not neutral_available[hFountainID] or not race_use_fountain then
     set fountain_available = false
   else
-    set fountain_available = (neutral_night_buy[hFountainID] and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6)) or not neutral_guarded[hFountainID]
+    set fountain_available = (neutral_night_buy[hFountainID] and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 and GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6)) or not neutral_guarded[hFountainID]
   endif
   if count == 0 then
     return 1.0

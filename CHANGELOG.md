@@ -271,7 +271,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed GetMana and SaveUnit no judge dawn
 - Fixed FocusGroupRemoveGuard cannot exit loop
 - Fixed HeroFleeRules no judge dawn
-
+- Fixde use MOONSTONE no check dawn
 
 ## [3.2.2] - 2022-10-05
 
