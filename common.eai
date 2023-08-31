@@ -4587,16 +4587,18 @@ function GetUnitToBuy takes unit ru, unit buy_place returns unit
   set g = SelectByIllusion(g, false)
   set g = SelectByHidden(g, false)
   set g = SelectByAlive2(g, true)
+  set g = SelectByUnitFree(g, true)
+  set g = SelectByUnitStandard(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if IsStandardUnit(u) and not IsUnitBuying(u) then  //IsUnitType(u, UNIT_TYPE_STRUCTURE) == false and IsUnitType(u, UNIT_TYPE_PEON) == false and IsUnitType(u, UNIT_TYPE_SUMMONED) == false and not IsUnitIllusion(u) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitInGroup(u, unit_buying_item) and not IsUnitInGroup(u, unit_buying_merc) then
+    //if IsStandardUnit(u) and not IsUnitBuying(u) and IsUnitType(u, UNIT_TYPE_STRUCTURE) == false and IsUnitType(u, UNIT_TYPE_PEON) == false and IsUnitType(u, UNIT_TYPE_SUMMONED) == false and not IsUnitIllusion(u) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitInGroup(u, unit_buying_item) and not IsUnitInGroup(u, unit_buying_merc) then
       set newdistance = DistanceBetweenUnits(buy_place, u)
       if newdistance < distance then
         set distance = newdistance
         set ru = u
       endif
-    endif
+    //endif
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
@@ -11401,7 +11403,7 @@ function AttackMoveTowerRush takes nothing returns nothing
 		if towers_built <= 4 then
 			//call SetCaptainHome(BOTH_CAPTAINS, R2I(first_tower_point_x), R2I(first_tower_point_y))
 			//call AttackMoveXY(R2I(first_tower_point_x), R2I(first_tower_point_y))
-			call AttackMoveKill(builder[20])
+			call AttackMoveXY(R2I(GetUnitX(builder[20])), R2I(GetUnitY(builder[20])))
 		elseif towers_built <= 6 then
 			//call SetCaptainHome(BOTH_CAPTAINS, R2I(second_attack_point_x), R2I(second_attack_point_y))
 			call AttackMoveXY(R2I(second_attack_point_x), R2I(second_attack_point_y))
@@ -11986,15 +11988,13 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
   loop
     exitwhen not town_threatened
     exitwhen player_defeated
-    if town_loc[most_threatened_town] != null then
-      if LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] then
-        if town_threat[most_threatened_town] >= teleport_low_threat then
-          if not teleporting then
-            call AttackMoveXY(R2I(GetLocationX(town_loc[most_threatened_town])), R2I(GetLocationY(town_loc[most_threatened_town])))
-          endif
+    if town_loc[most_threatened_town] != null and LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] then
+      if town_threat[most_threatened_town] >= teleport_low_threat then
+        if not teleporting then
+          call AttackMoveXY(R2I(GetLocationX(town_loc[most_threatened_town])), R2I(GetLocationY(town_loc[most_threatened_town])))
         endif
-        call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
       endif
+      call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
     else
       //call Trace("Town threatened - retreat" )
       //if town_threat[most_threatened_town] >= teleport_low_threat then
@@ -12505,7 +12505,7 @@ function GetArmyHealthState takes nothing returns real
   local real uhs = 0.0
   local integer hid = 0
   local integer hFountainID = GetHealthFountainID()
-
+  local integer id = 0
   call GroupClear(healer_group)
   call GroupClear(urgent_healing_group)
   call GroupClear(medium_healing_group)
@@ -12517,26 +12517,26 @@ function GetArmyHealthState takes nothing returns real
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
-  set g = SelectUnittype(g, UNIT_TYPE_SUMMONED, false)
   set g = SelectByIllusion(g, false)
   set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitTypeId(u) == 'ohwd' then
+    set id = GetUnitTypeId(u)
+    if id == 'ohwd' then
       set ward_cast = true
     endif
     //if UnitAlive(u) and not (IsUnitHidden(u) or IsUnitType(u, UNIT_TYPE_PEON) or IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitIllusion(u)) then
-      set uhs = GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)
       if IsUnitType(u, UNIT_TYPE_MECHANICAL) or IsUnitType(u, UNIT_TYPE_SUMMONED) then
         set health_sum = health_sum + 1 // Because is not currently handled by healing and we don't want army to run away if only 1 human unit is hurt
         set uhs = 1
       else
+        set uhs = GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)
         set health_sum = health_sum + uhs
       endif
       set count = count + 1
-      set hid = GetHealerId(GetUnitTypeId(u))
+      set hid = GetHealerId(id)
       if hid != -1 and GetUnitState(u, UNIT_STATE_MANA) >= (healer_mana_cost[hid] * 2) / 3 and ((healer_upg_id[hid] == 0) or (GetUpgradeLevel(healer_upg_id[hid]) >= healer_upg_level[hid])) then
         call GroupAddUnit(healer_group, u)
       endif
@@ -12558,7 +12558,7 @@ function GetArmyHealthState takes nothing returns real
   if nearest_neutral[hFountainID] == null or not neutral_available[hFountainID] or not race_use_fountain then
     set fountain_available = false
   else
-    set fountain_available = (neutral_night_buy[hFountainID] and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 and GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6)) or not neutral_guarded[hFountainID]
+    set fountain_available = (neutral_night_buy[hFountainID] and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6)) or not neutral_guarded[hFountainID]
   endif
   if count == 0 then
     return 1.0

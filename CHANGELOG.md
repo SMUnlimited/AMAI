@@ -61,6 +61,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Add LocalizeOldTown check ture town_built , prevent town from being dismantled completely
 - When peon and current_expansion Distance too far , AI will use BuildMovePeonZeppelin
 - Add active_expansion , if mine outnumber player , AI will more aggressive take expansion (ExpansionBuilder)
+- ExpansionBuilder and StartExpansionAM check Expansion Taken twice
 - NEUTRAL Build Healing add Healing_Ward(ohwd)
 - Mapsize adapter Reforged new size
 - RALLY_POINT reform to STRUCTURE_CONTROL , conteol all build
@@ -124,8 +125,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - official AI code not affected
 - Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will 'smoothly'
 - (DevTools) Independent Path Unit ID
-- GetArmyHealthState no take UNIT_TYPE_SUMMONED
-   - Fixed fountain_available no determine dawn
 - Build peon have compensate , when startloc have more mine
 - If race_manual_loading or race_uses_mine_expansion , GetMinesHarvested will return TownCountDone(mine)
 - Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1 peon HarvestWood(ELF is 2)
@@ -165,6 +164,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - FOCUSFIRE_CONTROL add FOCUS FIRE special_unit , now special_unit have 'hpxe' and 'espv' and 'ngsp' , Phoenix and Soul of Revenge and GoblinSapper
   - Add exclude more Channeling skills ： healingspray , stampederainoffire , magicleash , cloudoffog , unstableconcoction , grabtree , possession , ambush , devour , 852487
   - Add Deny
+  - Add all unit check , fix some time FountainJob cannot runing
   - Fixed AngleBetweenPoints loc setting error
 - NEUTRAL_GUARDED JOB just run on CheckNeutralQuick , CheckNeutral run is repeat
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
@@ -272,6 +272,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed FocusGroupRemoveGuard cannot exit loop
 - Fixed HeroFleeRules no judge dawn
 - Fixde use MOONSTONE no check dawn
+- Fixed GetArmyHealthState fountain_available no determine dawn
 
 ## [3.2.2] - 2022-10-05
 
