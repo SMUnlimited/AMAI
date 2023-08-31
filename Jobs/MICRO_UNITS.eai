@@ -57,7 +57,7 @@ endfunction
 
 //============================================================================
 function DenyUnit takes unit u , integer id returns nothing
-  if id != 'ugrm' and id != 'ohwd' and not IsUnitType(u, UNIT_TYPE_ETHEREAL) and not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+  if id != 'ugrm' and id != 'ohwd' and not IsUnitType(u, UNIT_TYPE_ETHEREAL) and not IsUnitInvisible(u, Player(PLAYERAGGRESSIVE)) then
     set deny_unit = u
   endif
 endfunction
@@ -81,7 +81,7 @@ function SaveUnit takes unit u , integer id returns nothing
   endif
   call RemoveGuardPosition(u)  //no Remove 'hphx'
   if GetUnitAbilityLevel(u, 'AOwk') > 0 or GetUnitAbilityLevel(u, 'ANwk') > 0 then
-    if not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+    if not IsUnitInvisible(u, Player(PLAYERAGGRESSIVE)) then
       call IssueImmediateOrder(u, "windwalk")
     endif
   endif
@@ -107,7 +107,7 @@ function SaveUnit takes unit u , integer id returns nothing
     call RemoveLocation(unitloc)
     set unitloc = null
     call HealUnit(healer, u, false)
-  elseif race_use_fountain and neutral_enemy[hFountainID] <= 0 and not (id == old_id[racial_ghoul]) and not (id == old_id[racial_militia]) and neutral_available[hFountainID] and nearest_neutral[hFountainID] != null and (not neutral_guarded[hFountainID] or (neutral_night_buy[hFountainID] and (daytime >= 18 or daytime < 6) and nearest_neutral[hFountainID] != null)) then  //not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_MECHANICAL)  //Repetitive judgment
+  elseif race_use_fountain and neutral_enemy[hFountainID] <= 0 and id != old_id[racial_ghoul] and neutral_available[hFountainID] and nearest_neutral[hFountainID] != null and (not neutral_guarded[hFountainID] or (neutral_night_buy[hFountainID] and (daytime >= 18 or daytime < 6))) then  //not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_MECHANICAL)  //Repetitive judgment
     if follow_zeppelin != null and not IsUnitInGroup(follow_zeppelin, unit_rescueing) and not IsUnitType(u, UNIT_TYPE_FLYING) then
       //    call SetUnitUserData(follow_zeppelin, UNIT_RESCUEING)
       call CreateDebugTag("Zepplin to fountain", 10, follow_zeppelin, 3.00, 1.50)
@@ -192,56 +192,58 @@ function MicroUnitsJob takes nothing returns nothing
   if (GetGold() > 600 and GetWood() > 400) or GetGoldOwned() > 3000 then
     set deny = true
   endif
-  //call DisplayToAllJobDebug("MICRO_UNITS Job Started") 
+  //call DisplayToAllJobDebug("MICRO_UNITS Job Started")
 
   //call GroupEnumUnitsInRange(g,GetUnitX(major_hero),GetUnitY(major_hero),battle_radius,null)
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectByIllusion(g, false)
   set g = SelectUnittype(g,UNIT_TYPE_PEON,false)
   set g = SelectUnittype(g,UNIT_TYPE_STRUCTURE,false)
-  set g = SelectByUnitStandard(g, true)
+  set g = SelectByUnitFree(g, true)
+  //set g = SelectByUnitStandard(g, true)
   //set g = SelectUnittype(g,UNIT_TYPE_SUMMONED,false)  // need search 'ohwd' and 'hphx'
   //call DisplayToAll("MICRO_UNITS: Group made")
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    //call DisplayToAllJobDebug("MICRO_UNITS: Main Loop")
     set unit_life = GetUnitState(u, UNIT_STATE_LIFE)
     set unit_life_max = GetUnitState(u, UNIT_STATE_MAX_LIFE)
     set unit_mana = GetUnitState(u, UNIT_STATE_MANA)
     set id = GetUnitTypeId(u)
-    //set unitloc = Location(GetUnitX(u),GetUnitY(u))
-    //if (attack_running or town_threatened) then //and DistanceBetweenUnits(major_hero, u) <= battle_radius then
-    //call Trace("MIRCO_UNITS: Attack healing section")
-    //if IsPlayerAlly(GetOwningPlayer(u), ai_player) then
-    //call Trace("MICRO_UNITS: Friendly Unit")
     if id == 'ohwd' then
-//         call GroupAddUnit(new_healer_group, u)
-      set ward_check = true
+      //         call GroupAddUnit(new_healer_group, u)
+            set ward_check = true
     endif
     if unit_life > 0 then
-      if deny == true and not IsUnitType(u, UNIT_TYPE_HERO) and IsStandardUnit(u) and unit_life < 24 and (unit_life/unit_life_max) < 0.10 then
-        call DenyUnit(u,id)
-      endif
-      if not IsUnitType(u, UNIT_TYPE_MECHANICAL) and (id == 'hphx' or not IsUnitType(u, UNIT_TYPE_SUMMONED)) and unit_life < RMax(flee_health_percentage * unit_life_max, flee_minimum_health) then
-        call SaveUnit(u,id)
-      else  //if not IsUnitType(u, UNIT_TYPE_SUMMONED) then
-  #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%4" =~ /\bstatue\b/
-        if id == o%1 then
-          //call DisplayToAllJobDebug("MICRO_UNITS: Statue Control")
-          if attack_running and GetLocationX(last_enemy_loc) != 0 and GetLocationY(last_enemy_loc) != 0 then
-            call StatueControl(u)
-          endif
-          //call DisplayToAllJobDebug("MICRO_UNITS: Statue Control end")
-        endif
-  #ENDINCLUDE
-        if IsUnitHealer(u) then
-          call GroupAddUnit(new_healer_group, u)
-        endif
-        //if GetUnitFoodUsed(u) > 0 and unit_mana < RMax(0.35 * GetUnitState(u, UNIT_STATE_MAX_MANA), 50) then
-          //call GetMana(u, id)
-        //endif
-      endif
+      if IsStandardUnit(u) then
+        //call DisplayToAllJobDebug("MICRO_UNITS: Main Loop")
+        //set unitloc = Location(GetUnitX(u),GetUnitY(u))
+        //if (attack_running or town_threatened) then //and DistanceBetweenUnits(major_hero, u) <= battle_radius then
+          //call Trace("MIRCO_UNITS: Attack healing section")
+          //if IsPlayerAlly(GetOwningPlayer(u), ai_player) then
+            //call Trace("MICRO_UNITS: Friendly Unit")
+            if deny == true and not IsUnitType(u, UNIT_TYPE_HERO) and IsStandardUnit(u) and unit_life < 24 and (unit_life/unit_life_max) < 0.10 then
+              call DenyUnit(u,id)
+            endif
+            if not IsUnitType(u, UNIT_TYPE_MECHANICAL) and (id == 'hphx' or not IsUnitType(u, UNIT_TYPE_SUMMONED)) and unit_life < RMax(flee_health_percentage * unit_life_max, flee_minimum_health) then
+              call SaveUnit(u,id)
+            else  //if not IsUnitType(u, UNIT_TYPE_SUMMONED) then
+              #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%4" =~ /\bstatue\b/
+              if id == o%1 then
+                //call DisplayToAllJobDebug("MICRO_UNITS: Statue Control")
+                if attack_running and GetLocationX(last_enemy_loc) != 0 and GetLocationY(last_enemy_loc) != 0 then
+                  call StatueControl(u)
+                endif
+                //call DisplayToAllJobDebug("MICRO_UNITS: Statue Control end")
+              endif
+              #ENDINCLUDE
+              if IsUnitHealer(u) then
+                call GroupAddUnit(new_healer_group, u)
+              endif
+              //if GetUnitFoodUsed(u) > 0 and unit_mana < RMax(0.35 * GetUnitState(u, UNIT_STATE_MAX_MANA), 50) then
+                //call GetMana(u, id)
+              //endif
+            endif
         //else
         //endif
       //else
@@ -272,6 +274,9 @@ function MicroUnitsJob takes nothing returns nothing
           //	endif
         //endif
       //endif
+      elseif not IsUnitType(u, UNIT_TYPE_MECHANICAL) and (unit_life/unit_life_max) >= 1 then
+        call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)  // fix some time FountainJob cannot runing
+      endif
     endif
     call GroupRemoveUnit(g,u)
     //call RemoveLocation(unitloc)
