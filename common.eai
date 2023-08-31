@@ -3981,10 +3981,12 @@ endfunction
 function GetOneOfId takes unit u, player p, integer id returns unit
   local group g = CreateGroup()
   call GroupEnumUnitsOfPlayer(g, p, null)
+  set g = SelectByHidden(g, false)
+  set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitTypeId(u) == id and UnitAlive(u) and not IsUnitHidden(u) then
+    if GetUnitTypeId(u) == id then
       call DestroyGroup(g)
       set g = null
       return u
@@ -4002,10 +4004,13 @@ endfunction
 function GetOneOfIdNearLoc takes unit u, player p, integer id, location l, real dist returns unit
   local group g = CreateGroup()
   call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
+  set g = SelectByPlayer(g, p, true)
+  set g = SelectByHidden(g, false)
+  set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitTypeId(u) == id and UnitAlive(u) and GetOwningPlayer(u) == p and not IsUnitHidden(u) then
+    if GetUnitTypeId(u) == id then
       call DestroyGroup(g)
       set g = null
       return u
@@ -5116,12 +5121,12 @@ function IsCreepsAwake takes real x, real y, real radius returns boolean
   local boolean awake_creeps = false
 
   call GroupEnumUnitsInRange(g,x,y,radius,null)
+  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
+  set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or awake_creeps
-    if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and UnitAlive(u) then
-      set awake_creeps = not IsUnitType(u, UNIT_TYPE_SLEEPING)
-    endif
+    set awake_creeps = not IsUnitType(u, UNIT_TYPE_SLEEPING)
     call GroupRemoveUnit(g,u)
   endloop
 
@@ -5140,10 +5145,12 @@ function GetLocationCreepStrength takes real x, real y, real radius returns inte
   local real airsum = 0
   set no_sleep = false
   call GroupEnumUnitsInRange(g,x,y,radius,null)
+  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
+  set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and UnitAlive(u) and not IsUnitHidden(u) then
+    if not IsUnitHidden(u) then
       //call Trace("Getting unit strength begin")
       set strength = GetUnitStrength(u)
       set sum = sum + strength
@@ -5170,13 +5177,14 @@ function GetLocationCreepAirStrength takes real x, real y, real radius returns i
   local real airsum = 0
   set no_sleep = false
   call GroupEnumUnitsInRange(g,x,y,radius,null)
+  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
+  set g = SelectByAlive(g, true)
+  set g = SelectByHidden(g, false)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and UnitAlive(u) and not IsUnitHidden(u) then
-      if IsUnitType(u, UNIT_TYPE_FLYING) then
-        set airsum = airsum + GetUnitStrength(u)
-      endif
+    if IsUnitType(u, UNIT_TYPE_FLYING) then
+      set airsum = airsum + GetUnitStrength(u)
     endif
     call GroupRemoveUnit(g,u)
   endloop
@@ -5192,13 +5200,17 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
   local real strength = 0
   local unit u = null
   local real airsum = 0
-  local player p = null
   call GroupEnumUnitsInRange(g,x,y,radius,null)
+  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
+  set g = SelectByAlive(g, true)
+  set g = SelectByHidden(g, false)
+  set g = SelectByPlayer(g, PLAYER_NEUTRAL_AGGRESSIVE, false)
+  set g = SelectByPlayer(g, PLAYER_NEUTRAL_PASSIVE, false)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set p = GetOwningPlayer(u)
-    if IsUnitType(u,UNIT_TYPE_PEON) == false and IsUnitType(u,UNIT_TYPE_STRUCTURE) == false and not IsUnitHidden(u) and UnitAlive(u) and IsPlayerEnemy(ai_player, p) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != Player(PLAYER_NEUTRAL_PASSIVE) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
+    if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
       set strength = GetUnitStrength(u)
       set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
@@ -5209,7 +5221,6 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
   endloop
   call DestroyGroup(g)
   set g = null
-  set p = null
   set air_strength = R2I(airsum + 0.5)
   return R2I(sum + 0.5)
 endfunction
@@ -5219,20 +5230,22 @@ function GetLocationEnemyStructures takes real x, real y, real radius returns in
   local group g = CreateGroup()
   local integer sum = 0
   local unit u = null
-  local player p = null
   call GroupEnumUnitsInRange(g,x,y,radius,null)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  set g = SelectByAlive2(g, true)
+  set g = SelectByHidden(g, false)
+  set g = SelectByPlayer(g, PLAYER_NEUTRAL_AGGRESSIVE, false)
+  set g = SelectByPlayer(g, PLAYER_NEUTRAL_PASSIVE, false)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set p = GetOwningPlayer(u)
-    if IsUnitType(u,UNIT_TYPE_STRUCTURE) == true and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) and IsPlayerEnemy(ai_player, p) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != Player(PLAYER_NEUTRAL_PASSIVE) then
+    if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) then
       set sum = sum + 1
     endif
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
   set g = null
-  set p = null
   return sum
 endfunction
 
@@ -5247,10 +5260,12 @@ function GetLocationTowerStrength takes real x, real y, real radius returns inte
   local unit u = null
   local integer sum = 0
   call GroupEnumUnitsInRange(g,x,y,radius,null)
+  set g = SelectByAlive(g, true)
+  set g = SelectByHidden(g, false)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitTower(u) then
+    if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitTower(u) then
       set sum = sum + 1
     endif
     call GroupRemoveUnit(g,u)
@@ -5268,10 +5283,13 @@ function GetLocationStrength takes real x, real y, real radius returns real
   local unit u = null
   local real airsum = 0
   call GroupEnumUnitsInRange(g,x,y,radius,null)
+  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
+  set g = SelectByAlive(g, true)
+  set g = SelectByHidden(g, false)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if IsUnitType(u,UNIT_TYPE_PEON) == false and UnitAlive(u) and not IsUnitHidden(u) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
+    if not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
       set strength = GetUnitStrength(u)
       set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
@@ -5793,7 +5811,7 @@ function CheckExpansionTaken takes unit expa returns boolean
   call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  set g = SelectByAlive(g, true)
+  //set g = SelectByAlive(g, true)
   set g = SelectByAlive2(g, true)
   call GroupRemoveUnit(g, expa)
   loop
@@ -6239,16 +6257,16 @@ function CheckExpansionRebuild takes nothing returns boolean
   local group g = CreateGroup()
   local unit u = null
   call GroupEnumUnitsInRange(g, GetUnitX(current_expansion), GetUnitY(current_expansion), expansion_taken_radius, null)
-  //set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   //set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)  // no need the Select
-  //set g = SelectByPlayer(g, ai_player, true)
-  //set g = SelectByAlive(g, true)
+  set g = SelectByPlayer(g, ai_player, true)
+  set g = SelectByAlive(g, true)
 
   if FirstOfGroup(g) != null then
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if IsUnitType(u,UNIT_TYPE_STRUCTURE) and (GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL) == true) and GetOwningPlayer(u) == ai_player and UnitAlive(u) then
+      if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL) == true then
         call DestroyGroup(g)
         set g = null
         set u = null
@@ -6278,13 +6296,13 @@ function ExpansionFormula takes integer exp_d, unit exp_u returns integer
 
   call GroupEnumUnitsInRange(g, GetUnitX(exp_u), GetUnitY(exp_u), expansion_taken_radius, null)
   //set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  // set g = SelectByPlayer(g, ai_player, true)
-  // set g = SelectByAlive(g, true)
+  set g = SelectByPlayer(g, ai_player, true)
+  set g = SelectByAlive(g, true)
 
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and GetOwningPlayer(u) == ai_player and (IsUnitType(u, UNIT_TYPE_STRUCTURE) == true or IsUnitType(u, UNIT_TYPE_PEON)) then
+    if IsUnitType(u, UNIT_TYPE_STRUCTURE) == true or IsUnitType(u, UNIT_TYPE_PEON) then
       call DestroyGroup(g)
       set g = null
       set u = null
@@ -9626,10 +9644,12 @@ function UpgradeBuilding takes integer qty, integer unitid, integer town, intege
   endif
   if bloc != BLOC_STD then
     call GroupEnumUnitsInRangeOfLoc(g, GetBuildLocation(bloc), 800, null)
+    set g = SelectByPlayer(g, ai_player, true)
+    set g = SelectByAlive(g, true)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if GetUnitTypeId(u) == old_id[needed1[unitid]] and UnitAlive(u) and GetOwningPlayer(u) == ai_player then
+      if GetUnitTypeId(u) == old_id[needed1[unitid]] then
         if IssueImmediateOrderById(u, old_id[unitid]) then
           set num = num + 1
           if num >= qty then
@@ -9646,10 +9666,12 @@ function UpgradeBuilding takes integer qty, integer unitid, integer town, intege
   if own_town_loc[current_town] != null then
     call GroupClear(g)
     call GroupEnumUnitsInRangeOfLoc(g, own_town_loc[current_town], 2000, null)
+    set g = SelectByPlayer(g, ai_player, true)
+    set g = SelectByAlive(g, true)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if GetUnitTypeId(u) == old_id[needed1[unitid]] and UnitAlive(u) and GetOwningPlayer(u) == ai_player then
+      if GetUnitTypeId(u) == old_id[needed1[unitid]] then
         if IssueImmediateOrderById(u, old_id[unitid]) then
           set num = num + 1
           if num >= qty then
