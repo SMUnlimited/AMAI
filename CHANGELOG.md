@@ -36,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Combat response has been given a boost and if it takes too long it will force attack to be re-evaluated.
 - Small map strategy boost takes account of the actual map size and not just player count.
 - Fix for the optimizer not quite working with latest common.j file.
+- GetHeroToBuyItem would try to buy an item regardless of free slots.
 
 ## [3.2.2] - 2022-10-05
 
