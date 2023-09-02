@@ -14,12 +14,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - This is like the "Computers Only" option where all human players units and buildings are removed at the start of the game but you have direct control.
 - (DevTools) Debug mode will give observers more visibility into the AI's units and hero abilities. (jzy-chitong56)
 - Commander Change strategy dialog now displays the strategy name you can pick for the AI where applicable instead of just a number.
+- Zepplins can now make use of fountains of power (jzy-chitong56)
+- New Gargoyle and Ghouls Strategy for undead (jzy-chitong56)
 
 ### Changed
 - Chinese Translation improvements. (jzy-chitong56)
 - Updated MPQEditor to 3.6.0.368 (jzy-chitong56)
 - Language dialog will be available on game start even when the commander is disabled (jzy-chitong56)
-- Updates for latest war3 version (jzy-chitong56)
+- Updates for latest war3 1.36 version (jzy-chitong56)
+- Hero Skill Adjustments
+    - FAR SEER adjustments to favour wolves.
+    - TFT BLADE MASTER can sometimes learn mirror image.
+    - ROC BLADE MASTER will no longer use mirror image.
+    - DEMON HUNTERS will can now sometimes learn Immolation.
+
 
 ### Removed
 - (DevTools) Old non-working installer has now been removed now we have new version in place.
@@ -40,6 +48,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issue where count for neutral units in dynamic building code was incorrect.
 - Fix focus fire control not using the angle of the target unit (jzy-chitong56)
 - Fix ziggurat selling job never selling lost farms (jzy-chitong56)
+- Ensure zepplin control is not being overriden by default AI (jzy-chitong56)
 
 ## [3.2.2] - 2022-10-05
 
