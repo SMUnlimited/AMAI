@@ -38,6 +38,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fix for the optimizer not quite working with latest common.j file.
 - GetHeroToBuyItem would try to buy an item regardless of free slots.
 - Fixed issue where count for neutral units in dynamic building code was incorrect.
+- Fix focus fire control not using the angle of the target unit (jzy-chitong56)
+- Fix ziggurat selling job never selling lost farms (jzy-chitong56)
 
 ## [3.2.2] - 2022-10-05
 
