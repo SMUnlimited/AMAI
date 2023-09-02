@@ -208,7 +208,7 @@ sub AddKeywords {
       if (/endglobals/) {
         $doaddvars = 0;
       }
-      elsif (/\w+\s+(\w+)\s+=/) {
+      elsif (/\w+\s+(\w+)\s*=/) {
         $keywords{$1} = 1;
       }
     }

@@ -35,6 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed an issue where hero flee rules could reference an invalid array address possibly killing the thread. (jzy-chitong56)
 - Combat response has been given a boost and if it takes too long it will force attack to be re-evaluated.
 - Small map strategy boost takes account of the actual map size and not just player count.
+- Fix for the optimizer not quite working with latest common.j file.
 
 ## [3.2.2] - 2022-10-05
 
