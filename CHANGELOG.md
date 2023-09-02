@@ -37,6 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Small map strategy boost takes account of the actual map size and not just player count.
 - Fix for the optimizer not quite working with latest common.j file.
 - GetHeroToBuyItem would try to buy an item regardless of free slots.
+- Fixed issue where count for neutral units in dynamic building code was incorrect.
 
 ## [3.2.2] - 2022-10-05
 
