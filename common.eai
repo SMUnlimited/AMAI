@@ -5529,27 +5529,24 @@ endfunction
 function GetExpFoeGroup takes unit mine returns group
   local group g = CreateGroup()
   
-  call GroupEnumUnitsInRange(g, GetUnitX(mine), GetUnitY(mine), expansion_radius, null)
-  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
-  set g = SelectByAlive(g, true)
+  set g = CheckCreepsByRadius(g, mine, expansion_radius)
   if FirstOfGroup(g) == null then
-    set g = CheckCreepsByRadius(g,mine,RMax(1500,expansion_radius))
+    set g = CheckCreepsByRadius(g, mine, expansion_radius * 1.5)
   endif
   return g
 endfunction
 
 function GetCreepGuardGroup takes integer nn returns group
-  local group g = CreateGroup()
+  local group g = null
 
   if nearest_neutral[nn] == null then
     return null
   endif
 
-  call GroupEnumUnitsInRange(g, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), 750, null)
-  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
-  set g = SelectByAlive(g, true)
+  set g = CreateGroup()
+  set g = CheckCreepsByRadius(g, nearest_neutral[nn], 750)
   if FirstOfGroup(g) == null and nn != NEUTRAL_TAVERN then
-    set g = CheckCreepsByRadius(g,nearest_neutral[nn],1000)
+    set g = CheckCreepsByRadius(g,nearest_neutral[nn],750 * 1.5)
   endif
   return g
 endfunction
@@ -6832,26 +6829,28 @@ function InitNeutralBuildings takes nothing returns nothing
     	set neutral_available[NEUTRAL_SHIPYARD] = true
     elseif GetUnitTypeId(u) == neutral_id[NEUTRAL_MARKETPLACE] then
     	set neutral_available[NEUTRAL_MARKETPLACE] = true
-    elseif not mercfound then
-        set i = 0
-	loop
-		set i = i + 1
-      	if GetUnitTypeId(u) == camp[i] then
-			set mercfound = true
-		endif
-	      exitwhen mercfound or i >= j
-	endloop
-    elseif not roostfound then
-        set k = 0
-        loop
-		set k = k + 1
-		if GetUnitTypeId(u) == roost[k] then
-			set roostfound = true
-    		endif
-	      exitwhen roostfound or k >= m
-	endloop
     else
-    endif
+      if not mercfound then
+        set i = 0
+        loop
+          set i = i + 1
+          if GetUnitTypeId(u) == camp[i] then
+            set mercfound = true
+          endif
+          exitwhen mercfound or i >= j
+        endloop
+      endif  
+      if not roostfound then
+          set k = 0
+          loop
+            set k = k + 1
+            if GetUnitTypeId(u) == roost[k] then
+              set roostfound = true
+            endif
+            exitwhen roostfound or k >= m
+          endloop
+      endif
+    endif  
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
@@ -6920,13 +6919,6 @@ function CheckAllNeutrals takes nothing returns nothing
     call Sleep(0.1)
   endloop
 
-  //if nearest_neutral[GetHealthFountainID()] != null then
-    //call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALING_FOUNTAIN)  // CheckNeutralQuick call once
-  //endif
-
-  //if nearest_neutral[GetManaFountainID()] != null then
-    //call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_MANA_FOUNTAIN)
-  //endif
 endfunction
 
 //============================================================================
@@ -8389,7 +8381,6 @@ endfunction
 function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns nothing
     local integer i = 0
     local integer j = 0
-    set qty = BlockListCheck(qty, unitid)
 
     if unitid == 0 or qty == 0 then
       return
@@ -8499,8 +8490,12 @@ function RefreshNeeded takes integer t, integer qty, integer unitid, integer tow
 endfunction
 
 function SetBuildAllAM takes integer t, integer mqty, integer unitid, integer town, integer bloc, integer prio returns nothing
-  call SetBuildAllAMCore(t, mqty, unitid, town, bloc, prio)
-  call RefreshNeeded(t, mqty, unitid, town, bloc, prio)
+  local integer qty = BlockListCheck(mqty, unitid)
+  if unitid == 0 or qty == 0 then
+    return
+  endif
+  call SetBuildAllAMCore(t, qty, unitid, town, bloc, prio)
+  call RefreshNeeded(t, qty, unitid, town, bloc, prio)
 endfunction
 
 //============================================================================
@@ -10436,8 +10431,7 @@ function SleepInCombatAM takes nothing returns nothing
       exitwhen break_attack
       exitwhen not CaptainInCombat(true)  // goal is cleared
       exitwhen CaptainIsEmpty()// duh
-      exitwhen town_threat_break //and town_threatened
-      //exitwhen break_attack
+      exitwhen town_threat_break
       exitwhen R2I(count/sleep_multiplier) >= 900 // Took longer than 15 mins to attack something is wrong
       //loop
         //exitwhen captain_flee and CaptainRetreating()
@@ -11401,7 +11395,8 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
 		call FormGroupAM(1)
 		call SleepUntilTownDefended(ai_strength)
 		call SleepInCombatAM()
-    endif
+    return
+  endif
 
     call Trace("===Single Melee Attack===" )
 	call Trace("AI strength: " + Int2Str(ai_strength))	

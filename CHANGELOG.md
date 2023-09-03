@@ -23,11 +23,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Language dialog will be available on game start even when the commander is disabled (jzy-chitong56)
 - Updates for latest war3 1.36 version (jzy-chitong56)
 - Hero Skill Adjustments
-    - FAR SEER adjustments to favour wolves.
+    - FAR SEER adjustments to favor wolves.
     - TFT BLADE MASTER can sometimes learn mirror image.
     - ROC BLADE MASTER will no longer use mirror image.
     - DEMON HUNTERS will can now sometimes learn Immolation.
-
 
 ### Removed
 - (DevTools) Old non-working installer has now been removed now we have new version in place.
@@ -37,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fix Goblin Tinker not learning abilities after picking the engineering skill. (jzy-chitong56)
 - Fix VSAI more than 12 players support (jzy-chitong56)
 - Various memory leak fixes. (jzy-chitong56)
+- Various protection against division by 0 (jzy-chitong56)
 - Changing language more than once may not apply the english backup correctly. (jzy-chitong56)
 - More unicode fixes to languages (jzy-chitong56)
 - If creep cannot be found but expects one, will temporarily widen scan range just to be sure. (jzy-chitong56)
@@ -49,6 +49,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fix focus fire control not using the angle of the target unit (jzy-chitong56)
 - Fix ziggurat selling job never selling lost farms (jzy-chitong56)
 - Ensure zepplin control is not being overriden by default AI (jzy-chitong56)
+- Fixed food available being calculated incorrectly (jzy-chitong56)
+- Fixed issue where merc camps and dragon roosts were not detected.
 
 ## [3.2.2] - 2022-10-05
 
