@@ -49,7 +49,7 @@ For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.htm
 ## Notes
 - Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on completly custom maps (e.g towerdefence), it will make no difference on such maps.
 - Custom melee maps need to be set to latest patch data. Open the map in the Warcraft editor, go to Scenario->Map Options-> and change "Game Data Set" to "Melee (Latest Patch)".
-- Lua maps do not appear to work. Open the map in the Warcraft editor, go to Scenario->Map Options-> and change "Script Language" to Jass, then install AMAI to it. 
+- Lua maps do not appear to work. Open the map in the Warcraft editor, go to Scenario->Map Options-> and change "Script Language" to Jass, then install AMAI to it. If "Script Language" is disabled, please reset the "Trigger Editor" to its initial state.
 - You may need to run as an administrator if you have issues with maps not displaying any teams.
 
 # Build Requirements
