@@ -5821,13 +5821,14 @@ function CheckExpansionTaken takes unit expa returns boolean
       call DestroyGroup(g)
       set g = null
       set u = null
-      call GroupRemoveUnit(far_expansion, expa)
+      if not IsUnitHidden(u) then
+        call GroupRemoveUnit(far_expansion, expa)
+      endif
       return true
     elseif GetOwningPlayer(u) != ai_player and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then		// Creeps dosn't mean expansion is taken
       call DestroyGroup(g)
       set g = null
       set u = null
-      call GroupRemoveUnit(far_expansion, expa)
       return true
     endif
     call GroupRemoveUnit(g, u)
@@ -6755,25 +6756,12 @@ function GetHeroToBuyItem takes unit shop, real limit, boolean is_healing_includ
   loop
     exitwhen i > 3
     if hero_built[i] and UnitAlive(hero_unit[i]) then
-      if GetSlotsFreeOnUnit(hero_unit[i]) > 0 and DistanceBetweenUnits(hero_unit[i], shop) < limit and not IsUnitInGroup(hero_unit[i], unit_buying_tavern) and not IsUnitInGroup(hero_unit[i], unit_buying_merc) and not IsUnitInGroup(hero_unit[i], unit_harassing) then
-        if IsUnitInGroup(hero_unit[i], unit_healing) and is_healing_included then
-        elseif not is_healing_included or (is_healing_included and not IsUnitInGroup(hero_unit[i], unit_healing)) then
+     if GetSlotsFreeOnUnit(hero_unit[i]) > 0 and DistanceBetweenUnits(hero_unit[i], shop) < limit and not IsUnitInGroup(hero_unit[i], unit_buying_tavern) and not IsUnitInGroup(hero_unit[i], unit_buying_merc) and not IsUnitInGroup(hero_unit[i], unit_harassing) then
+       if IsUnitInGroup(hero_unit[i], unit_healing) and is_healing_included then
+       else
           return hero_unit[i]
-        endif
-      endif
-    endif
-    set i = i + 1
-  endloop
-  set i = 1
-  loop
-    exitwhen i > 3
-    if hero_built[i] and UnitAlive(hero_unit[i]) then
-      if DistanceBetweenUnits(hero_unit[i], shop) < limit and not IsUnitInGroup(hero_unit[i], unit_buying_tavern) and not IsUnitInGroup(hero_unit[i], unit_buying_merc) and not IsUnitInGroup(hero_unit[i], unit_harassing) then
-        if IsUnitInGroup(hero_unit[i], unit_healing) and is_healing_included then
-        elseif not is_healing_included or (is_healing_included and not IsUnitInGroup(hero_unit[i], unit_healing)) then
-          return hero_unit[i]
-        endif
-      endif
+       endif
+     endif
     endif
     set i = i + 1
   endloop
@@ -7080,7 +7068,7 @@ function TQLoop takes nothing returns nothing
     exitwhen player_defeated
     if tq_length > 0 then
       if not TQHandleOnce() then
-        call Sleep(RMin(RMax(tq_time[1] - TimerGetElapsed(tq_timer) + 0.05,0.05) ,1))
+        call Sleep(RMin(RMax(tq_time[1] - TimerGetElapsed(tq_timer) + 0.05,0.02) ,1))
       else
         call Sleep(0.05)
       endif
@@ -7708,7 +7696,7 @@ function InitCheckHarvest takes nothing returns nothing
   local unit u = null
   local integer i = GOLD_MINE
   local integer c = 0
-  local integer p = 0
+  local integer p = 1
   local real check = 0
   local real distance = 0
   if race_manual_loading then
@@ -7736,25 +7724,22 @@ function InitCheckHarvest takes nothing returns nothing
       endif
     endif
     if (IsUnitType(u, UNIT_TYPE_TOWNHALL) or GetUnitTypeId(u) == old_id[racial_expansion]) and GetOwningPlayer(u) != ai_player then
-      set p = 2  // have more player , need fix harvest , but maybe no need fix expensive
+      set p = p + 1  // have more player , need fix harvest , but maybe no need fix expensive
     endif
     call GroupRemoveUnit(g, u)
   endloop
-  if p == 2 then
-    if c == 2 and i != GOLD_MINE then
-      set first_town_mine = 1 // mode one , have more mine , but one player have one mine(like (4)synergybigpaved.w3x) , just fix UD harvest
-    elseif c > 2 then
-      set first_town_mine = 2  // mode three , have more mine , but one player have more mine , fix harvest and expensive
+  if p > 1 then  // more mine and more player
+    if c == p and i != GOLD_MINE then
+      set first_town_mine = 1 // mode one , one player have one mine , and this mine too close (like (4)synergybigpaved.w3x) , just fix UD and ELF harvest
+    elseif c >= p then
+      set first_town_mine = 2  // mode two , one player have more mine , fix UD and ELF harvest and all race expensive - prior take closest home_location mine
     endif
-  elseif c > 1 and p == 0 then
-    set first_town_mine = 3 // mode two, have more mine , but one play have this mine , fix harvest and expensive - prior take closest home_location mine
+  elseif c > 1 and p == 1 then // more mine and one player
+    set first_town_mine = 3 // mode three , one player have this mine , fix all race harvest and expensive - prior take closest home_location mine
   endif
   if first_town_mine == 0 and i != GOLD_MINE then
     set first_town_mine = 1  // just one mine , but now cannot harvest , need fix UD harvest
     // some map home_location 1500 radius just one mine , but old war3 (maybe 1.24~1.28 , 1.36 no this bug) UD and ELF still cannot harvest(maybe need 2300 radius no more mine)
-  endif
-  if (i == GOLD_MINE and first_town_mine == 3) or i != GOLD_MINE then
-    call TQAddJob(2, HARVEST_CHECK, 0)  // use job fix harvest
   endif
   call DestroyGroup(g)
   set g = null
@@ -8198,7 +8183,12 @@ function AMAI takes code heroes, code peons, code attacks returns nothing
     call Trace("Setting hero levels")
     call SetHeroLevels(heroes)
     call Trace("heros set")
+    if GetMinesOwned() > 1 then
+      call InitCheckHarvest()  // now home_location distance 1500 have more mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix
+    endif
+    // Job Thread
     call Sleep(0.1)
+    call StartThread(function TQLoop)
     //call Trace("TQLoop")
     call StartThread(peons)
     //call Trace("peons")
@@ -8206,11 +8196,6 @@ function AMAI takes code heroes, code peons, code attacks returns nothing
     //call Trace("attacks")
     call StartThread(function cmd_loop)
     //call Trace("cmd_loop")
-    if GetMinesOwned() > 1 then
-      call InitCheckHarvest()  // now home_location distance 1500 have more mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix
-    endif
-    // Job Thread
-    call StartThread(function TQLoop)
 endfunction
 
 //============================================================================
@@ -10070,7 +10055,7 @@ function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
   endif
   if IsUnitInTransport(expansion_peon, build_zeppelin) then
     if DistanceBetweenUnits(build_zeppelin, target) > 300 then
-      call IssuePointOrder(build_zeppelin, "move", GetUnitX(target), GetUnitY(target))
+      call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + GetRandomReal(-200,200), GetUnitY(target) + GetRandomReal(-200,200))
     else
       call IssueTargetOrder(build_zeppelin, "unload", expansion_peon)
       call Sleep(1.2)  //unload time
@@ -12629,7 +12614,7 @@ function ApplyHealingItem takes unit u, item heal_item returns nothing
   call GroupPointOrder(medium_healing_group, "move", GetUnitX(u), GetUnitY(u))
   call GroupPointOrder(small_healing_group, "move", GetUnitX(u), GetUnitY(u))
   call Sleep(5 * sleep_multiplier)
-  if false then
+    if false then
   #INCLUDETABLE <$VER$\HealingItems.txt> #EFR #COND "%1" eq "RITUAL_DAGGER"
   elseif GetItemTypeId(heal_item) == old_id[%1] then  //prevent killing high health units
     set target = FirstOfGroup(urgent)
