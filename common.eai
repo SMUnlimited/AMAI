@@ -5854,7 +5854,7 @@ function GetExpFoeGroup takes group g , unit mine returns group
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set g = SelectByAlive(g, true)
   if FirstOfGroup(g) == null then
-    set g = CheckCreepsByRadius(g,mine,RMax(1500,expansion_radius))
+    set g = CheckCreepsByRadius(g, mine, expansion_radius * 1.5)
   endif
   return g
 endfunction
@@ -5871,7 +5871,7 @@ function GetCreepGuardGroup takes group g , integer nn returns group
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set g = SelectByAlive(g, true)
   if FirstOfGroup(g) == null and nn != NEUTRAL_TAVERN then
-    set g = CheckCreepsByRadius(g,nearest_neutral[nn],1000)
+    set g = CheckCreepsByRadius(g, nearest_neutral[nn], 750 * 1.5)
   endif
   return g
 endfunction
@@ -6152,10 +6152,13 @@ function GetNearestEnemyDistance takes nothing returns real
 local integer i = 0
 local real dist = 0
 local real mindistance = 1000000
+local real humandistance = 0
 local player nearplayer = null
+local player nearhumanplayer = null
 local group g = CreateGroup()
 local unit u = null
 local unit tempu = null
+local unit temphumanu = null
 //loop
 //    exitwhen i >= c_enemy_total
 //    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
@@ -6193,6 +6196,11 @@ loop
 				set mindistance = dist
 				set nearplayer = enemy_force[i]
 				set tempu = u
+				if GetPlayerController(enemy_force[i]) != MAP_CONTROL_COMPUTER then
+					set humandistance = dist
+					set nearhumanplayer = enemy_force[i]
+					set temphumanu = u
+				endif
 			endif
 			call GroupRemoveUnit(g, u)
 		endloop
@@ -6200,12 +6208,20 @@ loop
 	endif
 	set i = i + 1
 endloop
-set builder[10] = tempu
-set rushedplayer = nearplayer
+if c_enemy_user_total == 1 then
+	set builder[10] = temphumanu
+	set rushedplayer = nearhumanplayer
+	set mindistance = humandistance
+else
+	set builder[10] = tempu
+	set rushedplayer = nearplayer
+endif
 call DestroyGroup(g)
 set g = null
 set nearplayer = null
+set nearhumanplayer = null
 set tempu = null
+set temphumanu = null
 return mindistance
 endfunction
 
@@ -7533,10 +7549,18 @@ function cmd_attack takes integer cmd, integer data returns nothing
     call DisplayToAllies(chat_confirm_attack_unit)
 
   elseif cmd == 17 then // Towerrush
-    if race_towerrush_available then
+    if race_towerrush_available and not towerrush then
       call StartTowerRush(1)
-      //call DisplayToAllies(chat_towerrush)
-    else
+      if toweringplayerloc != null then
+        if tower_target_loc != null then
+          call RemoveLocation(tower_target_loc)
+        endif
+        set tower_target_loc = GetLocationInDistanceFromLoc(toweringplayerloc, 1100)  //DistanceBetweenPoints the toweringplayerloc and first_tower_point , front_base_distance now is change , so need set new
+        set check_tower_enemy = true
+        call StartTowerRush(data)
+        //call DisplayToAllies(chat_towerrush)
+        return
+      endif
       call DisplayToAllies(chat_no_towerrush)
       call DisplayToObserversImportant( chat_no_towerrush )
     endif
@@ -7652,8 +7676,11 @@ endfunction
 function cmd_loop takes nothing returns nothing
   local integer cmd = 0
   local integer data = 0
-
-  call StaggerSleep(0,3)
+  if race_towerrush_available then
+    call cmd_attack(17,10)
+  else
+    call StaggerSleep(0,3)
+  endif
   call Trace("Starting Commander Thread Loop" )
 
   loop
@@ -7743,6 +7770,8 @@ function InitCheckHarvest takes nothing returns nothing
   endif
   call DestroyGroup(g)
   set g = null
+  call HarvestGold(0,3)
+  call HarvestWood(0,2)  // Early triggering Harvest , convenient HARVEST_CHECK job check peon
 endfunction
 
 //===========================================================================
@@ -9866,7 +9895,6 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
 
     set cost_qty = Min(cost_qty, afford_food)
 
-    call Sleep(0.05)
     set afford_food = ApplyUpkeepCheck(afford_food, ver_food_limit - total_food, food_cost, cost_qty, need_qty)
 
     set cost_qty = Min(cost_qty, afford_food)
@@ -10751,6 +10779,7 @@ function OneBuildLoopAM takes nothing returns nothing
     call GetBuildLock()
     loop
       exitwhen index >= build_length
+      call Sleep(0.01)
       set id = build_item[index]
       set qty = RBlockListCheck(build_qty[index], id)
       set tp = build_type[index]
