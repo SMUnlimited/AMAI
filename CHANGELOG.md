@@ -166,6 +166,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Add exclude more Channeling skills ： healingspray , stampederainoffire , magicleash , cloudoffog , unstableconcoction , grabtree , possession , ambush , devour , 852487
   - Add no single point continuous treatment during combat , avoid unit wandering and can send home
   - Add Deny
+  - Add healer_group check , prevent save job loss and loss of control for units that have recovered health
   - Fixed AngleBetweenPoints loc setting error
 - NEUTRAL_GUARDED JOB just run on CheckNeutralQuick , CheckNeutral run is repeat
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
