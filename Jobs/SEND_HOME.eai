@@ -1,7 +1,7 @@
 #IFDEF GLOBAL
 #ELSE
 
-function SendHomeMoveUnitToLoc takes unit u, integer p, location l returns nothing
+function SendHomeMoveUnitToLoc takes unit u, location l returns nothing
   local integer enemystrength = GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 800)
   if (GetUnitAbilityLevel(u, 'AOwk') > 0 or GetUnitAbilityLevel(u, 'ANwk') > 0) then
     if enemystrength > 0 and not UnitInvis(u) then
@@ -87,8 +87,8 @@ local unit otherhero = null
   elseif racial_healing_item != 0 and GetItemNumberOnUnit(racial_healing_item, u) > 0 then
     call CreateDebugTag("Hero: Use healing item", 10, u, 3.00, 2.00)
     if GetItemInstantType(racial_healing_item) == ITEMTYPE_CONTINUOUS and DistanceBetweenPoints_dk(GetUnitLoc(u), exist_town[p]) >= 1200 then
-      call SendHomeMoveUnitToLoc(u,p,exist_town[p])  // This should be required for all regenerative type healing items
-      call TQAddUnitJob(Max(3,GetItemHealingTime(racial_healing_item)), SEND_HOME, p, u) // Have to add delay as continous healing items run out then
+      call SendHomeMoveUnitToLoc(u,exist_town[p])  // This should be required for all regenerative type healing items
+      call TQAddUnitJob(4, SEND_HOME, p, u)
     else
       call CreateDebugTag("Hero: Use healing item , end Job", 10, u, 3.00, 1.50)
       call UnitUseItem(u, GetItemOfTypeOnUnit(racial_healing_item, u))
@@ -96,19 +96,19 @@ local unit otherhero = null
       if racial_mana_item != 0 and GetUnitState(u, UNIT_STATE_MANA) < 100 and GetItemNumberOnUnit(racial_mana_item, u) > 0 then
         call UnitUseItem(u, GetItemOfTypeOnUnit(racial_mana_item, u))
       endif
-      call TQAddUnitJob(2, SEND_HOME, p, u)
+      call TQAddUnitJob(Max(3,GetItemHealingTime(racial_healing_item)), SEND_HOME, p, u) // Have to add delay as continous healing items run out
     endif
   elseif otherhero != null then
     if GetSlotsFreeOnUnit(u) > 0 then  // prevent create on the ground
       call UnitAddItem(u, GetItemOfTypeOnUnit(racial_healing_item, otherhero))
-      call TQAddUnitJob(1, RESET_GUARD_POSITION, 0, u)
+      call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
     else
-      call TQAddUnitJob(2, SEND_HOME, p, u)
+      call TQAddUnitJob(4, SEND_HOME, p, u)
     endif
   elseif nearshopunit != null and GetSlotsFreeOnUnit(u) > 0 and GetItemNumberOnUnit(racial_healing_item, u) <= 0 then
     if DistanceBetweenUnits(u, nearshopunit) >= buy_distance then
       set l = GetUnitLoc(nearshopunit)
-      call SendHomeMoveUnitToLoc(u,p,l)
+      call SendHomeMoveUnitToLoc(u,l)
       call RemoveLocation(l)
       set l = null
       call TQAddUnitJob(4, SEND_HOME, p, u)
@@ -119,12 +119,12 @@ local unit otherhero = null
       if GetUnitState(u, UNIT_STATE_MANA) < 100 and GetItemNumberOnUnit(racial_mana_item, u) <= 0 then
         call IssueNeutralImmediateOrderById(ai_player, nearshopunit, old_id[racial_mana_item])
       endif
-      call TQAddUnitJob(1, RESET_GUARD_POSITION, 0, u)
+      call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)  // end job
       //call RecycleGuardPosition(u)
     endif
   else
     if DistanceBetweenPoints_dk(GetUnitLoc(u), exist_town[p]) >= 1200 then
-      call SendHomeMoveUnitToLoc(u,p,exist_town[p])
+      call SendHomeMoveUnitToLoc(u,exist_town[p])
     else
       set g = CreateGroup()
       call GroupEnumUnitsInRangeOfLoc(g, exist_town[p], 1000, null)
