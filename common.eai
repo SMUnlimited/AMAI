@@ -3360,8 +3360,6 @@ function countAllyEnemy takes nothing returns nothing
         set c_ai_total = c_ai_total + 1
       endif
       if IsPlayerAlly(ai_player,p) then
-        set ally_force[ally_number] = p
-        set ally_number = ally_number + 1
         if i == GetAiPlayer() then
           set self_came = true
           set next_came = true
@@ -3381,6 +3379,8 @@ function countAllyEnemy takes nothing returns nothing
             set no_ally_ctrl = false
             set c_ally_user_total = c_ally_user_total + 1
           endif
+          set ally_force[ally_number] = p
+          set ally_number = ally_number + 1
           set c_ally[player_race[i]] = c_ally[player_race[i]] + 1
           set c_ally_total = c_ally_total + 1
         endif
@@ -8860,11 +8860,7 @@ endfunction
 function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns nothing
   local integer i = 0
   local integer j = 0
-  set qty = BlockListCheck(qty, unitid)
 
-  if unitid == 0 or qty == 0 then
-    return
-  endif
   if t == BUILD_UPGRADE then
     if GetUpgradeLevel(old_id[unitid]) >= qty then
       return
@@ -8969,8 +8965,11 @@ function RefreshNeeded takes integer t, integer qty, integer unitid, integer tow
 endfunction
 
 function SetBuildAllAM takes integer t, integer mqty, integer unitid, integer town, integer bloc, integer prio returns nothing
-  call SetBuildAllAMCore(t, mqty, unitid, town, bloc, prio)
-  call RefreshNeeded(t, mqty, unitid, town, bloc, prio)
+  set mqty = BlockListCheck(mqty, unitid)
+  if unitid != 0 and qty != 0 then
+    call SetBuildAllAMCore(t, mqty, unitid, town, bloc, prio)
+    call RefreshNeeded(t, mqty, unitid, town, bloc, prio)
+  endif
 endfunction
 
 //============================================================================
@@ -10243,7 +10242,7 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
   endif
   loop
     exitwhen i >= ally_number
-    if GetPlayerSlotState(ally_force[i]) == PLAYER_SLOT_STATE_PLAYING and ai_player != ally_force[i] then
+    if GetPlayerSlotState(ally_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set per[m] = i
       set m = m + 1
     endif
@@ -12650,7 +12649,7 @@ function ApplyHealingItem takes unit u, item heal_item returns nothing
   call GroupPointOrder(medium_healing_group, "move", GetUnitX(u), GetUnitY(u))
   call GroupPointOrder(small_healing_group, "move", GetUnitX(u), GetUnitY(u))
   call Sleep(5 * sleep_multiplier)
-    if false then
+  if false then
   #INCLUDETABLE <$VER$\HealingItems.txt> #EFR #COND "%1" eq "RITUAL_DAGGER"
   elseif GetItemTypeId(heal_item) == old_id[%1] then  //prevent killing high health units
     set target = FirstOfGroup(urgent)
