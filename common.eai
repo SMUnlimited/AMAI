@@ -3047,7 +3047,7 @@ function DisplayChat takes boolean ally, boolean enemy, boolean obs, boolean imp
   loop
     exitwhen i >= GetBJMaxPlayers()
     set p = Player(i)
-    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) != MAP_CONTROL_COMPUTER and ((ally and IsPlayerAlly(p, ai_player)) or (enemy and IsPlayerEnemy(p, ai_player) and not IsPlayerObserver(p))) or (obs and IsPlayerObserver(p)) then
+    if (GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) != MAP_CONTROL_COMPUTER and ((ally and IsPlayerAlly(p, ai_player)) or (enemy and IsPlayerEnemy(p, ai_player)) and not IsPlayerObserver(p))) or (obs and IsPlayerObserver(p)) then
       set rand = std_rand
       loop
         exitwhen (chat_list_eq[rand] == COMPARE_TRUE) or (chat_list_eq[rand] == COMPARE_EQ and chat_list_race[rand] == race_name[player_race[i]]) or (chat_list_eq[rand] == COMPARE_UNEQ and chat_list_race[rand] != race_name[player_race[i]])
@@ -3360,11 +3360,13 @@ function countAllyEnemy takes nothing returns nothing
         set c_ai_total = c_ai_total + 1
       endif
       if IsPlayerAlly(ai_player,p) then
-        set own_force[force_number] = p
-        set force_number = force_number + 1
+        set ally_force[ally_number] = p
+        set ally_number = ally_number + 1
         if i == GetAiPlayer() then
           set self_came = true
           set next_came = true
+          set own_force[force_number] = p
+          set force_number = force_number + 1
         else
           if GetPlayerController(p) == MAP_CONTROL_COMPUTER then
             if not self_came then
@@ -3373,6 +3375,8 @@ function countAllyEnemy takes nothing returns nothing
               set next_ai = i
               set next_came = false
             endif
+            set own_force[force_number] = p
+            set force_number = force_number + 1
           else
             set no_ally_ctrl = false
             set c_ally_user_total = c_ally_user_total + 1
@@ -8215,8 +8219,8 @@ function AMAI takes code heroes, code peons, code attacks returns nothing
     if GetMinesOwned() > 1 then
       call InitCheckHarvest()  // now home_location distance 1500 have more mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix
     endif
-    // Job Thread
     call Sleep(0.1)
+    // Job Thread
     call StartThread(function TQLoop)
     //call Trace("TQLoop")
     call StartThread(peons)
@@ -10238,8 +10242,8 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
     return true
   endif
   loop
-    exitwhen i >= force_number
-    if GetPlayerSlotState(own_force[i]) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(own_force[i]) and ai_player != own_force[i] then
+    exitwhen i >= ally_number
+    if GetPlayerSlotState(ally_force[i]) == PLAYER_SLOT_STATE_PLAYING and ai_player != ally_force[i] then
       set per[m] = i
       set m = m + 1
     endif
@@ -12062,8 +12066,8 @@ function SetLeadAlly takes nothing returns nothing
   local boolean checkdone = false
   local player p = null
   loop
-    exitwhen i >= force_number or checkdone
-    set p = own_force[i]
+    exitwhen i >= ally_number or checkdone
+    set p = ally_force[i]
     if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
       if GetPlayerController(p) == MAP_CONTROL_COMPUTER and p != ai_player then
         set leadally = false
