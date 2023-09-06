@@ -133,22 +133,24 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
     set hu = null
     return
   endif
-  if state_retreat and DistanceBetweenPoints_dk(GetUnitLoc(hu), home_location) > 1000 then
-    call GroupOrderWindWalkInstant_d(CopyGroup(harasser,g))
-    call GroupPointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
-    call TQAddGroupJob(3 * sleep_multiplier, HARASS, ht, target, harasser)
-    //call GroupRemoveUnit(unit_harassing, hu)
-    set target = null
-    set hu = null
-    set g = null
-    return
-  elseif state_retreat then
-    call SaveBoolean(additional_info, key, STATE_RETREAT , false)
-    //call GroupRecycleGuardPositionInstant(harasser)
-    call GroupRecycleHarrassPositionInstant(harasser)
-    set target = null
-    set hu = null
-    return
+  if state_retreat then
+    if DistanceBetweenPoints_dk(GetUnitLoc(hu), home_location) > 1000 then
+      call GroupOrderWindWalkInstant_d(CopyGroup(harasser,g))
+      call GroupPointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
+      call TQAddGroupJob(3 * sleep_multiplier, HARASS, ht, target, harasser)
+      //call GroupRemoveUnit(unit_harassing, hu)
+      set target = null
+      set hu = null
+      set g = null
+      return
+    else
+      call SaveBoolean(additional_info, key, STATE_RETREAT , false)
+      //call GroupRecycleGuardPositionInstant(harasser)
+      call GroupRecycleHarrassPositionInstant(harasser)
+      set target = null
+      set hu = null
+      return
+    endif
   endif
 
   if target != null and (IsUnitHidden(target) or IsUnitLoaded(target) or IsUnitInvisible(target, ai_player)) then	// Checks to see if unit is not targetable and after small period will change to target it can hit
@@ -208,10 +210,11 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
     else
       call GroupEnumUnitsInRange(g,GetUnitX(hu),GetUnitY(hu),harass_radius_flee_ranged,null)
     endif
+    set g = SelectByAlive(g, true)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if UnitAlive(u) then
+      if not IsUnitHidden(u) then
         set p = GetOwningPlayer(u)
         if IsPlayerEnemy(ai_player, p) and IsUnitTower(u) and avoiding_towers then
           set towersdetected = true
@@ -257,23 +260,23 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
       call GroupPointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
       //call GroupRecycleGuardPosition(harasser)
       //return
-    elseif strength_sum < strength_limit then
+    elseif strength_sum < strength_limit and hu != null then
       call SaveBoolean(additional_info, key, STATE_ATTACKING, true)
-      if hu != null and IsUnitInvisible(hu, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+      if IsUnitInvisible(hu, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
         set timedelay = timedelay + 1
         call SaveInteger(additional_info, key, WINDWALK_COUNT, timedelay)
       else
         set timedelay = -1	// Not a windwalker harassing so attack immediatly
         call SaveInteger(additional_info, key, WINDWALK_COUNT, 0)
       endif
-      if hu != null and DistanceBetweenUnits(hu, target) > 650 then
+      if DistanceBetweenUnits(hu, target) > 650 then
         if DistanceBetweenUnits(hu, target) <= 5000 then
           call GroupOrderWindWalkInstant_d(CopyGroup(harasser,g))
           set g = null
         endif
         call CreateDebugTag("HARASS: Move to Target unit", 10, target, 3.00, 1.50)
         call GroupPointOrder(harasser, "move", GetUnitX(target), GetUnitY(target))
-      elseif hu != null then
+      else
         if timedelay >= 5 or timedelay == -1 or IsUnitDetected(hu, GetOwningPlayer(target)) then
           call GroupTargetOrder(harasser, "attack", target)
           call IssueTargetOrder(hu, "attack", target)

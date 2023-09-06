@@ -170,7 +170,7 @@ function GetMana takes unit u , integer id returns nothing
   local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
   local integer mFountainID = GetManaFountainID()
 
-  if race_use_fountain and GetUnitState(u, UNIT_STATE_MANA) < GetUnitState(u, UNIT_STATE_MAX_MANA) * 0.4 and not IsUnitType(u, UNIT_TYPE_PEON) and neutral_enemy[mFountainID] <= 0 and not (id == old_id[racial_ghoul]) and not (id == old_id[racial_militia]) and neutral_available[mFountainID] and nearest_neutral[mFountainID] != null and (not neutral_guarded[mFountainID] or (neutral_night_buy[mFountainID] and (daytime >= 18 or daytime < 6) and nearest_neutral[mFountainID] != null)) then
+  if race_use_fountain and GetUnitState(u, UNIT_STATE_MANA) < GetUnitState(u, UNIT_STATE_MAX_MANA) * 0.4 and not IsUnitType(u, UNIT_TYPE_PEON) and neutral_enemy[mFountainID] <= 0 and not (id == old_id[racial_ghoul]) and not (id == old_id[racial_militia]) and neutral_available[mFountainID] and nearest_neutral[mFountainID] != null and (not neutral_guarded[mFountainID] or (neutral_night_buy[mFountainID] and (daytime >= 18 or daytime < 6))) then
     call CreateDebugTag("Going to mana fountain", 10, u, 3.00, 1.50)
     call GroupAddUnit(unit_healing, u)
     call TQAddUnitJob(8, MANA_FOUNTAIN, 80, u)
@@ -229,7 +229,7 @@ function MicroUnitsJob takes nothing returns nothing
           if deny == true and not IsUnitType(u, UNIT_TYPE_HERO) and unit_life < RMin(0.1 * unit_life_max, 24) then
             call DenyUnit(u,id)
           endif
-          if not IsUnitType(u, UNIT_TYPE_MECHANICAL) and (id == 'hphx' or not IsUnitType(u, UNIT_TYPE_SUMMONED)) and unit_life < RMax(flee_health_percentage * unit_life_max, flee_minimum_health) then
+          if not IsUnitType(u, UNIT_TYPE_MECHANICAL) and (id == 'hphx' or not IsUnitType(u, UNIT_TYPE_SUMMONED)) and GetUnitFoodUsed(u) > 0 and unit_life < RMax(flee_health_percentage * unit_life_max, flee_minimum_health) then
             call SaveUnit(u,id)
           else  //if not IsUnitType(u, UNIT_TYPE_SUMMONED) then
             #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%4" =~ /\bstatue\b/
@@ -290,21 +290,22 @@ function MicroUnitsJob takes nothing returns nothing
   if prev_ward or not ward_cast then
     set ward_cast = ward_check
   endif
-  call DestroyGroup(healer_group)
-  set healer_group = new_healer_group
-  set new_healer_group = null
 
 //endif
-  set g = CopyGroup(healer_group,g)  //Additional checks to prevent save job loss and loss of control for units that have recovered health
   loop
-    set u = FirstOfGroup(g)
+    set u = FirstOfGroup(healer_group)  //Additional checks to prevent save job loss and loss of control for units that have recovered health
     exitwhen u == null
     set unit_life = GetUnitState(u, UNIT_STATE_LIFE)
     if unit_life >= GetUnitState(u, UNIT_STATE_MAX_LIFE) * 0.8 or unit_life <= 0 then
       call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
+    else
+      call GroupAddUnit(new_healer_group,u)
     endif
-    call GroupRemoveUnit(g,u)
+    call GroupRemoveUnit(healer_group,u)
   endloop
+  call DestroyGroup(healer_group)
+  set healer_group = new_healer_group
+  set new_healer_group = null
   call DestroyGroup(g)
   set g = null
   call TQAddJob(1 * sleep_multiplier, MICRO_UNITS, 0)
