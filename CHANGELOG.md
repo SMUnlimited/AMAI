@@ -145,6 +145,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - add check POWER_FOUNTAIN and HEALWARD
   - when PathingThread done , check job not in automatic loop , PathingThread regular check will be conducted
   - use pathing_done mark PathingThread done
+- UpdateStrength no check Observer
 - Army track change
   - Optimization judgment
   - Army track CopyArmy no longer copy same integer , hopes it can improve efficiency

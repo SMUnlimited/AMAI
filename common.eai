@@ -4822,8 +4822,6 @@ function GetDensities takes location l, player p, real r returns nothing
   local real ye = 0
   local real xa = 0
   local real ya = 0
-  local real x = 0
-  local real y = 0
   local location ul = null
   local location loc = null
 
@@ -4837,18 +4835,16 @@ function GetDensities takes location l, player p, real r returns nothing
       set ul = GetUnitLoc(u)
       set ur = 1 - (DistanceBetweenPoints(ul, l) / r)
       set loc = GetMultipleLoc(ul, ur)
-      set x = GetLocationX(loc)
-      set y = GetLocationY(loc)
       //if ur == 1 then
       if IsPlayerEnemy(p, GetOwningPlayer(u)) then
         set enemy_density = enemy_density + ur
-        set xe = xe + x  // Prevent loc exceeding map range
-        set ye = ye + y
+        set xe = xe + GetLocationX(loc)  // Prevent loc exceeding map range
+        set ye = ye + GetLocationY(loc)
         //set enemy_density_loc = GetSumLoc_dd(enemy_density_loc, GetMultipleLoc(ul, ur))
       elseif IsPlayerAlly(p, GetOwningPlayer(u)) then
         set ally_density = ally_density + ur
-        set xa = xa + x
-        set ya = ya + y
+        set xa = xa + GetLocationX(loc)
+        set ya = ya + GetLocationY(loc)
         //set ally_density_loc = GetSumLoc_dd(ally_density_loc, GetMultipleLoc(ul, ur))
       endif
       call RemoveLocation(loc)
@@ -5104,13 +5100,13 @@ function GetPlayerAntiAirStrength takes player p returns integer
   set g = SelectUnittype(g, UNIT_TYPE_ATTACKS_FLYING, true)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
   set g = SelectByHidden(g, false)
-  set g = SelectByAlive(g, true)
+  //set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    //if UnitAlive(u) and IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitHidden(u) then
+    if UnitAlive(u) then  //and IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitHidden(u) then
       set sum = sum + GetUnitStrength(u)
-    //endif
+    endif
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
@@ -5126,11 +5122,12 @@ function IsCreepsAwake takes real x, real y, real radius returns boolean
 
   call GroupEnumUnitsInRange(g,x,y,radius,null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
-  set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or awake_creeps
-    set awake_creeps = not IsUnitType(u, UNIT_TYPE_SLEEPING)
+    if UnitAlive(u) then
+      set awake_creeps = not IsUnitType(u, UNIT_TYPE_SLEEPING)
+    endif
     call GroupRemoveUnit(g,u)
   endloop
 
@@ -5892,7 +5889,7 @@ function AddExpansion takes unit u, real d returns nothing
   endif
   set expansion_creeps[expansion_list_length] = GetExpFoeGroup(expansion_creeps[expansion_list_length],u)  // group of the the creeps that guard this mine
   if first_expansion_chosen == false then
-    set first_expansion_chosen = (expansion_creeps[expansion_list_length] != null) or (expansion_creeps[expansion_list_length] == null and CheckExpansionTaken(u) == false)
+    set first_expansion_chosen = (expansion_creeps[expansion_list_length] != null) or (CheckExpansionTaken(u) == false)
   endif
   set expansion_list_length = expansion_list_length + 1
 endfunction
@@ -7081,6 +7078,7 @@ endfunction
 
 //============================================================================
 function TQLoop takes nothing returns nothing
+  local real i = 0
   set tq_time[0] = 0
   call TimerStart(tq_timer, 1000000, false, null)
   //call Trace("Starting Job Loop Thread")
@@ -7090,7 +7088,10 @@ function TQLoop takes nothing returns nothing
     exitwhen player_defeated
     if tq_length > 0 then
       if not TQHandleOnce() then
-        call Sleep(RMin(RMax(tq_time[1] - TimerGetElapsed(tq_timer) + 0.05,0.02) ,1))
+        set i = tq_time[1] - TimerGetElapsed(tq_timer) + 0.05
+        if i > 0 then
+          call Sleep(RMin(i ,1))
+        endif
       else
         call Sleep(0.05)
       endif
@@ -7936,7 +7937,7 @@ function InitBuildArrayAM takes nothing returns nothing
   set build_length = 0
   loop
     exitwhen i >= building_length
-    set income_percentage[building[i]] = 1 / building_length
+    set income_percentage[building[i]] = 1 / I2R(building_length)
     set i = i + 1
   endloop
   call ReleaseBuildLock()
