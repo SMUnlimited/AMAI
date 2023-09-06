@@ -218,6 +218,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Adjust UPG_BOMBS BuildAdvUpgr2 chance unitcount to 0.2 , Maximum to 35 , In the test, after building COPTER, the enemy has no AIR , the COPTER no research UPG_BOMBS not useful
 - Remove Duplicates ROC GlobalSettings.txt front_base_distance
 - GetSumLoc no longer used within the loop , prevent loc exceeding map range
+- debug show PingFrontPoints
 - AMAI VS AI
    - BlizzardVAI.eai ai script file read race.txt 1% and 2%
 
@@ -276,7 +277,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed GetArmyHealthState fountain_available no determine dawn
 - Fixed ZeppelinMoveJob unloadall fail , some time unloadall location cannot unloadall unit , now take ZTargetLocation random coordinate unloadall
 - Fixed GetHeroToBuyItem would try to buy an item regardless of free slots.(@SMUnlimited)
-
+- Fixed CheckExpansionTaken ancient expansion and item expansion return , if return false , then peon will expansion
 
 
 ## [3.2.2] - 2022-10-05

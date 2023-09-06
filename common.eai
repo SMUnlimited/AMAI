@@ -765,19 +765,19 @@ globals
 //==============================================================
     integer array c_enemy  // number of enemy players of certain races or random
     integer c_enemy_total	= 0
-    integer array c_ally   // number of allied players of certain races
-    integer c_ally_total	= 0
-    integer c_enemy_user_total	= 0  //number of enemy human player
-    integer c_ally_user_total	= 0  //number of ally human player
+    integer array c_ally  // number of allied players of certain races
+    integer c_ally_total = 0
+    integer c_enemy_user_total = 0  //number of enemy human player
+    integer c_ally_user_total = 0  //number of ally human player
     integer c_ai_total = 0
-    boolean enemy_revealed	= false
-    integer strat_prev		= 0 // strategy chosen by the ai before this one
-    integer hero_prev		= 0 // hero chosen by the ai before this one
-    integer picked_hero		= 0
-    boolean first_ai		= true
-    integer next_ai		= 0
-    boolean no_ai_ally	= false
-    boolean no_ally_ctrl 	= true
+    boolean enemy_revealed = false
+    integer strat_prev = 0  // strategy chosen by the ai before this one
+    integer hero_prev = 0  // hero chosen by the ai before this one
+    integer picked_hero = 0
+    boolean first_ai = true
+    integer next_ai = 0
+    boolean no_ai_ally = false
+    boolean no_ally_ctrl = true
 
     boolean player_defeated	= false
 
@@ -5808,8 +5808,10 @@ endfunction
 function CheckExpansionTaken takes unit expa returns boolean
   local group g = null
   local unit u = null
-  if expa == null or expa == not_taken_expansion then // Used in the ancient expansion and item expansion system
+  if expa == null then
     return false
+  elseif expa == not_taken_expansion then // Used in the ancient expansion and item expansion system
+    return true
   endif
   set g = CreateGroup()
   call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
@@ -7344,7 +7346,9 @@ function PathingThread takes nothing returns nothing
 //  set command_wait = 3
   call ComputeFrontPoints()
 //  call Sleep(3)
-//  call PingFrontPoints()
+  if debugging then
+     call PingFrontPoints()
+  endif
   //set current_expansion = GetExpNearestMin(current_expansion)  // Rough guide to what first expansion should be
   call CheckAllNeutralsQuick() // Old system check
   call MakeExpansionList()
@@ -7932,7 +7936,7 @@ function InitBuildArrayAM takes nothing returns nothing
   set build_length = 0
   loop
     exitwhen i >= building_length
-    set income_percentage[building[i]] = 1 / I2R(Max(building_length,1))
+    set income_percentage[building[i]] = 1 / building_length
     set i = i + 1
   endloop
   call ReleaseBuildLock()
@@ -9359,6 +9363,8 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   local group g = CreateGroup()
   local integer key = GetHandleId(harasser)
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectByHidden(g, false)
+  set g = SelectByAlive(g, true)
   set g = SelectByFullHealth(g, true)
   set g = SelectByUnitStandard(g, true)
   set g = SelectByUnitFree(g, true)
@@ -10682,9 +10688,7 @@ function CheckTownBuilt takes nothing returns nothing
     exitwhen i >= max_towns
     if not town_built[i] then
       if (TownCountEx(racial_expansion, true, i) > 0 and not (TownCountEx(racial_expansion, true, 50) > 0)) then
-        if LocalizeNewTown(i) then
-          set town_built[i] = true
-        endif
+        set town_built[i] = LocalizeNewTown(i)
       endif
     endif
     if own_town_loc[i] != null and exist_town[exist_town_num] != own_town_loc[i] then  // prevent town from being dismantled completely
@@ -12411,7 +12415,7 @@ if not creeping_only then	// Do the normal attack sequence
       if hall != null and UnitAlive(hall) then
         call SetChatVarsAttack(hall)
         call Chat(C_Attack)
-        call SetAllianceTarget(hall)
+        call SetAllianceTarget(alli_target)
         //set alli_target = null
         call FormGroupAM(3)
         call AttackMoveKillAAM(hall)
