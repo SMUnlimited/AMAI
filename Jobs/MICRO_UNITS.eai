@@ -181,6 +181,7 @@ endfunction
 //============================================================================
 function MicroUnitsJob takes nothing returns nothing
   local group g = CreateGroup()
+  local group cg = null
   local unit u = null
   local real unit_life = 0
   local real unit_life_max = 0
@@ -283,7 +284,6 @@ function MicroUnitsJob takes nothing returns nothing
     //call RemoveLocation(unitloc)
   endloop
   call DestroyGroup(g)
-  set g = null
   //set unitloc = null
 
   //call DisplayToAll("MICRO_UNITS: Clear up code")
@@ -292,20 +292,21 @@ function MicroUnitsJob takes nothing returns nothing
   endif
 
 //endif
+  set cg = CopyGroup(unit_healing,cg)
   loop
-    set u = FirstOfGroup(healer_group)  //Additional checks to prevent save job loss and loss of control for units that have recovered health
+    set u = FirstOfGroup(cg)  //Additional checks to prevent save job loss and loss of control for units that have recovered health
     exitwhen u == null
     set unit_life = GetUnitState(u, UNIT_STATE_LIFE)
     if unit_life >= GetUnitState(u, UNIT_STATE_MAX_LIFE) * 0.8 or unit_life <= 0 then
       call TQAddUnitJob(0, RESET_GUARD_POSITION, 0, u)
-    else
-      call GroupAddUnit(new_healer_group,u)
     endif
-    call GroupRemoveUnit(healer_group,u)
+    call GroupRemoveUnit(cg,u)
   endloop
   call DestroyGroup(healer_group)
   set healer_group = new_healer_group
   set new_healer_group = null
+  call DestroyGroup(cg)
+  set cg = null
   call DestroyGroup(g)
   set g = null
   call TQAddJob(1 * sleep_multiplier, MICRO_UNITS, 0)
