@@ -167,7 +167,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Add exclude more Channeling skills ： healingspray , stampederainoffire , magicleash , cloudoffog , unstableconcoction , grabtree , possession , ambush , devour , 852487
   - Add no single point continuous treatment during combat , avoid unit wandering and can send home
   - Add Deny
-  - Add healer_group check , prevent save job loss and loss of control for units that have recovered health
   - Fixed AngleBetweenPoints loc setting error
 - NEUTRAL_GUARDED JOB just run on CheckNeutralQuick , CheckNeutral run is repeat
 - GlobalSettings.txt , ver_food_limit now use GetPlayerState(ai_player, PLAYER_STATE_FOOD_CAP_CEILING) , no longer is 100 , and DynamicSystem can keep building unit(I Sceptical)
@@ -192,6 +191,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Add desperation_assault closing mechanism
   - Chcek Ally will check PLAYER_SLOT_STATE_PLAYING and Observer
 - HARASS add exit job mechanism when town_threatened , prevent the unit from being unable to RecycleGuardPosition
+  - StartHarass check unit num , because Group Order max control 12 unit
+  - HARASS JOB max num is 3 , prevent JOB to much , because no longer judge unit quantity
 - ZEPPELIN_MOVE now can take POWER FOUNTAIN
 - MANA_FOUNTAIN now can take POWER FOUNTAIN
 - GetBuildLocation return home_location , when not take front_loc[0] , prevent leakage and build location(0,0)
@@ -279,6 +280,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed ZeppelinMoveJob unloadall fail , some time unloadall location cannot unloadall unit , now take ZTargetLocation random coordinate unloadall
 - Fixed GetHeroToBuyItem would try to buy an item regardless of free slots.(@SMUnlimited)
 - Fixed CheckExpansionTaken ancient expansion and item expansion return , if return false , then peon will expansion
+- Fixed GetHeroToBuyItem no check is_healing_included
 
 
 ## [3.2.2] - 2022-10-05

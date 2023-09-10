@@ -6774,7 +6774,7 @@ function GetHeroToBuyItem takes unit shop, real limit, boolean is_healing_includ
     exitwhen i > 3
     if hero_built[i] and UnitAlive(hero_unit[i]) then
      if GetSlotsFreeOnUnit(hero_unit[i]) > 0 and DistanceBetweenUnits(hero_unit[i], shop) < limit and not IsUnitInGroup(hero_unit[i], unit_buying_tavern) and not IsUnitInGroup(hero_unit[i], unit_buying_merc) and not IsUnitInGroup(hero_unit[i], unit_harassing) then
-       if IsUnitInGroup(hero_unit[i], unit_healing) and is_healing_included then
+       if IsUnitInGroup(hero_unit[i], unit_healing) == is_healing_included then
        else
           return hero_unit[i]
        endif
@@ -9348,9 +9348,17 @@ endfunction
 
 function StartHarass takes integer groupnum, integer harass_target, boolean avoid_towers, real strength_limit, real flee_percent, integer flee_number, real lx, real ly returns nothing
   local integer i = 0
-  local group harasser = CreateGroup()
-  local group g = CreateGroup()
-  local integer key = GetHandleId(harasser)
+  local integer t = 0
+  local group harasser = null
+  local group g = null
+  local integer key = 0
+  if harass_group >= 3 then  // Harass job too much
+    return
+  endif
+  set harass_group = Max(harass_group + 1,0)
+  set harasser = CreateGroup()
+  set g = CreateGroup()
+  set key = GetHandleId(harasser)
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
@@ -9358,7 +9366,12 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   set g = SelectByUnitStandard(g, true)
   set g = SelectByUnitFree(g, true)
   loop
-    exitwhen i >= harass_size[groupnum] or FirstOfGroup(g) == null
+    exitwhen i >= harass_size[groupnum] or FirstOfGroup(g) == null or t >= 12
+    set t = t + harass_qty[i*max_harass_groups + groupnum]
+    if t > 12 then  // Group Order max control 12 unit
+      set harass_qty[i*max_harass_groups + groupnum] = 12 - harass_qty[i*max_harass_groups + groupnum]
+      set t = 12
+    endif
     set harasser = AddHarassUnittype(groupnum, i , g, harasser, key)
     set i = i + 1
   endloop
