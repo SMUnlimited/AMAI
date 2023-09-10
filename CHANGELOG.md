@@ -51,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Ensure zepplin control is not being overriden by default AI (jzy-chitong56)
 - Fixed food available being calculated incorrectly (jzy-chitong56)
 - Fixed issue where merc camps and dragon roosts were not detected.
+- Fixed various language encoding issues by ensuring all language files are now set to utf8.
 
 ## [3.2.2] - 2022-10-05
 
