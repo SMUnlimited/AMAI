@@ -9002,6 +9002,7 @@ function AddHarassUnittype takes integer groupnum, integer harassnum, group g, g
   local group cg = CopyGroup(g)
   local unit u = null
   local real player_sum = 0
+  local real unit_total = 0
   set cg = SelectNumberOfId(cg, harass_qty[harassnum*max_harass_groups + groupnum], old_id[harass_units[harassnum*max_harass_groups + groupnum]])
   loop
     set u = FirstOfGroup(cg)
@@ -9010,17 +9011,21 @@ function AddHarassUnittype takes integer groupnum, integer harassnum, group g, g
     call RemoveGuardPosition(u)
     call GroupAddUnit(harasser,u)
     set player_sum = player_sum + GetUnitStrength(u)
+    set unit_total = unit_total + 1
     call GroupRemoveUnit(cg,u)
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(cg)
   set cg = null
-  call SaveReal(additional_info, key, START_STRENGTH, player_sum)
+  if unit_total >= harass_qty[harassnum*max_harass_groups + groupnum] then
+    call SaveReal(additional_info, key, START_STRENGTH, player_sum)
+  endif
   return harasser
 endfunction
 
 function StartHarass takes integer groupnum, integer harass_target, boolean avoid_towers, real strength_limit, real flee_percent, integer flee_number, real lx, real ly returns nothing
   local integer i = 0
+  local integer t = 0
   local group harasser = CreateGroup()
   local group g = CreateGroup()
   local integer key = GetHandleId(harasser)
@@ -9031,12 +9036,24 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   set g = SelectByUnitStandard(g, true)
   set g = SelectByUnitFree(g, true)
   loop
-    exitwhen i >= harass_size[groupnum] or FirstOfGroup(g) == null
-    set harasser = AddHarassUnittype(groupnum, i , g, harasser, key)
+    exitwhen i >= harass_size[groupnum] or FirstOfGroup(g) == null or t >= 12
+    set t = t + harass_qty[i*max_harass_groups + groupnum]
+    if t > 12 then  // Group Order max control 12 unit
+      set harass_qty[i*max_harass_groups + groupnum] = 12 - harass_qty[i*max_harass_groups + groupnum]
+      set t = 12
+    endif
+    if harass_qty[i*max_harass_groups + groupnum] > 0 then
+      set harasser = AddHarassUnittype(groupnum, i , g, harasser, key)
+    endif
     set i = i + 1
   endloop
   call DestroyGroup(g)
   set g = null
+  if FirstOfGroup(harasser) == null then
+    call DestroyGroup(harasser)
+    set harasser = null
+    return
+  endif
   set harass_time[groupnum] = ai_time
   call SaveBoolean(additional_info, key, AVOID_TOWERS, avoid_towers)
   //if avoid_towers and GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_tower_check_radius) > 0
