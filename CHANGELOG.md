@@ -52,7 +52,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Strategy name button will identify ROC and TFT
 - New total , c_enemy_user_total and c_ally_user_total , used to record the number of really human players
 - Now the AI Attack Group will join unregistered (like non own racial) units and heros (but excess heros may not be able to learn skills) , The original intention is to enable AI to use DARK_RANGER or BANSHEE can add the occupied other 3 race unit to the attack group
-- Buy NEUTRAL HERO add judge neutral_guarded[NEUTRAL_TAVERN] to StartUnitAM, call GetNeutralHero recalculate heros , guarantee to change train ownrace hero at the first time
+- Buy NEUTRAL HERO add judge neutral_guarded[NEUTRAL_TAVERN] to CheckNeutralQuick , guarantee to change train ownrace hero at the first time
+- shop_distance_limit , raceshop_distance_limit and merchant_distance_limit initial value decreases and is positively correlated with map size , prevent purchases from being too far away, especially when a hero leaves the team and is killed alone when purchasing
 - Water_expansion now record creeps guard , and ChooseExpansion returns the creeps
 - Water_expansion improvement judgment methods , now have a gorup record , just need judgment expansion on the gorup , no need loop
 - if have Water_expansion or racial_lumber == 0 or race_no_wood_harvest , ZEPPELIN_FOLLOW no run GroupRemoveGuardPositionInstant , then AI can take Water_expansion or help ELF fix building blockage
@@ -190,9 +191,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - The function untested , but should can run
   - Add desperation_assault closing mechanism
   - Chcek Ally will check PLAYER_SLOT_STATE_PLAYING and Observer
-- HARASS add exit job mechanism when town_threatened , prevent the unit from being unable to RecycleGuardPosition
-  - StartHarass check unit num , because Group Order max control 12 unit
-  - HARASS JOB max num is 3 , prevent JOB to much , because no longer judge unit quantity
+- StartHarass check unit num , because Group Order max control 12 unit
+  - START_STRENGTH should be stacked in the same JOB
+  - HARASS JOB max num is 1 , prevent JOB to much , because no longer judge unit quantity
 - ZEPPELIN_MOVE now can take POWER FOUNTAIN
 - MANA_FOUNTAIN now can take POWER FOUNTAIN
 - GetBuildLocation return home_location , when not take front_loc[0] , prevent leakage and build location(0,0)

@@ -719,7 +719,6 @@ globals
 
     boolean attacking_expansion = false
     boolean recalculate_heros = false // Tavern heros cannot be trained so get a normal hero
-    integer tavernguarded = 0  // buy neutral hero tavern guarded judgments , just run once
 
     integer tier = 0
     integer own_strength = 0
@@ -2457,6 +2456,8 @@ function InitMapSizeVars takes nothing returns nothing
     call SetChatVar("MapSize", "legendary")
     set mapSize = 7
   endif
+  set raceshop_distance_limit = raceshop_distance_limit * mapSize
+  set merchant_distance_limit = merchant_distance_limit * mapSize
 endfunction
 
 //============================================================================
@@ -7299,6 +7300,9 @@ if neutral_available[nn] == true then
   set neutral_night_buy[nn] = CanCreepGuardsSleep(nn)
   if neutral_guarded[nn] then
     call TQAddJob(30 * sleep_multiplier, NEUTRAL_GUARDED, nn)
+    if nn == NEUTRAL_TAVERN then  //guarantee to train Ownrace hero at the first time
+      set recalculate_heros = true
+    endif
   endif
 endif
 endfunction
@@ -9328,7 +9332,6 @@ function AddHarassUnittype takes integer groupnum, integer harassnum, group g, g
   local group cg = null
   local unit u = null
   local real player_sum = 0
-  local real unit_total = 0
   set cg = CopyGroup(g,cg)
   set cg = SelectNumberOfId(cg, harass_qty[harassnum*max_harass_groups + groupnum], old_id[harass_units[harassnum*max_harass_groups + groupnum]])
   loop
@@ -9344,9 +9347,7 @@ function AddHarassUnittype takes integer groupnum, integer harassnum, group g, g
   endloop
   call DestroyGroup(cg)
   set cg = null
-  if unit_total >= harass_qty[harassnum*max_harass_groups + groupnum] then
-    call SaveReal(additional_info, key, START_STRENGTH, player_sum)
-  endif
+  call SaveReal(additional_info, key, START_STRENGTH, player_sum)
   return harasser
 endfunction
 
@@ -9356,7 +9357,8 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   local group harasser = null
   local group g = null
   local integer key = 0
-  if harass_group >= 3 then  // Harass job too much
+  local real strength = 0
+  if harass_group >= 1 then  // Harass job too much
     return
   endif
   set harass_group = Max(harass_group + 1,0)
@@ -9378,16 +9380,18 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     endif
     if harass_qty[i*max_harass_groups + groupnum] > 0 then
       set harasser = AddHarassUnittype(groupnum, i , g, harasser, key)
+      set strength = strength + LoadReal(additional_info, key, START_STRENGTH)
     endif
     set i = i + 1
   endloop
   call DestroyGroup(g)
   set g = null
-  if FirstOfGroup(harasser) == null then
-    call DestroyGroup(harasser)
+  if FirstOfGroup(harasser) == null or strength == 0 then
+    call GroupRecycleHarrassPositionInstant(harasser)
     set harasser = null
     return
   endif
+  call SaveReal(additional_info, key, START_STRENGTH, strength)
   set harass_time[groupnum] = ai_time
   call SaveBoolean(additional_info, key, AVOID_TOWERS, avoid_towers)
   //if avoid_towers and GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_tower_check_radius) > 0
@@ -10105,9 +10109,9 @@ function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
   endif
   if IsUnitInTransport(expansion_peon, build_zeppelin) then
     if DistanceBetweenUnits(build_zeppelin, target) > 300 then
-      call IssuePointOrder(build_zeppelin, "move", GetUnitX(target), GetUnitY(target))
+      call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + GetRandomReal(-200,200), GetUnitY(target) + GetRandomReal(-200,200))
     else
-      call IssuePointOrder(build_zeppelin, "unload", GetUnitX(expansion_peon) + GetRandomReal(-200,200), GetUnitY(expansion_peon) + GetRandomReal(-200,200))
+      call IssueTargetOrder(build_zeppelin, "unload", peon)
       call Sleep(1.2)  //unload time
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       return true
@@ -10781,12 +10785,6 @@ function OneBuildLoopAM takes nothing returns nothing
       call ExpansionBuilder()
       call HeroReviver()
     endif
-    if tavernguarded == 0 and nearest_neutral[NEUTRAL_TAVERN] != null then
-      if neutral_guarded[NEUTRAL_TAVERN] and not hero_built[1] then  //guarantee to train Ownrace hero at the first time
-        set recalculate_heros = true
-      endif
-      set tavernguarded = 1
-    endif
     set total_gold   = GetGold() - gold_buffer
     set total_wood   = GetWood() - wood_buffer
     set total_food   = ver_food_limit - FoodUsed()
@@ -11352,6 +11350,7 @@ function BRRush takes nothing returns nothing
     call IssuePointOrderLoc( utemp, "move", buildloc)  //prevent inability cannot root
     call Sleep(0.02)
     call IssuePointOrderLoc( utemp, "root", buildloc)  //root tree
+    call TQAddUnitJob(GetTimeToReachLoc(utemp, buildloc) + 2, RESET_GUARD_POSITION, 0, u)
     call RemoveLocation(buildloc)
     set buildloc = null
   else
