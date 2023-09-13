@@ -83,7 +83,7 @@ function GroupOrderFocusWindInstant_d takes group g returns nothing
       if not UnitInvis(u) then
         call CreateDebugTag("FF: windwalk", 10, u, 1.00, 0.80)
         call IssueImmediateOrder(u, "windwalk")
-           //call TQAddUnitJob(8, RESET_WINDWALKER, 0, u)  // just need GroupOrderAttack_d run once
+        //call TQAddUnitJob(8, RESET_WINDWALKER, 0, u)  // just need GroupOrderAttack_d run once
       endif
     endif
     call GroupRemoveUnit(g, u)
@@ -191,19 +191,19 @@ function FocusFire takes unit u returns nothing
   set temp_focus = SelectByOrder(temp_focus, OrderId("ambush"), false)
   set temp_focus = SelectByOrder(temp_focus, OrderId("devour"), false)
   set temp_focus = SelectByOrder(temp_focus, 852487, false)
-  call BlzGroupRemoveGroupFast(focus_fire_group, temp_focus) // Remove units that have already focus fired this iteration (intentionally wrong way round)
+  call GroupRemoveGroupAM(focus_fire_group, temp_focus) // Remove units that have already focus fired this iteration (intentionally wrong way round) , but use additional code , Very inefficient
   if FirstOfGroup(micro_enemymelee_group) != null then
     call GroupMicroSystem(micro_ranged_group, micro_enemymelee_group, temp_focus)   // Move ranged units away from melee units, if moved here they will not focus fire
   endif
   call DestroyGroup(t)
-  if BlzGroupGetSize(temp_focus) > 0 then
+  if FirstOfGroup(temp_focus) != null then
     if focus_fire_unit == null or focus_fire_unit != u then
-      if IsUnitType(u,UNIT_TYPE_STRUCTURE) == false and not IsUnitOwnedByPlayer(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then // Dont windwalk for non-critical enemies
+      if IsUnitType(u,UNIT_TYPE_STRUCTURE) == false and not IsUnitOwnedByPlayer(u, Player(PLAYERAGGRESSIVE)) then // Dont windwalk for non-critical enemies
         call GroupOrderFocusWindInstant_d(CopyGroup(temp_focus,t))
       endif
       set focus_fire_unit = u
     endif
-    call CreateDebugTag("FF: here:" + Int2Str(BlzGroupGetSize(temp_focus)), 10, u, 1.00, 0.80)
+    call CreateDebugTag("FF: here:" + "GroupSize not 0", 10, u, 1.00, 0.80)
     call FocusGroupRemoveGuard(temp_focus)
     if u == deny_unit and own_race == R_UNDEAD then
       call GroupTargetOrder(temp_focus, "deathpact", u)
@@ -238,7 +238,7 @@ function FocusEnemyUnitsNearGroup takes group g returns nothing
   call GroupClear(micro_enemymelee_group)
   call GroupRemoveUnit(g,deny_unit)  // cannot control deny_unit
   if town_threatened then
-    set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), false)
+    set g = SelectByPlayer(g, Player(PLAYERAGGRESSIVE), false)
   endif
   loop
     set u = FirstOfGroup(g)
