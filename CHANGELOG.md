@@ -98,6 +98,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Can define race detailed instructions on Settings.txt(only TFT)
 - New job ITEM REPEAT CHECK
    - Check for items that cannot be superposition or have poor superposition effects or items skills that duplicate hero skills, transfer to other heroes
+- (DevTools) TQLoop add job Thread debug check ，now have a continuously displayed TextTag show JOB schedule , convenient to check where job has parked , this is more intuitive
+
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
@@ -224,6 +226,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - debug show PingFrontPoints
 - AMAI VS AI
    - BlizzardVAI.eai ai script file read race.txt 1% and 2%
+- Languages improve
+   - Spanish translation(@Slayer95)
+   - Russian translation(@Lolasik011)
 
 ###Fixed
 - Fixed some translation errors
@@ -284,6 +289,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed GetHeroToBuyItem no check is_healing_included
 - Fixed GroupOrderAttack_d no Recycle Guard Position
 - Fixed AncientExpansionJob recursion
+- Fixed issues with SetTargetHeroes proper recovery after shutdown
 
 
 ## [3.2.2] - 2022-10-05
