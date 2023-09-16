@@ -83,7 +83,7 @@ function GroupOrderFocusWindInstant_d takes group g returns nothing
       if not UnitInvis(u) then
         call CreateDebugTag("FF: windwalk", 10, u, 1.00, 0.80)
         call IssueImmediateOrder(u, "windwalk")
-        //call TQAddUnitJob(8, RESET_WINDWALKER, 0, u)  // just need GroupOrderAttack_d run once
+        call TQAddUnitJob(8, RESET_WINDWALKER, 0, u)
       endif
     endif
     call GroupRemoveUnit(g, u)
@@ -100,7 +100,7 @@ function GroupOrderAttack_d takes group g, unit target returns nothing
     if UnitInvis(u) then
       call IssueTargetOrder(u, "attack", target)
     endif
-    call TQAddUnitJob(8, RESET_WINDWALKER, 0, u)
+    call TQAddUnitJob(8, RESET_GUARD_POSITION_ONLY, 0, u)
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
@@ -158,7 +158,11 @@ function FocusFire takes unit u returns nothing
   // call DestroyGroup(t)
   // set t = CreateGroup()
   call GroupEnumUnitsInRange(t, GetUnitX(u), GetUnitY(u), normal_battle_radius, null)
-  set t = SelectByInvisible(t, GetOwningPlayer(u), true)
+  if u == deny_unit then
+    set t = SelectByInvisible(t, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
+  else
+    set t = SelectByInvisible(t, GetOwningPlayer(u), true)
+  endif
   set temp_focus = GroupAddGroup(temp_focus, t)
   call GroupRemoveUnit(temp_focus,deny_unit)  // cannot control deny_unit
   set temp_focus = SelectByPlayer(temp_focus, ai_player, true)
@@ -312,8 +316,9 @@ function FocusEnemyUnitsNearGroup takes group g returns nothing
     elseif building_min_health_unit != null then
       call FocusFire(building_min_health_unit)
     endif
+    call SetTargetHeroes(difficulty != EASY)
   endif
-  if deny_unit != null and GetUnitState(deny_unit, UNIT_STATE_LIFE) < 24 and (GetUnitState(deny_unit, UNIT_STATE_LIFE)/GetUnitState(deny_unit, UNIT_STATE_MAX_LIFE)) < 0.10 then
+  if deny_unit != null and UnitAlive(deny_unit) and GetUnitState(deny_unit, UNIT_STATE_LIFE) < 24 and (GetUnitState(deny_unit, UNIT_STATE_LIFE)/GetUnitState(deny_unit, UNIT_STATE_MAX_LIFE)) < 0.10 then
     call FocusFire(deny_unit)
     set deny_unit = null
   endif
