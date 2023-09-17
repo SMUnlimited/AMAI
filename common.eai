@@ -792,7 +792,6 @@ globals
     unit array own_town_mine
     integer first_town_mine = 0
     location array exist_town
-    integer exist_town_num = 0
 
     integer attacking_ghouls = 0
     integer harvesting_ghouls = 0
@@ -10678,6 +10677,29 @@ function CheckUnitNewTown takes unit u, integer num returns boolean
 endfunction
 
 //============================================================================
+function LocalizeOldTown takes integer num returns boolean
+  local group g = CreateGroup()
+  local unit u = null
+  call GroupEnumUnitsInRangeOfLoc(g, own_town_loc[num], 2000, null)
+  set g = SelectByPlayer(g,ai_player,true)
+  set g = SelectByHidden(g,false)
+  set g = SelectByAlive(g,true)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    exitwhen IsUnitType(u, UNIT_TYPE_STRUCTURE)
+    call GroupRemoveUnit(g,u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  if u == null then
+    set exist_town[num] = home_location
+    return false
+  endif
+  set u = null
+  return true
+endfunction
+
 function LocalizeNewTown takes integer num returns boolean
   local group g = CreateGroup()
   local unit u = null
@@ -10699,11 +10721,13 @@ function LocalizeNewTown takes integer num returns boolean
     set own_town_loc[num] = null
     set own_town_mine[num] = null
     set own_town_dist[num] = 0
+    set exist_town[num] = home_location
     return false
   endif
   set own_town_loc[num] = Location(GetUnitX(u),GetUnitY(u))
   set own_town_mine[num] = GetMineNearLoc(own_town_mine[num], own_town_loc[num], 1500)
   set own_town_dist[num] = DistanceBetweenPoints(home_location, own_town_loc[num])
+  set exist_town[num] = own_town_loc[num]
   if debugging then
     call PingMinimap(GetUnitX(u), GetUnitY(u), 20)
   endif
@@ -10714,17 +10738,14 @@ endfunction
 //============================================================================
 function CheckTownBuilt takes nothing returns nothing
   local integer i = 0
-  set exist_town_num = 0
   loop
     exitwhen i >= max_towns
     if not town_built[i] then
       if (TownCountEx(racial_expansion, true, i) > 0 and not (TownCountEx(racial_expansion, true, 50) > 0)) then
         set town_built[i] = LocalizeNewTown(i)
       endif
-    endif
-    if own_town_loc[i] != null and exist_town[exist_town_num] != own_town_loc[i] then  // prevent town from being dismantled completely
-      set exist_town[exist_town_num] = own_town_loc[i]
-      set exist_town_num = exist_town_num + 1
+    else
+        set town_built[i] = LocalizeOldTown(i)
     endif
     set i = i + 1
   endloop
