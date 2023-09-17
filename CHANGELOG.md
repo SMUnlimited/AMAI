@@ -19,7 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 - Chinese Translation improvements. (jzy-chitong56)
-- Updated MPQEditor to 3.6.0.368 (jzy-chitong56)
+- Updated MPQEditor to 4.0.0.894 (jzy-chitong56)
 - Language dialog will be available on game start even when the commander is disabled (jzy-chitong56)
 - Updates for latest war3 1.36 version (jzy-chitong56)
 - Hero Skill Adjustments
