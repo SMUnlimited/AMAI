@@ -125,6 +125,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Change GetPlayerAntiAirStrength returns form integer to real
 - Optimized function XXXFountain code , no use local unit fountain
   - Add patrol when unit at Fountain , prevent units from being blocked by other units coming from behind when leaving
+  - Support Ability AIhm
 - MeleeDifficulty() use difficulty replace
   - official AI code not affected
 - Improved a small part of excretion (common.eai and B.eai) , now 24 player map run will 'smoothly'
