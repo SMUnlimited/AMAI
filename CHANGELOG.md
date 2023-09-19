@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Commander Change strategy dialog now displays the strategy name you can pick for the AI where applicable instead of just a number.
 - Zepplins can now make use of fountains of power (jzy-chitong56)
 - New Gargoyle and Ghouls Strategy for undead (jzy-chitong56)
+- Added ability to commander to control the zoom level when you type into the chat window '-zoom3000' without the quotes. (jzy-chitong56)
+- Added opportunities to attempt extreme save behaviour when the AI is struggling e.g Do a militia expansion or ancient expansion (jzy-chitong56)
 
 ### Changed
 - Chinese Translation improvements. (jzy-chitong56)
@@ -35,7 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Spirit Walkers key building should be the Tauren Totem (Slayer95)
 - Fix Goblin Tinker not learning abilities after picking the engineering skill. (jzy-chitong56)
 - Fix VSAI more than 12 players support (jzy-chitong56)
-- Various memory leak fixes. (jzy-chitong56)
+- Various memory leak and optimization fixes. (jzy-chitong56)
 - Various protection against division by 0 (jzy-chitong56)
 - Changing language more than once may not apply the english backup correctly. (jzy-chitong56)
 - More unicode fixes to languages (jzy-chitong56)
@@ -44,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Combat response has been given a boost and if it takes too long it will force attack to be re-evaluated.
 - Small map strategy boost takes account of the actual map size and not just player count.
 - Fix for the optimizer not quite working with latest common.j file.
+- Fix for optimizer not handling multiple ability ids on a single line correctly.
 - GetHeroToBuyItem would try to buy an item regardless of free slots.
 - Fixed issue where count for neutral units in dynamic building code was incorrect.
 - Fix focus fire control not using the angle of the target unit (jzy-chitong56)

@@ -88,6 +88,10 @@
     string array dlg_string
     integer dlg_length = 0
 
+    trigger ZoomSetx = null
+    trigger AdjustZoomUp = null
+    trigger AdjustZoomDown = null
+
     dialog game_start_dialog = null
     trigger game_start_trigger = null
     button commander_mode = null
@@ -548,6 +552,65 @@ endfunction
 function ShowBoard takes nothing returns nothing
   call LeaderboardDisplay(color_board, not IsLeaderboardDisplayed(color_board))
 endfunction
+
+//===========================================================================
+// Zoom
+//===========================================================================
+function ZoomSet takes nothing returns nothing
+  local real Zoom = 0
+  if SubStringBJ(GetEventPlayerChatString(), 6, 6) != " " then
+    set Zoom = S2R(SubStringBJ(GetEventPlayerChatString(), 6, 10))
+  else
+    set Zoom = S2R(SubStringBJ(GetEventPlayerChatString(), 7, 11))
+  endif
+  if Zoom < 1650 then
+    call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, 1650, 0 )
+    call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "zoom min:|cff00ff001650|r" )
+  elseif Zoom > 3000 then
+    call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, 3000, 0 )
+    call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "zoom max:|cff00ff003000|r" )
+  else
+    call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, Zoom, 0 )
+  endif
+endfunction
+
+function ZoomDown takes nothing returns nothing
+  if CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup()) > 1650 then
+    call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup()) - 50 ), 0 )
+  endif
+endfunction
+
+function ZoomUp takes nothing returns nothing
+  if CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup()) < 3000 then
+    call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup()) + 50 ), 0 )
+  endif
+endfunction
+
+function InitZoom takes nothing returns nothing
+  local integer i = 0
+  if ZoomSetx == null then
+    set ZoomSetx = CreateTrigger()
+    set AdjustZoomUp = CreateTrigger()
+    set AdjustZoomDown = CreateTrigger()
+    loop
+      exitwhen i >= GetBJMaxPlayers()
+      //call SetCameraFieldForPlayer( Player(i), CAMERA_FIELD_TARGET_DISTANCE, 2500, 0 )
+      if (GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER) or IsPlayerObserver(Player(i)) then
+        call TriggerRegisterPlayerChatEvent( ZoomSetx, Player(i), "-zoom", false )
+        //call TriggerRegisterPlayerKeyEventBJ( AdjustZoomUp, Player(i), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_UP )
+        //call TriggerRegisterPlayerKeyEventBJ( AdjustZoomDown, Player(i), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_DOWN )
+        call TriggerAddAction(ZoomSetx, function ZoomSet)
+        call TriggerAddAction(AdjustZoomUp , function ZoomUp)
+        call TriggerAddAction(AdjustZoomDown , function ZoomDown)
+      endif
+      set i = i + 1
+    endloop
+  endif
+
+endfunction
+
+
+
 
 //===========================================================================
 // Help Function (Displays help on screen)
@@ -1875,4 +1938,5 @@ endfunction
 
 #INCLUDE <Blizzard5.j>
     call InitCommander()
+    call InitZoom()
 #INCLUDE <Blizzard6.j>
