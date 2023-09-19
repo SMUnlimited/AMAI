@@ -9342,6 +9342,15 @@ function AddHarass takes integer groupnum, integer qty, integer unitid returns n
   set harass_size[groupnum] = harass_size[groupnum] + 1
 endfunction
 
+function RemoveHarass takes nothing returns nothing
+  local integer i = 0
+  loop
+    set harass_size[i] = 0
+    set i = i + 1
+    exitwhen i == 5
+  endloop
+endfunction
+
 function AddHarassUnittype takes integer groupnum, integer harassnum, group g, group harasser, integer key returns group
   local group cg = null
   local unit u = null
@@ -9371,10 +9380,6 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   local group g = null
   local integer key = 0
   local real strength = 0
-  if harass_group >= 1 then  // Harass job too much
-    return
-  endif
-  set harass_group = Max(harass_group + 1,0)
   set harasser = CreateGroup()
   set key = GetHandleId(harasser)
   set g = CreateGroup()
@@ -9420,15 +9425,21 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
 endfunction
 
 function GetHarassGroupStrength takes integer groupnum returns real
-  local integer i = 0
   local real sum = 0
+  local real p = GetPlayerHandicap(ai_player)
   local integer id = 0
+  local unit u = null
+  local group g = null
+  set g = CopyGroup(unit_harassing,g)
   loop
-    exitwhen i >= harass_size[groupnum]
-    set id = harass_units[i*max_harass_groups + groupnum]
-    set sum = sum + Min(harass_qty[i*max_harass_groups + groupnum], TownCountDone(id)) * GetFoodUsed(old_id[id]) * GetPlayerHandicap(ai_player)
-    set i = i + 1
+    set u = FirstOfGroup(g)
+    exitwhen u = null
+    set id = GetUnitTypeId(u)
+    set sum = TownCountDone(id) * GetFoodUsed(id) * p
+    call GroupRemoveUnit(g, u)
   endloop
+  call DestroyGroup(g)
+  set g = null
   return sum
 endfunction
 
@@ -9436,6 +9447,7 @@ function Harass takes integer groupnum, integer harass_target, boolean avoid_tow
   if cond and ai_time - harass_time[groupnum] >= time and ai_time >= min_time then
     call StartHarass(groupnum, harass_target, avoid_towers, strength_limit, flee_percent, flee_number, 0, 0)
   endif
+  call RemoveHarass()
 endfunction
 
 //============================================================================
@@ -11124,6 +11136,7 @@ function DoDistractionAttack takes unit target returns nothing
   endif
   call StartHarass(distraction_group, HARASS_TARGET_LOCATION, false, 15, 0.25, 1, GetUnitX(d_target), GetUnitY(d_target))
   set d_target = null
+  call RemoveHarass()
   call Sleep(15)
 endfunction
 
