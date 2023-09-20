@@ -6776,7 +6776,7 @@ function GetHeroToBuyItem takes unit shop, real limit, boolean is_healing_includ
     exitwhen i > 3
     if hero_built[i] and UnitAlive(hero_unit[i]) then
      if GetSlotsFreeOnUnit(hero_unit[i]) > 0 and DistanceBetweenUnits(hero_unit[i], shop) < limit and not IsUnitInGroup(hero_unit[i], unit_buying_tavern) and not IsUnitInGroup(hero_unit[i], unit_buying_merc) and not IsUnitInGroup(hero_unit[i], unit_harassing) then
-       if IsUnitInGroup(hero_unit[i], unit_healing) and is_healing_included then
+       if IsUnitInGroup(hero_unit[i], unit_healing) == is_healing_included then
        else
           return hero_unit[i]
        endif
@@ -7211,24 +7211,27 @@ function InitNeutralBuildings takes nothing returns nothing
       set neutral_available[NEUTRAL_SHIPYARD] = true
     elseif GetUnitTypeId(u) == neutral_id[NEUTRAL_MARKETPLACE] then
       set neutral_available[NEUTRAL_MARKETPLACE] = true
-    elseif not mercfound then
-      set i = 0
-      loop
-        set i = i + 1
-        if GetUnitTypeId(u) == camp[i] then
-          set mercfound = true
-        endif
-        exitwhen mercfound or i >= j
-      endloop
-    elseif not roostfound then
-      set k = 0
-      loop
-        set k = k + 1
-        if GetUnitTypeId(u) == roost[k] then
-          set roostfound = true
-        endif
-        exitwhen roostfound or k >= m
-      endloop
+    else
+      if not mercfound then
+        set i = 0
+        loop
+          set i = i + 1
+          if GetUnitTypeId(u) == camp[i] then
+            set mercfound = true
+          endif
+          exitwhen mercfound or i >= j
+        endloop
+      endif
+        if not roostfound then
+        set k = 0
+        loop
+          set k = k + 1
+          if GetUnitTypeId(u) == roost[k] then
+            set roostfound = true
+          endif
+          exitwhen roostfound or k >= m
+        endloop
+      endif
     endif
     call GroupRemoveUnit(g, u)
   endloop
@@ -7315,7 +7318,7 @@ if neutral_available[nn] == true then
   set neutral_night_buy[nn] = CanCreepGuardsSleep(nn)
   if neutral_guarded[nn] then
     call TQAddJob(30 * sleep_multiplier, NEUTRAL_GUARDED, nn)
-    if nn == NEUTRAL_TAVERN then  //guarantee to train Ownrace hero at the first time
+    if nn == NEUTRAL_TAVERN and hero[1] != 0 and buy_type[hero[1]] == BT_NEUTRAL_HERO then  //guarantee to train Ownrace hero at the first time
       set recalculate_heros = true
     endif
   endif
@@ -9347,7 +9350,7 @@ function RemoveHarass takes nothing returns nothing
   loop
     set harass_size[i] = 0
     set i = i + 1
-    exitwhen i == 5
+    exitwhen i >= 5
   endloop
 endfunction
 
@@ -9376,13 +9379,10 @@ endfunction
 function StartHarass takes integer groupnum, integer harass_target, boolean avoid_towers, real strength_limit, real flee_percent, integer flee_number, real lx, real ly returns nothing
   local integer i = 0
   local integer t = 0
-  local group harasser = null
-  local group g = null
-  local integer key = 0
+  local group harasser = CreateGroup()
+  local group g = CreateGroup()
+  local integer key = GetHandleId(harasser)
   local real strength = 0
-  set harasser = CreateGroup()
-  set key = GetHandleId(harasser)
-  set g = CreateGroup()
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
@@ -9404,7 +9404,7 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   endloop
   call DestroyGroup(g)
   set g = null
-  if FirstOfGroup(harasser) == null or strength == 0 then
+  if FirstOfGroup(harasser) == null or strength <= 0 then
     call GroupRecycleHarrassPositionInstant(harasser)
     set harasser = null
     return
