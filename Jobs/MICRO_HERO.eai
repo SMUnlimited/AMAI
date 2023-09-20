@@ -1,23 +1,23 @@
 #IFDEF GLOBAL
-    constant integer ACTION_DO_NOTHING = 0
-    constant integer ACTION_GO_HOME = 1
-    constant integer ACTION_FOUNTAIN = 2
-    constant integer ACTION_TP = 3
-    constant integer ACTION_ZEPPELIN_HOME = 4
-    constant integer ACTION_ZEPPELIN_FOUNTAIN = 5
-    constant integer ACTION_HEALER = 6
-    constant integer ACTION_MANA_FOUNTAIN = 7
-	constant integer ACTION_MOONWELLS = 8
-    
-    location array hero_loc
-    location array hero_dir
-    real array hero_hp
-    real array hero_hp_loss
-    real array hero_enemy_density
-    location array hero_enemy_loc
-    real array hero_ally_density
-    location array hero_ally_loc
-    
+  constant integer ACTION_DO_NOTHING = 0
+  constant integer ACTION_GO_HOME = 1
+  constant integer ACTION_FOUNTAIN = 2
+  constant integer ACTION_TP = 3
+  constant integer ACTION_ZEPPELIN_HOME = 4
+  constant integer ACTION_ZEPPELIN_FOUNTAIN = 5
+  constant integer ACTION_HEALER = 6
+  constant integer ACTION_MANA_FOUNTAIN = 7
+  constant integer ACTION_MOONWELLS = 8
+
+  location array hero_loc
+  location array hero_dir
+  real array hero_hp
+  real array hero_hp_loss
+  real array hero_enemy_density
+  location array hero_enemy_loc
+  real array hero_ally_density
+  location array hero_ally_loc
+
 #ELSE
 
 function TeleportHome takes integer hn returns nothing
@@ -26,62 +26,68 @@ function TeleportHome takes integer hn returns nothing
   local player p = null
   local real distance = 9999999
   local location teleport_loc = null
-  local real dx = 0
-  local real dy = 0
+  //local real dx = 0
+  //local real dy = 0
   local real actual_diff = 0 
   local location start_loc = null
- 
 
   //set hero_loc = GetUnitLoc(hero_unit[hn])
   set break_attack = attack_running
   set attack_running = false
-  call ClearCaptainTargets()	
-  call CaptainGoHome()
+  call ClearCaptainTargets()
   set teleporting = true
-  if c_ally_total > 1 and UnitAlive(major_hero) and major_hero != null then
-	  loop
-		exitwhen i >= GetBJMaxPlayers()
-	      set p = Player(i)
-	      set start_loc =GetPlayerStartLocationLoc(p)
-	      //set dx = GetLocationX(start_loc) - GetLocationX(hero_loc)
-	      //set dy = GetLocationY(start_loc) - GetLocationY(hero_loc)
-	      //set actual_diff = SquareRoot(dx * dx + dy * dy)
-		  set actual_diff = DistanceBetweenPoints(start_loc, hero_loc[hn])
-	      if IsPlayerAlly(ai_player, p) and actual_diff < distance and GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
-			set distance = actual_diff
-			if teleport_loc != null then
-				call RemoveLocation(teleport_loc)
-			endif
-	 	    set teleport_loc = Location(GetLocationX(start_loc), GetLocationY(start_loc))
-	      endif
-	      set i = i + 1
-		if start_loc != null then
-			call RemoveLocation( start_loc )
-		endif
-	  endloop 
-	  call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(teleport_loc), GetLocationY(teleport_loc))
-  	  call RemoveLocation(teleport_loc)
-  	  set teleport_loc = null
+  if c_ally_total > 0 and UnitAlive(major_hero) and major_hero != null then
+    loop
+      exitwhen i >= c_ally_total
+      set p = ally_force[i]
+      if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
+        set start_loc = GetPlayerStartLocationLoc(p)
+        //set dx = GetLocationX(start_loc) - GetLocationX(hero_loc)
+        //set dy = GetLocationY(start_loc) - GetLocationY(hero_loc)
+        //set actual_diff = SquareRoot(dx * dx + dy * dy)
+        set actual_diff = DistanceBetweenPoints(start_loc, hero_loc[hn])
+        if actual_diff < distance then
+          set distance = actual_diff
+          if teleport_loc != null then
+            call RemoveLocation(teleport_loc)
+          endif
+          set teleport_loc = GetTeleportLandPoint(start_loc)
+        endif
+        call RemoveLocation(start_loc)
+      endif
+      set i = i + 1
+    endloop
+    call CaptainAttack(GetLocationX(teleport_loc), GetLocationY(teleport_loc))
   else
-		call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(home_location), GetLocationY(home_location))
+    call CaptainGoHome()
+    set teleport_loc = GetTeleportLandPoint(home_location)
+  endif
+  if teleport_loc != null then
+    call ClearCaptainTargets()
+    call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(teleport_loc), GetLocationY(teleport_loc))
+    call RemoveLocation(teleport_loc)
+    set teleport_loc = null
   endif
   set start_loc = null
   //if hero_loc != null then
-	//call RemoveLocation( hero_loc )
-	//set hero_loc = null
+  //call RemoveLocation( hero_loc )
+  //set hero_loc = null
   //endif
   set p = null
   call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
 endfunction
 
 function TeleportToLoc takes unit u, location l returns nothing
+  local location loc = GetTeleportLandPoint(l)
   set break_attack = attack_running
   set attack_running = false
   set teleporting = true
-  call ClearCaptainTargets()	
-  call CaptainGoHome()
-  call UnitUseItemPoint(u, GetItemOfTypeOnUnit(tp_item, u), GetLocationX(l), GetLocationY(l))
+  call ClearCaptainTargets()
+  call CaptainAttack(GetLocationX(loc), GetLocationY(loc))
+  call UnitUseItemPoint(u, GetItemOfTypeOnUnit(tp_item, u), GetLocationX(loc), GetLocationY(loc))
   call TQAddUnitJob(0.5, TELEPORT, 0, u)
+  call RemoveLocation(loc)
+  set loc = null
 endfunction
 
 function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothing
@@ -91,82 +97,94 @@ function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothin
   local location loc = null
   local integer hFountainID = GetHealthFountainID()
   local integer mFountainID = GetManaFountainID()
-  
+
   if a != ACTION_DO_NOTHING and a != ACTION_TP then
     call RemoveGuardPosition(hero_unit[hn])
-	if not IsUnitInvisible(hero_unit[hn], Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
-		call IssueImmediateOrder(hero_unit[hn], "windwalk")
-	endif
+    if GetUnitAbilityLevel(hero_unit[hn], 'AOwk') > 0 or GetUnitAbilityLevel(hero_unit[hn], 'ANwk') > 0 then
+      if not IsUnitInvisible(hero_unit[hn], Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+        call IssueImmediateOrder(hero_unit[hn], "windwalk")
+      endif
+    endif
     if a != ACTION_HEALER and hero_unit[hn] == major_hero then
       set major_hero = null
     endif
   endif
-  if a == ACTION_HEALER then
+  if a == ACTION_HEALER and healer != null then
     call GroupAddUnit(unit_healing, hero_unit[hn])
-	call CreateDebugTag("HERO: Going to Healer", 10, hero_unit[hn], 4.00, 2.00)
-	set unitloc = GetUnitLoc(healer)
-	if GetLocationX(last_enemy_loc) != 0 and GetLocationY(last_enemy_loc) != 0 then
-		set l = GetProjectedLoc(unitloc, GetSubtractionLoc(unitloc, last_enemy_loc), 350)
-		call TQAddUnitJob(GetTimeToReachLoc(hero_unit[hn], l) + 1, RESET_GUARD_POSITION, 0, hero_unit[hn])	
-		call IssuePointOrderLoc(hero_unit[hn], "move", l)		
-		call RemoveLocation(l)	
-		set l = null		
-	else
-		call TQAddUnitJob(GetTimeToReachLoc(hero_unit[hn], unitloc) + 1, RESET_GUARD_POSITION, 0, hero_unit[hn])	
-		call IssuePointOrderLoc(hero_unit[hn], "move", unitloc)
-	endif	
-	call RemoveLocation(unitloc)
-	set unitloc = null
+    call CreateDebugTag("HERO: Going to Healer", 10, hero_unit[hn], 4.00, 2.00)
+    set unitloc = GetUnitLoc(healer)
+    if GetLocationX(last_enemy_loc) != 0 and GetLocationY(last_enemy_loc) != 0 then
+      set loc = GetSubtractionLoc(unitloc, last_enemy_loc)
+      set l = GetProjectedLoc(unitloc, loc, 350)
+      call TQAddUnitJob(GetTimeToReachLoc(hero_unit[hn], l) + 1, RESET_GUARD_POSITION, 0, hero_unit[hn])
+      call IssuePointOrderLoc(hero_unit[hn], "move", l)
+      call RemoveLocation(l)
+      set l = null
+      call RemoveLocation(loc)
+      set loc = null
+    else
+      call TQAddUnitJob(GetTimeToReachLoc(hero_unit[hn], unitloc) + 1, RESET_GUARD_POSITION, 0, hero_unit[hn])
+      call IssuePointOrderLoc(hero_unit[hn], "move", unitloc)
+    endif
+    call RemoveLocation(unitloc)
+    set unitloc = null
     call HealUnit(healer, hero_unit[hn], false)
-  elseif a == ACTION_FOUNTAIN then
-    call CreateDebugTag("HERO: Going to Fountain", 10, hero_unit[hn], 4.00, 2.00)  
+    return
+  endif
+  if a == ACTION_FOUNTAIN then
+    call CreateDebugTag("HERO: Going to Fountain", 10, hero_unit[hn], 4.00, 2.00)
     call GroupAddUnit(unit_healing, hero_unit[hn])
     call TQAddUnitJob(0, HEALTH_FOUNTAIN, 80, hero_unit[hn])
-    
     call IssuePointOrder(hero_unit[hn], "move", GetUnitX(nearest_neutral[hFountainID]), GetUnitY(nearest_neutral[hFountainID]))
   elseif a == ACTION_MANA_FOUNTAIN then
-    call CreateDebugTag("HERO: Going to Mana Fountain", 10, hero_unit[hn], 4.00, 2.00)  
+    call CreateDebugTag("HERO: Going to Mana Fountain", 10, hero_unit[hn], 4.00, 2.00)
     call GroupAddUnit(unit_healing, hero_unit[hn])
-    call TQAddUnitJob(0, MANA_FOUNTAIN, 80, hero_unit[hn])    
+    call TQAddUnitJob(0, MANA_FOUNTAIN, 80, hero_unit[hn])
     call IssuePointOrder(hero_unit[hn], "move", GetUnitX(nearest_neutral[mFountainID]), GetUnitY(nearest_neutral[mFountainID]))
   elseif a == ACTION_GO_HOME then
     //call UnitGoHome(hero_unit[hn])
-	call CreateDebugTag("HERO: Going Home", 10, hero_unit[hn], 4.00, 2.00)
+    call CreateDebugTag("HERO: Going Home", 10, hero_unit[hn], 4.00, 2.00)
     call GroupAddUnit(unit_healing, hero_unit[hn])
     call TQAddUnitJob(0, SEND_HOME, 50, hero_unit[hn])
   elseif a == ACTION_ZEPPELIN_HOME then
-	call CreateDebugTag("HERO: Zeppelin Home", 10, hero_unit[hn], 4.00, 2.00)	
+    call CreateDebugTag("HERO: Zeppelin Home", 10, hero_unit[hn], 4.00, 2.00)
     call GroupAddUnit(unit_rescueing, follow_zeppelin)
     set g = CreateGroup()
     call GroupAddUnit(g, follow_zeppelin)
-    call GroupAddUnit(unit_healing, hero_unit[hn])	
+    call GroupAddUnit(unit_healing, hero_unit[hn])
     call TQAddGroupJob(0, ZEPPELIN_MOVE, ZTARGET_HOME, hero_unit[hn], g)
+    set g = null
   elseif a == ACTION_ZEPPELIN_FOUNTAIN then
-	call CreateDebugTag("HERO: Zepplin to fountain", 10, hero_unit[hn], 4.00, 2.00)  
+    call CreateDebugTag("HERO: Zepplin to fountain", 10, hero_unit[hn], 4.00, 2.00)
     call GroupAddUnit(unit_rescueing, follow_zeppelin)
     set g = CreateGroup()
     call GroupAddUnit(g, follow_zeppelin)
-    call GroupAddUnit(unit_healing, hero_unit[hn])	
+    call GroupAddUnit(unit_healing, hero_unit[hn])
     call TQAddGroupJob(0, ZEPPELIN_MOVE, ZTARGET_FOUNTAIN, hero_unit[hn], g)
+    set g = null
   elseif a == ACTION_TP then
-	call CreateDebugTag("Hero: Town Portalling", 10, hero_unit[hn], 4.00, 2.00)  
+    call CreateDebugTag("Hero: Town Portalling", 10, hero_unit[hn], 4.00, 2.00)
     call TeleportHome(hn)
   elseif a == ACTION_MOONWELLS then
- 	call CreateDebugTag("HERO: Going to Moonwells", 10, hero_unit[hn], 4.00, 2.00) 
-	call GroupAddUnit(unit_healing,hero_unit[hn])
-  	call TQAddUnitJob(0, MOON_WELL_CONTROL, 80, hero_unit[hn])  
+    call CreateDebugTag("HERO: Going to Moonwells", 10, hero_unit[hn], 4.00, 2.00)
+    call GroupAddUnit(unit_healing,hero_unit[hn])
+    call TQAddUnitJob(0, MOON_WELL_CONTROL, 80, hero_unit[hn])
   endif
 endfunction
 
-function SaveHero takes integer hn returns nothing
+function SaveHero takes integer hn , integer armyOfHero returns nothing
   local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
-  local unit healer = GetHealer()
+  local unit healer = null
   local integer hFountainID = GetHealthFountainID()
   local integer mFountainID = GetManaFountainID()
-  local integer armyOfHero = GetArmyOfUnit(hero_unit[hn]) 
+  local location l = Location(GetUnitX(hero_unit[hn]),GetUnitY(hero_unit[hn]))
+  set healer = GetHealer()
   call ActionListInit(9)
 #INCLUDE <HeroFleeRules.ai>
   call ExecuteSaveHero(hn, ActionListEval(), healer)
+  call RemoveLocation(l)
+  set l = null
+  set healer = null
 endfunction
 
 function HeroBugFixHealthCheck takes integer hn returns boolean
@@ -177,82 +195,83 @@ function MicroHeroJob takes integer hn returns nothing
   local real new_hp = 0.0
   local real teleportdistance = 0.0
   local integer current_order = 0
-  local integer armyOfHero = GetArmyOfUnit(hero_unit[hn]) 
+  local integer armyOfHero = 0
 
   call DisplayToAllJobDebug("MICRO_HERO Job start")
-  
-  // A Temporary Bug fix
+  if UnitAlive(hero_unit[hn]) then
+    set armyOfHero = GetArmyOfUnit(hero_unit[hn])
+    // A Temporary Bug fix
     if HeroBugFixHealthCheck(hn) then
       call CreateDebugTag("HERO: Healing Bug Fix Job", 10, hero_unit[hn], 4.00, 2.00)
       call RecycleGuardPosition(hero_unit[hn])
       call GroupRemoveUnit(unit_healing, hero_unit[hn])
     endif
-  //
-  
-  set new_hp = GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) / GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE)
-  set current_order = GetUnitCurrentOrder(hero_unit[hn])
-  
-  if UnitAlive(hero_unit[hn]) then
-	//  call DisplayToAll("MicroH Start")
-      if hero_dir[hn] != null then
-	  	call RemoveLocation(hero_dir[hn])
-	  endif
-	  //set hero_dir[hn] = GetSubtractionLoc_dd(GetUnitLoc(hero_unit[hn]), hero_loc[hn])
-	  set hero_dir[hn] = hero_loc[hn]
-	  set hero_loc[hn] = GetUnitLoc(hero_unit[hn])
-	  set hero_hp_loss[hn] = hero_hp[hn] - new_hp
-	  set hero_hp[hn] = new_hp
-	  call GetDensities(hero_loc[hn], ai_player, hero_radius)
-	  set hero_enemy_density[hn] = enemy_density
-	  call MoveLocation(hero_enemy_loc[hn], GetLocationX(enemy_density_loc), GetLocationY(enemy_density_loc))
-	  set hero_ally_density[hn] = ally_density
-	  call MoveLocation(hero_ally_loc[hn], GetLocationX(ally_density_loc), GetLocationY(ally_density_loc))
-	  
-	  if not teleporting and current_order >= 852008 and current_order <= 852013 then
-	    if GetItemTypeId(UnitItemInSlot(hero_unit[hn], current_order - 852008)) == old_id[tp_item] then
-	      set teleporting = true
-	      call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
-	    endif
-	  endif
-	  
-	//  call DisplayToAll("Hero Order: "+Int2Str(GetUnitCurrentOrder(hero_unit[hn])))
+    //
 
-	//  call DisplayToAll(Int2Str(R2I(hero_enemy_density[hn] * 10)))
-	//  call DisplayToAll(Int2Str(R2I(DistanceBetweenPoints(hero_enemy_loc[hn],GetUnitLoc(hero_unit[hn])))))
+    set new_hp = GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) / GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE)
+    set current_order = GetUnitCurrentOrder(hero_unit[hn])
 
-    set teleportdistance =  DistanceBetweenPoints(hero_loc[hn], town_loc[most_threatened_town]) 
-    if not teleporting and GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) < RMax(flee_health_percentage * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE), flee_minimum_health) and not IsUnitInGroup(hero_unit[hn], unit_healing) then
-      call SaveHero(hn)
+  //  call DisplayToAll("MicroH Start")
+    if hero_dir[hn] != null then
+      call RemoveLocation(hero_dir[hn])
     endif
-    if armyOfHero >= 0 then
-      if not teleporting and town_threatened and town_threat[most_threatened_town] >= teleport_min_threat and teleportdistance > LinearInterpolation(teleport_low_threat, teleport_high_threat, teleport_low_threat_distance, teleport_high_threat_distance, town_threat[most_threatened_town]) and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 and town_can_tp[most_threatened_town] and army_strength[armyOfHero] >= teleport_army_min_strength then
+    //set hero_dir[hn] = GetSubtractionLoc_dd(GetUnitLoc(hero_unit[hn]), hero_loc[hn])
+    set hero_dir[hn] = hero_loc[hn]
+    set hero_loc[hn] = Location(GetUnitX(hero_unit[hn]), GetUnitY(hero_unit[hn]))
+    set hero_hp_loss[hn] = hero_hp[hn] - new_hp
+    set hero_hp[hn] = new_hp
+    call GetDensities(hero_loc[hn], ai_player, hero_radius)
+    set hero_enemy_density[hn] = enemy_density
+    call RemoveLocation(hero_enemy_loc[hn])
+    set hero_enemy_loc[hn] = Location(GetLocationX(enemy_density_loc), GetLocationY(enemy_density_loc))
+    set hero_ally_density[hn] = ally_density
+    call RemoveLocation(hero_ally_loc[hn])
+    set hero_ally_loc[hn] = Location(GetLocationX(ally_density_loc), GetLocationY(ally_density_loc))
+
+    if not teleporting and current_order >= 852008 and current_order <= 852013 then
+      if GetItemTypeId(UnitItemInSlot(hero_unit[hn], current_order - 852008)) == old_id[tp_item] then
+        set teleporting = true
+        call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
+      endif
+    endif
+
+  //  call DisplayToAll("Hero Order: "+Int2Str(GetUnitCurrentOrder(hero_unit[hn])))
+
+  //  call DisplayToAll(Int2Str(R2I(hero_enemy_density[hn] * 10)))
+  //  call DisplayToAll(Int2Str(R2I(DistanceBetweenPoints(hero_enemy_loc[hn],GetUnitLoc(hero_unit[hn])))))
+
+    set teleportdistance = DistanceBetweenPoints(hero_loc[hn], town_loc[most_threatened_town])
+    if not teleporting and GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) < RMax(flee_health_percentage * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE), flee_minimum_health) and not IsUnitInGroup(hero_unit[hn], unit_healing) then
+      call SaveHero(hn,armyOfHero)
+    endif
+    if armyOfHero >= 0 and not teleporting and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 then
+      if town_threatened and town_threat[most_threatened_town] >= teleport_min_threat and teleportdistance > LinearInterpolation(teleport_low_threat, teleport_high_threat, teleport_low_threat_distance, teleport_high_threat_distance, town_threat[most_threatened_town]) and town_can_tp[most_threatened_town] and army_strength[armyOfHero] >= teleport_army_min_strength then
         if LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] * 0.75 then
           //call PingMinimap(GetLocationX(hero_loc[hn]), GetLocationY(hero_loc[hn]), 10.00)
-            //call PingMinimap(GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]), 10.00)	
+          //call PingMinimap(GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]), 10.00)
           //call DisplayToAll("Protection Town Portal: " + Int2Str(R2I(teleportdistance)))
           call CreateDebugTag("HERO: Teleporting to threatened town", 10, hero_unit[hn], 4.00, 2.00)
           call TeleportToLoc(hero_unit[hn], town_loc[most_threatened_town])
-            call TeleportHome(hn)
-            call TQAddJob(1, MICRO_HERO, hn)
-            return
+          call TQAddJob(1, MICRO_HERO, hn)
+          return
         elseif DistanceBetweenPoints(hero_loc[hn], home_location) > 2500 then
-            call CreateDebugTag("HERO: Teleporting home town too threatened", 10, hero_unit[hn], 4.00, 2.00)
-            call TeleportHome(hn)
-            call TQAddJob(1, MICRO_HERO, hn)
-            return
+          call CreateDebugTag("HERO: Teleporting home town too threatened", 10, hero_unit[hn], 4.00, 2.00)
+          call TeleportHome(hn)
+          call TQAddJob(1, MICRO_HERO, hn)
+          return
         endif
-     // Next statement detects when the main army is outmatched and so teleports back to home base
-     elseif not teleporting and attack_running and IsUnitInRangeXY(hero_unit[hn],GetLocationX(army_loc[main_army]), GetLocationY(army_loc[main_army]), battle_radius) and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 and army_strength[armyOfHero] >= teleport_army_min_strength and CaptainRetreating() and isfleeing and DistanceBetweenPoints(hero_loc[hn], home_location) > teleport_low_threat_distance then
-      call CreateDebugTag("HERO: Army outmatched-teleporting home", 10, hero_unit[hn], 4.00, 2.00)
+      // Next statement detects when the main army is outmatched and so teleports back to home base
+      elseif attack_running and IsUnitInRangeXY(hero_unit[hn],GetLocationX(army_loc[main_army]), GetLocationY(army_loc[main_army]), battle_radius) and army_strength[armyOfHero] >= teleport_army_min_strength and CaptainRetreating() and isfleeing and DistanceBetweenPoints(hero_loc[hn], home_location) > teleport_low_threat_distance then
+        call CreateDebugTag("HERO: Army outmatched-teleporting home", 10, hero_unit[hn], 4.00, 2.00)
+        call TeleportHome(hn)
+        call TQAddJob(1, MICRO_HERO, hn)
+        return
+      endif
+    endif
+    if not teleporting and hero_enemy_density[hn] > 5 and IsUnitInGroup(hero_unit[hn], unit_healing) and DistanceBetweenPoints(hero_dir[hn],hero_loc[hn]) <= 225 then
+      call CreateDebugTag("HERO: Surround Detection Teleportation", 10, hero_unit[hn], 4.00, 2.00)
       call TeleportHome(hn)
-      call TQAddJob(1, MICRO_HERO, hn)
-      return
-     endif 
-   endif 
-  endif
-  if not teleporting and hero_enemy_density[hn] > 5 and IsUnitInGroup(hero_unit[hn], unit_healing) and DistanceBetweenPoints(hero_dir[hn],hero_loc[hn]) <= 225 then
-    call CreateDebugTag("HERO: Surround Detection Teleportation", 10, hero_unit[hn], 4.00, 2.00)
-    call TeleportHome(hn)
+    endif
   endif
   call TQAddJob(1, MICRO_HERO, hn)
   //call DisplayToAll("MICRO_HERO END")
