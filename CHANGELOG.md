@@ -18,10 +18,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - New Gargoyle and Ghouls Strategy for undead (jzy-chitong56)
 - Added ability to commander to control the zoom level when you type into the chat window '-zoom3000' without the quotes. (jzy-chitong56)
 - Added opportunities to attempt extreme save behaviour when the AI is struggling e.g Do a militia expansion or ancient expansion (jzy-chitong56)
+- Some improvements to handle multiple mines at the same base  (jzy-chitong56)
 
 ### Changed
 - Chinese Translation improvements. (jzy-chitong56)
-- Updated MPQEditor to 4.0.0.894 (jzy-chitong56)
+- (DevTools) Updated MPQEditor to 4.0.0.894 (jzy-chitong56)
 - Language dialog will be available on game start even when the commander is disabled (jzy-chitong56)
 - Updates for latest war3 1.36 version (jzy-chitong56)
 - Hero Skill Adjustments
@@ -29,6 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
     - TFT BLADE MASTER can sometimes learn mirror image.
     - ROC BLADE MASTER will no longer use mirror image.
     - DEMON HUNTERS will can now sometimes learn Immolation.
+- Shredders now replace 10 peons (instead of 8)
 
 ### Removed
 - (DevTools) Old non-working installer has now been removed now we have new version in place.
@@ -56,6 +58,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issue where merc camps and dragon roosts were not detected.
 - Fixed various language encoding issues by ensuring all language files are now set to utf8.
 - Spanish translation corrections (Slayer95)
+- Fixed an issue where lumber mills could be spammed. (jzy-chitong56)
+- Fixed night time detection not quite correct sometimes (jzy-chitong56)
+- Zepplin control fixes (jzy-chitong56)
+- Ancient Expansion fixes (jzy-chitong56)
 
 ## [3.2.2] - 2022-10-05
 
