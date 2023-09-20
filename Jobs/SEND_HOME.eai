@@ -26,7 +26,6 @@ function SomeUnitHasHealingItem takes unit ru, unit u, integer rhi returns unit
   call GroupEnumUnitsInRange(g, GetUnitX(u), GetUnitY(u), 400, null)
   set g = SelectByPlayer(g, ai_player, true)
   set g = SelectByAlive(g, true)
-  set g = SelectUnittype(g, UNIT_TYPE_HERO, true)
   loop
     set ru = FirstOfGroup(g)
     exitwhen ru == null
@@ -44,14 +43,15 @@ endfunction
 
 function SendUnitHomeJob takes unit u, integer p returns nothing
 
-local location l = null
-local unit nearshopunit = null
-local group g = null
-local unit corpse = null
-local integer racial_healing_item = GetHeroHealingItem()
-local integer racial_mana_item = GetHeroManaItem()
-local integer enemystrength = 0
-local unit otherhero = null
+  local location l = null
+  local unit nearshopunit = null
+  local group g = null
+  local unit corpse = null
+  local item it = null
+  local integer racial_healing_item = GetHeroHealingItem()
+  local integer racial_mana_item = GetHeroManaItem()
+  local integer enemystrength = 0
+  local unit otherhero = null
 
   call DisplayToAllJobDebug("SEND_HOME Job")
 
@@ -92,12 +92,14 @@ local unit otherhero = null
       call TQAddUnitJob(4, SEND_HOME, p, u)
     else
       call CreateDebugTag("Hero: Use healing item", 10, u, 3.00, 1.50)
-      call UnitUseItem(u, GetItemOfTypeOnUnit(racial_healing_item, u))
-      call UnitUseItemTarget(u, GetItemOfTypeOnUnit(racial_healing_item, u), u)
+      set it = GetItemOfTypeOnUnit(racial_healing_item, u)
+      call UnitUseItem(u, it)
+      call UnitUseItemTarget(u, it, u)
       if racial_mana_item != 0 and GetUnitState(u, UNIT_STATE_MANA) < 100 and GetItemNumberOnUnit(racial_mana_item, u) > 0 then
         call UnitUseItem(u, GetItemOfTypeOnUnit(racial_mana_item, u))
       endif
       call TQAddUnitJob(Max(3,GetItemHealingTime(racial_healing_item)), SEND_HOME, p, u) // Have to add delay as continous healing items run out
+      set it = null
     endif
   elseif otherhero != null and IsUnitType(u, UNIT_TYPE_HERO) then
     if GetSlotsFreeOnUnit(u) > 0 then  // prevent create on the ground
