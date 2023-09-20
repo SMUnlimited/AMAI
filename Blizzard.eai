@@ -793,27 +793,6 @@ function ZoomSet takes nothing returns nothing
   endif
 endfunction
 
-function InitZoom takes nothing returns nothing
-  local integer i = 0
-  if ZoomSetx == null then
-    loop
-      exitwhen i >= playermax
-      if IsPlayerObserver(Player(i)) then
-        call SetCameraFieldForPlayer( Player(i), CAMERA_FIELD_TARGET_DISTANCE, 2500, 0 )
-      endif
-      set i = i + 1
-    endloop
-    set ZoomSetx = CreateTrigger()
-  endif
-  set i = 0
-  loop
-    exitwhen i >= playermax
-    call TriggerRegisterPlayerChatEvent( ZoomSetx, Player(i), "-zoom", false )
-    set i = i + 1
-  endloop
-  call TriggerAddAction(ZoomSetx, function ZoomSet)
-endfunction
-
 function ZoomDown takes nothing returns nothing
   if CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup()) > 1650 then
     call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup()) - 50 ), 0 )
@@ -826,22 +805,36 @@ function ZoomUp takes nothing returns nothing
   endif
 endfunction
 
-function AdjustZoom takes nothing returns nothing
+function InitZoom takes nothing returns nothing
   local integer i = 0
-  if AdjustZoomUp == null then
+  local player p = null
+  if ZoomSetx == null then
+    loop
+      exitwhen i >= GetBJMaxPlayers()
+      set p = Player(i)
+      if IsPlayerObserver(p) then
+        call SetCameraFieldForPlayer( p, CAMERA_FIELD_TARGET_DISTANCE, 2500, 0 )
+      endif
+      set i = i + 1
+    endloop
+    set ZoomSetx = CreateTrigger()
     set AdjustZoomUp = CreateTrigger()
-  endif
-  if AdjustZoomDown == null then
     set AdjustZoomDown = CreateTrigger()
+    call DisplayToAll("Zoom is set to: |c00d5f038-zoom1750|r")
+    set i = 0
   endif
   loop
-    exitwhen i >= playermax
-    call TriggerRegisterPlayerKeyEventBJ( AdjustZoomUp, Player(i), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_UP )
-    call TriggerRegisterPlayerKeyEventBJ( AdjustZoomDown, Player(i), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_DOWN )
+    exitwhen i >= GetBJMaxPlayers()
+    set p = Player(i)
+    call TriggerRegisterPlayerKeyEventBJ( AdjustZoomUp, p, bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_UP )
+    call TriggerRegisterPlayerKeyEventBJ( AdjustZoomDown, p, bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_DOWN )
+    call TriggerRegisterPlayerChatEvent( ZoomSetx, p, "-zoom", false )
     set i = i + 1
   endloop
+  call TriggerAddAction(ZoomSetx, function ZoomSet)
   call TriggerAddAction(AdjustZoomUp , function ZoomUp)
   call TriggerAddAction(AdjustZoomDown , function ZoomDown)
+  set p = null
 endfunction
 
 //===========================================================================
@@ -2149,7 +2142,6 @@ function LanguageDlg takes nothing returns nothing
   local integer host = GetFirstHuman()
   call DestroyTimer(last_timer)
   // Need to pause computer ai and players
-  call DisplayToAll("Zoom is set to: |c00d5f038-zoom1750|r")
   call PauseAllUnitsBJ(true)
   call SetupStrategies()
   if language != "" or host == -1 then
@@ -2177,6 +2169,5 @@ endfunction
 #INCLUDE <Blizzard3.j>
     call InitCommander()
     call InitZoom()
-    call AdjustZoom()
     call W3CDenyTipControl()
 #INCLUDE <Blizzard4.j>
