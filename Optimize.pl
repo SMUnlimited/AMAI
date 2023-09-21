@@ -63,6 +63,7 @@ else {
 
 open(LIBFILE, $libfile) or die "File <$libfile> not found!";
 my @lib = <LIBFILE>;
+print "Lib <$libfile> found!\n";
 close(LIBFILE);
 
 StringsToRef(\@lib);
@@ -79,6 +80,7 @@ unless ($opt_blizzard) {
     open(SCRIPTFILE, $scriptname) or die "File <$scriptname> not found!";
     my @script = <SCRIPTFILE>;
     close(SCRIPTFILE);
+    print "Script <$scriptname> found!\n";
     
     %local_requires = ();
     %used_local = ();
@@ -96,6 +98,7 @@ unless ($opt_blizzard) {
     open(SCRIPTFILE, ">$scriptname") or die "File <$scriptname> could not be opened for writing!";
     print SCRIPTFILE @script;
     close(SCRIPTFILE);
+    print "File <$scriptname> opened for writing!\n";
   }
   
   RemoveUnusedObjects(\@lib, \%used_global);
@@ -106,6 +109,7 @@ RefToStrings(\@lib);
 open(LIBFILE, ">$libfile") or die "File <$libfile> could not be opened for writing!";
 print LIBFILE @lib;
 close(LIBFILE);
+print "File <$libfile> opened for writing!\n";
 
 sub AssembleScriptNames {
   my ($tablefile, $template) = @_;
@@ -128,7 +132,13 @@ sub tablerep {
 sub StringsToRef {
   my $fileref = shift;
   foreach (@{$fileref}) {
-    s/((?:\"(?:[^\"]|(?:\\\"))*\")|(?:\'(?:[^\"]|(?:\\\"))*\'))/AddToRefTable($1)/ge;
+      #if (/GetUnitAbilityLevel\(/) {
+      #    print "\n====stringstoref====\n";
+       #   print /(.*)/;
+      #    print "\n";
+      #    print /(?:\"(?:[^\"]|(?:\\\"))*\")|(?:\'(?:[^\"^\']|(?:\\\")|(?:\\\'))*\')/g;
+      #}
+    s/((?:\"(?:[^\"]|(?:\\\"))*\")|(?:\'(?:[^\"^\']|(?:\\\")|(?:\\\'))*\'))/AddToRefTable($1)/ge;
   }
 }
 
@@ -140,6 +150,10 @@ sub AddToRefTable {
 sub RefToStrings {
   my $fileref = shift;
   foreach (@{$fileref}) {
+          #if (/GetUnitAbilityLevel\(/) {
+         # print "\n====reftostrings====\n";
+         # print /(.*)/;
+      #}
     s/\%(\d+)\%/$stringrefs[$1]/g;
   }
 }
@@ -147,6 +161,10 @@ sub RefToStrings {
 sub RemoveComments {
   my $fileref = shift;
   foreach (@{$fileref}) {
+      #    if (/GetUnitAbilityLevel\(/) {
+      #    print "\n====removecomments====\n";
+      #    print /(.*)/;
+     # }
     s/\/\/[^\n]*//;
   }
 }
@@ -154,6 +172,10 @@ sub RemoveComments {
 sub RemoveWhitespace {
   my $fileref = shift;
   foreach (@{$fileref}) {
+     #     if (/GetUnitAbilityLevel\(/) {
+      #    print "\n====removewhitespace====\n";
+     #     print /(.*)/;
+      #}
     s/(\s)+/$1/g;
     s/[\ \t\f]([=<>!()\[\],+\-*\/])/$1/g;
     s/([=<>!()\[\],+\-*\/])[\ \t\f]/$1/g;
@@ -165,6 +187,10 @@ sub RemoveIfFalseThen {
   my $fileref = shift;
   my $iniffalse = 0;
   foreach (@{$fileref}) {
+      #    if (/GetUnitAbilityLevel\(/) {
+      #    print "\n====removeiffalsethen====\n";
+      #    print /(.*)/;
+      #}
     if ($iniffalse) {
       if (/elseif(.*)/) {
         $iniffalse = 0;
@@ -185,6 +211,10 @@ sub RemoveIfFalseThen {
 sub GetConstants {
   my $fileref = shift;
   foreach (@{$fileref}) {
+      #    if (/GetUnitAbilityLevel\(/) {
+      #    print "\n====getconstants====\n";
+      #    print /(.*)/;
+      #}
     if (/endglobals/) {
       return
     }
@@ -198,6 +228,10 @@ sub GetConstants {
 sub AddKeywords {
   my ($fileref, $doaddvars) = @_;
   foreach (@{$fileref}) {
+      #    if (/GetUnitAbilityLevel\(/) {
+      #    print "\n====addkeywords====\n";
+      #    print /(.*)/;
+      #}
     if (/type\s+(\w+)\s+extends/) {
       $keywords{$1} = 1;
     }
@@ -222,6 +256,10 @@ sub ParseObjects {
   my %current_locals = ();
   my $in_globals = 0;
   foreach (@{$fileref}) {
+      #    if (/GetUnitAbilityLevel\(/) {
+       #   print "\n====parseobjects====\n";
+     #     print /(.*)/;
+     # }
     if (/endglobals/) {
       $in_globals = 0;
     }
@@ -303,6 +341,10 @@ sub RemoveUnusedObjects {
   my $do_del = 0;
   my $in_globals = 0;
   foreach (@{$fileref}) {
+      #if (/GetUnitAbilityLevel\(/) {
+      #    print "\n====unusedobjects====\n";
+      #    print /(.*)/;
+      #}
     if (/endglobals/) {
       $in_globals = 0;
     }
@@ -335,13 +377,21 @@ sub RemoveUnusedObjects {
 sub MakeVarNamesShort {
   my $fileref = shift;
   foreach (@{$fileref}) {
-    s/([A-Za-z]\w*)/CheckRenameObject($1)/ge;
+      #if (/GetUnitAbilityLevel\(/) {
+       #   print "\n====boof====\n";
+          #print /([A-Za-z]\w*)/;
+       #   print /(.*)/;
+      #}
+    s/([A-Za-z_][\w_]*)/CheckRenameObject($1)/ge;
   }
 }
 
 sub CheckRenameObject {
   my $obj = shift;
-  return $obj if ($keywords{$obj} or $no_rename{$obj} or length($obj)<=1 or (length($obj)<=4 and $obj !~ /^v/));
+
+  if ($keywords{$obj} or $no_rename{$obj} or length($obj)<=1 or (length($obj)<=4 and $obj !~ /^v/)) {
+    return $obj ;
+  }
   unless ($varmap{$obj}) {
     $varmapnum++;
     $varmap{$obj} = sprintf('v%x',$varmapnum);
