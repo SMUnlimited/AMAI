@@ -9803,56 +9803,48 @@ function ZoomSet takes nothing returns nothing
   endif
 endfunction
 
+function ZoomDown takes nothing returns nothing
+    if CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup()) > 1650 then
+      call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup()) - 50 ), 0 )
+    endif
+  endfunction
+  
+  function ZoomUp takes nothing returns nothing
+    if CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup()) < 3000 then
+      call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup()) + 50 ), 0 )
+    endif
+  endfunction
+
 function InitZoom takes nothing returns nothing
-  local integer i = 0
-  if ZoomSetx == null then
+    local integer i = 0
+    local player p = null
+    if ZoomSetx == null then
+      loop
+        exitwhen i >= playermax
+        set p = Player(i)
+        if IsPlayerObserver(p) then
+          call SetCameraFieldForPlayer( p, CAMERA_FIELD_TARGET_DISTANCE, 2500, 0 )
+        endif
+        set i = i + 1
+      endloop
+      set ZoomSetx = CreateTrigger()
+      set AdjustZoomUp = CreateTrigger()
+      set AdjustZoomDown = CreateTrigger()
+      call DisplayToAll("Zoom is set to: |c00d5f038-zoom1750|r")
+      call TriggerAddAction(ZoomSetx, function ZoomSet)
+      call TriggerAddAction(AdjustZoomUp , function ZoomUp)
+      call TriggerAddAction(AdjustZoomDown , function ZoomDown)
+      set i = 0
+    endif
     loop
       exitwhen i >= playermax
-      if IsPlayerObserver(Player(i)) then
-        call SetCameraFieldForPlayer( Player(i), CAMERA_FIELD_TARGET_DISTANCE, 2500, 0 )
-      endif
+      set p = Player(i)
+      call TriggerRegisterPlayerKeyEventBJ( AdjustZoomUp, p, bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_UP )
+      call TriggerRegisterPlayerKeyEventBJ( AdjustZoomDown, p, bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_DOWN )
+      call TriggerRegisterPlayerChatEvent( ZoomSetx, p, "-zoom", false )
       set i = i + 1
     endloop
-    set ZoomSetx = CreateTrigger()
-    call DisplayToAll("Zoom is set to: |c00d5f038-zoom1750|r")
-  endif
-  set i = 0
-  loop
-    exitwhen i >= playermax
-    call TriggerRegisterPlayerChatEvent( ZoomSetx, Player(i), "-zoom", false )
-    set i = i + 1
-  endloop
-  call TriggerAddAction(ZoomSetx, function ZoomSet)
-endfunction
-
-function ZoomDown takes nothing returns nothing
-  if CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup()) > 1650 then
-    call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup()) - 50 ), 0 )
-  endif
-endfunction
-
-function ZoomUp takes nothing returns nothing
-  if CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup()) < 3000 then
-    call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup()) + 50 ), 0 )
-  endif
-endfunction
-
-function AdjustZoom takes nothing returns nothing
-  local integer i = 0
-  if AdjustZoomUp == null then
-    set AdjustZoomUp = CreateTrigger()
-  endif
-  if AdjustZoomDown == null then
-    set AdjustZoomDown = CreateTrigger()
-  endif
-  loop
-    exitwhen i >= playermax
-    call TriggerRegisterPlayerKeyEventBJ( AdjustZoomUp, Player(i), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_UP )
-    call TriggerRegisterPlayerKeyEventBJ( AdjustZoomDown, Player(i), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_DOWN )
-    set i = i + 1
-  endloop
-  call TriggerAddAction(AdjustZoomUp , function ZoomUp)
-  call TriggerAddAction(AdjustZoomDown , function ZoomDown)
+    set p = null
 endfunction
 
 //***************************************************************************
@@ -10215,7 +10207,6 @@ function InitBlizzard takes nothing returns nothing
     call InitSummonableCaps()
     call InitNeutralBuildings()
     call InitZoom()
-    call AdjustZoom()
     call DetectGameStarted()
 
 endfunction
