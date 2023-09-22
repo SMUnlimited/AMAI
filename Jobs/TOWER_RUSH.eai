@@ -163,6 +163,7 @@ function TowerRushJob takes nothing returns nothing
 	local location t = null
 	local item it = null
 	local integer i = 0
+	local integer c = 0
 	local integer v = 0
 	local integer randomnum = 0
 	local integer towermove = 30
@@ -194,10 +195,14 @@ function TowerRushJob takes nothing returns nothing
 					set builder[towermove] = u
 					set towermove = towermove + 1
 				endif
-				set i = i + 1
+				if IsUnitType(u, UNIT_TYPE_ATTACKS_GROUND) or IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) then
+					set i = i + 1
+				endif
+				set c = c + 1
 			endif
 			if (race_tower_upgrade1 != 0 and GetUnitTypeId(u) == old_id[race_tower_upgrade1]) or ( race_tower_upgrade2 != 0 and GetUnitTypeId(u) == old_id[race_tower_upgrade2]) then
 				set i = i + 1
+				set c = c + 1
 			endif
 			if GetUnitTypeId(u) == old_id[racial_shop] then
 				set v = v + 1
@@ -218,7 +223,7 @@ function TowerRushJob takes nothing returns nothing
 
 	//call Trace("Getting ready to tower rush")
 	if not (first_tower_point_x == 0 and first_tower_point_y == 0) and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) != 0 then
-		set Strength = (GetLocationNonCreepStrength(first_tower_point_x, first_tower_point_y, 1200) > (GetOwnStrength() * 4)) or (towers_built_count > 6 * race_tower_peon and towers_built < 2)  //6 job cycles
+		set Strength = (GetLocationNonCreepStrength(first_tower_point_x, first_tower_point_y, 1200) > (GetOwnStrength() * 4)) or (towers_built_count > 6 * race_tower_peon and ((c < 2 and (race_tower_upgrade1 != 0) or (race_tower_upgrade2 != 0)) or (towers_built < 2 and race_tower_upgrade1 == 0 and race_tower_upgrade2 == 0)))  //6 job cycles
 	endif
 	if GetPlayerSlotState(rushedplayer) != PLAYER_SLOT_STATE_PLAYING or GetPlayerUnitCount(rushedplayer,true) <= 0 or (towers_built == 0 and Strength == true) or (towers_built < 3 and town_threatened) then    //or (builder[1] != null and (GetUnitState(builder[1], UNIT_STATE_LIFE) <= 0  and GetUnitState(builder[3], UNIT_STATE_LIFE) <= 0 and GetUnitState(builder[2], UNIT_STATE_LIFE) <= 0)) then
 	//maybe enemy give up the Location,so temporary no need built
@@ -244,6 +249,9 @@ function TowerRushJob takes nothing returns nothing
 					endif
 					call GroupRemoveUnit(g,u)
 				endloop
+				if race_has_power_build then
+					call DestroyGroup(tower_rush_power)
+				endif
 			endif
 			call GroupClear(g)
 			call GroupEnumUnitsInRange(g, first_tower_point_x, first_tower_point_y, 2200, null)
@@ -331,14 +339,14 @@ function TowerRushJob takes nothing returns nothing
 			set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 660)
 		endif
 		if first_tower_point_x == 0 then
-			set first_tower_point_x = ((GetLocationX(t)+GetLocationX(toweringplayerloc))/2)
-			set first_tower_point_y = ((GetLocationY(t)+GetLocationY(toweringplayerloc))/2)
+			set first_tower_point_x = GetLocationX(t)
+			set first_tower_point_y = GetLocationY(t)
 		endif
 	elseif towers_built <= 6 then
 		set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 200)
 		if second_attack_point_x == 0 then
-			set second_attack_point_x = ((GetLocationX(t)+GetLocationX(toweringplayerloc))/2)
-			set second_attack_point_y = ((GetLocationY(t)+GetLocationY(toweringplayerloc))/2)
+			set second_attack_point_x = ((first_tower_point_x+GetLocationX(toweringplayerloc))/2)
+			set second_attack_point_y = ((first_tower_point_y+GetLocationY(toweringplayerloc))/2)
 		endif
 	else
 		set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, -200)
@@ -385,30 +393,37 @@ function TowerRushJob takes nothing returns nothing
 		loop
 			exitwhen i > race_tower_peon
 			call GroupRemoveUnit(tempg,builder[i])  // Prevent cannot build tower
+			call GroupRemoveUnit(tower_rush_power,builder[i])
 			set i = i + 1
 		endloop
 		set i = 41
-		loop
-			exitwhen i > 47
-			if not UnitAlive(builder[i]) or not IsUnitInGroup(builder[i], tempg) or builder[i] == null then
-				set builder[i] = FirstOfGroup(tempg)
-				call RemoveGuardPosition(builder[i])
-				call IssueImmediateOrder(builder[i], "autoharvestlumber")  // Intentionally inverting lumber and gold , it is necessary for it to be normal
-			endif
-			call GroupRemoveUnit(tempg,builder[i])
-			set i = i + 1
-		endloop
+		call GroupRemoveUnit(tower_rush_power,builder[41])
+		call GroupRemoveUnit(tower_rush_power,builder[42])
+		call RecycleGuardPosition(builder[41])// recycle two peon , give AI build other construct
+		call RecycleGuardPosition(builder[42])
 		loop
 			set u = FirstOfGroup(tempg)
 			exitwhen u == null
-			if GetUnitCurrentOrder(u) != OrderId("harvest") and GetUnitCurrentOrder(u) != OrderId("resumeharvesting") then
-				call RemoveGuardPosition(u)
-				call IssueImmediateOrder(u, "autoharvestgold")
+			call RemoveGuardPosition(u)
+			if not IsUnitInGroup(u,tower_rush_power) then
+				call GroupAddUnit(tower_rush_power,u)
+				call IssueImmediateOrder(u, "autoharvestlumber")
+			else
+				if i <= 47 then
+					if builder[i] == null or not UnitAlive(builder[i]) or not IsUnitInGroup(builder[i], tempg) then
+						set builder[i] = FirstOfGroup(tempg)
+						call IssueImmediateOrder(builder[i], "autoharvestgold")
+					endif
+					if GetUnitCurrentOrder(u) != OrderId("harvest") then
+						call IssueImmediateOrder(builder[i], "autoharvestgold")  // Intentionally inverting lumber and gold , it is necessary for it to be normal
+					endif
+					set i = i + 1
+				elseif GetUnitCurrentOrder(u) != OrderId("harvest") then
+					call IssueImmediateOrder(u, "autoharvestlumber")
+				endif
 			endif
 			call GroupRemoveUnit(tempg,u)
 		endloop
-		call RecycleGuardPosition(builder[41])// remove two peon , give AI build other construct
-		call RecycleGuardPosition(builder[42])
 	endif
 
 	if towers_built < buildtries and tower_attack_run == true then
