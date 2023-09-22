@@ -11485,48 +11485,37 @@ function AttackMoveTowerRush takes nothing returns nothing
 
 	set attack_running = true
 
-	if (builder[20] == null or GetUnitState(builder[20], UNIT_STATE_LIFE) <= 0) then
-		call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1200, null)
-		set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-		set builder[20] = FirstOfGroup(g)
-	endif
-	call DestroyGroup(g)
-	set g = null
-	if c_ally_user_total == 0 then  //prevent send out signal , tell human player enemy position
-		call SetAllianceTarget(builder[20])
-	else
-		if towers_built != 0 then
-			call SetAllianceTarget(builder[20])
-		endif
-	endif
 	loop
 		exitwhen not towerrush
 		exitwhen town_threatened and town_threat[most_threatened_town] >= teleport_low_threat + 60
 		exitwhen break_attack
 		exitwhen CaptainIsEmpty()       // all units died
-		if towers_built <= 4 then
-			//call SetCaptainHome(BOTH_CAPTAINS, R2I(first_tower_point_x), R2I(first_tower_point_y))
-			//call AttackMoveXY(R2I(first_tower_point_x), R2I(first_tower_point_y))
+		if (builder[20] == null or GetUnitState(builder[20], UNIT_STATE_LIFE) <= 0) then
+			call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1200, null)
+			set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+			set builder[20] = FirstOfGroup(g)
+			call GroupClear(g)
+		endif
+		call SetAllianceTarget(builder[20])
+		if towers_built <= 1 then
 			call AttackMoveKill(builder[1])
 			call SetAllianceTarget(builder[1])
+		elseif towers_built <= 4 then
+			call AttackMoveXY(R2I(first_tower_point_x), R2I(first_tower_point_y))
 		elseif towers_built <= 6 then
-			//call SetCaptainHome(BOTH_CAPTAINS, R2I(second_attack_point_x), R2I(second_attack_point_y))
 			call AttackMoveXY(R2I(second_attack_point_x), R2I(second_attack_point_y))
-			call SetAllianceTarget(builder[20])
 		else
-			//call SetCaptainHome(BOTH_CAPTAINS, R2I(enemy_point_x), R2I(enemy_point_y))
 			call AttackMoveXY(R2I(enemy_point_x),R2I(enemy_point_y))
-			call SetAllianceTarget(builder[20])
 		endif
 		//call AttackMoveKill(builder[20])
 		//if towers_built == 0 then
 			//call CreateDebugTag("Reform protect peon", 10, builder[1], 2.00, 1.50)
- 			//call AttackMoveKill(builder[1])
+			//call AttackMoveKill(builder[1])
 		//else
 			//call SetCaptainHome(BOTH_CAPTAINS,R2I(((enemy_point_x - first_tower_point_x)/ 4) + first_tower_point_x),R2I(((enemy_point_y - first_tower_point_y)/ 4) + first_tower_point_y))
 			//call SetCaptainHome(BOTH_CAPTAINS, R2I(enemy_point_x), R2I(enemy_point_y))
 			//if towers_built < 3 then
-			//call AttackMoveXY(R2I(enemy_point_x), R2I(enemy_point_y))
+				//call AttackMoveXY(R2I(enemy_point_x), R2I(enemy_point_y))
 				//call AttackMoveXY(R2I(((enemy_point_x - first_tower_point_x)/ 6) + first_tower_point_x), R2I(((enemy_point_y - first_tower_point_y)/ 6) + first_tower_point_y))
 			//elseif towers_built < 6 then
 				//call AttackMoveXY(R2I(((enemy_point_x - first_tower_point_x)/ 3) + first_tower_point_x), R2I(((enemy_point_y - first_tower_point_y)/ 3) + first_tower_point_y))
@@ -11542,6 +11531,8 @@ function AttackMoveTowerRush takes nothing returns nothing
 		endif
 	endloop
 	call SleepInCombatAM()
+	call DestroyGroup(g)
+	set g = null
 	set attack_running = false
 	call SetAllianceTarget(null)
 endfunction
@@ -12299,7 +12290,6 @@ if not creeping_only then	// Do the normal attack sequence
         endif
       endif
       set tower_attack_run = true
-      return  //Waiting for the next cycle will attack
     endif
     call Trace("A Tower Rush Attack")
     call FormGroupAM(3)
