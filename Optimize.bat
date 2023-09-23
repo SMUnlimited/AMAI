@@ -1,2 +1,2 @@
-@call MakeOptTFT.bat
 @call MakeOptROC.bat
+@call MakeOptTFT.bat
