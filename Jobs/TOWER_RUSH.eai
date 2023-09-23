@@ -164,10 +164,11 @@ function TowerRushJob takes nothing returns nothing
 	local item it = null
 	local integer i = 0
 	local integer c = 0
-	local integer v = 0
+	local integer s = 0
 	local integer randomnum = 0
 	local integer towermove = 30
 	local integer buildtries = 10
+	local integer id = 0
 	local real time_next_try = 5
 	local boolean Strength = false
 	call DisplayToAllJobDebug("TOWER_RUSH Job START")
@@ -185,7 +186,8 @@ function TowerRushJob takes nothing returns nothing
 		exitwhen u == null
 		if GetOwningPlayer(u) == ai_player and GetUnitState(u, UNIT_STATE_LIFE) > 0 and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
 			set randomnum = GetRandomInt(1, 4)
-			if GetUnitTypeId(u) == old_id[race_tower_id] then
+			set id = GetUnitTypeId(u)
+			if id == old_id[race_tower_id] then
 				if (randomnum == 4 or GetUnitCountDone(old_id[race_towerrush_requirement]) == 0) and TownCount(race_tower_upgrade2) < 2 and race_tower_upgrade2 != 0 then
 					call IssueImmediateOrderById(u, old_id[race_tower_upgrade2])
 				elseif race_tower_upgrade1 != 0 then
@@ -199,13 +201,11 @@ function TowerRushJob takes nothing returns nothing
 					set i = i + 1
 				endif
 				set c = c + 1
-			endif
-			if (race_tower_upgrade1 != 0 and GetUnitTypeId(u) == old_id[race_tower_upgrade1]) or ( race_tower_upgrade2 != 0 and GetUnitTypeId(u) == old_id[race_tower_upgrade2]) then
+			elseif (race_tower_upgrade1 != 0 and id == old_id[race_tower_upgrade1]) or ( race_tower_upgrade2 != 0 and id == old_id[race_tower_upgrade2]) then
 				set i = i + 1
 				set c = c + 1
-			endif
-			if GetUnitTypeId(u) == old_id[racial_shop] then
-				set v = v + 1
+			elseif id == old_id[racial_shop] then
+				set s = s + 1
 			endif
 			if race_has_power_build and GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) then
 				if builder[randomnum] != null and GetUnitCurrentOrder(builder[randomnum]) == 0 then
@@ -216,16 +216,35 @@ function TowerRushJob takes nothing returns nothing
 		call GroupRemoveUnit(g,u)
 	endloop
 	set towers_built = i
-	set race_tower_shop = v
+	set race_tower_shop = s
 	if ((towers_built >= 4 and race_tower_item_must != true) or (towers_built > 0 and race_tower_item_must == true)) and tower_used_item == false then
 		set tower_used_item = true  //No need used item
 	endif
+	if towers_built <= 3 then
+		if GetLocationCreepStrength(GetLocationX(tower_target_loc), GetLocationY(tower_target_loc), 500) > 0 then
+			set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 600)
+		else
+			set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 660)
+		endif
+		if first_tower_point_x == 0 then
+			set first_tower_point_x = GetLocationX(t)
+			set first_tower_point_y = GetLocationY(t)
+		endif
+	elseif towers_built <= 6 then
+		set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 200)
+		if second_attack_point_x == 0 then
+			set second_attack_point_x = ((first_tower_point_x+GetLocationX(toweringplayerloc))/2)
+			set second_attack_point_y = ((first_tower_point_y+GetLocationY(toweringplayerloc))/2)
+		endif
+	else
+		set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, -200)
+	endif
 
 	//call Trace("Getting ready to tower rush")
-	if not (first_tower_point_x == 0 and first_tower_point_y == 0) and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) != 0 then
-		set Strength = (GetLocationNonCreepStrength(first_tower_point_x, first_tower_point_y, 1200) > (GetOwnStrength() * 4)) or (towers_built_count > 6 * race_tower_peon and ((c < 2 and (race_tower_upgrade1 != 0 or race_tower_upgrade2 != 0)) or (towers_built < 2 and race_tower_upgrade1 == 0 and race_tower_upgrade2 == 0)))  //6 job cycles
+	if not (GetLocationX(t) == 0 and GetLocationY(t) == 0) and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) != 0 then
+		set Strength = (GetLocationNonCreepStrength(GetLocationX(t), GetLocationY(t), 1200) > (GetOwnStrength() * 4)) or ((towers_built_count > 6 * race_tower_peon or town_threatened) and c < 2)  //6 job cycles
 	endif
-	if GetPlayerSlotState(rushedplayer) != PLAYER_SLOT_STATE_PLAYING or GetPlayerUnitCount(rushedplayer,true) <= 0 or (towers_built == 0 and Strength == true) or (towers_built < 3 and town_threatened) then    //or (builder[1] != null and (GetUnitState(builder[1], UNIT_STATE_LIFE) <= 0  and GetUnitState(builder[3], UNIT_STATE_LIFE) <= 0 and GetUnitState(builder[2], UNIT_STATE_LIFE) <= 0)) then
+	if GetPlayerSlotState(rushedplayer) != PLAYER_SLOT_STATE_PLAYING or GetPlayerUnitCount(rushedplayer,true) <= 0 or Strength == true then  //or (builder[1] != null and (GetUnitState(builder[1], UNIT_STATE_LIFE) <= 0  and GetUnitState(builder[3], UNIT_STATE_LIFE) <= 0 and GetUnitState(builder[2], UNIT_STATE_LIFE) <= 0)) then
 	//maybe enemy give up the Location,so temporary no need built
 		call Trace("I have finished the tower rush")
 		set gold_buffer = 0
@@ -331,27 +350,15 @@ function TowerRushJob takes nothing returns nothing
 	// 		set wood_buffer = 0
 	// 	endif
 	// endif
-
-	if towers_built <= 4 then
-		if GetLocationCreepStrength(GetLocationX(tower_target_loc), GetLocationY(tower_target_loc), 500) > 0 then
-			set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 600)
+    if tower_attack_run != true then
+		if town_threatened or (GetUnitCountDone(old_id[hero[1]]) + GetUnitCountDone(old_id[hero[2]]) + GetUnitCountDone(old_id[hero[3]])) == 0 then
+			// no need do anything
+		elseif race_tower_item_must == true and builder[0] == null then
+			// no need do anything
 		else
-			set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 660)
+			set tower_attack_run = true
 		endif
-		if first_tower_point_x == 0 then
-			set first_tower_point_x = GetLocationX(t)
-			set first_tower_point_y = GetLocationY(t)
-		endif
-	elseif towers_built <= 6 then
-		set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 200)
-		if second_attack_point_x == 0 then
-			set second_attack_point_x = ((first_tower_point_x+GetLocationX(toweringplayerloc))/2)
-			set second_attack_point_y = ((first_tower_point_y+GetLocationY(toweringplayerloc))/2)
-		endif
-	else
-		set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, -200)
 	endif
-
 	if builder[0] == null then
 		set builder[0] = GetItemHero(GetItemOfType(it,race_tower_item))
 		set it = null
