@@ -33,7 +33,7 @@ function TowerRushBuilderFirstControl_d takes unit u, unit hall returns nothing
 	endif
 endfunction
 
-function TowerRushBuilderControl_dk takes unit u, location l, location t returns nothing
+function TowerRushBuilderControl_dk takes unit u, location l, location t, boolean CanBuild returns nothing
 	local real builder_x = 0
 	local real builder_y = 0
 	local integer id = GetUnitCurrentOrder(u)
@@ -69,7 +69,7 @@ function TowerRushBuilderControl_dk takes unit u, location l, location t returns
 				endif
 			endif
 		else  //Building tower
-			if GetUnitTypeId(u) == old_id[racial_militia] or (race_tower_bypeon == true and u == builder[4] and IsUnitType(builder[1], UNIT_TYPE_STRUCTURE) and IsUnitType(builder[2], UNIT_TYPE_STRUCTURE) and IsUnitType(builder[3], UNIT_TYPE_STRUCTURE)) then
+			if not CanBuild or GetUnitTypeId(u) == old_id[racial_militia] or (race_tower_bypeon == true and u == builder[4] and IsUnitType(builder[1], UNIT_TYPE_STRUCTURE) and IsUnitType(builder[2], UNIT_TYPE_STRUCTURE) and IsUnitType(builder[3], UNIT_TYPE_STRUCTURE)) then
 				call RemoveLocation(l)
 				set l = null
 				return  // HUMAN militia cannot build , ELF no need all peon build , try give one repair
@@ -172,7 +172,8 @@ function TowerRushJob takes nothing returns nothing
 	local integer buildtries = 10
 	local integer id = 0
 	local real time_next_try = 5
-	local boolean Strength = false
+	local boolean CloseJob = false
+	local boolean CanBuild = true
 	call DisplayToAllJobDebug("TOWER_RUSH Job START")
 	if not hero_built[1] and race_tower_item_must == true then
 		call TQAddJob(5, TOWER_RUSH, 0)
@@ -219,6 +220,7 @@ function TowerRushJob takes nothing returns nothing
 	endloop
 	set towers_built = i
 	set race_tower_shop = s
+	set CanBuild = towers_built - towers_attck < 2
 	if ((towers_built >= 4 and race_tower_item_must != true) or (towers_built > 0 and race_tower_item_must == true)) and tower_used_item == false then
 		set tower_used_item = true  //No need used item
 	endif
@@ -239,14 +241,14 @@ function TowerRushJob takes nothing returns nothing
 			set second_attack_point_y = GetLocationY(t)
 		endif
 	else
-		set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, -200)
+		set t = Location(LocationX(tower_target_loc), GetLocationY(tower_target_loc))
 	endif
 	call CreateDebugTagLoc(Int2Str(i), 10, GetLocationX(t), GetLocationY(t), 60.00, 55.00)
 	//call Trace("Getting ready to tower rush")
 	if not (GetLocationX(t) == 0 and GetLocationY(t) == 0) and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) != 0 then
-		set Strength = (town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat + 60) or (GetLocationNonCreepStrength(GetLocationX(t), GetLocationY(t), 1200) > (GetOwnStrength() + towers_attck + towers_built * 0.3) * 4) or ((towers_built_count > 6 * race_tower_peon) and towers_built < 2)  //6 job cycles
+		set CloseJob = (town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat + 60) or (GetLocationNonCreepStrength(GetLocationX(t), GetLocationY(t), 1200) > (GetOwnStrength() + towers_attck + towers_built * 0.3) * 4) or ((towers_built_count > 6 * race_tower_peon) and towers_built < 2)  //6 job cycles
 	endif
-	if GetPlayerSlotState(rushedplayer) != PLAYER_SLOT_STATE_PLAYING or GetPlayerUnitCount(rushedplayer,true) <= 0 or Strength == true then  //or (builder[1] != null and (GetUnitState(builder[1], UNIT_STATE_LIFE) <= 0  and GetUnitState(builder[3], UNIT_STATE_LIFE) <= 0 and GetUnitState(builder[2], UNIT_STATE_LIFE) <= 0)) then
+	if GetPlayerSlotState(rushedplayer) != PLAYER_SLOT_STATE_PLAYING or GetPlayerUnitCount(rushedplayer,true) <= 0 or CloseJob == true then  //or (builder[1] != null and (GetUnitState(builder[1], UNIT_STATE_LIFE) <= 0  and GetUnitState(builder[3], UNIT_STATE_LIFE) <= 0 and GetUnitState(builder[2], UNIT_STATE_LIFE) <= 0)) then
 		//maybe enemy give up the Location,so temporary no need built
 		call Trace("I have finished the tower rush")
 		set gold_buffer = 0
@@ -374,6 +376,7 @@ function TowerRushJob takes nothing returns nothing
 	call GroupClear(g)
 	call GroupEnumUnitsOfPlayer(g, ai_player, null)
 	set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
+	set g = SelectByAlive(g, true)
 	set g = SelectByLoaded(g,false)
 	set g = SelectByHidden(g,false)
 	set tempg = CopyGroup(g,tempg)
@@ -401,6 +404,8 @@ function TowerRushJob takes nothing returns nothing
 					call RemoveGuardPosition(builder[i])
 					call GroupAddUnit(tower_rush_power,builder[i])
 					call IssueImmediateOrder(builder[i], "autoharvestgold")
+				elseif id == 0 then
+					call RecycleGuardPosition(builder[i])
 				endif
 			endif
 			set id = GetUnitCurrentOrder(builder[i])
@@ -450,7 +455,7 @@ function TowerRushJob takes nothing returns nothing
 		else
 			loop
 				exitwhen i > race_tower_peon
-				call TowerRushBuilderControl_dk(builder[i], GetUnitLoc(builder[i]), t)
+				call TowerRushBuilderControl_dk(builder[i], GetUnitLoc(builder[i]), t, CanBuild)
 				set i = i + 1
 			endloop
 			set time_next_try = 2
