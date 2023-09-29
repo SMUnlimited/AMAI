@@ -41,7 +41,7 @@ function TowerRushBuilderControl_k takes unit u, location t, boolean CanBuild re
 	local location unitloc = null
 	local location loc = null
 	local location l = GetUnitLoc(u)
-	if DistanceBetweenPoints(l, t) > 300 and id != OrderId("move") then
+	if DistanceBetweenPoints(l, t) >= 300 and (id != OrderId("move") or id == OrderId("stop")) then
 		call CreateDebugTag("TRush: builder moving", 10, u, 4.00, 2.00)
 		call IssuePointOrderLoc(u, "move", t)
 	elseif DistanceBetweenPoints(l, t) <= 500 and ((id != OrderId("smart") and id != OrderId("repair") and id != old_id[race_tower_id] and id != old_id[racial_shop]) or id == 0) then  //Improve efficiency
@@ -71,12 +71,12 @@ function TowerRushBuilderControl_k takes unit u, location t, boolean CanBuild re
 			if not CanBuild or GetUnitTypeId(u) == old_id[racial_militia] or (race_tower_bypeon == true and u == builder[4] and IsUnitType(builder[1], UNIT_TYPE_STRUCTURE) and IsUnitType(builder[2], UNIT_TYPE_STRUCTURE) and IsUnitType(builder[3], UNIT_TYPE_STRUCTURE)) then
 				call RemoveLocation(l)
 				set l = null
-				return  // HUMAN militia cannot build , ELF no need all peon build , try give one repair
+				return  // HUMAN militia cannot build , ELF no need all peon build but need try give one repair
 			endif
 			if towers_built <= 6 then
 				set loc = AIGetProjectedLoc(t,toweringplayerloc,GetRandomInt(220,230),GetRandomInt(-90,-80))
 			else
-				set loc = Location(GetLocationX(t),GetLocationY(t))
+				set loc = Location(GetLocationX(t),GetLocationY(t))  // Too close to enemy base , may not have many build locations , randomness may cause locations deviation
 			endif
 			if race_tower_id_replace == 0 then
 				set loccheck = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[race_tower_id], GetLocationX(t), GetLocationY(t), 270.0)
@@ -135,7 +135,8 @@ function TowerRushTowerMoveControl_k takes unit u, location t returns nothing  /
 			set id = GetUnitCurrentOrder(u)  // update order
 		endif
 	endif
-	if id == 0 or id != OrderId(race_tower_movestartstring) or GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) * 0.5 then
+	if DistanceBetweenPoints(l, toweringplayerloc) <= DistanceBetweenPoints(t, toweringplayerloc) or id != OrderId(race_tower_movestartstring) or GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) * 0.5 then
+		call RemoveGuardPosition(u)
 		call IssuePointOrderLoc( u, race_tower_movestartstring, l)
 	endif
 	call RemoveLocation(l)
@@ -195,7 +196,7 @@ function TowerRushJob takes nothing returns nothing
 			set id = GetUnitTypeId(u)
 			if id == old_id[race_tower_id] or (race_tower_upgrade1 != 0 and id == old_id[race_tower_upgrade1]) or ( race_tower_upgrade2 != 0 and id == old_id[race_tower_upgrade2]) then
 				if id == old_id[race_tower_id] then
-					if (randomnum == 4 or GetUnitCountDone(old_id[race_towerrush_requirement]) == 0) and TownCount(race_tower_upgrade2) < 2 and race_tower_upgrade2 != 0 then
+					if (randomnum == 4 or GetUnitCountDone(old_id[race_towerrush_requirement]) == 0) and race_tower_upgrade2 != 0 and TownCount(race_tower_upgrade2) < 2 then
 						call IssueImmediateOrderById(u, old_id[race_tower_upgrade2])
 					elseif race_tower_upgrade1 != 0 then
 						call IssueImmediateOrderById(u, old_id[race_tower_upgrade1])
@@ -224,8 +225,8 @@ function TowerRushJob takes nothing returns nothing
 	set towers_built = i
 	set race_tower_shop = s
 	set CanBuild = towers_built - towers_attck < 2
-	if ((towers_built >= 4 and race_tower_item_must != true) or (towers_built > 0 and race_tower_item_must == true)) and tower_used_item == false then
-		set tower_used_item = true  //No need used item
+	if towers_built > 0 and tower_used_item == false then
+		set tower_used_item = true  //have woter , no need send hero used item
 	endif
 	if towers_built <= 3 then
 		if GetLocationCreepStrength(GetLocationX(tower_target_loc), GetLocationY(tower_target_loc), 500) > 0 then
@@ -244,9 +245,9 @@ function TowerRushJob takes nothing returns nothing
 			set second_attack_point_y = GetLocationY(t)
 		endif
 	else
-		set t = Location(GetLocationX(toweringplayerloc), GetLocationY(toweringplayerloc))
+		set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, -400)
 	endif
-	call CreateDebugTagLoc(Int2Str(i), 10, GetLocationX(t), GetLocationY(t), 60.00, 55.00)
+	call CreateDebugTagLoc("build loc", 10, GetLocationX(t), GetLocationY(t), 60.00, 55.00)
 	//call Trace("Getting ready to tower rush")
 	if not (GetLocationX(t) == 0 and GetLocationY(t) == 0) and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) != 0 then
 		set CloseJob = (town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat + 60) or (GetLocationNonCreepStrength(GetLocationX(t), GetLocationY(t), 1200) > (GetOwnStrength() + towers_attck + towers_built * 0.3) * 4) or ((towers_built_count > 6 * race_tower_peon) and towers_built < 2)  //6 job cycles
@@ -311,7 +312,6 @@ function TowerRushJob takes nothing returns nothing
 		set builder[3] = null
 		set builder[4] = null
 		set builder[10] = null
-		set builder[20] = null
 		set rushedplayer = null
 		call RemoveLocation(toweringplayerloc)
 		call RemoveLocation(tower_target_loc)
@@ -367,20 +367,21 @@ function TowerRushJob takes nothing returns nothing
 		call SetItemPawnable(GetItemOfTypeOnUnit(race_tower_item, builder[0]), false)  //can selling
 	endif
 
-	if towermove != 30 then
-		loop
-			exitwhen towermove < 30
-			call TowerRushTowerMoveControl_k(builder[towermove], t)
-			set builder[towermove] = null
-			set towermove = towermove - 1
-		endloop
-	endif
+	loop
+		exitwhen towermove < 30
+		call TowerRushTowerMoveControl_k(builder[towermove], t)
+		set builder[towermove] = null
+		set towermove = towermove - 1
+	endloop
 
 	call GroupClear(g)
 	call GroupEnumUnitsOfPlayer(g, ai_player, null)
 	set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
 	set g = SelectByAlive(g, true)
 	set g = SelectByLoaded(g,false)
+	if race_manual_loading then
+		set g = SelectByOrderOr(g, OrderId("smart"), OrderId("harvest"),true)
+	endif
 	set g = SelectByHidden(g,false)
 	set i = 1
 	loop
@@ -396,12 +397,13 @@ function TowerRushJob takes nothing returns nothing
 		exitwhen i > race_tower_peon or u == null
 		if builder[i] == null or not UnitAlive(builder[i]) or IsUnitType(builder[i], UNIT_TYPE_STRUCTURE) or IsUnitLoaded(builder[i]) then  // prevent WIPS build and harvest
 			if TowerRushSetBuilder(u) then
+				call CreateDebugTag("TRush: set peon", 10, u, 4.00, 2.00)
 				set builder[i] = u
 				call GroupRemoveUnit(tempg,u)  // Prevent cannot build tower
 				call GroupRemoveUnit(tower_rush_power,u)
-				set i = i + 1
 			endif
 		endif
+		set i = i + 1
 		call GroupRemoveUnit(g,u)
 	endloop
 	if race_has_power_build and tower_attack_run == true then  // fix AI pull all peon to build tower
@@ -410,6 +412,7 @@ function TowerRushJob takes nothing returns nothing
 			exitwhen i > 45  //prevent harvest gold peon more then 5 , so just control 3 peon
 			if builder[i] == null or not UnitAlive(builder[i]) or not IsUnitInGroup(builder[i], tempg) then
 				set builder[i] = FirstOfGroup(tempg)
+				set id = GetUnitCurrentOrder(builder[i])
 				if i > 42 then
 					call RemoveGuardPosition(builder[i])
 					call GroupAddUnit(tower_rush_power,builder[i])
@@ -418,17 +421,18 @@ function TowerRushJob takes nothing returns nothing
 					call RecycleGuardPosition(builder[i])
 				endif
 			endif
-			set id = GetUnitCurrentOrder(builder[i])
-			if id == OrderId("harvest") or id == OrderId("resumeharvesting") then  // no need do anything
-			elseif i > 42 then
-				call IssueImmediateOrder(builder[i], "autoharvestgold")
+			if i > 42 then
+				set id = GetUnitCurrentOrder(builder[i])
+				if id == OrderId("harvest") or id == OrderId("resumeharvesting") then  // no need do anything
+				else
+					call IssueImmediateOrder(builder[i], "autoharvestgold")
+				endif
 			endif
 			call GroupRemoveUnit(tempg,builder[i])
 			set i = i + 1
 		endloop
 		call GroupRemoveUnit(tower_rush_power,builder[41])  // give AI 2 peon build other construct
 		call GroupRemoveUnit(tower_rush_power,builder[42])
-		//call RecycleGuardPosition(builder[41])
 		loop
 			set u = FirstOfGroup(tempg)
 			exitwhen u == null
