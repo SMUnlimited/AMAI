@@ -25,6 +25,7 @@
     string array command_dlg3
     integer array command_hotkey3
     string array command_msg
+    string array switch_state
     integer command_length = 0
 
     string array parsed_command
@@ -1001,8 +1002,12 @@ function ExecuteDlgCommand takes player Comp, integer number returns nothing
   if command_number[number] != -1 then
     call CommandAI(Comp, cn, par1)
   endif
-
-  call DisplayFromDlg(command_msg[number])
+  if switch_state[number] == "  |cff00ff00[on]|r" then
+    set switch_state[number] = "  |cffff0000[off]|r"
+  else
+    set switch_state[number] = "  |cff00ff00[on]|r"
+  endif
+  call DisplayFromDlg(command_msg[number] + switch_state[number])
 endfunction
 
 function ExecuteDlgCommandForAll takes integer number returns nothing
@@ -1624,6 +1629,8 @@ function AddCommandDialog takes integer i returns nothing
       set next_dialog_strat = true
     elseif command_dlg3[i] == "e" then
       set next_dialog = player_dialog
+    elseif command_dlg3[i] == "on" or command_dlg3[i] == "off" then
+      // switch status , no dialog
     else
       set current_name = command_dlg1[i]+" "+command_dlg2[i]
       set current_dialog = FindDialog(current_name)
@@ -1651,13 +1658,13 @@ function AddCommandDialog takes integer i returns nothing
       set current_name = command_dlg1[i]
       set current_dialog = FindDialog(current_name)
       if current_dialog != null then
-        call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg2[i], command_hotkey2[i]), i, next_dialog)
+        call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg2[i] + switch_state[i], command_hotkey2[i]), i, next_dialog)
         set current_dialog = null
         set next_dialog = null
         return
       endif
       set current_dialog = RegisterDialog(current_name)
-      call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg2[i], command_hotkey2[i]), i, next_dialog)
+      call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg2[i] + switch_state[i], command_hotkey2[i]), i, next_dialog)
       set next_dialog = current_dialog
     endif
   endif
@@ -1815,6 +1822,11 @@ function RegisterCommand takes string c_key1, string c_key2, string c_key3, inte
   set command_dlg2[command_length] = Translation(c_dlg2)
   set command_hotkey2[command_length] = c_hk2
   set command_dlg3[command_length] = Translation(c_dlg3)
+  if command_dlg3[command_length] == "on" then
+    set switch_state[command_length] = "  |cff00ff00[on]|r"
+  elseif command_dlg3[command_length] == "off" then
+    set switch_state[command_length] = "  |cffff0000[off]|r"
+  endif
   set command_hotkey3[command_length] = c_hk3
   set command_msg[command_length] = Translation(c_msg)
   set command_length = command_length + 1

@@ -223,12 +223,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Adjust UPG_BOMBS BuildAdvUpgr2 chance unitcount to 0.2 , Maximum to 35 , In the test, after building COPTER, the enemy has no AIR , the COPTER no research UPG_BOMBS not useful
 - Remove Duplicates ROC GlobalSettings.txt front_base_distance
 - GetSumLoc no longer used within the loop , prevent loc exceeding map range
-- debug show PingFrontPoints
+- Debug show PingFrontPoints
+- Console switch now can show state on Buttons and Reports
+  - (DevTools) Set switch status initial values on Commands.txt
+  - Note: B.J unable to obtain C.AI switch status , but all switch status based on C.AI , so developers must synchronize initial values
 - AMAI VS AI
-   - BlizzardVAI.eai ai script file read race.txt 1% and 2%
+  - BlizzardVAI.eai ai script file read race.txt 1% and 2%
 - Languages improve
-   - Spanish translation(@Slayer95)
-   - Russian translation(@Lolasik011)
+  - Spanish translation(@Slayer95)
+  - Russian translation(@Lolasik011)
 - (DevTools) Optimize.bat change imitate MakeAll.bat
 - (DevTools) Optimize.bat and MakeAll.bat final compilation TFT, prevent BJ final generation ROC
 - (DevTools) MakeOptROC.bat code synchronization to MakeOptTFT.bat
@@ -295,6 +298,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issues with SetTargetHeroes proper recovery after shutdown
 - Fixed GetHarassGroupStrength strength statistical error
 - Fixed harass_size[groupnum] no reset
+- Fixed buying tavern hero not add buy unit to unit_buying_tavern group
 
 ## [3.2.2] - 2022-10-05
 
