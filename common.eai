@@ -9353,18 +9353,13 @@ function InitHarass takes nothing returns nothing
 endfunction
 
 function AddHarass takes integer groupnum, integer qty, integer unitid returns nothing
-  set harass_qty[harass_size[groupnum]*max_harass_groups + groupnum] = qty
-  set harass_units[harass_size[groupnum]*max_harass_groups + groupnum] = unitid
-  set harass_size[groupnum] = harass_size[groupnum] + 1
-endfunction
-
-function RemoveHarass takes nothing returns nothing
-  local integer i = 0
-  loop
-    set harass_size[i] = 0
-    set i = i + 1
-    exitwhen i >= 5
-  endloop
+  if (harass_size[groupnum] < max_harass_groups ) then
+    set harass_qty[harass_size[groupnum]] = qty
+    set harass_units[harass_size[groupnum]] = unitid
+    set harass_size[groupnum] = harass_size[groupnum] + 1
+  else
+    call Trace("ERROR: Too many harass unit groups added to harass group")
+  endif
 endfunction
 
 function AddHarassUnittype takes integer groupnum, integer harassnum, group g, group harasser, integer key returns group
@@ -9404,12 +9399,12 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   set g = SelectByUnitFree(g, true)
   loop
     exitwhen i >= harass_size[groupnum] or FirstOfGroup(g) == null or t >= 12
-    set t = t + harass_qty[i*max_harass_groups + groupnum]
+    set t = t + harass_qty[i]
     if t > 12 then  // Group Order max control 12 unit
-      set harass_qty[i*max_harass_groups + groupnum] = 12 - harass_qty[i*max_harass_groups + groupnum]
+      set harass_qty[i] = t - 12
       set t = 12
     endif
-    if harass_qty[i*max_harass_groups + groupnum] > 0 then
+    if harass_qty[i] > 0 then
       set harasser = AddHarassUnittype(groupnum, i , g, harasser, key)
       set strength = strength + LoadReal(additional_info, key, START_STRENGTH)
     endif
@@ -9422,8 +9417,8 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     set harasser = null
     return
   endif
-  call SaveReal(additional_info, key, START_STRENGTH, strength)
   set harass_time[groupnum] = ai_time
+  call SaveReal(additional_info, key, START_STRENGTH, strength)
   call SaveBoolean(additional_info, key, AVOID_TOWERS, avoid_towers)
   //if avoid_towers and GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_tower_check_radius) > 0
   call SaveReal(additional_info, key, STRENGTH_LIMIT, strength_limit)
@@ -9460,7 +9455,6 @@ function Harass takes integer groupnum, integer harass_target, boolean avoid_tow
   if cond and ai_time - harass_time[groupnum] >= time and ai_time >= min_time then
     call StartHarass(groupnum, harass_target, avoid_towers, strength_limit, flee_percent, flee_number, 0, 0)
   endif
-  call RemoveHarass()
 endfunction
 
 //============================================================================
@@ -11149,7 +11143,6 @@ function DoDistractionAttack takes unit target returns nothing
   endif
   call StartHarass(distraction_group, HARASS_TARGET_LOCATION, false, 15, 0.25, 1, GetUnitX(d_target), GetUnitY(d_target))
   set d_target = null
-  call RemoveHarass()
   call Sleep(15)
 endfunction
 
@@ -12143,8 +12136,8 @@ function SetLeadAlly takes nothing returns nothing
   local boolean checkdone = false
   local player p = null
   loop
-    exitwhen i >= force_number or checkdone
-    set p = own_force[i]
+    exitwhen i >= c_ally_total or checkdone
+    set p = ally_force[i]
     if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
       if p != ai_player then
         set leadally = false
@@ -12157,6 +12150,7 @@ function SetLeadAlly takes nothing returns nothing
     set i = i + 1
   endloop
 endfunction
+
 //============================================================================
 // AMAI SingleMeleeAttack
 //============================================================================
