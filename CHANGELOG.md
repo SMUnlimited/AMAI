@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Added ability to commander to control the zoom level when you type into the chat window '-zoom3000' without the quotes. (jzy-chitong56)
 - Added opportunities to attempt extreme save behaviour when the AI is struggling e.g Do a militia expansion or ancient expansion (jzy-chitong56)
 - Some improvements to handle multiple mines at the same base  (jzy-chitong56)
+- Use the cloak of shadows ability in micro actions (jzy-chitong56)
 
 ### Changed
 - Chinese Translation improvements. (jzy-chitong56)
@@ -62,6 +63,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed night time detection not quite correct sometimes (jzy-chitong56)
 - Zepplin control fixes (jzy-chitong56)
 - Ancient Expansion fixes (jzy-chitong56)
+- Fixed harass groups to use a more reasonable number of entries to prevent high processing and memory usage.
+- Fixed lead ally being determined to the incorrect player in some cases.
 
 ## [3.2.2] - 2022-10-05
 
