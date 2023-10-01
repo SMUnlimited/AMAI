@@ -26,7 +26,7 @@ function AddZepFinishingJob takes integer target, integer wait, unit hu returns 
   elseif target == ZTARGET_MOONWELLS then
     call TQAddUnitJob(wait, MOON_WELL_CONTROL, 80, hu)
   else
-    call TQAddUnitJob(wait, SEND_HOME, 50, hu)
+    call TQAddUnitJob(wait, SEND_HOME, GetRandomInt(0,Max(exist_town_num-1,0)), hu)  // 0 is home_location
   endif
 endfunction
 
@@ -37,7 +37,9 @@ function ZeppelinMoveJob takes integer target, unit hu, group z returns nothing
   local location heroloc = null
   local integer clearvars = 0  //=1.. Zepplin system can now finish so return
   if GetUnitState(hu, UNIT_STATE_LIFE) <= 0 then
-    call TQAddUnitJob(2, RESET_GUARD_POSITION, 80, zep)
+    call GroupRemoveUnit(unit_rescueing, zep)
+    call GroupRemoveUnit(unit_zepplin_move, zep)
+    call RecycleGuardPosition(zep)
     call TQAddUnitJob(2, RESET_GUARD_POSITION, 80, hu)
     call DestroyGroup(z)
     set zep = null
@@ -46,15 +48,16 @@ function ZeppelinMoveJob takes integer target, unit hu, group z returns nothing
   endif
   call DisplayToAllJobDebug("ZEPPELIN_MOVE Start")
   if not UnitAlive(zep) then
-    call TQAddUnitJob(2, RESET_GUARD_POSITION, 80, zep)
+    call GroupRemoveUnit(unit_rescueing, zep)
+    call GroupRemoveUnit(unit_zepplin_move, zep)
     call AddZepFinishingJob(target, 1,hu)
     call DestroyGroup(z)
     set zep = null
     set zepdropping = false
     return
   endif
-  set zeploc = Location(GetUnitX(zep),GetUnitY(zep))
-  set heroloc = Location(GetUnitX(hu),GetUnitY(hu))
+  set zeploc = GetUnitLoc(zep)
+  set heroloc = GetUnitLoc(hu)
   set tl = GetZTargetLocation(target)
   if IsUnitInTransport(hu, zep) then
     if DistanceBetweenPoints(zeploc, tl) > 1000 and not zepdropping then  // and DistanceBetweenPoints(zeploc, ally_loc) < 1500 then
@@ -90,7 +93,9 @@ function ZeppelinMoveJob takes integer target, unit hu, group z returns nothing
   call RemoveLocation(heroloc)
   set heroloc = null
   if clearvars == 1 then
-    call TQAddUnitJob(2, RESET_GUARD_POSITION, 80, zep)
+    call GroupRemoveUnit(unit_rescueing, zep)
+    call GroupRemoveUnit(unit_zepplin_move, zep)
+    call RecycleGuardPosition(zep)
     set zep = null
     call DestroyGroup(z)
     set zepdropping = false
