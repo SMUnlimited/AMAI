@@ -4180,10 +4180,12 @@ endfunction
 
 function CreatePathingUnitFull takes unit u, player p, integer id, real x, real y returns unit
   set u = CreateUnit(p, id, x, y, 270.00)
-  call SetUnitInvulnerable(u, true)
   if (not debugging) then
     call ShowUnit(u, false)
   endif
+  call UnitShareVision(u, ai_player, false)
+  call SetUnitInvulnerable(u, true)
+  call SetUnitOwner(u, ai_player, true)  // player overriden as neutral players cannot be used
   call SetUnitUseFood(u, false)
   call SetUnitMoveSpeed(u, 522)
   call RemoveGuardPosition(u)
@@ -4216,9 +4218,7 @@ function CanPathToLoc takes location locA, location target, pathingtype path ret
   local real totaltime = 0
   //local location prev_loc = null
   local integer checks = 0	// Number of times unit has stayed at same position
-  // if GetPlayerRace(ai_player) == RACE_NIGHTELF then
-  //   set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
-  // endif
+
   if path == PATHING_TYPE_WALKABILITY then
     set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(locA), GetLocationY(locA))
   elseif path == PATHING_TYPE_FLOATABILITY then
@@ -4867,24 +4867,27 @@ function GetDensities takes location l, player p, real r returns nothing
     endif
     call GroupRemoveUnit(g, u)
   endloop
-  call RemoveLocation(ally_density_loc)
+
   if ally_density > 0 then
     set xa = xa / ally_density
     set ya = ya / ally_density
-    set ally_density_loc = Location(xa,ya)
     //set ally_density_loc = GetDivisionLoc_d(ally_density_loc, ally_density)
   else
-    set ally_density_loc = Location(0,0)
+    set xa = 0
+    set ya = 0
   endif
-  call RemoveLocation(enemy_density_loc)
+  call RemoveLocation(ally_density_loc)
+  set ally_density_loc = Location(xa,ya)
   if enemy_density > 0 then
     set xe = xe / enemy_density
     set ye = ye / enemy_density
-    set enemy_density_loc = Location(xe,ye)
     //set enemy_density_loc = GetDivisionLoc_d(enemy_density_loc, enemy_density)
   else
-    set enemy_density_loc = Location(0,0)
+    set xe = 0
+    set ye = 0
   endif
+  call RemoveLocation(enemy_density_loc)
+  set enemy_density_loc = Location(xe,ye)
   call DestroyGroup(g)
   set g = null
   set ul = null
@@ -5136,11 +5139,10 @@ function IsCreepsAwake takes real x, real y, real radius returns boolean
   local boolean awake_creeps = false
 
   call GroupEnumUnitsInRange(g,x,y,radius,null)
-  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or awake_creeps
-    if UnitAlive(u) then
+    if UnitAlive(u) and GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
       set awake_creeps = not IsUnitType(u, UNIT_TYPE_SLEEPING)
     endif
     call GroupRemoveUnit(g,u)
@@ -5988,8 +5990,6 @@ function MakeExpansionList takes nothing returns nothing
   local integer checks = 0	// Number of times unit has stayed at same position
   local boolean pathingdone = true
   local real totaltime = 0
-  //local integer groundid = 'ewsp'
-  //local real distance = 0
 
   call GroupEnumUnitsOfType(g, "goldmine", null)
 //  call GroupRemoveUnit(g, current_expansion) // because quick expansion adds mine already
@@ -6431,7 +6431,7 @@ function ChooseExpansion takes nothing returns nothing
     endif
     set i = i + 1
   endloop
-  if exp_number < 3 then  //first taken normal mine
+  if exp_number < 3 and TownCountDone(neutral_zeppelin) > 0 then  //first taken normal mine
     set i = 0
     loop
       exitwhen i >= water_expansion_list_length
@@ -6441,7 +6441,7 @@ function ChooseExpansion takes nothing returns nothing
       set i = i + 1
     endloop
   endif
-  if active_expansion and exp_number < c_enemy_total + c_ally_total + 1 then
+  if active_expansion and not pathing_done and exp_number < c_enemy_total + c_ally_total + 1 then
     set active_expansion = false
   endif
   call add_exp_rp()
@@ -7394,6 +7394,9 @@ function PathingThread takes nothing returns nothing
   set pathing_done = true
   loop // no need repeated run
     call Sleep(6 * sleep_multiplier)
+    if active_expansion and exp_number < c_enemy_total + c_ally_total + 1 then
+      set active_expansion = false
+    endif
     if t == 5 then
       loop
         exitwhen i >= NEUTRAL_COUNT
@@ -9367,7 +9370,7 @@ function AddHarassUnittype takes integer groupnum, integer harassnum, group g, g
   local unit u = null
   local real player_sum = 0
   set cg = CopyGroup(g,cg)
-  set cg = SelectNumberOfId(cg, harass_qty[harassnum*max_harass_groups + groupnum], old_id[harass_units[harassnum*max_harass_groups + groupnum]])
+  set cg = SelectNumberOfId(cg, harass_qty[harassnum], old_id[harass_units[harassnum]])
   loop
     set u = FirstOfGroup(cg)
     exitwhen u == null
@@ -10517,12 +10520,12 @@ function PeonBuilder takes nothing returns nothing
     set sc = 0
   endif
   //if w <= maximum_peon_wood then
-  /// call BuildPeons( peon_1_mine_number * mo + Max(max_lumber_peons - shredder_peon_count*sc, 1 )  )  // number of peons per mine + wood peons
+  //  call BuildPeons( peon_1_mine_number * mo + Max(max_lumber_peons - shredder_peon_count*sc, 1 )  )  // number of peons per mine + wood peons
   //elseif w >= minimum_peon_wood then
-  // call BuildPeons( peon_1_mine_number * mo + Max(min_lumber_peons - shredder_peon_count*sc, 1 )  )
- // else
- //  call BuildPeons( peon_1_mine_number * mo + Max(Max(min_lumber_peons, R2I(I2R(max_lumber_peons) / 2)) - shredder_peon_count*sc, 1 )  )
- // endif
+  //  call BuildPeons( peon_1_mine_number * mo + Max(min_lumber_peons - shredder_peon_count*sc, 1 )  )
+  //else
+  //  call BuildPeons( peon_1_mine_number * mo + Max(Max(min_lumber_peons, R2I(I2R(max_lumber_peons) / 2)) - shredder_peon_count*sc, 1 )  )
+  //endif
 
   if race_has_ghouls then
     if mo <= 1 then
@@ -13501,9 +13504,6 @@ function StartExpansion takes integer qty, integer hall returns boolean
     endif
 
     set peon = GetExpansionPeon()
-    if peon == null then
-      set peon = GetExpansionPeon2(peon)
-    endif
     if peon != null then
       set b = SetExpansion(peon,hall)
       set peon = null
