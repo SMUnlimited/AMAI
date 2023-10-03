@@ -4179,15 +4179,20 @@ endfunction
 // endfunction
 
 function CreatePathingUnitFull takes unit u, player p, integer id, real x, real y returns unit
+  if not IsVisibleToPlayer(x, y, ai_player) and p != Player(PLAYER_NEUTRAL_PASSIVE) then
+    set p = Player(PLAYER_NEUTRAL_PASSIVE)
+  endif
   set u = CreateUnit(p, id, x, y, 270.00)
   if (not debugging) then
     call ShowUnit(u, false)
   endif
   call UnitShareVision(u, ai_player, false)
   call SetUnitInvulnerable(u, true)
-  call SetUnitOwner(u, ai_player, true)  // player overriden as neutral players cannot be used
   call SetUnitUseFood(u, false)
   call SetUnitMoveSpeed(u, 522)
+  if p != ai_player then
+    call SetUnitOwner(u, ai_player, true)  // player overriden as neutral players cannot be used
+  endif
   call RemoveGuardPosition(u)
   return u
 endfunction
@@ -5109,7 +5114,7 @@ endfunction
 #ENDINCLUDE
 
 //============================================================================
-function GetPlayerAntiAirStrength takes player p returns integer
+function GetPlayerAntiAirStrength takes player p returns real
   local group g = CreateGroup()
   local unit u = null
   local real sum = 0
@@ -5129,7 +5134,7 @@ function GetPlayerAntiAirStrength takes player p returns integer
   endloop
   call DestroyGroup(g)
   set g = null
-  return R2I(sum)
+  return sum
 endfunction
 
 //============================================================================
@@ -5515,7 +5520,6 @@ endfunction
 
 //============================================================================
 function GetLocationInDistanceFromLoc takes location loc, real dist returns location
-  //local integer groundid = 'ewsp'
   local real distance = 0
   local real x = 0
   local real y = 0
@@ -5525,9 +5529,6 @@ function GetLocationInDistanceFromLoc takes location loc, real dist returns loca
   if loc == null then
     return null
   endif
-  // if GetPlayerRace(ai_player) == RACE_NIGHTELF then
-  //   set groundid = 'uaco' // alternative for night elf players to avoid it counting for players peon count
-  // endif
   set u = CreatePathingUnitFull(u,Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(loc),GetLocationY(loc))
   call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
   //set checktime = GetTimeToReachLoc(u, home_location)
@@ -5832,8 +5833,8 @@ function CheckExpansionTaken takes unit expa returns boolean
   endif
   set g = CreateGroup()
   call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   //set g = SelectByAlive(g, true)
   set g = SelectByAlive2(g, true)
   call GroupRemoveUnit(g, expa)
@@ -11586,7 +11587,7 @@ endfunction
 
 //============================================================================
 function GetFittingCreep takes unit u, integer str returns unit
-  local integer anti_air_strength = GetPlayerAntiAirStrength(ai_player)
+  local integer anti_air_strength = R2I(GetPlayerAntiAirStrength(ai_player))
   local integer creepstrength = 0
   local boolean allow_air = false      //anti_air_strength > 25
   local integer lvl = str
@@ -11950,7 +11951,6 @@ endfunction
 //============================================================================
 function ChooseAnEnemyTarget takes unit u returns unit
   local player target_enemy = null
-  local player temptarget = null
   local group g = CreateGroup()
   local location enemy_base = null
 
@@ -12347,8 +12347,7 @@ if not creeping_only then	// Do the normal attack sequence
     set item_attack_running = true
     call FormGroupAM(3)
     if item_exp_state == 1 then
-      set creep = GetExpFoe(creep)
-      call AttackMoveKillCreep(creep)
+      call AttackMoveKillCreep(GetExpFoe(creep))
       set item_attack_running = false
       set creep = null
     elseif item_exp_state > 0 then
