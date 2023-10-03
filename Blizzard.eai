@@ -25,11 +25,16 @@
     string array command_dlg3
     integer array command_hotkey3
     string array command_msg
-    string array switch_state
     integer command_length = 0
 
     string array parsed_command
     string command_prefix = "-cmd"
+    string array switch_state
+    string switch_on = " |cff00ff00[on]|r"
+    string switch_off = " |cffff0000[off]|r"
+    #INCLUDETABLE <Commands.txt> #EFR #COND "%12" eq "arr_on" or "%12" eq "arr_off"
+    string array current_%4_switch
+    #ENDINCLUDE
 
     button array cdlg_button
     integer array cdlg_number
@@ -896,6 +901,30 @@ endfunction
 //===========================================================================
 // Execute Command
 //===========================================================================
+function SetMainSwitch takes integer num returns nothing
+  if switch_state[num] == switch_off then
+    set switch_state[num] = switch_on
+  elseif switch_state[num] == switch_on then
+    set switch_state[num] = switch_off
+  endif
+endfunction
+
+function SetPlayerSwitch takes integer num, integer playernum returns string
+  if false then
+  #INCLUDETABLE <Commands.txt> #EFR #COND "%12" eq "arr_on" or "%12" eq "arr_off"
+  elseif num == %4 then
+    if current_%4_switch[playernum] == switch_on then
+      set current_%4_switch[playernum] = switch_off
+      return switch_off
+    else
+      set current_%4_switch[playernum] = switch_on
+      return switch_on
+    endif
+  #ENDINCLUDE
+  endif
+  return null
+endfunction
+
 function GetParValue takes integer par returns integer
   local player p = null
   local integer pid = -1
@@ -928,8 +957,9 @@ function ExecuteCommand takes player Comp, integer number returns nothing
   local integer par1 = GetParValue(command_par1[number])
   local integer par2 = GetParValue(command_par2[number])
   local integer par3 = GetParValue(command_par3[number])
-
+  local string s = command_msg[number]
   if cn == -1000000 or par1 == -1000000 or par2 == -1000000 or par3 == -1000000 then
+    set s = null
     return
   endif
 
@@ -939,8 +969,11 @@ function ExecuteCommand takes player Comp, integer number returns nothing
   if command_number[number] != -1 then
     call CommandAI(Comp, cn, par1)
   endif
-
-  call DisplayFromPlayer(Comp, command_msg[number])
+  #INCLUDETABLE <Commands.txt> #EFR #COND "%12" eq "arr_on" or "%12" eq "arr_off"
+  set s = s + SetPlayerSwitch(cn,GetPlayerId(Comp))
+  #ENDINCLUDE
+  call DisplayFromPlayer(Comp, s)
+  set s = null
 endfunction
 
 function ExecuteCommandForAll takes integer number returns nothing
@@ -977,19 +1010,18 @@ function ExecuteDlgCommand takes player Comp, integer number returns nothing
   local integer par1 = GetDlgParValue(command_par1[number])
   local integer par2 = GetDlgParValue(command_par2[number])
   local integer par3 = GetDlgParValue(command_par3[number])
-
+  local string s = command_msg[number]
   if command_par2[number] != -1 then
     call CommandAI(Comp, par2, par3)
   endif
   if command_number[number] != -1 then
     call CommandAI(Comp, cn, par1)
   endif
-  if switch_state[number] == "  |cff00ff00[on]|r" then
-    set switch_state[number] = "  |cffff0000[off]|r"
-  elseif switch_state[number] == "  |cffff0000[off]|r" then
-    set switch_state[number] = "  |cff00ff00[on]|r"
-  endif
-  call DisplayFromDlg(command_msg[number] + switch_state[number])
+  #INCLUDETABLE <Commands.txt> #EFR #COND "%12" eq "arr_on" or "%12" eq "arr_off"
+  set s = s + SetPlayerSwitch(cn,GetPlayerId(Comp))
+  #ENDINCLUDE
+  call DisplayFromDlg(s)
+  set s = null
 endfunction
 
 function ExecuteDlgCommandForAll takes integer number returns nothing
@@ -1006,6 +1038,7 @@ endfunction
 
 function ExecuteDialogCommand takes player Comp, integer number returns nothing
   if commanded_player[GetPlayerId(GetTriggerPlayer())] == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
+    call SetMainSwitch(number)
     call ExecuteDlgCommandForAll(number)
   else
     call ExecuteDlgCommand(Comp, number)
@@ -1532,7 +1565,7 @@ function DialogResponse takes nothing returns nothing
     set current_command[GetPlayerId(GetTriggerPlayer())] = cn
     if (d == number_dialog) then
       set t = CreateTrigger()
-      if (b == strategyBtn) then 
+      if (b == strategyBtn) then
         set strategyDialog = true
       endif
       set d = BuildNumberDialog(commanded_player[GetPlayerId(GetTriggerPlayer())], 0)
@@ -1552,18 +1585,18 @@ function DialogResponse takes nothing returns nothing
         //call BuildTributeDialogs()
         call DialogDisplay(GetTriggerPlayer(), tribute_type_dlg, true)
       elseif message != "" then
-          set i = 0
-          loop
-            if d == dlg_dialog[i] then
-              if  dlg_string[i] != null then
-                set message = dlg_string[i]
-              endif
+        set i = 0
+        loop
+          if d == dlg_dialog[i] then
+            if dlg_string[i] != null then
+              set message = dlg_string[i]
             endif
-            set i = i + 1
-            call DestroyLastTrigger(dlg_trigger[dlg_length], null) //  clean up previous triggers
-            exitwhen i >= dlg_length
-          endloop
-          call DialogSetMessage(d, message)
+          endif
+          set i = i + 1
+          call DestroyLastTrigger(dlg_trigger[dlg_length], null) //  clean up previous triggers
+          exitwhen i >= dlg_length
+        endloop
+        call DialogSetMessage(d, message)
       endif
       call DialogDisplay(GetTriggerPlayer(), d, true)
     endif 
@@ -1590,7 +1623,7 @@ function RegisterDialog takes string s returns dialog
   set dlg_dialog[dlg_length] = d
   set dlg_string[dlg_length] = s
   set dlg_trigger[dlg_length] = t
-  set dlg_length  = dlg_length + 1
+  set dlg_length = dlg_length + 1
   call TriggerRegisterDialogEvent(t, d)
   call TriggerAddAction(t, function DialogResponse)
   set t = null
@@ -1611,7 +1644,7 @@ function AddCommandDialog takes integer i returns nothing
       set next_dialog_strat = true
     elseif command_dlg3[i] == "e" then
       set next_dialog = player_dialog
-    elseif command_dlg3[i] == "on" or command_dlg3[i] == "off" then
+    elseif command_dlg3[i] == "on" or command_dlg3[i] == "arr_on" or command_dlg3[i] == "off" or command_dlg3[i] == "arr_off" then
       // switch status , no dialog
     else
       set current_name = command_dlg1[i]+" "+command_dlg2[i]
@@ -1620,6 +1653,7 @@ function AddCommandDialog takes integer i returns nothing
         call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg3[i], command_hotkey3[i]), i, next_dialog)
         set current_dialog = null
         set next_dialog = null
+        set current_name = null
         return
       endif
       set current_dialog = RegisterDialog(current_name)
@@ -1643,10 +1677,11 @@ function AddCommandDialog takes integer i returns nothing
         call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg2[i] + switch_state[i], command_hotkey2[i]), i, next_dialog)
         set current_dialog = null
         set next_dialog = null
+        set current_name = null
         return
       endif
       set current_dialog = RegisterDialog(current_name)
-      call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg2[i] + switch_state[i], command_hotkey2[i]), i, next_dialog)
+      call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg2[i], command_hotkey2[i]), i, next_dialog)
       set next_dialog = current_dialog
     endif
   endif
@@ -1663,6 +1698,7 @@ function AddCommandDialog takes integer i returns nothing
       endif
       set current_dialog = null
       set next_dialog = null
+      set current_name = null
       return
     endif
     set current_dialog = RegisterDialog(current_name)
@@ -1670,6 +1706,7 @@ function AddCommandDialog takes integer i returns nothing
   endif
   set current_dialog = null
   set next_dialog = null
+  set current_name = null
 endfunction
 
 function BuildCommandDialogs takes nothing returns nothing
@@ -1704,6 +1741,7 @@ endfunction
 
 function SendToAllAIs takes integer cmd, integer data returns nothing
   local integer i = 0
+  call SetMainSwitch(cmd)
   loop
     exitwhen i >= GetBJMaxPlayers()
     if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER then
@@ -1779,6 +1817,7 @@ function Commander takes nothing returns nothing
   endif
 
   if Comp == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
+    call SetMainSwitch(cn)
     call ExecuteCommandForAll(cn)
   else
     call ExecuteCommand(Comp, cn)
@@ -1788,6 +1827,7 @@ function Commander takes nothing returns nothing
 endfunction
 
 function RegisterCommand takes string c_key1, string c_key2, string c_key3, integer c_number, integer c_par1, integer c_par2, integer c_par3, string c_dlg1, integer c_hk1, string c_dlg2, integer c_hk2, string c_dlg3, integer c_hk3, string c_msg returns nothing
+  local integer i = 0
   set command_key1[command_length] = StringCase(c_key1, true)
   set command_key2[command_length] = StringCase(c_key2, true)
   set command_key3[command_length] = StringCase(c_key3, true)
@@ -1804,10 +1844,28 @@ function RegisterCommand takes string c_key1, string c_key2, string c_key3, inte
   set command_dlg2[command_length] = Translation(c_dlg2)
   set command_hotkey2[command_length] = c_hk2
   set command_dlg3[command_length] = Translation(c_dlg3)
-  if command_dlg3[command_length] == "on" then
-    set switch_state[command_length] = "  |cff00ff00[on]|r"
-  elseif command_dlg3[command_length] == "off" then
-    set switch_state[command_length] = "  |cffff0000[off]|r"
+  if c_dlg3 == "on" then
+    set switch_state[command_length] = switch_on
+  elseif c_dlg3 == "off" then
+    set switch_state[command_length] = switch_off
+  elseif c_dlg3 == "arr_on" then
+    set switch_state[command_length] = switch_on
+    loop
+      exitwhen i >= GetBJMaxPlayers()
+      #INCLUDETABLE <Commands.txt> #EFR #COND "%12" eq "arr_on"
+      set current_%4_switch[i] = switch_on
+      #ENDINCLUDE
+      set i = i + 1
+    endloop
+  elseif c_dlg3 == "arr_off" then
+    set switch_state[command_length] = switch_off
+    loop
+      exitwhen i >= GetBJMaxPlayers()
+      #INCLUDETABLE <Commands.txt> #EFR #COND "%12" eq "arr_off"
+      set current_%4_switch[i] = switch_off
+      #ENDINCLUDE
+      set i = i + 1
+    endloop
   endif
   set command_hotkey3[command_length] = c_hk3
   set command_msg[command_length] = Translation(c_msg)

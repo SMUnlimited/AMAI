@@ -227,6 +227,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Console switch now can show state on Buttons and Reports
   - (DevTools) Set switch status initial values on Commands.txt
   - Note: B.J unable to obtain C.AI switch status , but all switch status based on C.AI , so developers must synchronize initial values
+  - Note: button only show mian switch status , not player person switch status
 - AMAI VS AI
   - BlizzardVAI.eai ai script file read race.txt 1% and 2%
 - Languages improve
