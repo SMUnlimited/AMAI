@@ -236,6 +236,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) Optimize.bat change imitate MakeAll.bat
 - (DevTools) Optimize.bat and MakeAll.bat final compilation TFT, prevent BJ final generation ROC
 - (DevTools) MakeOptROC.bat code synchronization to MakeOptTFT.bat
+- surrender can be set on the console
 
 ###Fixed
 - Fixed some translation errors
