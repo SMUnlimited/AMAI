@@ -186,10 +186,10 @@ AMAI has built in support to be able to write new strategies and profiles using 
 - Swedish - Zalamander,
 - German - AIAndy, Sagan,
 - French - JUJU, WILL THE ALMIGHTY,
-- Spanish - Vexorian, Moyack,
+- Spanish - Vexorian, Moyack, Slayer95,
 - Romanian - Andas_007,
 - Chinese - Dr Fan, Sheeryiro, KeamSpring, Pixyy
-- Russian - RaZ and Darkloke,
+- Russian - RaZ and Darkloke, Lolasik011,
 - Portuguese - imba curisco ghouleh,
 - Norwegian - Aray
 
