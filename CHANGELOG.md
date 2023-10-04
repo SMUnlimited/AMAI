@@ -236,8 +236,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) Optimize.bat change imitate MakeAll.bat
 - (DevTools) Optimize.bat and MakeAll.bat final compilation TFT, prevent BJ final generation ROC
 - (DevTools) MakeOptROC.bat code synchronization to MakeOptTFT.bat
-- surrender can be set on the console
-  - no human mode and shared mode will close surrender
+- Surrender can be set on the console
+  - No human mode and shared mode will close surrender
+- More job move to path system when path done , help job system more focused on combat
+  - (DevTools) because some job run on path system , if you It is no longer possible to disable all JOB without running job system , so add a switch -- job_running , this can shut down job system all job , just need set to false
+  - Note: running on path system'job , they self running cycle may be slightly adjusted , because it's impossible to balance using 'second' and 'sleep_multiplier' two units of calculation
+  - Note: this will indirectly strengthen AI , because the interval between JOBs has actually been shortened
+  - Note: because shortened the interval , the code that traverses units will run frequently, and if a large number of units gather (such as 1V23 or 4v20), it will cause the game to latency(FPS become 0) earlier
 
 ###Fixed
 - Fixed some translation errors
