@@ -601,11 +601,11 @@ function W3CDenyTip takes nothing returns nothing
 endfunction
 
 function SetW3CDenyTip takes nothing returns nothing
-  local string t = "DenyTip |cfffd0000OFF|r"
+  local string t = "DenyTip |cfffd0000[off]|r"
   if GetTriggerPlayer() != null then
     if not IsTriggerEnabled(W3CDeny) then
       call EnableTrigger(W3CDeny)
-      set t = "DenyTip |cff00ff00ON|r"
+      set t = "DenyTip |cff00ff00[on]|r"
     else
       call DisableTrigger(W3CDeny)
     endif
@@ -615,12 +615,9 @@ function SetW3CDenyTip takes nothing returns nothing
 endfunction
 
 function W3CDenyTipControl takes nothing returns nothing
-  local integer i = 0
-  loop
-    exitwhen i >= GetBJMaxPlayers()
-    call TriggerRegisterPlayerChatEvent(W3CDenyControl, Player(i), "-deny", false)
-    set i = i + 1
-  endloop
+  if (GetPlayerController(GetLocalPlayer()) != MAP_CONTROL_COMPUTER) or IsPlayerObserver(GetLocalPlayer()) then
+    call TriggerRegisterPlayerChatEvent(W3CDenyControl, GetLocalPlayer(), "-deny", false)
+  endif
   call TriggerAddAction( W3CDenyControl, function SetW3CDenyTip )
   call TriggerRegisterAnyUnitEventBJ( W3CDeny, EVENT_PLAYER_UNIT_DEATH )
   call TriggerAddAction( W3CDeny, function W3CDenyTip )
@@ -638,10 +635,10 @@ function ZoomSet takes nothing returns nothing
   endif
   if Zoom < 1650 then
     call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, 1650, 0 )
-    call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "zoom min:|cff00ff001650|r" )
+    call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "zoom min: |cff00ff001650|r" )
   elseif Zoom > 3000 then
     call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, 3000, 0 )
-    call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "zoom max:|cff00ff003000|r" )
+    call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "zoom max: |cff00ff003000|r" )
   else
     call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, Zoom, 0 )
   endif
@@ -666,6 +663,7 @@ function InitZoom takes nothing returns nothing
   call TriggerAddAction(ZoomSetx, function ZoomSet)
   call TriggerAddAction(AdjustZoomUp , function ZoomUp)
   call TriggerAddAction(AdjustZoomDown , function ZoomDown)
+  call DisplayToAll("Set Zoom type: |c00d5f038-zoom1850|r")
   if (GetPlayerController(GetLocalPlayer()) != MAP_CONTROL_COMPUTER) or IsPlayerObserver(GetLocalPlayer()) then
     call TriggerRegisterPlayerChatEvent( ZoomSetx, GetLocalPlayer(), "-zoom", false )
     call TriggerRegisterPlayerKeyEventBJ( AdjustZoomUp, GetLocalPlayer(), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_UP ) // not required in latest war3
@@ -683,10 +681,10 @@ function SetW3CMiniMapIcons takes nothing returns nothing
   if GetTriggerPlayer() != null then
     if W3CIcons == false then
       set W3CIcons = true
-      call DisplayTimedTextToForce( GetPlayersAll(), 7.00, "MiniMapIcon |cff00ff00ON|r")
+      call DisplayTimedTextToForce( GetPlayersAll(), 7.00, "MiniMapIcon |cff00ff00[on]|r")
     else
       set W3CIcons = false
-      call DisplayTimedTextToForce( GetPlayersAll(), 7.00, "MiniMapIcon |cfffd0000OFF|r")
+      call DisplayTimedTextToForce( GetPlayersAll(), 7.00, "MiniMapIcon |cfffd0000[off]|r")
     endif
   endif
   loop
@@ -702,13 +700,10 @@ function SetW3CMiniMapIcons takes nothing returns nothing
 endfunction
 
 function W3CMiniMapIcons takes nothing returns nothing
-  local integer i = 0
   local trigger t = CreateTrigger()
-  loop
-    exitwhen i >= GetBJMaxPlayers()
-    call TriggerRegisterPlayerChatEvent(t, Player(i), "-minimap", false)
-    set i = i + 1
-  endloop
+  if (GetPlayerController(GetLocalPlayer()) != MAP_CONTROL_COMPUTER) or IsPlayerObserver(GetLocalPlayer()) then
+    call TriggerRegisterPlayerChatEvent(t, GetLocalPlayer(), "-minimap", false)
+  endif
   call TriggerAddAction( t, function SetW3CMiniMapIcons )
 endfunction
 
@@ -916,13 +911,13 @@ function SetPlayerSwitch takes integer num, integer playernum returns string
     if current_%4_switch[playernum] == switch_on then
       set current_%4_switch[playernum] = switch_off
       return switch_off
-    else
+    elseif current_%4_switch[playernum] == switch_off then
       set current_%4_switch[playernum] = switch_on
       return switch_on
     endif
   #ENDINCLUDE
   endif
-  return null
+  return switch_state[num]
 endfunction
 
 function GetParValue takes integer par returns integer
@@ -957,7 +952,7 @@ function ExecuteCommand takes player Comp, integer number returns nothing
   local integer par1 = GetParValue(command_par1[number])
   local integer par2 = GetParValue(command_par2[number])
   local integer par3 = GetParValue(command_par3[number])
-  local string s = command_msg[number]
+  local string s = command_msg[number] + SetPlayerSwitch(number,GetPlayerId(Comp))
   if cn == -1000000 or par1 == -1000000 or par2 == -1000000 or par3 == -1000000 then
     set s = null
     return
@@ -970,7 +965,6 @@ function ExecuteCommand takes player Comp, integer number returns nothing
     call CommandAI(Comp, cn, par1)
   endif
   #INCLUDETABLE <Commands.txt> #EFR #COND "%12" eq "arr_on" or "%12" eq "arr_off"
-  set s = s + SetPlayerSwitch(cn,GetPlayerId(Comp))
   #ENDINCLUDE
   call DisplayFromPlayer(Comp, s)
   set s = null
@@ -1010,7 +1004,7 @@ function ExecuteDlgCommand takes player Comp, integer number returns nothing
   local integer par1 = GetDlgParValue(command_par1[number])
   local integer par2 = GetDlgParValue(command_par2[number])
   local integer par3 = GetDlgParValue(command_par3[number])
-  local string s = command_msg[number]
+  local string s = command_msg[number] + SetPlayerSwitch(number,GetPlayerId(Comp))
   if command_par2[number] != -1 then
     call CommandAI(Comp, par2, par3)
   endif
@@ -1018,7 +1012,6 @@ function ExecuteDlgCommand takes player Comp, integer number returns nothing
     call CommandAI(Comp, cn, par1)
   endif
   #INCLUDETABLE <Commands.txt> #EFR #COND "%12" eq "arr_on" or "%12" eq "arr_off"
-  set s = s + SetPlayerSwitch(cn,GetPlayerId(Comp))
   #ENDINCLUDE
   call DisplayFromDlg(s)
   set s = null
