@@ -309,7 +309,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed harass_size[groupnum] no reset
 - Fixed buying tavern hero not add buy unit to unit_buying_tavern group
 - Fixed Debug Mode and Balancin Mode restore console settings , set on AI Setting
-
+- Fixed Console cannot set not ally's CHATTER , DEBUG , BALANCE , LANGUAGE 
 
 ## [3.2.2] - 2022-10-05
 
