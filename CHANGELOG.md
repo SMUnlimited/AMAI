@@ -99,7 +99,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - New job ITEM REPEAT CHECK
    - Check for items that cannot be superposition or have poor superposition effects or items skills that duplicate hero skills, transfer to other heroes
 - (DevTools) TQLoop add job Thread debug check ，now have a continuously displayed TextTag show JOB schedule , convenient to check where job has parked , this is more intuitive
-
+- Strength Dynamic Distribute , hlep AI change unit attack mode , eliminating the time required for build and immediately allowing existing units to cope with strength imbalance
+   - Note: Original intention to control units that AI does not control , but use hard-coding
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
