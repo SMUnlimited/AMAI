@@ -244,6 +244,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Note: running on path system'job , they self running cycle may be slightly adjusted , because it's impossible to balance using 'second' and 'sleep_multiplier' two units of calculation
   - Note: this will indirectly strengthen AI , because the interval between JOBs has actually been shortened
   - Note: because shortened the interval , the code that traverses units will run frequently, and if a large number of units gather (such as 1V23 or 4v20), it will cause the game to latency(FPS become 0) earlier
+- Intervene expansion priority , ensure expansion when not mine but have rescources
 
 ###Fixed
 - Fixed some translation errors
@@ -309,7 +310,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed harass_size[groupnum] no reset
 - Fixed buying tavern hero not add buy unit to unit_buying_tavern group
 - Fixed Debug Mode and Balancin Mode restore console settings , set on AI Setting
-- Fixed Console cannot set not ally's CHATTER , DEBUG , BALANCE , LANGUAGE 
+- Fixed Console cannot set not ally's CHATTER , DEBUG , BALANCE , LANGUAGE
+- Fixed add water_expansion_list no check Resource Amount
 
 ## [3.2.2] - 2022-10-05
 

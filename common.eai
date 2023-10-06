@@ -5833,11 +5833,11 @@ function CheckExpansionTaken takes unit expa returns boolean
   endif
   set g = CreateGroup()
   call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
+  call GroupRemoveUnit(g, expa)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   //set g = SelectByAlive(g, true)
   set g = SelectByAlive2(g, true)
-  call GroupRemoveUnit(g, expa)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -6424,10 +6424,11 @@ endfunction
 function ChooseExpansion takes nothing returns nothing
   local integer i = 0
   local integer exp_chosen = 0
+  local integer gold = 2 * GetUnitGoldCost2(racial_expansion)
   set exp_number = 0
   loop
     exitwhen i >= expansion_list_length
-    if GetResourceAmount(expansion_list[i]) > 2 * GetUnitGoldCost2(racial_expansion) and not CheckExpansionTaken(expansion_list[i]) and DistanceBetweenPoints_kd(home_location,GetUnitLoc(expansion_list[i])) > 1500 then
+    if GetResourceAmount(expansion_list[i]) > gold and not CheckExpansionTaken(expansion_list[i]) and DistanceBetweenPoints_kd(home_location,GetUnitLoc(expansion_list[i])) > 1500 then
       call add_exp(expansion_list[i], expansion_dist[i], expansion_ancient[i], expansion_creeps[i])
     endif
     set i = i + 1
@@ -6436,7 +6437,7 @@ function ChooseExpansion takes nothing returns nothing
     set i = 0
     loop
       exitwhen i >= water_expansion_list_length
-      if not CheckExpansionTaken(water_expansion_list[i]) then
+      if GetResourceAmount(water_expansion_list[i]) > gold and not CheckExpansionTaken(water_expansion_list[i]) then
         call add_exp(water_expansion_list[i], 60, null, water_expansion_creeps[i])
       endif
       set i = i + 1
@@ -10250,11 +10251,12 @@ endfunction
 function StartExpansionAM takes integer qty, integer hall returns integer
   local integer count = TownCount(hall)
   local integer countdone = TownCountDone(hall)
+  local integer mines = GetMinesOwned()
+  local integer i = racial_expansion
   local unit    peon = null
   local unit    u = null
   local integer gold_cost = 0
   local integer wood_cost = 0
-
   if countdone >= qty then
     return BUILT_ALL
   endif
@@ -10282,7 +10284,12 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Taken Checked")
 
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion choosen")
-
+  if first_town_mine > 0 and (race_uses_mine_expansion or race_manual_loading) then  //home_location have multiple mine , fix GetMinesOwned bug(ELF and UD)
+    if race_manual_loading then
+      set i = race_manual_loading_mine
+    endif
+    set mines = Min(TownCount(i),mines)  // check actual number of gold mines
+  endif
   set gold_cost = GetUnitGoldCost2(hall)
   set wood_cost = GetUnitWoodCost2(hall)
 
@@ -10295,14 +10302,17 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   if total_wood < 0 then
     set total_wood = 0
   endif
-
-  if total_gold <= 0 and not (gold_cost == 0) then
+  if mines != 0 then
+    if total_gold <= 0 and not (gold_cost == 0) then
+      return NOT_ENOUGH_RES
+    endif
+    if total_wood <= 0 and not (wood_cost == 0) then
+      return NOT_ENOUGH_RES
+    endif
+  elseif GetGold() < gold_cost or GetWood() < wood_cost then  //fix priority , if have rescources and not mine , ensure expansion
     return NOT_ENOUGH_RES
   endif
 
-  if total_wood <= 0 and not (wood_cost == 0) then
-    return NOT_ENOUGH_RES
-  endif
   set take_exp = (GetExpFoe(u) != null)
   set u = null
   if take_exp or total_gold <= 0 or total_wood <= 0 then
@@ -10677,7 +10687,7 @@ if first_town_mine > 0 and (race_uses_mine_expansion or race_manual_loading) the
   if race_manual_loading then
     set i = race_manual_loading_mine
   endif
-  set mines = Min(TownCount(i),GetMinesOwned())  // check actual number of gold mines
+  set mines = Min(TownCount(i),mines)  // check actual number of gold mines
 endif
 
 set i = 2
