@@ -71,6 +71,7 @@ function TowerRushBuilderControl_k takes unit u, location t, boolean CanBuild re
 			if not CanBuild or GetUnitTypeId(u) == old_id[racial_militia] or (race_tower_bypeon == true and u == builder[4] and IsUnitType(builder[1], UNIT_TYPE_STRUCTURE) and IsUnitType(builder[2], UNIT_TYPE_STRUCTURE) and IsUnitType(builder[3], UNIT_TYPE_STRUCTURE)) then
 				call RemoveLocation(l)
 				set l = null
+				call CreateDebugTag("TRush: cannot build tower", 10, u, 4.00, 2.00)
 				return  // HUMAN militia cannot build , ELF no need all peon build but need try give one repair
 			endif
 			if towers_built <= 6 then
@@ -91,8 +92,9 @@ function TowerRushBuilderControl_k takes unit u, location t, boolean CanBuild re
 			call RemoveUnit(loccheck)
 			if not IsTerrainPathable(builder_x, builder_y, PATHING_TYPE_BUILDABILITY) then
 				if towers_built < 3 or (towers_built >= 3 and towers_built < 6 and GetGold() > (GetUnitGoldCost2(race_tower_id) + 100) and GetWood() > (GetUnitWoodCost2(race_tower_id) + 80)) or (towers_built >= 6 and GetGold() > (GetUnitGoldCost2(race_tower_id) * 3) and (GetWood() > GetUnitWoodCost2(race_tower_id) * 3)) then
-					call IssueBuildOrderById(u, old_id[race_tower_id], builder_x, builder_y)
-					set towers_built_count = towers_built_count + 1
+					if IssueBuildOrderById(u, old_id[race_tower_id], builder_x, builder_y) then
+						set towers_built_count = towers_built_count + 1
+					endif
 					if towers_built != 0 then
 						call CreateDebugTag("TRush: Building", 10, u, 4.00, 2.00)
 					else
@@ -169,8 +171,8 @@ function TowerRushJob takes nothing returns nothing
 	local location t = null
 	local item it = null
 	local integer i = 0
-	local integer towers_attck = 0
 	local integer s = 0
+	local integer towers_attck = 0
 	local integer randomnum = 0
 	local integer towermove = 30
 	local integer buildtries = 10
@@ -258,27 +260,29 @@ function TowerRushJob takes nothing returns nothing
 		set gold_buffer = 0
 		set wood_buffer = 0
 		call CaptainGoHome()
-		if tower_attack_run == true and race_has_power_build then  // reduction
-			call GroupClear(g)
-			call GroupEnumUnitsOfPlayer(g, ai_player, null)
-			set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
-			set g = SelectByAlive(g, true)
-			set g = SelectByHidden(g, false)
-			set i = 41
-			loop
-				set u = FirstOfGroup(g)
-				exitwhen u == null
-				if not IsUnitBuying(u) then
-					call TQAddUnitJob(3, RESET_GUARD_POSITION, 0, u)  //Prevent peon immediately go tower point repair tower
-				endif
-				if builder[i] != null then
-					set builder[i] = null
-					set i = i + 1
-				endif
-				call GroupRemoveUnit(g,u)
-			endloop
-			call DestroyGroup(tower_rush_power)
-			call GroupClear(g)
+		if tower_attack_run == true then
+			if race_has_power_build then  // reduction
+				call GroupClear(g)
+				call GroupEnumUnitsOfPlayer(g, ai_player, null)
+				set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
+				set g = SelectByAlive(g, true)
+				set g = SelectByHidden(g, false)
+				set i = 41
+				loop
+					set u = FirstOfGroup(g)
+					exitwhen u == null
+					if not IsUnitBuying(u) then
+						call TQAddUnitJob(3, RESET_GUARD_POSITION, 0, u)  //Prevent peon immediately go tower point repair tower
+					endif
+					if builder[i] != null then
+						set builder[i] = null
+						set i = i + 1
+					endif
+					call GroupRemoveUnit(g,u)
+				endloop
+				call DestroyGroup(tower_rush_power)
+				call GroupClear(g)
+			endif
 			call GroupEnumUnitsInRange(g, first_tower_point_x, first_tower_point_y, 2200, null)
 			call GroupAddUnit(g, builder[1])  //Prevent unit out of range
 			call GroupAddUnit(g, builder[2])
@@ -418,11 +422,13 @@ function TowerRushJob takes nothing returns nothing
 					call GroupAddUnit(tower_rush_power,builder[i])
 					call IssueImmediateOrder(builder[i], "autoharvestgold")
 				elseif id == 0 then
+					call CreateDebugTag("TRush: free peon", 10, u, 4.00, 2.00)
 					call RecycleGuardPosition(builder[i])
 				endif
 			endif
 			if i > 42 then
 				set id = GetUnitCurrentOrder(builder[i])
+				call CreateDebugTag("TRush: harvest gold peon", 10, u, 4.00, 2.00)
 				if id == OrderId("harvest") or id == OrderId("resumeharvesting") then  // no need do anything
 				else
 					call IssueImmediateOrder(builder[i], "autoharvestgold")
@@ -437,6 +443,7 @@ function TowerRushJob takes nothing returns nothing
 			set u = FirstOfGroup(tempg)
 			exitwhen u == null
 			set id = GetUnitCurrentOrder(u)
+			call CreateDebugTag("TRush: harvest lumber peon", 10, u, 4.00, 2.00)
 			if id == OrderId("harvest") or id == OrderId("resumeharvesting") then  // no need do anything
 			elseif not IsUnitInGroup(u, tower_rush_power) then
 				call RemoveGuardPosition(u)
