@@ -44,7 +44,7 @@ function TowerRushBuilderControl_k takes unit u, location t, boolean CanBuild re
 	if DistanceBetweenPoints(l, t) >= 300 and (id != OrderId("move") or id == OrderId("stop")) then
 		call CreateDebugTag("TRush: builder moving", 10, u, 4.00, 2.00)
 		call IssuePointOrderLoc(u, "move", t)
-	elseif DistanceBetweenPoints(l, t) <= 500 and ((id != OrderId("smart") and id != OrderId("repair") and id != old_id[race_tower_id] and id != old_id[racial_shop]) or id == 0) then  //Improve efficiency
+	elseif DistanceBetweenPoints(l, t) <= 500 and (id == 0 or (id != OrderId("smart") and id != OrderId("repair") and id != old_id[race_tower_id] and id != old_id[racial_shop])) then  //Improve efficiency
 		if towers_built >= 6 and race_tower_shop == 0 then  //Building shop
 			set loc = GetSubtractionLoc(tower_target_loc, toweringplayerloc)
 			set unitloc = GetProjectedLoc(tower_target_loc, loc, 800)
@@ -91,7 +91,7 @@ function TowerRushBuilderControl_k takes unit u, location t, boolean CanBuild re
 			call RemoveLocation(unitloc)
 			call RemoveUnit(loccheck)
 			if not IsTerrainPathable(builder_x, builder_y, PATHING_TYPE_BUILDABILITY) then
-				if towers_built < 3 or (towers_built >= 3 and towers_built < 6 and GetGold() > (GetUnitGoldCost2(race_tower_id) + 100) and GetWood() > (GetUnitWoodCost2(race_tower_id) + 80)) or (towers_built >= 6 and GetGold() > (GetUnitGoldCost2(race_tower_id) * 3) and (GetWood() > GetUnitWoodCost2(race_tower_id) * 3)) then
+				if towers_built < 3 or (towers_built >= 3 and towers_built < 6 and GetGold() > (GetUnitGoldCost2(race_tower_id) + 100) and GetWood() > (GetUnitWoodCost2(race_tower_id) + 80)) or (towers_built >= 6 and (GetGold() > GetUnitGoldCost2(race_tower_id) * 3) and (GetWood() > GetUnitWoodCost2(race_tower_id) * 3)) then
 					if IssueBuildOrderById(u, old_id[race_tower_id], builder_x, builder_y) then
 						set towers_built_count = towers_built_count + 1
 					endif
@@ -154,13 +154,6 @@ function TowerRushSetBuilder takes unit u returns boolean
 	if tower_attack_run == true then
 		call RemoveGuardPosition(u)
 	endif
-	if race_tower_repair_ability == 'Arst' then  // open automatic repair
-		call IssueImmediateOrderById(u, 852203)
-	elseif race_tower_repair_ability == 'Aren' then
-		call IssueImmediateOrderById(u, 852162)
-	else
-		call IssueImmediateOrderById(u, 852025)  // human('Ahrp') , orc('Arep') , or other race
-	endif
 	return true
 endfunction
 
@@ -179,14 +172,13 @@ function TowerRushJob takes nothing returns nothing
 	local integer id = 0
 	local real time_next_try = 5
 	local boolean CloseJob = false
-	local boolean CanBuild = true
 	call DisplayToAllJobDebug("TOWER_RUSH Job START")
 	if not hero_built[1] and race_tower_item_must == true then
 		call TQAddJob(5, TOWER_RUSH, 0)
 		return
 	endif
 	if race_tower_move then
-		set buildtries = 8  //the tower can move
+		set buildtries = 8  // tower can move
 	endif
 	set g = CreateGroup()
 	call GroupEnumUnitsInRange(g, first_tower_point_x, first_tower_point_y, 1200, null)
@@ -226,7 +218,6 @@ function TowerRushJob takes nothing returns nothing
 	endloop
 	set towers_built = i
 	set race_tower_shop = s
-	set CanBuild = towers_built - towers_attck < 2
 	if towers_built > 0 and tower_used_item == false then
 		set tower_used_item = true  //have woter , no need send hero used item
 	endif
@@ -476,7 +467,7 @@ function TowerRushJob takes nothing returns nothing
 		else
 			loop
 				exitwhen i > race_tower_peon
-				call TowerRushBuilderControl_k(builder[i], t, CanBuild)
+				call TowerRushBuilderControl_k(builder[i], t, towers_built - towers_attck < 2)
 				set i = i + 1
 			endloop
 			set time_next_try = 2
