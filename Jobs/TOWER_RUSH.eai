@@ -33,7 +33,7 @@ function TowerRushBuilderFirstControl_d takes unit u, unit hall returns nothing
 	endif
 endfunction
 
-function TowerRushBuilderControl_k takes unit u, location t, boolean CanBuild returns nothing
+function TowerRushBuilderControl_k takes unit u, location t returns nothing
 	local real builder_x = 0
 	local real builder_y = 0
 	local integer id = GetUnitCurrentOrder(u)
@@ -68,7 +68,7 @@ function TowerRushBuilderControl_k takes unit u, location t, boolean CanBuild re
 				endif
 			endif
 		else  //Building tower
-			if not CanBuild or GetUnitTypeId(u) == old_id[racial_militia] or (race_tower_bypeon == true and u == builder[4] and IsUnitType(builder[1], UNIT_TYPE_STRUCTURE) and IsUnitType(builder[2], UNIT_TYPE_STRUCTURE) and IsUnitType(builder[3], UNIT_TYPE_STRUCTURE)) then
+			if GetUnitTypeId(u) == old_id[racial_militia] or (race_tower_bypeon == true and u == builder[4] and IsUnitType(builder[1], UNIT_TYPE_STRUCTURE) and IsUnitType(builder[2], UNIT_TYPE_STRUCTURE) and IsUnitType(builder[3], UNIT_TYPE_STRUCTURE)) then
 				call RemoveLocation(l)
 				set l = null
 				call CreateDebugTag("TRush: cannot build tower", 10, u, 4.00, 2.00)
@@ -350,18 +350,15 @@ function TowerRushJob takes nothing returns nothing
 	// 		set wood_buffer = 0
 	// 	endif
 	// endif
-    if tower_attack_run != true and not town_threatened and (GetUnitCountDone(old_id[hero[1]]) + GetUnitCountDone(old_id[hero[2]]) + GetUnitCountDone(old_id[hero[3]])) > 0 and (race_tower_item_must != true or (race_tower_item_must == true and builder[0] != null)) then
-		set tower_attack_run = true
-	endif
-	if builder[0] == null then
+
+	if builder[0] == null and race_tower_item != 0 then
 		set builder[0] = GetItemHero(GetItemOfType(it,race_tower_item))
-		set it = null
 	endif
 	if builder[0] != null then  //Avoid next cycle judgment
-		call SetItemDroppable(GetItemOfTypeOnUnit(race_tower_item, builder[0]), false)  //prevent droppable
-		call SetItemPawnable(GetItemOfTypeOnUnit(race_tower_item, builder[0]), false)  //can selling
+		call SetItemDroppable(it, false)  //prevent droppable
+		call SetItemPawnable(it, false)  //can selling
 	endif
-
+	set it = null
 	loop
 		exitwhen towermove < 30
 		call TowerRushTowerMoveControl_k(builder[towermove], t)
@@ -445,7 +442,7 @@ function TowerRushJob takes nothing returns nothing
 		endloop
 	endif
 
-	if towers_built < buildtries and tower_attack_run == true then
+	if tower_attack_run == true then
 		if GetItemNumberOnUnit(race_tower_item, builder[0]) > 0 then
 			call TowerRushHeroControl_k(builder[0], t)
 		endif
@@ -464,10 +461,10 @@ function TowerRushJob takes nothing returns nothing
 			endloop
 			set tower_peon_run = true
 			set time_next_try = 4
-		else
+		elseif towers_built < buildtries and towers_built - towers_attck < 2 then  // bug is towers_built no change on TowerRushBuilderControl_k , AI will build more tower , even if tower can move , but not a big problem
 			loop
 				exitwhen i > race_tower_peon
-				call TowerRushBuilderControl_k(builder[i], t, towers_built - towers_attck < 2)
+				call TowerRushBuilderControl_k(builder[i], t)
 				set i = i + 1
 			endloop
 			set time_next_try = 2
