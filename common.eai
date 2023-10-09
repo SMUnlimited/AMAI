@@ -6797,7 +6797,7 @@ function GetHeroToBuyItem takes unit shop, real limit, boolean is_healing_includ
     exitwhen i > 3
     if hero_built[i] and UnitAlive(hero_unit[i]) then
      if GetSlotsFreeOnUnit(hero_unit[i]) > 0 and DistanceBetweenUnits(hero_unit[i], shop) < limit and not IsUnitInGroup(hero_unit[i], unit_buying_tavern) and not IsUnitInGroup(hero_unit[i], unit_buying_merc) and not IsUnitInGroup(hero_unit[i], unit_harassing) then
-       if IsUnitInGroup(hero_unit[i], unit_healing) == is_healing_included then
+       if IsUnitInGroup(hero_unit[i], unit_healing) != is_healing_included then
        else
           return hero_unit[i]
        endif
@@ -6812,7 +6812,7 @@ endfunction
 function GetItemHero takes item it returns unit
   local integer i = 1
   loop
-    exitwhen i > 3
+    exitwhen i > 3 or it == null
     if hero_built[i] and UnitAlive(hero_unit[i]) then
       if UnitHasItem(hero_unit[i], it) then
         return hero_unit[i]
@@ -10519,13 +10519,12 @@ function StartItem takes integer ask_qty, integer itemid returns integer
   if BuyItem(have_qty + 1, itemid) then
     return BUILT_SOME
   else
-    if IsHealingItem(itemid) and buy_type[itemid] == BT_RACIAL_ITEM and GetGold() > 1000 and c_ally_total > 0 then
+    if IsHealingItem(itemid) and buy_type[itemid] == BT_RACIAL_ITEM and c_ally_total > 0 and GetGold() > 1000 and (not towerrush or (towerrush and tower_attack_run)) then
       if BuyAllyShopItem(have_qty + 1,itemid) then  //return false just run next time
         return BUILT_SOME
-      else
-        return CANNOT_BUILD
       endif
     endif
+    return CANNOT_BUILD
   endif
   return BUILT_SOME
 endfunction
@@ -11579,32 +11578,36 @@ function AttackMoveTowerRush takes nothing returns nothing
 	local integer attack_length_counter = 0
 	local group g = CreateGroup()
 
-	set attack_running = true
-
 	loop
 		exitwhen not towerrush
 		exitwhen town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat + 60
 		exitwhen break_attack
 		exitwhen CaptainIsEmpty()       // all units died
-		if (builder[10] == null or GetUnitState(builder[10], UNIT_STATE_LIFE) <= 0) then
-			call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1200, null)
-			set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-			set g = SelectByAlive(g, true)
-			set g = SelectByHidden(g,false)
-			set builder[10] = FirstOfGroup(g)
-			call GroupClear(g)
-		endif
-		call SetAllianceTarget(builder[10])
-		if towers_built < 2 then
-			//call AttackMoveKill(builder[1])
-			call SetCaptainHome(BOTH_CAPTAINS,R2I(GetUnitX(builder[1])),R2I(GetUnitY(builder[1])))
-			call SetAllianceTarget(builder[1])
-		elseif towers_built < 4 then
-			call AttackMoveXY(R2I(first_tower_point_x), R2I(first_tower_point_y))
-		elseif towers_built < 7 then
-			call AttackMoveXY(R2I(second_attack_point_x), R2I(second_attack_point_y))
-		else
-			call AttackMoveXY(R2I(enemy_point_x),R2I(enemy_point_y))
+		if tower_attack_run != true and (GetUnitCountDone(old_id[hero[1]]) + GetUnitCountDone(old_id[hero[2]]) + GetUnitCountDone(old_id[hero[3]])) > 0 and (race_tower_item_must != true or (race_tower_item_must == true and builder[0] != null)) then
+			set tower_attack_run = true
+			set attack_running = true
+    elseif tower_attack_run then
+			if (builder[10] == null or GetUnitState(builder[10], UNIT_STATE_LIFE) <= 0) then
+				call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1200, null)
+				set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+				set g = SelectByAlive(g, true)
+				set g = SelectByHidden(g,false)
+				set builder[10] = FirstOfGroup(g)
+				call GroupClear(g)
+			endif
+			call SetAllianceTarget(builder[10])
+			if towers_built < 2 and builder[1] != null then
+				call AttackMoveKill(builder[1])
+				//call SetCaptainHome(BOTH_CAPTAINS,R2I(GetUnitX(builder[1])),R2I(GetUnitY(builder[1])))
+				call SetAllianceTarget(builder[1])
+			elseif towers_built < 4 then
+				call AttackMoveXY(R2I(first_tower_point_x), R2I(first_tower_point_y))
+			elseif towers_built < 7 then
+				call AttackMoveXY(R2I(second_attack_point_x), R2I(second_attack_point_y))
+			else
+				call AttackMoveXY(R2I(enemy_point_x),R2I(enemy_point_y))
+			endif
+			set attack_length_counter = attack_length_counter + 1
 		endif
 		//call AttackMoveKill(builder[20])
 		//if towers_built == 0 then
@@ -11623,7 +11626,6 @@ function AttackMoveTowerRush takes nothing returns nothing
 			//endif
 		//endif
 		call Sleep(sleep_multiplier)
-		set attack_length_counter = attack_length_counter + 1
 		if attack_length_counter > attack_reform_length then
 			set attack_length_counter = 0
 			call FormGroupAM(0)
