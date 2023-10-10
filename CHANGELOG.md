@@ -246,6 +246,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Note: because shortened the interval , the code that traverses units will run frequently, and if a large number of units gather (such as 1V23 or 4v20), it will cause the game to latency(FPS become 0) earlier
 - Intervene expansion priority , ensure expansion when not mine but have rescources
 - (DevTools) Now can set backlanguage to not English
+- GetLocationEnemyStructures change to GetLocationEnemyStrength , add boolean only_structures use to distinguish only check structures or include structures
 
 ###Fixed
 - Fixed some translation errors

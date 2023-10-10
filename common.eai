@@ -5250,14 +5250,16 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
 endfunction
 
 //============================================================================
-function GetLocationEnemyStructures takes real x, real y, real radius returns integer
+function GetLocationEnemyStrength takes real x, real y, real radius, boolean only_structures returns integer
   local group g = CreateGroup()
   local integer sum = 0
   local unit u = null
   call GroupEnumUnitsInRange(g,x,y,radius,null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), false)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  if only_structures then
+    set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  endif
   set g = SelectByAlive2(g, true)
   set g = SelectByHidden(g, false)
   loop
@@ -11369,7 +11371,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       exitwhen target == null
     endif
     //if not iscreeping then
-      //	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationEnemyStructures(unitx, unity, battle_radius) <= 0 // enemies are dead and target dead
+      //	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationEnemyStrength(unitx, unity, battle_radius, true) <= 0 // enemies are dead and target dead
     //else
       //call Trace("Units, Creeps: " + Int2Str(GetLocationNonCreepStrength(unitx, unity, battle_radius)) + "," + Int2Str(GetLocationCreepStrength(unitx, unity, 500)))
       //	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationCreepStrength(unitx, unity, 500) <= 0
@@ -11595,10 +11597,11 @@ function AttackMoveTowerRush takes nothing returns nothing
 				call GroupClear(g)
 			endif
 			call SetAllianceTarget(builder[10])
-			if towers_built < 2 and builder[1] != null then
-				call AttackMoveKill(builder[1])
-				//call SetCaptainHome(BOTH_CAPTAINS,R2I(GetUnitX(builder[1])),R2I(GetUnitY(builder[1])))
+			if towers_built == 0 and builder[1] != null then
 				call SetAllianceTarget(builder[1])
+				call AttackMoveKill(builder[1])
+			elseif towers_built < 3 then
+				call AttackMoveXY(GetLocationX(tower_target_loc), GetLocationY(tower_target_loc))
 			elseif towers_built < 4 then
 				call AttackMoveXY(R2I(first_tower_point_x), R2I(first_tower_point_y))
 			elseif towers_built < 7 then
