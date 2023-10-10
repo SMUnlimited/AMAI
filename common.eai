@@ -6797,7 +6797,7 @@ function GetHeroToBuyItem takes unit shop, real limit, boolean is_healing_includ
     exitwhen i > 3
     if hero_built[i] and UnitAlive(hero_unit[i]) then
      if GetSlotsFreeOnUnit(hero_unit[i]) > 0 and DistanceBetweenUnits(hero_unit[i], shop) < limit and not IsUnitInGroup(hero_unit[i], unit_buying_tavern) and not IsUnitInGroup(hero_unit[i], unit_buying_merc) and not IsUnitInGroup(hero_unit[i], unit_harassing) then
-       if IsUnitInGroup(hero_unit[i], unit_healing) != is_healing_included then
+       if is_healing_included == true and IsUnitInGroup(hero_unit[i], unit_healing) then
        else
           return hero_unit[i]
        endif
@@ -10371,7 +10371,6 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
   local unit u = null
   local integer i = 0
   local integer m = 0
-  local integer array per
   if attack_running then
     return false
   endif
@@ -10380,22 +10379,22 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
     return true
   endif
   loop
-    exitwhen i >= c_ally_total
-    if GetPlayerSlotState(ally_force[i]) == PLAYER_SLOT_STATE_PLAYING then
-      set per[m] = i
-      set m = m + 1
-    endif
+    exitwhen i < 0 or i >= c_ally_total
+    set m = GetRandomInt(0,c_ally_total-1)
     set i = i + 1
+    if GetPlayerSlotState(ally_force[m]) == PLAYER_SLOT_STATE_PLAYING then
+      set i = -1
+    endif
   endloop
   set shop_unit = null
   if m > 1 then
     set g = CreateGroup()
-    call GroupEnumUnitsOfPlayer(g, Player(per[GetRandomInt(0,m-1)]), null)
+    call GroupEnumUnitsOfPlayer(g, ally_force[m], null)
     set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if GetUnitAbilityLevel(u, 'Aall') > 0 and UnitAlive(u) then  // select ally shop , use JOB TrackTown record ally shop is best, but worried about affecting efficiency , if use new JOB then too wasteful
+      if GetUnitAbilityLevel(u, 'Aall') > 0 and UnitAlive(u) and not IsUnitHidden(u) then  // select ally shop , use JOB TrackTown record ally shop is best, but worried about affecting efficiency , if use new JOB then too wasteful
         if shop_unit == null or GetRandomInt(0,1) == 1 then
           set shop_unit = u  // get Random shop
         endif
