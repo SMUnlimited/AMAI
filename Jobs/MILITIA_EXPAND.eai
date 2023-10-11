@@ -50,6 +50,7 @@ local unit u = null
 local integer ownstrength = 0
 local integer expansionstrength = 0
 local location l = null
+local boolean builddone = false
 
 	call DisplayToAllJobDebug("MILITIA_EXPAND JOB START")
 
@@ -86,13 +87,12 @@ local location l = null
 					set gold_buffer = 0
 					set wood_buffer = 0
 					call Trace("MILITIA_EXPAND: Militia expansion will not be done")
-					set militia = false
+					//set militia = false
 				endif
 			endif
 		endif
-		if militia then
-			call TQAddJob(7, MILITIA_EXPAND, 0)
-		endif
+		call TQAddJob(7, MILITIA_EXPAND, 0)
+		return
 	elseif militia_state == 1 then
 		set gold_buffer = GetUnitGoldCost2(racial_expansion)
 		set wood_buffer = GetUnitWoodCost2(racial_expansion)
@@ -108,9 +108,8 @@ local location l = null
 			set militia_expanding = true
 		endif
 		set u = null
-		if militia then
-			call TQAddJob(2, MILITIA_EXPAND, 0)
-		endif	
+		call TQAddJob(2, MILITIA_EXPAND, 0)
+		return
 	elseif militia_state == 2 then
 		call Trace("Militia state 2")
 		if GetMilitiaExpansionStrength() > 0 then
@@ -150,9 +149,8 @@ local location l = null
 			set militia_state = 3
 			call Trace("Militia state 2 done")
 		endif
-		if militia then
-			call TQAddJob(2, MILITIA_EXPAND, 0)
-		endif
+		call TQAddJob(2, MILITIA_EXPAND, 0)
+		return
 	elseif militia_state == 3 then
 		if GetMilitiaExpansionStrength() > 0 then
 			set militia_state = 1
@@ -162,7 +160,7 @@ local location l = null
 			set militia_state = 2
 		else
 			if CheckExpansionTaken(militia_expansion) then
-				set militia = false
+				//set militia = false
 				set militia_state = 0
 				set militia_expansion = null
 				call RemoveLocation(militia_loc)
@@ -171,39 +169,43 @@ local location l = null
 				set wood_buffer = 0
 				call Trace("Militia Ended")
 				call RecycleGuardPosition(militia_builder)
-				return
-			endif
-			if militia_loc == null then
-				call GetMilitiaExpansionLoc(old_id[racial_expansion])
-			endif
-			if GetGold() >= GetUnitGoldCost2(racial_hall[1]) and GetWood() >= GetUnitWoodCost2(racial_hall[1]) then
-				//call IssueTargetOrder(militia_fastb1, "stop", current_expansion)
-				//call IssueTargetOrder(militia_fastb2, "stop", current_expansion)
-				call RecycleGuardPosition(militia_builder)  // has to be here or peasant comes off construction
-				call BuildMilitiaExpansion(militia_builder, old_id[racial_expansion])
-				//set militia = false
-				//set militia_state = 0
-				//set militia_expansion = null
-				call Trace("Militia Build commanded")
-			else 
-				set gold_buffer = GetUnitGoldCost2(racial_expansion)
-				set wood_buffer = GetUnitWoodCost2(racial_expansion)
-				call Trace("Moving near")
-				call RemoveGuardPosition(militia_builder)
+				set builddone = true
+			else
 				if militia_loc == null then
-					call IssueTargetOrder(militia_builder, "move", current_expansion)
-					//call IssueTargetOrder(militia_fastb1, "move", current_expansion)
-					//call IssueTargetOrder(militia_fastb2, "move", current_expansion)
-				else
-					call IssuePointOrderLoc(militia_builder, "move", militia_loc)
+					call GetMilitiaExpansionLoc(old_id[racial_expansion])
+				endif
+				if GetGold() >= GetUnitGoldCost2(racial_hall[1]) and GetWood() >= GetUnitWoodCost2(racial_hall[1]) then
+					//call IssueTargetOrder(militia_fastb1, "stop", current_expansion)
+					//call IssueTargetOrder(militia_fastb2, "stop", current_expansion)
+					call RecycleGuardPosition(militia_builder)  // has to be here or peasant comes off construction
+					set builddone = BuildMilitiaExpansion(militia_builder, old_id[racial_expansion])
+					//set militia = false
+					//set militia_state = 0
+					//set militia_expansion = null
+					call Trace("Militia Build commanded")
+				else 
+					set gold_buffer = GetUnitGoldCost2(racial_expansion)
+					set wood_buffer = GetUnitWoodCost2(racial_expansion)
+					call Trace("Moving near")
+					call RemoveGuardPosition(militia_builder)
+					if militia_loc == null then
+						call IssueTargetOrder(militia_builder, "move", current_expansion)
+						//call IssueTargetOrder(militia_fastb1, "move", current_expansion)
+						//call IssueTargetOrder(militia_fastb2, "move", current_expansion)
+					else
+						call IssuePointOrderLoc(militia_builder, "move", militia_loc)
+					endif
 				endif
 			endif
 		endif
-		if militia then
+		if not builddone then
 			call TQAddJob(3, MILITIA_EXPAND, 0)
+			return
 		endif
 	endif
-
+	if not pathing_done then
+		call TQAddJob(50, MILITIA_EXPAND, 0)
+	endif
 endfunction
 
 
