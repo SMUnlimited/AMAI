@@ -247,6 +247,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Intervene expansion priority , ensure expansion when not mine but have rescources
 - (DevTools) Now can set backlanguage to not English
 - GetLocationEnemyStructures change to GetLocationEnemyStrength , add boolean only_structures use to distinguish only check structures or include structures
+- MILITIA_EXPAND job no longer only run once , but only running on one mine
 
 ###Fixed
 - Fixed some translation errors
