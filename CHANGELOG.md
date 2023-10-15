@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Added opportunities to attempt extreme save behaviour when the AI is struggling e.g Do a militia expansion or ancient expansion (jzy-chitong56)
 - Some improvements to handle multiple mines at the same base  (jzy-chitong56)
 - Use the cloak of shadows ability in micro actions (jzy-chitong56)
+- Maps with multiple mines at the starting location can now be handled. (jzy-chitong56)
 
 ### Changed
 - Chinese Translation improvements. (jzy-chitong56)
@@ -32,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
     - ROC BLADE MASTER will no longer use mirror image.
     - DEMON HUNTERS will can now sometimes learn Immolation.
 - Shredders now replace 10 peons (instead of 8)
+- Improvements to worker logic at game start. (jzy-chitong56)
 
 ### Removed
 - (DevTools) Old non-working installer has now been removed now we have new version in place.

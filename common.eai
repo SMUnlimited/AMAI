@@ -1816,11 +1816,7 @@ function GetExpansionPeon2 takes unit u returns unit
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) and (GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == 0) and not IsUnitHidden(u) and not IsUnitLoaded(u) then  // and not IsUnitInGroup(u, unit_buying_tavern) and not IsUnitInGroup(u, unit_buying_merc) and not IsUnitInGroup(u, unit_buying_item) and not IsUnitInGroup(u, unit_zepplin_move))  // if too much IsUnitInGroup , the game will laggy and collapse
-      call DestroyGroup(g)
-      set g = null
-      return u
-    endif
+    exitwhen GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) and (GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == 0) and not IsUnitHidden(u) and not IsUnitLoaded(u)
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
@@ -10036,17 +10032,6 @@ function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
     set expansion_peon = peon
   endif
   // Disabled just in case
-  if build_zeppelin == null or not UnitAlive(build_zeppelin) then
-    if not UnitAlive(build_zeppelin) then
-      call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
-    endif
-    set build_zeppelin = GetUnusedZeppelinNearUnit(build_zeppelin, expansion_peon)
-    if build_zeppelin == null then
-      call Trace("No Zeppelin found for transporting peon")
-      return false
-    endif
-    call GroupAddUnit(unit_zepplin_move, build_zeppelin)
-  endif
   if IsUnitInTransport(expansion_peon, build_zeppelin) then
     if DistanceBetweenUnits(build_zeppelin, target) > 300 then
       call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + GetRandomReal(-200,200), GetUnitY(target) + GetRandomReal(-200,200))
@@ -10143,9 +10128,20 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   endif
 
   if peon != null then
-    if IsWaterExpansion(current_expansion) or IsUnitInGroup(current_expansion, far_expansion) then
-      if not BuildMovePeonZeppelin(peon, current_expansion) then
-        call Trace("AMAIStartexpa: Is a water or far expansion")
+    if IsWaterExpansion(current_expansion) or IsUnitInGroup(current_expansion, far_expansion) and neutral_available[NEUTRAL_OBSERVATORY] then
+      if build_zeppelin == null or not UnitAlive(build_zeppelin) then
+        if not UnitAlive(build_zeppelin) then
+          call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
+        endif
+        set build_zeppelin = GetUnusedZeppelinNearUnit(build_zeppelin, expansion_peon)
+        if build_zeppelin == null then
+          call Trace("No Zeppelin found for transporting peon")
+        else
+          call GroupAddUnit(unit_zepplin_move, build_zeppelin)
+        endif
+      endif
+      if build_zeppelin != null and not BuildMovePeonZeppelin(peon, current_expansion) then
+        call Trace("AMAIStartexpa: Is a water or far expansion so using zeppelin")
         set peon = null
         return BUILT_SOME
       endif
