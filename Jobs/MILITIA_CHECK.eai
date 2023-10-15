@@ -4,9 +4,8 @@
     unit militia_hall = null
     boolean use_militia_only_on_bigger_threats = false
 #ELSE
-function GetMilitiaHall takes nothing returns unit
+function GetMilitiaHall takes unit u returns unit
   local group g = CreateGroup()
-  local unit u = null
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   loop
     set u = FirstOfGroup(g)
@@ -20,7 +19,7 @@ function GetMilitiaHall takes nothing returns unit
   endloop
   call DestroyGroup(g)
   set g = null
-  return null
+  return u
 endfunction
 
 function IsMilitiaAllowed takes nothing returns boolean
@@ -35,36 +34,36 @@ function IsMilitiaAllowed takes nothing returns boolean
 endfunction
 
 function MilitiaCheckJob takes nothing returns nothing
-  local group g = CreateGroup()
+  local group g =null
   local unit u = null
   local integer i = 0
   local boolean big_dist = false
-  local location unitloc = null
   local integer militiarequired = 0
-
   call DisplayToAllJobDebug("MILITIA_CHECK JOB START")
   if militia_hall == null or GetUnitState(militia_hall, UNIT_STATE_LIFE) <= 0 or UnitAlive(militia_hall) == false then
-	set militia_hall = GetMilitiaHall()
-  endif  
+    set militia_hall = GetMilitiaHall(militia_hall)
+  endif
+  if race_militia_available and (militia_hall == null or towerrush) then
+    call TQAddJob(30, MILITIA_CHECK, 0)
+    return
+  endif
   if militia_check_enabled and GetUnitState(militia_hall, UNIT_STATE_LIFE) > 0 then
     set militia_allowed = IsMilitiaAllowed()
+    set g = CreateGroup()
     call GroupEnumUnitsOfType(g, race_militia_unitstring, null)
     set g = SelectByPlayer(g, ai_player, true)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-	  set unitloc = GetUnitLoc(u)
-      if not militia_allowed or DistanceBetweenPoints(unitloc, home_location) > race_militia_max_distance then
+      if not militia_allowed or DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) > race_militia_max_distance then
         call IssueImmediateOrder(u, "militiaoff")
       endif
       call GroupRemoveUnit(g,u)
-	  call RemoveLocation(unitloc)
-	  set unitloc = null
     endloop
-	set militiarequired = Max(1,GetLocationNonCreepStrength(GetUnitX(militia_hall), GetUnitY(militia_hall), 1500)/2) // Militia are 2 strength so divide total enemy strength by 2
+    set militiarequired = Max(1,GetLocationNonCreepStrength(GetUnitX(militia_hall), GetUnitY(militia_hall), 1500)/2) // Militia are 2 strength so divide total enemy strength by 2
     call GroupEnumUnitsOfType(g, race_militiaworker_unitstring, null)
     set g = SelectByPlayer(g, ai_player, true)
-	set g = SelectByAlive(g, true)
+    set g = SelectByAlive(g, true)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
@@ -81,12 +80,12 @@ function MilitiaCheckJob takes nothing returns nothing
       endif
       call GroupRemoveUnit(g,u)
     endloop
+    call DestroyGroup(g)
+    set g = null
   endif
-  call DestroyGroup(g)
-  set g = null
   //if GetUnitAbilityLevel(militia_hall, race_militia_hall_ability) > 0 then
   if race_militia_available then
-	call TQAddJob(5, MILITIA_CHECK, 0)
+    call TQAddJob(5, MILITIA_CHECK, 0)
   endif
 endfunction
 #ENDIF
