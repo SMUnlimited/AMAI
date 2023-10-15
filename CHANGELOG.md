@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Some improvements to handle multiple mines at the same base  (jzy-chitong56)
 - Use the cloak of shadows ability in micro actions (jzy-chitong56)
 - Maps with multiple mines at the starting location can now be handled. (jzy-chitong56)
+- Some expansions when far away or impossible to get to will be attempted with a zeppelin. (jzy-chitong56)
 
 ### Changed
 - Chinese Translation improvements. (jzy-chitong56)
