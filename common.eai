@@ -7377,6 +7377,7 @@ endfunction
 function PathingThread takes nothing returns nothing
   local integer i = 0
   local integer t = 0
+  local integer w = R2I(sleep_multiplier)
   call SetAIArray()
   //  set command_wait = 0.5
   //  set command_wait = 3
@@ -7404,16 +7405,39 @@ function PathingThread takes nothing returns nothing
   call Trace("pathing done")
   loop // this job no need run on job system , help job system more focused on combat
     exitwhen player_defeated
-    call Sleep(sleep_multiplier)
+    call Sleep(1)
     // All job will be run once during initialization to prevent waiting for too long
-    if ModuloInteger(t, 5) == 0 then
+    if ModuloInteger(t, 10) == 0 then
+      call RepairControlJob()
+      if race_has_power_build then
+        call FastBuild()
+      endif
+    endif
+    if race_sell_ziggurats and ModuloInteger(t, 30) == 0 then
+      call SellZigguratJob()
+    endif
+    if ModuloInteger(t, 50) == 0 then
+      if race_ancient_expansion_available and SaveYourselfMode != ANCIENT_EXPANSION then
+      call AncientExpansionCheck()
+      endif
+      if militia and SaveYourselfMode != MILITIA_EXPAND then
+        call TryMilitiaExpansionFoot()
+      endif
+      if race_item_expansion_available then
+        call ItemExpansionCheck()
+      endif
+    endif
+    if ModuloInteger(t, 60) == 0 then
+      call CleanupBlocksJob()
+    endif
+    if ModuloInteger(t, 120) == 0 then
+      call ItemRepeatCheck()
+    endif
+    if ModuloInteger(t, 5*w) == 0 then
       if active_expansion and exp_number < c_enemy_total + c_ally_total + 1 then
         set active_expansion = false
       endif
       call StructurecontrolJob()
-      if race_has_power_build then
-        call FastBuild()
-      endif
       loop
         exitwhen i >= NEUTRAL_COUNT
         if neutral_guarded[i] then
@@ -7423,7 +7447,7 @@ function PathingThread takes nothing returns nothing
       endloop
       set i = 0
     endif
-    if ModuloInteger(t, 6) == 0 then
+    if ModuloInteger(t, 6*w) == 0 then
       if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null then
         call NeutralEnemyCheckJob(NEUTRAL_HEALING_FOUNTAIN)
       endif
@@ -7437,37 +7461,14 @@ function PathingThread takes nothing returns nothing
         call NeutralEnemyCheckJob(NEUTRAL_HEAL_WARD)
       endif
     endif
-    if ModuloInteger(t, 10) == 0 then
-      call RepairControlJob()
-    endif
-    if surrender_allowed and ModuloInteger(t, 13) == 0 then
+    if surrender_allowed and ModuloInteger(t, 13*w) == 0 then
       call DetectDefeatJob()
     endif
-    if ModuloInteger(t, 15) == 0 then
+    if ModuloInteger(t, 15*w) == 0 then
       call UpdateStrengthJob()
     endif
-    if ModuloInteger(t, 20) == 0 then
-      call CleanupBlocksJob()
-      if race_sell_ziggurats then
-        call SellZigguratJob()
-      endif
-    endif
-    if force_number > 1 and ModuloInteger(t, 30) == 0 then
+    if force_number > 1 and ModuloInteger(t, 30*w) == 0 then
       call ExchangeJob()
-    endif
-    if ModuloInteger(t, 40) == 0 then
-      if race_ancient_expansion_available and SaveYourselfMode != ANCIENT_EXPANSION then
-        call AncientExpansionCheck()
-      endif
-      if militia and SaveYourselfMode != MILITIA_EXPAND then
-        call TryMilitiaExpansionFoot()
-      endif
-      if race_item_expansion_available then
-        call ItemExpansionCheck()
-      endif
-    endif
-    if ModuloInteger(t, 120) == 0 then
-      call ItemRepeatCheck()
     endif
     if t >= 1000 then // initialization , prevent excessive size , computational complexity
       set t = 0
@@ -11186,6 +11187,9 @@ function FormGroupAM takes integer seconds returns nothing
 
     if unitid == racial_ghoul then
       set desire = attacking_ghouls
+      if towerrush then
+        set desire = Min(Max(count - 2 , 0),desire)  // reserve
+      endif
     endif
 
     call ConversionsAM(desire,unitid)
@@ -11193,8 +11197,9 @@ function FormGroupAM takes integer seconds returns nothing
     if count >= desire then
       call AddAssault(desire,old_id[unitid])
     else
-      set desire = attack_qty[index]
-
+      if unitid != racial_ghoul or take_all_ghouls_along then
+        set desire = attack_qty[index]
+      endif
       if count < desire then
         call AddAssault(desire,old_id[unitid])
       else
@@ -11609,7 +11614,8 @@ function AttackMoveTowerRush takes nothing returns nothing
 		if tower_attack_run != true and (GetUnitCountDone(old_id[hero[1]]) + GetUnitCountDone(old_id[hero[2]]) + GetUnitCountDone(old_id[hero[3]])) > 0 and (race_tower_item_must != true or (race_tower_item_must == true and builder[0] != null)) then
 			set tower_attack_run = true
 			set attack_running = true
-    elseif tower_attack_run then
+			call Sleep(0.05)
+		elseif tower_attack_run then
 			if (builder[10] == null or GetUnitState(builder[10], UNIT_STATE_LIFE) <= 0) then
 				call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1200, null)
 				set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
@@ -11619,17 +11625,20 @@ function AttackMoveTowerRush takes nothing returns nothing
 				call GroupClear(g)
 			endif
 			call SetAllianceTarget(builder[10])
-			if towers_built == 0 and builder[1] != null then
-				call SetAllianceTarget(builder[1])
-				call AttackMoveKill(builder[1])
-			elseif towers_built < 4 then
-				call AttackMoveXY(R2I(first_tower_point_x), R2I(first_tower_point_y))
+			if towers_built < 4 then
+				if tower_peon_inplace then
+					call AttackMoveXY(R2I(first_tower_point_x), R2I(first_tower_point_y))
+				elseif builder[1] != null then
+					call SetAllianceTarget(builder[1])
+					call AttackMoveKill(builder[1])
+				endif
 			elseif towers_built < 7 then
 				call AttackMoveXY(R2I(second_attack_point_x), R2I(second_attack_point_y))
 			else
 				call AttackMoveXY(R2I(enemy_point_x),R2I(enemy_point_y))
 			endif
 			set attack_length_counter = attack_length_counter + 1
+			call Sleep(RMin(sleep_multiplier,0.5))
 		endif
 		//call AttackMoveKill(builder[20])
 		//if towers_built == 0 then
@@ -11647,7 +11656,6 @@ function AttackMoveTowerRush takes nothing returns nothing
 				//call AttackMoveXY(R2I(enemy_point_x), R2I(enemy_point_y))
 			//endif
 		//endif
-		call Sleep(RMin(sleep_multiplier,1))
 		if attack_length_counter > attack_reform_length then
 			set attack_length_counter = 0
 			call FormGroupAM(0)
