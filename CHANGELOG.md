@@ -245,7 +245,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Note: this will indirectly strengthen AI , because the interval between JOBs has actually been shortened
   - Note: because shortened the interval , the code that traverses units will run frequently, and if a large number of units gather (such as 1V23 or 4v20), it will cause the game to latency(FPS become 0) earlier
 - Intervene expansion priority , ensure expansion when not mine but have rescources
-- (DevTools) Now can set backlanguage to not English
+- (DevTools) Now can set backlanguage to not English , and synchronize from B.J to C.AI during initialization
 - GetLocationEnemyStructures change to GetLocationEnemyStrength , add boolean only_structures use to distinguish only check structures or include structures
 - MILITIA_EXPAND job no longer only run once , but only running on one mine
 
