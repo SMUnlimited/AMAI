@@ -6,6 +6,7 @@
     // default values
     string language = ""  // Possible values: "" (dialog), "English", "Deutsch", "Swedish", "French", "Spanish", "Romanian", "Russian", "Portuguese", "Norwegian", "Chinese"
     string game_mode = "" // Possible values: "" (dialog), "commander", "no_human", "ai_only", "shared"
+    string backlanguage = "English"
 
     integer array command_number
     integer array command_par1
@@ -29,6 +30,12 @@
 
     string array parsed_command
     string command_prefix = "-cmd"
+    string array switch_state
+    string switch_on = " |cff00ff00[on]|r"
+    string switch_off = " |cffff0000[off]|r"
+    #INCLUDETABLE <Commands.txt> #EFR #COND "%12" eq "arr_on" or "%12" eq "arr_off"
+    string array current_%4_switch
+    #ENDINCLUDE
 
     button array cdlg_button
     integer array cdlg_number
@@ -356,10 +363,8 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
   if bj_isSinglePlayer then
     return unsynced
   endif
-
   set old_selection = CreateGroup()
   set t = CreateTimer()
-
   // separate integer in bits
   if sum < 0 then
     set source_int[0] = 1
@@ -565,10 +570,10 @@ function ZoomSet takes nothing returns nothing
   endif
   if Zoom < 1650 then
     call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, 1650, 0 )
-    call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "zoom min:|cff00ff001650|r" )
+    call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "zoom min: |cff00ff001650|r" )
   elseif Zoom > 3000 then
     call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, 3000, 0 )
-    call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "zoom max:|cff00ff003000|r" )
+    call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "zoom max: |cff00ff003000|r" )
   else
     call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, Zoom, 0 )
   endif
@@ -590,7 +595,7 @@ function InitZoom takes nothing returns nothing
   set ZoomSetx = CreateTrigger()
   call TriggerAddAction(ZoomSetx, function ZoomSet)
   if (GetPlayerController(GetLocalPlayer()) != MAP_CONTROL_COMPUTER) and not IsPlayerObserver(GetLocalPlayer()) then
-    call DisplayTimedTextToPlayer(GetLocalPlayer(),0,0,7,"Set Zoom type: |c00d5f038-zoom1850|r")
+    call DisplayTimedTextToPlayer(GetLocalPlayer(), 0, 0, 7, "Set Zoom type: |c00d5f038-zoom1850|r")
     call TriggerRegisterPlayerChatEvent( ZoomSetx, GetLocalPlayer(), "-zoom", false )
   endif
 endfunction  
@@ -705,7 +710,6 @@ function TributeWoodFromAll takes player Commander, integer res_amount returns n
 endfunction
 
 function Tribute takes player Commander, player Comp, string LorG, string ResAmount returns nothing
-
   //Player wants Gold
   if (LorG == "G") or (LorG == "GiveG") or (LorG == "Gold") then
     if LorG == "GiveG" then
@@ -735,6 +739,30 @@ endfunction
 //===========================================================================
 // Execute Command
 //===========================================================================
+function SetMainSwitch takes integer num returns nothing
+  if switch_state[num] == switch_off then
+    set switch_state[num] = switch_on
+  elseif switch_state[num] == switch_on then
+    set switch_state[num] = switch_off
+  endif
+endfunction
+
+function SetPlayerSwitch takes integer num, integer playernum returns string
+  if false then
+  #INCLUDETABLE <Commands.txt> #EFR #COND "%12" eq "arr_on" or "%12" eq "arr_off"
+  elseif num == %4 then
+    if current_%4_switch[playernum] == switch_on then
+      set current_%4_switch[playernum] = switch_off
+      return switch_off
+    elseif current_%4_switch[playernum] == switch_off then
+      set current_%4_switch[playernum] = switch_on
+      return switch_on
+    endif
+  #ENDINCLUDE
+  endif
+  return switch_state[num]
+endfunction
+
 function GetParValue takes integer par returns integer
   local player p = null
   local integer pid = -1
@@ -767,27 +795,27 @@ function ExecuteCommand takes player Comp, integer number returns nothing
   local integer par1 = GetParValue(command_par1[number])
   local integer par2 = GetParValue(command_par2[number])
   local integer par3 = GetParValue(command_par3[number])
-  
+  local string s = command_msg[number] + SetPlayerSwitch(number,GetPlayerId(Comp))
   if cn == -1000000 or par1 == -1000000 or par2 == -1000000 or par3 == -1000000 then
+    set s = null
     return
   endif
 
   if command_par2[number] != -1 then  
     call CommandAI(Comp, par2, par3)
   endif
-    
   if command_number[number] != -1 then
     call CommandAI(Comp, cn, par1)
   endif
-
-  call DisplayFromPlayer(Comp, command_msg[number])
+  call DisplayFromPlayer(Comp, s)
+  set s = null
 endfunction
 
 function ExecuteCommandForAll takes integer number returns nothing
   local integer i = 0
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if (IsPlayerAlly(GetTriggerPlayer(),Player(i))) and GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER then
+    if (command_text1[number] == "AI Setting" or IsPlayerAlly(GetTriggerPlayer(),Player(i))) and GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER then
       call ExecuteCommand(Player(i), number)
     endif
     set i = i + 1
@@ -817,22 +845,22 @@ function ExecuteDlgCommand takes player Comp, integer number returns nothing
   local integer par1 = GetDlgParValue(command_par1[number])
   local integer par2 = GetDlgParValue(command_par2[number])
   local integer par3 = GetDlgParValue(command_par3[number])
-  
+  local string s = command_msg[number] + SetPlayerSwitch(number,GetPlayerId(Comp))
   if command_par2[number] != -1 then  
     call CommandAI(Comp, par2, par3)
   endif
   if command_number[number] != -1 then
     call CommandAI(Comp, cn, par1)
   endif
-
-  call DisplayFromDlg(command_msg[number])
+  call DisplayFromDlg(s)
+  set s = null
 endfunction
 
 function ExecuteDlgCommandForAll takes integer number returns nothing
   local integer i = 0
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if IsPlayerAlly(GetTriggerPlayer(),Player(i)) and GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER then
+    if (command_text1[number] == "AI Setting" or IsPlayerAlly(GetTriggerPlayer(),Player(i))) and GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER then
       set commanded_player[GetPlayerId(GetTriggerPlayer())] = Player(i)
       call ExecuteDlgCommand(Player(i), number)
     endif
@@ -842,6 +870,7 @@ endfunction
 
 function ExecuteDialogCommand takes player Comp, integer number returns nothing
   if commanded_player[GetPlayerId(GetTriggerPlayer())] == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
+    call SetMainSwitch(number)
     call ExecuteDlgCommandForAll(number)
   else
     call ExecuteDlgCommand(Comp, number)
@@ -887,9 +916,6 @@ function initLanguage%1 takes nothing returns nothing
 #ENDINCLUDE
 #INCLUDETABLE <Languages\%1\Strategy.txt> #ENC:%4 #EFR
   call SaveStr(translation, StringHash(language), StringHash("%1"), "%2")
-#ENDINCLUDE
-#INCLUDETABLE <Languages\English\Strategy.txt> #ENC:%4 #EFR
-  call SaveStr(translation, StringHash("English"), StringHash("%1"), "%2")
 #ENDINCLUDE
 endfunction
 #ENDINCLUDE
@@ -1018,9 +1044,9 @@ function Translation takes string s returns string
     //call DisplayToAll("Translated " + s + " to " + language)
     set translate = LoadStr(translation, StringHash(language), StringHash(s))
   endif  
-  if (translate == null or translate == "") and HaveSavedString(translation, StringHash("English"), StringHash(s)) then
+  if (translate == null or translate == "") and HaveSavedString(translation, StringHash(backlanguage), StringHash(s)) then
     //call DisplayToAll("Translated " + s + " to english FAILSAFE")
-    set translate = LoadStr(translation, StringHash("English"), StringHash(s))  
+    set translate = LoadStr(translation, StringHash(backlanguage), StringHash(s))  
   endif
   if (translate == null or translate == "") then
     call TraceToAll("Cannot translate:" + s + " to " + language)
@@ -1045,8 +1071,8 @@ endfunction
 
 function CommanderLanguageResponse takes nothing returns nothing
   local button b = GetClickedButton()
-  if language != "English" and language != "" and b != null then
-    set language = "English"
+  if language != backlanguage and language != "" and b != null then
+    set language = backlanguage
     call initLanguageEnglish()  // After more than one language change the english backup would not be applied for any missing entries in the new language as they may be set to the old language.
   endif
   if false then
@@ -1333,7 +1359,7 @@ function NumberDialogResponse takes nothing returns nothing
   endif
   if (ndbn_button[i] == b) then
     call TraceToTP("Number picked: " + I2S(i))
-    set current_number_par[GetPlayerId(GetTriggerPlayer())] =i
+    set current_number_par[GetPlayerId(GetTriggerPlayer())] = i
     call ExecuteDialogCommand(commanded_player[GetPlayerId(GetTriggerPlayer())], current_command[GetPlayerId(GetTriggerPlayer())])
   endif
   set b = null
@@ -1391,7 +1417,7 @@ function DialogResponse takes nothing returns nothing
           set i = 0
           loop
             if d == dlg_dialog[i] then
-              if  dlg_string[i] != null then
+              if dlg_string[i] != null then
                 set message = dlg_string[i]
               endif
             endif
@@ -1426,7 +1452,7 @@ function RegisterDialog takes string s returns dialog
   set dlg_dialog[dlg_length] = d
   set dlg_string[dlg_length] = s
   set dlg_trigger[dlg_length] = t
-  set dlg_length  = dlg_length + 1
+  set dlg_length = dlg_length + 1
   call TriggerRegisterDialogEvent(t, d)
   call TriggerAddAction(t, function DialogResponse)
   set t = null
@@ -1438,6 +1464,7 @@ function AddCommandDialog takes integer i returns nothing
   local dialog next_dialog = null
   local boolean next_dialog_strat = false
   local string current_name = ""
+  local string switch = null
 
   if command_dlg3[i] != "" then
     if command_dlg3[i] == "#" then
@@ -1447,6 +1474,10 @@ function AddCommandDialog takes integer i returns nothing
       set next_dialog_strat = true
     elseif command_dlg3[i] == "e" then
       set next_dialog = player_dialog
+    elseif command_dlg3[i] == "on" or command_dlg3[i] == "off" then
+      set switch = switch_state[i]
+    elseif command_dlg3[i] == "arr_on" or command_dlg3[i] == "arr_off" then
+      // AI player person switch status , no dialog , show this will be confused with the main switch , just display the report
     else
       set current_name = command_dlg1[i]+" "+command_dlg2[i]
       set current_dialog = FindDialog(current_name)
@@ -1454,6 +1485,7 @@ function AddCommandDialog takes integer i returns nothing
         call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg3[i], command_hotkey3[i]), i, next_dialog)
         set current_dialog = null
         set next_dialog = null
+        set current_name = null
         return
       endif
       set current_dialog = RegisterDialog(current_name)
@@ -1474,9 +1506,11 @@ function AddCommandDialog takes integer i returns nothing
       set current_name = command_dlg1[i]
       set current_dialog = FindDialog(current_name)
       if current_dialog != null then
-        call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg2[i], command_hotkey2[i]), i, next_dialog)
+        call RegisterCDialogButton(DialogAddButton(current_dialog, command_dlg2[i] + switch, command_hotkey2[i]), i, next_dialog)
         set current_dialog = null
         set next_dialog = null
+        set current_name = null
+        set switch = null
         return
       endif
       set current_dialog = RegisterDialog(current_name)
@@ -1497,6 +1531,8 @@ function AddCommandDialog takes integer i returns nothing
       endif
       set current_dialog = null
       set next_dialog = null
+      set current_name = null
+      set switch = null
       return
     endif
     set current_dialog = RegisterDialog(current_name)
@@ -1504,12 +1540,14 @@ function AddCommandDialog takes integer i returns nothing
   endif
   set current_dialog = null
   set next_dialog = null
+  set current_name = null
+  set switch = null
 endfunction
 
 function BuildCommandDialogs takes nothing returns nothing
   local integer i = 0
   loop
-    exitwhen i >=command_length
+    exitwhen i >= command_length
     call AddCommandDialog(i)
     set i = i + 1
   endloop
@@ -1538,6 +1576,7 @@ endfunction
 
 function SendToAllAIs takes integer cmd, integer data returns nothing
   local integer i = 0
+  call SetMainSwitch(cmd)
   loop
     exitwhen i >= GetBJMaxPlayers()
     if GetPlayerController(Player(i)) == MAP_CONTROL_COMPUTER then
@@ -1554,7 +1593,6 @@ function Commander takes nothing returns nothing
 
   call Parser(ChatMsg)
   set ChatMsg = null
-
   call DisplayToTP("Command:" + parsed_command[1] + ":" + parsed_command[2]+ ":" + parsed_command[3] + ":" + parsed_command[4])
 
   if parsed_command[1] == "" then
@@ -1614,6 +1652,7 @@ function Commander takes nothing returns nothing
   endif
 
   if Comp == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
+    call SetMainSwitch(cn)
     call ExecuteCommandForAll(cn)
   else
     call ExecuteCommand(Comp, cn)
@@ -1623,6 +1662,7 @@ function Commander takes nothing returns nothing
 endfunction
 
 function RegisterCommand takes string c_key1, string c_key2, string c_key3, integer c_number, integer c_par1, integer c_par2, integer c_par3, string c_dlg1, integer c_hk1, string c_dlg2, integer c_hk2, string c_dlg3, integer c_hk3, string c_msg returns nothing
+  local integer i = 0
   set command_key1[command_length] = StringCase(c_key1, true)
   set command_key2[command_length] = StringCase(c_key2, true)
   set command_key3[command_length] = StringCase(c_key3, true)
@@ -1639,6 +1679,29 @@ function RegisterCommand takes string c_key1, string c_key2, string c_key3, inte
   set command_dlg2[command_length] = Translation(c_dlg2)
   set command_hotkey2[command_length] = c_hk2
   set command_dlg3[command_length] = Translation(c_dlg3)
+  if c_dlg3 == "on" then
+    set switch_state[command_length] = switch_on
+  elseif c_dlg3 == "off" then
+    set switch_state[command_length] = switch_off
+  elseif c_dlg3 == "arr_on" then
+    set switch_state[command_length] = switch_on
+    loop
+      exitwhen i >= GetBJMaxPlayers()
+      #INCLUDETABLE <Commands.txt> #EFR #COND "%12" eq "arr_on"
+      set current_%4_switch[i] = switch_on
+      #ENDINCLUDE
+      set i = i + 1
+    endloop
+  elseif c_dlg3 == "arr_off" then
+    set switch_state[command_length] = switch_off
+    loop
+      exitwhen i >= GetBJMaxPlayers()
+      #INCLUDETABLE <Commands.txt> #EFR #COND "%12" eq "arr_off"
+      set current_%4_switch[i] = switch_off
+      #ENDINCLUDE
+      set i = i + 1
+    endloop
+  endif
   set command_hotkey3[command_length] = c_hk3
   set command_msg[command_length] = Translation(c_msg)
   set command_length = command_length + 1
@@ -1751,6 +1814,7 @@ function RemoveHumanUnitsAndRes takes nothing returns nothing
   set p = null
 endfunction
 
+//--------------------------------------------------------------------------------
 function ShareWithHumans takes nothing returns nothing
   local player p = GetEnumPlayer()
   local integer i = 0
@@ -1784,6 +1848,7 @@ function GameStartDefault takes nothing returns nothing
         call ForForce(GetPlayersAll(), function ShareWithHumans)
       endif
       call SendToAllAIs(53,0)
+      call SendToAllAIs(54,0)
     endif
   endif
   call MapInitTimer()
@@ -1835,12 +1900,10 @@ function GameStartDlg takes nothing returns nothing
   call DialogDisplay(Player(host), game_start_dialog, true)
 endfunction
 
-
-
 function LanguageDlgResponse takes nothing returns nothing
   local button b = GetClickedButton()
-  if language != "English" and language != "" and b != null then
-    set language = "English"
+  if language != backlanguage and language != "" and b != null then
+    set language = backlanguage
     call SendToAllAIs(71,0)
     call initLanguageEnglish()  // After more than one language change the english backup would not be applied for any missing entries in the new language as they may be set to the old language.
   endif
@@ -1871,22 +1934,31 @@ endfunction
 
 function SetupStrategies takes nothing returns nothing
 // Has to match same order that races.eai makes
-      #SEARCHTREE Strats <$VER$\ELF\Strategy.txt> %1 %13 build_sequence_%1() #EFR
-      #SEARCHLIST Strats
-        set ELF_StrategyName[%row] = "%1"
-      #ENDSEARCHLIST
-      #SEARCHTREE Strats2 <$VER$\HUMAN\Strategy.txt> %1 %13 build_sequence_%1() #EFR
-      #SEARCHLIST Strats2
-        set HUMAN_StrategyName[%row] = "%1"
-      #ENDSEARCHLIST
-      #SEARCHTREE Strats3 <$VER$\ORC\Strategy.txt> %1 %13 build_sequence_%1() #EFR
-      #SEARCHLIST Strats3
-        set ORC_StrategyName[%row] = "%1"
-      #ENDSEARCHLIST
-      #SEARCHTREE Strats4 <$VER$\UNDEAD\Strategy.txt> %1 %13 build_sequence_%1() #EFR
-      #SEARCHLIST Strats4
-        set UNDEAD_StrategyName[%row] = "%1"
-      #ENDSEARCHLIST
+  #SEARCHTREE Strats <$VER$\ELF\Strategy.txt> %1 %13 build_sequence_%1() #EFR
+  #SEARCHLIST Strats
+    set ELF_StrategyName[%row] = "%1"
+  #ENDSEARCHLIST
+  #SEARCHTREE Strats2 <$VER$\HUMAN\Strategy.txt> %1 %13 build_sequence_%1() #EFR
+  #SEARCHLIST Strats2
+    set HUMAN_StrategyName[%row] = "%1"
+  #ENDSEARCHLIST
+  #SEARCHTREE Strats3 <$VER$\ORC\Strategy.txt> %1 %13 build_sequence_%1() #EFR
+  #SEARCHLIST Strats3
+    set ORC_StrategyName[%row] = "%1"
+  #ENDSEARCHLIST
+  #SEARCHTREE Strats4 <$VER$\UNDEAD\Strategy.txt> %1 %13 build_sequence_%1() #EFR
+  #SEARCHLIST Strats4
+    set UNDEAD_StrategyName[%row] = "%1"
+  #ENDSEARCHLIST
+endfunction
+
+function SyncBackLanguage takes nothing returns nothing
+  if backlanguage == null or backlanguage == "" then
+#INCLUDETABLE <Languages.txt> #EFR
+  elseif backlanguage == "%1" then
+    call SendToAllAIs(72,#EVAL{%row-1})
+#ENDINCLUDE
+  endif
 endfunction
 
 function LanguageDlg takes nothing returns nothing
@@ -1895,7 +1967,7 @@ function LanguageDlg takes nothing returns nothing
   // Need to pause computer ai and players
   call PauseAllUnitsBJ(true)
   call SetupStrategies()
-  
+  call SyncBackLanguage()
   if language != "" or host == -1 then
     call LanguageDefault()
     return
@@ -1908,7 +1980,6 @@ function LanguageDlg takes nothing returns nothing
   set language_trigger = CreateTrigger()
   call TriggerRegisterDialogEvent(language_trigger, language_dialog)
   call TriggerAddAction(language_trigger, function LanguageDlgResponse)
-
   call DialogDisplay(Player(host), language_dialog, true)
 endfunction
 
