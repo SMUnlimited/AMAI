@@ -6,38 +6,38 @@
     integer gold_problem_level = 0
     boolean ask_for_gold = false
     boolean desperation_assault = false
-    integer SaveYourselfMode = 0
+    integer SaveYourselfMode = -1
 #ELSE
 //============================================================================
 // Self destruction
 //============================================================================
 function SaveYourself takes nothing returns boolean
   local boolean b = false
-  if SaveYourselfMode == 0 then  // Choose self methods based on racial abilities , one ability use one num/mode , not recommended sale item or build(like UD)
+  if SaveYourselfMode == -1 then  // Choose self methods based on racial abilities , one ability use one num/mode , not recommended sale item or build(like UD)
     if current_expansion == null then
       call ChooseExpansion()
     endif
     if race_ancient_expansion_available == true and TownCountDone(racial_expansion) > 0 then
       call TQAddJob(2, ANCIENT_EXPANSION, 0)
-      set ancient_exp_nobuild = true
-      set SaveYourselfMode = 1
+      set ancient_expanding = true
+      set SaveYourselfMode = ANCIENT_EXPANSION
       set b = true
     elseif race_militia_available == true then
       call TQAddJob(2, MILITIA_EXPAND, 0)
-      set SaveYourselfMode = 2
+      set SaveYourselfMode = MILITIA_EXPAND
       set b = true
     endif
   else  //Check Self rescue situation
-    if SaveYourselfMode == 1 then
+    if SaveYourselfMode == ANCIENT_EXPANSION then
       if ancient_expanding == true then
         set b = true  // In self rescue, wait
       elseif TownCount(race_manual_loading_mine) > 0 or not HallsCompleted(racial_expansion) or GetMinesOwned() > 0 then
-        set SaveYourselfMode = 0  // Self rescue successful , because ancient_expanding is false and have mine
+        set SaveYourselfMode = -1  // Self rescue successful , because ancient_expanding is false and have mine
         set b = true
       endif
-    elseif SaveYourselfMode == 2 then
+    elseif SaveYourselfMode == MILITIA_EXPAND then
       if not HallsCompleted(racial_expansion) or GetMinesOwned() > 0 then
-        set SaveYourselfMode = 0
+        set SaveYourselfMode = -1
         set b = true
       endif
     endif
@@ -281,7 +281,7 @@ function DetectDefeatJob takes nothing returns nothing
   if desperation_assault == true and (TownCount(race_manual_loading_mine) > 0 or not HallsCompleted(racial_expansion) or GetMinesOwned() > 0) then
     set desperation_assault = false
   endif
-  if not player_defeated then
+  if not player_defeated and surrender_allowed and not pathing_done then
     call TQAddJob(13 * sleep_multiplier, DETECT_DEFEAT, 0)
   endif
 endfunction
