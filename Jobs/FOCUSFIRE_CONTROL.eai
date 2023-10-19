@@ -40,9 +40,6 @@ function GroupMicroSystem takes group g, group meleeg, group focus_group returns
   local location l = null
   local unit melee = null
   local group copy = null
-  if FirstOfGroup(meleeg) == null then
-    return
-  endif
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -195,9 +192,11 @@ function FocusFire takes unit u returns nothing
   set temp_focus = SelectByOrder(temp_focus, OrderId("ambush"), false)
   set temp_focus = SelectByOrder(temp_focus, OrderId("devour"), false)
   set temp_focus = SelectByOrder(temp_focus, 852487, false)
-  call BlzGroupRemoveGroupFast(focus_fire_group, temp_focus) // Remove units that have already focus fired this iteration (intentionally wrong way round)
-  if FirstOfGroup(micro_enemymelee_group) != null then
-    call GroupMicroSystem(micro_ranged_group, micro_enemymelee_group, temp_focus)   // Move ranged units away from melee units, if moved here they will not focus fire
+  if u != deny_unit then
+    call BlzGroupRemoveGroupFast(focus_fire_group, temp_focus) // Remove units that have already focus fired this iteration (intentionally wrong way round)
+    if FirstOfGroup(micro_enemymelee_group) != null then
+      call GroupMicroSystem(micro_ranged_group, micro_enemymelee_group, temp_focus)   // Move ranged units away from melee units, if moved here they will not focus fire
+    endif
   endif
   call DestroyGroup(t)
   if BlzGroupGetSize(temp_focus) > 0 then
@@ -215,7 +214,9 @@ function FocusFire takes unit u returns nothing
     endif
     call GroupTargetOrder(temp_focus, "attack", u)
     call GroupOrderAttack_d(CopyGroup(windwalk_group,t), u) // Forces Windwalking invisible units to attack directly as normal group order is ignored
-    set focus_fire_group = GroupAddGroup(focus_fire_group, temp_focus) // Finally add units to group to say they have focus fired
+    if u != deny_unit then
+      set focus_fire_group = GroupAddGroup(focus_fire_group, temp_focus) // Finally add units to group to say they have focus fired
+    endif
   endif
   set t = null
   call DestroyGroup(temp_focus)
@@ -317,10 +318,6 @@ function FocusEnemyUnitsNearGroup takes group g returns nothing
     endif
     call SetTargetHeroes(difficulty != EASY)
   endif
-  if deny_unit != null and UnitAlive(deny_unit) and GetUnitState(deny_unit, UNIT_STATE_LIFE) < 24 and (GetUnitState(deny_unit, UNIT_STATE_LIFE)/GetUnitState(deny_unit, UNIT_STATE_MAX_LIFE)) < 0.10 then
-    call FocusFire(deny_unit)
-    set deny_unit = null
-  endif
   set u = null
   set hero_min_health_unit = null
   set min_health_unit = null
@@ -362,6 +359,10 @@ function FocusFireJob takes nothing returns nothing
       endif
       set i = i + 1
     endloop
+    if deny_unit != null and UnitAlive(deny_unit) and GetUnitState(deny_unit, UNIT_STATE_LIFE) < 24 and (GetUnitState(deny_unit, UNIT_STATE_LIFE)/GetUnitState(deny_unit, UNIT_STATE_MAX_LIFE)) < 0.10 then
+      call FocusFire(deny_unit)
+      set deny_unit = null
+    endif
   //else
     //call GroupRecycleGuardPositionInstant(CopyGroup(windwalk_group,g))
     //loop
