@@ -464,7 +464,8 @@ globals
 	boolean campaign_ai = false
 
     string language = "English"
-    
+    string backlanguage = "English"
+
     string ai_id = ""
     
     string message_add = ""
@@ -892,7 +893,7 @@ globals
 // (AMAI)  Variables for controlling the AI (different states)
 //===========================================================================
 
-	boolean creeping_only = false
+    boolean creeping_only = false
 
     boolean break_attack 	= false
     boolean go_home		= false
@@ -903,6 +904,7 @@ globals
     boolean no_creep_attack	= false
     boolean no_player_attack	= false
     boolean strat_change_allowed = true
+    boolean surrender_allowed = true
     integer attack_target_p	= 0
     integer attack_target_x	= 0
     integer attack_target_y	= 0
@@ -1512,12 +1514,20 @@ endfunction
 function ApplyTrans takes string s returns string
   //local integer transnum = LoadInteger(translation_map, StringHash(language), StringHash(s))
   //if transnum != null then
+  local string trans = null
   if HaveSavedInteger(translation_map, StringHash(language), StringHash(s)) then
     //return translation[transnum]
-	return translation[LoadInteger(translation_map, StringHash(language), StringHash(s))]
-  else
+    set trans = translation[LoadInteger(translation_map, StringHash(language), StringHash(s))]
+  endif
+  if (trans == null or trans == "") and HaveSavedInteger(translation_map, StringHash(backlanguage), StringHash(s)) then // Backup translate to english
+    set trans = translation[LoadInteger(translation_map, StringHash(backlanguage), StringHash(s))]
+  endif
+  if (trans == null or trans == "") then
     //call DisplayTimedTextToPlayer(Player(0),0,0,15,message_add+s+":handle not saved")
+    set trans = null
     return s
+  else
+    return trans
   endif
 endfunction
 
@@ -3000,21 +3010,30 @@ function InitTranslations takes nothing returns nothing
 endfunction
 
 //============================================================================
-function GetStrategyName takes integer stratnum returns string
-  if HaveSavedInteger(translation_map, StringHash(language), StringHash("Name"+strategy_name[stratnum])) then
-    return translation[LoadInteger(translation_map, StringHash(language), StringHash("Name"+strategy_name[stratnum]))]
-  else
+function GetStrategyTxt takes integer stratnum, string txt returns string
+  local string trans = null
+  if HaveSavedInteger(translation_map, StringHash(language), StringHash(txt+strategy_name[stratnum])) then
+    set trans = translation[LoadInteger(translation_map, StringHash(language), StringHash(txt+strategy_name[stratnum]))]
+  endif
+  if (trans == "" or trans == null) and HaveSavedInteger(translation_map, StringHash(backlanguage), StringHash(txt+strategy_name[stratnum])) then
+    set trans = translation[LoadInteger(translation_map, StringHash(backlanguage), StringHash(txt+strategy_name[stratnum]))]
+  endif
+  if (trans == "" or trans == null) then
+    set trans = null
     return strategy_default_name[stratnum]
+  else
+    return trans
   endif
 endfunction
 
 //============================================================================
+function GetStrategyName takes integer stratnum returns string
+  return GetStrategyTxt(stratnum, "Name")
+endfunction
+
+//============================================================================
 function GetStrategyReport takes integer stratnum returns string
-  if HaveSavedInteger(translation_map, StringHash(language), StringHash("Report"+strategy_name[stratnum])) then
-    return translation[LoadInteger(translation_map, StringHash(language), StringHash("Report"+strategy_name[stratnum]))]
-  else
-    return strategy_default_report[stratnum]
-  endif
+  return GetStrategyTxt(stratnum, "Report")
 endfunction
 
 //============================================================================
@@ -7333,6 +7352,9 @@ function cmd_misc takes integer cmd, integer data returns nothing
   elseif cmd == 53 then
     set strat_change_allowed = not strat_change_allowed
 
+  elseif cmd == 54 then
+    set surrender_allowed = not surrender_allowed
+
   elseif cmd == 60 then // Show strat name
     call DisplayToAllies(GetCurrentStrategyReport())
 
@@ -7355,6 +7377,14 @@ function cmd_misc takes integer cmd, integer data returns nothing
   #ENDINCLUDE
     endif
     call InitChatArrays()
+
+  elseif cmd == 72 then // change backlanguage
+    if false then
+  #INCLUDETABLE <Languages.txt> #EFR
+    elseif data == #EVAL{%row-1} then
+      set backlanguage = "%1"
+  #ENDINCLUDE
+    endif
 
   endif
 endfunction
