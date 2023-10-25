@@ -10086,26 +10086,23 @@ function IsWaterExpansion takes unit u returns boolean
 endfunction
 
 //============================================================================
-function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
-  if expansion_peon == null or not UnitAlive(expansion_peon) then
-    set expansion_peon = peon
-  endif
+function  takes unit peon, unit target returns boolean
   // Disabled just in case
-  if IsUnitInTransport(expansion_peon, build_zeppelin) then
+  if IsUnitInTransport(peon, build_zeppelin) then
     if DistanceBetweenUnits(build_zeppelin, target) > 300 then
       call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + GetRandomReal(-200,200), GetUnitY(target) + GetRandomReal(-200,200))
     else
-      call IssueTargetOrder(build_zeppelin, "unload", expansion_peon)
+      call IssueTargetOrder(build_zeppelin, "unload", peon)
       call Sleep(1.2)  //unload time
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       return true
     endif
   else
-    if DistanceBetweenUnits(expansion_peon, target) < 400 then
+    if DistanceBetweenUnits(peon, target) < 400 then
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       return true
     else
-      call IssueTargetOrder(expansion_peon, "smart", build_zeppelin)
+      call IssueTargetOrder(peon, "smart", build_zeppelin)
     endif
   endif
   return false
@@ -10117,7 +10114,6 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   local integer countdone = TownCountDone(hall)
   local integer mines = GetMinesOwned()
   local integer i = racial_expansion
-  local unit    peon = null
   local unit    u = null
   local integer gold_cost = 0
   local integer wood_cost = 0
@@ -10191,19 +10187,18 @@ function StartExpansionAM takes integer qty, integer hall returns integer
       set expansion_peon = GetExpansionPeon2(expansion_peon)
     endif
   endif
-  set peon = expansion_peon
   //  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Peon Got")
-  if not IsUnitInGroup(current_expansion, water_expansion) and DistanceBetweenUnits(peon,current_expansion) > 6000 and not IsUnitInGroup(current_expansion, far_expansion) then
+  if not IsUnitInGroup(current_expansion, water_expansion) and DistanceBetweenUnits(expansion_peon,current_expansion) > 6000 and not IsUnitInGroup(current_expansion, far_expansion) then
     call GroupAddUnit(far_expansion, current_expansion)
   endif
 
-  if peon != null then
+  if expansion_peon != null then
     if (IsWaterExpansion(current_expansion) or IsUnitInGroup(current_expansion, far_expansion)) and neutral_available[NEUTRAL_OBSERVATORY] then
       if build_zeppelin == null or not UnitAlive(build_zeppelin) then
         if not UnitAlive(build_zeppelin) then
           call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
         endif
-        set build_zeppelin = GetUnusedZeppelinNearUnit(build_zeppelin, peon)
+        set build_zeppelin = GetUnusedZeppelinNearUnit(build_zeppelin, expansion_peon)
         if build_zeppelin == null then
           call Trace("No Zeppelin found for transporting peon")
         else
@@ -10211,22 +10206,20 @@ function StartExpansionAM takes integer qty, integer hall returns integer
         endif
       endif
       call Trace("AMAIStartexpa: Is a water or far expansion so using zeppelin")
-      if (IsWaterExpansion(current_expansion) and build_zeppelin == null) or (build_zeppelin != null and not BuildMovePeonZeppelin(peon, current_expansion)) then
+      if (IsWaterExpansion(current_expansion) and build_zeppelin == null) or (build_zeppelin != null and not (expansion_peon, current_expansion)) then
         call Trace("AMAIStartexpa: zeppelin cannot expand")
-        set peon = null
         return BUILT_SOME
       endif
     endif
     set exp_time_count = ai_time	// This sets time to next expansion to current time so it waits enough time before starting another expansion 
     if race_uses_mine_expansion then
-      call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon)
-      call IssueTargetOrderById(peon, old_id[hall], current_expansion)
+      call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, expansion_peon)
+      call IssueTargetOrderById(expansion_peon, old_id[hall], current_expansion)
     else
-      call ConstructExpansion(peon,old_id[hall])
+      call ConstructExpansion(expansion_peon,old_id[hall])
     endif
-    set peon = null
   endif
-//  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Finished")
+  //  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Finished")
   return BUILT_SOME
 endfunction
 
