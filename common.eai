@@ -3742,14 +3742,18 @@ endfunction
 // (AMAI)	SelectByUserData
 //==========================================================================
 function IsStandardUnit takes unit u returns boolean
-  if IsUnitInGroup(u, unit_healing) then
-    return false
-  elseif IsUnitInGroup(u, unit_rescueing) then
-    return false
-  elseif IsUnitInGroup(u, unit_harassing) then
-    return false
-  elseif IsUnitInGroup(u, unit_zepplin_move) then
-    return false
+  if GetUnitTypeId(u) != 'nzep' then
+    if IsUnitInGroup(u, unit_healing) then
+      return false
+    elseif IsUnitInGroup(u, unit_harassing) then
+      return false
+    endif
+  else
+    if IsUnitInGroup(u, unit_rescueing) then
+      return false
+    elseif IsUnitInGroup(u, unit_zepplin_move) then
+      return false
+    endif
   endif
   return true
 endfunction
@@ -7417,7 +7421,7 @@ function PathingThread takes nothing returns nothing
     endif
     if ModuloInteger(t, 50) == 0 then
       if race_ancient_expansion_available and SaveYourselfMode != ANCIENT_EXPANSION then
-      call AncientExpansionCheck()
+        call AncientExpansionCheck()
       endif
       if militia and SaveYourselfMode != MILITIA_EXPAND then
         call TryMilitiaExpansionFoot()
@@ -7460,7 +7464,7 @@ function PathingThread takes nothing returns nothing
         call NeutralEnemyCheckJob(NEUTRAL_HEAL_WARD)
       endif
     endif
-    if ModuloInteger(t, 13*w) == 0 then
+    if surrender_allowed and ModuloInteger(t, 13*w) == 0 then
       call DetectDefeatJob()
     endif
     if ModuloInteger(t, 15*w) == 0 then
@@ -8059,6 +8063,9 @@ function InitHeroArrays takes nothing returns nothing
     set hero[i] = 0
     set hero_built[i] = false
     set hero_unit[i] = null
+    set heroitemsave[i] = false
+    set sanctuaryitem[i] = null
+    set preservationitem[i] = null
     set i = i + 1
   endloop
   set hero_revive_prio[1] = hero1_revive_prio
@@ -8147,15 +8154,20 @@ endfunction
 //===========================================================================
 function InitSpecialRaces takes nothing returns nothing
   local integer i = 0
-  local string s = null
+  local integer s = S2I("SR_Special")
+  local player p = null
   loop
     exitwhen i >= GetBJMaxPlayers()
-    set s = Int2Str(i)
-    set player_race[i] = LoadInteger(com, RACE, i)
-    set player_race_pref[i] = LoadInteger(com, RACE_PREF, i)
+    set p = Player(i)
+    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(p) then
+      call SaveInteger(com, RACE, i, s)
+      call SaveInteger(com, RACE_PREF, i, s)
+      set player_race[i] = s
+      set player_race_pref[i] = s
+    endif
     set i = i + 1
   endloop
-  set s = null
+  set p = null
 endfunction
 
 //===========================================================================
@@ -8165,33 +8177,28 @@ function InitStandardRaces takes nothing returns nothing
   loop
     exitwhen i >= GetBJMaxPlayers()
     set p = Player(i)
-    if GetPlayerRace(p) == RACE_NIGHTELF then
-      set player_race[i] = SR_ELF
-      if IsPlayerRacePrefSet(p, RACE_PREF_NIGHTELF) then
-        set player_race_pref[i] = SR_ELF
+    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(p) then
+      set player_race_pref[i] = SR_RANDOM
+      if GetPlayerRace(p) == RACE_NIGHTELF then
+        set player_race[i] = SR_ELF
+        if IsPlayerRacePrefSet(p, RACE_PREF_NIGHTELF) then
+          set player_race_pref[i] = SR_ELF
+        endif
+      elseif GetPlayerRace(p) == RACE_HUMAN then
+        set player_race[i] = SR_HUMAN
+        if IsPlayerRacePrefSet(p, RACE_PREF_HUMAN) then
+          set player_race_pref[i] = SR_HUMAN
+        endif
+      elseif GetPlayerRace(p) == RACE_ORC then
+        set player_race[i] = SR_ORC
+        if IsPlayerRacePrefSet(p, RACE_PREF_ORC) then
+          set player_race_pref[i] = SR_ORC
+        endif
       else
-        set player_race_pref[i] = SR_RANDOM
-      endif
-    elseif GetPlayerRace(p) == RACE_HUMAN then
-      set player_race[i] = SR_HUMAN
-      if IsPlayerRacePrefSet(p, RACE_PREF_HUMAN) then
-        set player_race_pref[i] = SR_HUMAN
-      else
-        set player_race_pref[i] = SR_RANDOM
-      endif
-    elseif GetPlayerRace(p) == RACE_ORC then
-      set player_race[i] = SR_ORC
-      if IsPlayerRacePrefSet(p, RACE_PREF_ORC) then
-        set player_race_pref[i] = SR_ORC
-      else
-        set player_race_pref[i] = SR_RANDOM
-      endif
-    else
-      set player_race[i] = SR_UNDEAD
-      if IsPlayerRacePrefSet(p, RACE_PREF_UNDEAD) then
-        set player_race_pref[i] = SR_UNDEAD
-      else
-        set player_race_pref[i] = SR_RANDOM
+        set player_race[i] = SR_UNDEAD
+        if IsPlayerRacePrefSet(p, RACE_PREF_UNDEAD) then
+          set player_race_pref[i] = SR_UNDEAD
+        endif
       endif
     endif
     set i = i + 1
@@ -10329,13 +10336,14 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   endif
 
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion rescources sorted")
-
-  set peon = GetExpansionPeon()
-  if peon == null then
-    set peon = GetExpansionPeon2(peon)
+  if expansion_peon == null or not UnitAlive(expansion_peon) then
+    set expansion_peon = GetExpansionPeon()
+    if expansion_peon == null then
+      set expansion_peon = GetExpansionPeon2(expansion_peon)
+    endif
   endif
-
-//  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Peon Got")
+  set peon = expansion_peon
+  //  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Peon Got")
   if not IsUnitInGroup(current_expansion, water_expansion) and DistanceBetweenUnits(peon,current_expansion) > 6000 and not IsUnitInGroup(current_expansion, far_expansion) then
     call GroupAddUnit(far_expansion, current_expansion)
   endif
@@ -10346,7 +10354,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
         if not UnitAlive(build_zeppelin) then
           call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
         endif
-        set build_zeppelin = GetUnusedZeppelinNearUnit(build_zeppelin, expansion_peon)
+        set build_zeppelin = GetUnusedZeppelinNearUnit(build_zeppelin, peon)
         if build_zeppelin == null then
           call Trace("No Zeppelin found for transporting peon")
         else
@@ -10359,7 +10367,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
         set peon = null
         return BUILT_SOME
       endif
-      set peon = expansion_peon
+
     endif
     set exp_time_count = ai_time	// This sets time to next expansion to current time so it waits enough time before starting another expansion 
     if race_uses_mine_expansion then
@@ -10383,6 +10391,9 @@ function BuyItem takes integer qty, integer id returns boolean
   if shop_ordered then
     //call Trace("Already ordered to get an item")
     return true
+  endif
+  if (id == STAFF_OF_PRESERVATION and GetPlayerRace(ai_player) != RACE_NIGHTELF) or (id == STAFF_OF_SANCTUARY and GetPlayerRace(ai_player) != RACE_HUMAN) then
+    return false  // own race cannot buy
   endif
   set shop_wanted = qty
   if buy_type[id] == BT_RACIAL_ITEM then
@@ -10412,6 +10423,7 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
     //call Trace("Already ordered to get an item")
     return true
   endif
+
   loop
     exitwhen i < 0 or i >= c_ally_total
     set m = GetRandomInt(0,c_ally_total-1)
@@ -10420,6 +10432,9 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
       set i = -1
     endif
   endloop
+  if (id == STAFF_OF_PRESERVATION and GetPlayerRace(ally_force[m]) != RACE_NIGHTELF) or (id == STAFF_OF_SANCTUARY and GetPlayerRace(ally_force[m]) != RACE_HUMAN) then
+    return false  // cannot buy
+  endif
   set shop_unit = null
   if m > 1 then
     set g = CreateGroup()
@@ -11620,7 +11635,7 @@ function AttackMoveTowerRush takes nothing returns nothing
 		exitwhen town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat + 60
 		exitwhen break_attack
 		exitwhen CaptainIsEmpty()       // all units died
-		if tower_attack_run != true and (GetUnitCountDone(old_id[hero[1]]) + GetUnitCountDone(old_id[hero[2]]) + GetUnitCountDone(old_id[hero[3]])) > 0 and (race_tower_item_must != true or (race_tower_item_must == true and builder[0] != null)) then
+		if tower_attack_run != true and (GetUnitCountDone(old_id[hero[1]]) + GetUnitCountDone(old_id[hero[2]]) + GetUnitCountDone(old_id[hero[3]])) > 0 and (race_tower_item_must != true or (race_tower_item_must == true and (builder[0] != null or tower_used_item))) then
 			set tower_attack_run = true
 			set attack_running = true
 			call Sleep(0.05)
@@ -12679,17 +12694,12 @@ endfunction
 //  healing group. Micro usage e.g. health fountain or returning home puts 
 //  the hero in the healing groups so a bug occurs in those functions.
 //============================================================================
-function HeroHealingBugFix takes nothing returns nothing
-  local integer i = 1
-  loop
-    exitwhen i > 3
-    if HeroBugFixHealthCheck(i) then
-      call Trace("HERO: Healing Bug Fix")
-      call RecycleGuardPosition(hero_unit[i])
-      call GroupRemoveUnit(unit_healing, hero_unit[i])
-    endif
-    set i = i + 1
-  endloop
+function HeroHealingBugFix takes integer i returns nothing
+  if HeroBugFixHealthCheck(i) then
+    call Trace("HERO: Healing Bug Fix")
+    call RecycleGuardPosition(hero_unit[i])
+    call GroupRemoveUnit(unit_healing, hero_unit[i])
+  endif
 endfunction
 
 // Returns a boolean if it should only attack creeps
@@ -12698,21 +12708,19 @@ function AwaitMeleeHeroesAM takes nothing returns boolean
   local boolean hero_available = false
 
   loop
-    //call HeroHealingBugFix()
-    loop
-      exitwhen i > 3
-      if GetUnitCountDone(old_id[hero[i]]) > 0 then
-        if not IsUnitInGroup(hero_unit[i], unit_healing) then
-          return false
-        endif
-        set hero_available = true
+    if GetUnitCountDone(old_id[hero[i]]) > 0 then
+      if hero_unit[i] != null and UnitAlive(hero_unit[i]) and not IsUnitInGroup(hero_unit[i], unit_healing) then  //or HeroHealingBugFix(i) then
+        return false
       endif
-      set i = i + 1
-    endloop
-    set i = 1
+      set hero_available = true
+    endif
     exitwhen player_defeated or hero_available
-    call Sleep(2 * sleep_multiplier)
     call Trace("AwaitMeleeHeroesAM: No Heroes Ready")
+    set i = i + 1
+    if i > 3 then
+      call Sleep(2 * sleep_multiplier)
+      set i = 1
+    endif
   endloop
 
   return true

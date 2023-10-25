@@ -165,9 +165,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Stop at Shop buy item no longer recycle directly GuardPosition
    - No longer transfer health points , now transfer town number , then hypovolemia unit can move other town , prevent players kill all at once
 - MICRO_HERO add wait
+  - Use STAFF OF SANCTUARY and STAFF OF PRESERVATION
 - MICRO_UNITS add set DenyUnit
   - SaveUnit will save 'hphx' and racial_militia string
   - 'ohwd' and 'hphx' is UNIT_TYPE_SUMMONED , so now no exclude UNIT_TYPE_SUMMONED
+  - Use STAFF OF SANCTUARY and STAFF OF PRESERVATION
 - FOCUSFIRE_CONTROL add FOCUS FIRE special_unit , now special_unit have 'hpxe' and 'espv' and 'ngsp' , Phoenix and Soul of Revenge and GoblinSapper
   - Add exclude more Channeling skills ： healingspray , stampederainoffire , magicleash , cloudoffog , unstableconcoction , grabtree , possession , ambush , devour , 852487
   - Add no single point continuous treatment during combat , avoid unit wandering and can send home
@@ -228,7 +230,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Console switch now can show state on Buttons and Reports
   - (DevTools) Set switch status initial values on Commands.txt
   - Note: B.J unable to obtain C.AI switch status , but all switch status based on C.AI , so developers must synchronize initial values
-  - Note: button only show mian switch status , not player person switch status
+  - Note: button only show main switch status , not player person switch status
 - AMAI VS AI
   - BlizzardVAI.eai ai script file read race.txt 1% and 2%
 - Languages improve
@@ -240,7 +242,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Surrender can be set on the console
   - No human mode and shared mode will close surrender
 - More job move to path system when path done , help job system more focused on combat
-  - (DevTools) because some job run on path system , if you It is no longer possible to disable all JOB without running job system , so add a switch -- job_running , this can shut down job system all job , just need set to false
+  - (DevTools) because some job run on path system , if no longer possible to disable all JOB without running job system , so add a switch -- job_running , this can shut down job system all job , just need set to false
   - Note: running on path system'job , they self running cycle may be slightly adjusted , because it's impossible to balance using 'second' and 'sleep_multiplier' two units of calculation
   - Note: this will indirectly strengthen AI , because the interval between JOBs has actually been shortened
   - Note: because shortened the interval , the code that traverses units will run frequently, and if a large number of units gather (such as 1V23 or 4v20), it will cause the game to latency(FPS become 0) earlier
@@ -248,6 +250,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) Now can set backlanguage to not English , and synchronize from B.J to C.AI during initialization
 - GetLocationEnemyStructures change to GetLocationEnemyStrength , add boolean only_structures use to distinguish only check structures or include structures
 - MILITIA_EXPAND job no longer only run once , but only running on one mine
+- RESET_HEALTH job processing group : unit_healing , unit_rescueing , unit_harassing , unit_zepplin_move
+- Init Races checkr SlotState and Observer
+  - Fixed InitSpecialRaces not save hashtable but load hashtable
+  - add player races boolean for check ally and enemy race , check ally race use to set ally shopping build sequence
+- HeroBugFixHealthCheck no longer check unit_healing group
 
 ###Fixed
 - Fixed some translation errors
