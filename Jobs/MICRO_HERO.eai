@@ -18,6 +18,11 @@
   real array hero_ally_density
   location array hero_ally_loc
 
+  boolean array heroitemsave
+  item array sanctuaryitem
+  item array preservationitem
+  real array sanctuarycd  // old ver not API check CD
+  real array preservationcd
 #ELSE
 
 function TeleportHome takes integer hn returns nothing
@@ -90,6 +95,31 @@ function TeleportToLoc takes unit u, location l returns nothing
   set loc = null
 endfunction
 
+function ItemSaveHero takes integer hn returns boolean
+  local integer i = 1  // only supports three heroes
+  local integer id = 0
+  local real t = TimerGetElapsed(tq_timer)
+  loop
+    exitwhen i > 3
+    if i != hn and heroitemsave[i] and UnitAlive(hero_unit[i]) and not IsUnitInvisible(hero_unit[i], Player(PLAYERAGGRESSIVE)) and DistanceBetweenUnits(hero_unit[i],hero_unit[hn]) < 700 then
+      set id = GetUnitCurrentOrder(hero_unit[i])
+      if (sanctuaryitem[i] != null or preservationitem[i] != null) and (id == 0 or id == OrderId("attack") or id == OrderId("stop") or id == OrderId("move")) and not IsStandardUnit(hero_unit[i]) and not IsUnitBuying(hero_unit[i]) then
+        if t >= 45 + sanctuarycd[i] and UnitUseItemTarget(hero_unit[i],sanctuaryitem[i],hero_unit[hn]) then
+          set sanctuarycd[i] = t
+          set heroitemsave[i] = false
+          return true
+        elseif t >= 30 + preservationcd[i] and UnitUseItemTarget(hero_unit[i],preservationitem[i],hero_unit[hn]) then
+          set preservationcd[i] = t
+          set heroitemsave[i] = false
+          return true
+        endif
+      endif
+    endif
+    set i = i + 1
+  endloop
+  return false
+endfunction
+
 function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothing
   local location l = null
   local group g = null
@@ -100,8 +130,8 @@ function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothin
 
   if a != ACTION_DO_NOTHING and a != ACTION_TP then
     call RemoveGuardPosition(hero_unit[hn])
-    if (GetUnitAbilityLevel(hero_unit[hn], 'AOwk') > 0 or GetUnitAbilityLevel(hero_unit[hn], 'ANwk') > 0) then
-      if not IsUnitInvisible(hero_unit[hn], Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+    if GetUnitAbilityLevel(hero_unit[hn], 'AOwk') > 0 or GetUnitAbilityLevel(hero_unit[hn], 'ANwk') > 0 then
+      if not IsUnitInvisible(hero_unit[hn], Player(PLAYERAGGRESSIVE)) then
         call IssueImmediateOrder(hero_unit[hn], "windwalk")
       endif
     endif
@@ -129,6 +159,18 @@ function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothin
     call RemoveLocation(unitloc)
     set unitloc = null
     call HealUnit(healer, hero_unit[hn], false)
+    return
+  endif
+if a != ACTION_TP and not town_threatened and TownCountDone(racial_hall[1]) > 0 and ItemSaveHero(hn) then
+    call CreateDebugTag("HERO: Item Save", 10, hero_unit[hn], 4.00, 2.00)
+    call GroupAddUnit(unit_healing,hero_unit[hn])
+    if a == ACTION_MOONWELLS then
+      call CreateDebugTag("HERO: Item Save Going to Moonwells", 10, hero_unit[hn], 4.00, 2.00)
+      call TQAddUnitJob(0, MOON_WELL_CONTROL, 80, hero_unit[hn])
+    else
+      call RemoveGuardPosition(hero_unit[hn])
+      call TQAddUnitJob(16, RESET_HEALTH, 60, hero_unit[hn])
+    endif
     return
   endif
   if a == ACTION_FOUNTAIN then
@@ -188,7 +230,7 @@ function SaveHero takes integer hn , integer armyOfHero returns nothing
 endfunction
 
 function HeroBugFixHealthCheck takes integer hn returns boolean
-  return GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) >= 0.80 * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE) and IsUnitInGroup(hero_unit[hn], unit_healing)
+  return GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) >= 0.80 * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE)
 endfunction
 
 function MicroHeroJob takes integer hn returns nothing
@@ -196,22 +238,23 @@ function MicroHeroJob takes integer hn returns nothing
   local real teleportdistance = 0.0
   local integer current_order = 0
   local integer armyOfHero = 0
+  local boolean healing = IsUnitInGroup(hero_unit[hn], unit_healing)
 
   call DisplayToAllJobDebug("MICRO_HERO Job start")
   if UnitAlive(hero_unit[hn]) then
     set armyOfHero = GetArmyOfUnit(hero_unit[hn])
     // A Temporary Bug fix
-    if HeroBugFixHealthCheck(hn) then
+    if healing and HeroBugFixHealthCheck(hn) then
       call CreateDebugTag("HERO: Healing Bug Fix Job", 10, hero_unit[hn], 4.00, 2.00)
       call RecycleGuardPosition(hero_unit[hn])
       call GroupRemoveUnit(unit_healing, hero_unit[hn])
+      set healing = false
     endif
-    //
 
     set new_hp = GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) / GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE)
     set current_order = GetUnitCurrentOrder(hero_unit[hn])
 
-  //  call DisplayToAll("MicroH Start")
+    //  call DisplayToAll("MicroH Start")
     if hero_dir[hn] != null then
       call RemoveLocation(hero_dir[hn])
     endif
@@ -232,14 +275,16 @@ function MicroHeroJob takes integer hn returns nothing
       endif
     endif
 
-  //  call DisplayToAll("Hero Order: "+Int2Str(GetUnitCurrentOrder(hero_unit[hn])))
+    //  call DisplayToAll("Hero Order: "+Int2Str(GetUnitCurrentOrder(hero_unit[hn])))
 
-  //  call DisplayToAll(Int2Str(R2I(hero_enemy_density[hn] * 10)))
-  //  call DisplayToAll(Int2Str(R2I(DistanceBetweenPoints(hero_enemy_loc[hn],GetUnitLoc(hero_unit[hn])))))
+    //  call DisplayToAll(Int2Str(R2I(hero_enemy_density[hn] * 10)))
+    //  call DisplayToAll(Int2Str(R2I(DistanceBetweenPoints(hero_enemy_loc[hn],GetUnitLoc(hero_unit[hn])))))
 
     set teleportdistance = DistanceBetweenPoints(hero_loc[hn], town_loc[most_threatened_town])
-    if not teleporting and GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) < RMax(flee_health_percentage * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE), flee_minimum_health) and not IsUnitInGroup(hero_unit[hn], unit_healing) then
+    if not teleporting and GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) < RMax(flee_health_percentage * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE), flee_minimum_health) and healing == false then
       call SaveHero(hn,armyOfHero)
+      set healing = true
+      set heroitemsave[hn] = false
     endif
     if armyOfHero >= 0 and not teleporting and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 then
       if town_threatened and town_threat[most_threatened_town] >= teleport_min_threat and teleportdistance > LinearInterpolation(teleport_low_threat, teleport_high_threat, teleport_low_threat_distance, teleport_high_threat_distance, town_threat[most_threatened_town]) and town_can_tp[most_threatened_town] and army_strength[armyOfHero] >= teleport_army_min_strength then
@@ -265,9 +310,15 @@ function MicroHeroJob takes integer hn returns nothing
         return
       endif
     endif
-    if not teleporting and hero_enemy_density[hn] > 5 and IsUnitInGroup(hero_unit[hn], unit_healing) and DistanceBetweenPoints(hero_dir[hn],hero_loc[hn]) <= 225 then
+    if not teleporting and hero_enemy_density[hn] > 5 and healing and DistanceBetweenPoints(hero_dir[hn],hero_loc[hn]) <= 225 then
       call CreateDebugTag("HERO: Surround Detection Teleportation", 10, hero_unit[hn], 4.00, 2.00)
       call TeleportHome(hn)
+    endif
+    if sanctuaryitem[hn] == null then
+      set sanctuaryitem[hn] = GetItemOfTypeOnUnit(STAFF_OF_SANCTUARY,hero_unit[hn])
+    endif
+    if preservationitem[hn] == null then
+      set preservationitem[hn] = GetItemOfTypeOnUnit(STAFF_OF_PRESERVATION,hero_unit[hn])
     endif
   endif
   call TQAddJob(1, MICRO_HERO, hn)
