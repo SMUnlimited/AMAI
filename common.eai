@@ -5734,33 +5734,23 @@ function BuildBRAtCreep takes nothing returns nothing
   endif
   set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_rushcreep], loc, 600)
   if loc != null and DistanceBetweenPoints(loc, home_location) < distance then  //Prevent some islands/shallow water terrain from creating u on the other side of the map
-    set g = CreateGroup()
-    call GroupEnumUnitsInRangeOfLoc(g, loc, 510, null)
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null or s == -2
-      if IsPlayerEnemy(GetOwningPlayer(u), ai_player) then  //if have enemy , cannot build (if use getlocationstrength need judge twice -- creep and player)
-        set s = -2
-      endif
-      call GroupRemoveUnit(g,u)
-    endloop
-    if s != -2 then
+    if GetLocationCreepStrength(GetLocationX(loc), GetLocationY(loc), 510) <= 0 then  //if have enemy , cannot build
       set u = GetExpansionPeon2(u)
       if u == null or GetUnitCurrentOrder(u) != OrderId("harvest") then
-        call GroupClear(g)
+        set g = CreateGroup()
         call GroupEnumUnitsOfPlayer(g, ai_player, null)
         set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
         set g = SelectByLoaded(g, true)
         set u = FirstOfGroup(g)
+        call DestroyGroup(g)
+        set g = null
         call IssueTargetOrder(own_town_mine[0], "unload", u)
         call Sleep(0.01)
       endif
       call RemoveGuardPosition(u)  // no need reset guard , the tree can train
       call IssuePointOrderByIdLoc(u, old_id[racial_rushcreep], loc)
+      set u = null
     endif
-    call DestroyGroup(g)
-    set g = null
-    set u = null
   endif
   call RemoveLocation(loc)
   set loc = null
@@ -6825,6 +6815,11 @@ function GetItemHero takes item it returns unit
     set i = i + 1
   endloop
   return null
+endfunction
+
+//============================================================================
+function CheckSaveItem takes integer i returns boolean
+  return heroitemsave[i] and not IsUnitInvisible(hero_unit[i], Player(PLAYERAGGRESSIVE)) and (BlzGetUnitAbilityCooldownRemaining(hero_unit[i], 'ANsa') == 0.00 or BlzGetUnitAbilityCooldownRemaining(hero_unit[i], 'ANpr') == 0.00)
 endfunction
 
 //============================================================================
@@ -8063,7 +8058,7 @@ function InitHeroArrays takes nothing returns nothing
     set hero[i] = 0
     set hero_built[i] = false
     set hero_unit[i] = null
-    set heroitemsave[i] = false
+    set heroitemsave[i] = true
     set sanctuaryitem[i] = null
     set preservationitem[i] = null
     set i = i + 1
