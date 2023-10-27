@@ -67,46 +67,64 @@ function global_init_strategy takes nothing returns nothing
 
 endfunction
 function global_build_sequence takes nothing returns nothing
-    call DefendTownsDone(1, BURROW, 70)
-    call DefendTownsDone(2, ORC_WATCH_TOWER, 70)
-    if tier == 3 and GetGold() > 2000 then
+    // Anti rush
+    if TownCountTown(ORC_WATCH_TOWER,0) < 6 then
+      call BuildAtMine(1, ORC_WATCH_TOWER, 45)
+    endif
+    // home_location tower
+    if tier < 3 then
+      call BuildFront(2, ORC_WATCH_TOWER, 40)
+    endif
+    // exp tower
+    if GetMinesOwned() > 1 or (TownCount(TREE_LIFE) > 1 and GetMinesOwned() > 0) then
       call DefendTownsDone(1, BURROW, 70)
       call DefendTownsDone(2, ORC_WATCH_TOWER, 70)
-      call DefendTownsDone(4, ORC_WATCH_TOWER, 35)
-      call BuildFront(4, ORC_WATCH_TOWER, 35)
-      if TownCount(ORC_WATCH_TOWER) >= 4 and TownCount(VOODOO_LOUNGE) < 2 then
-        call DefendTownsDone(1, VOODOO_LOUNGE, 40)
+      if tier == 3 and GetGold() > 2000 then
+        call DefendTownsDone(1, BURROW, 70)
+        call DefendTownsDone(4, ORC_WATCH_TOWER, 35)
+        if TownCount(ORC_WATCH_TOWER) >= 4 and TownCount(VOODOO_LOUNGE) < 2 then
+          call DefendTownsDone(1, VOODOO_LOUNGE, 40)
+        endif
       endif
     endif
-
-    call BuildAtMine(1, ORC_WATCH_TOWER, 40)
-    call BuildFront(2, ORC_WATCH_TOWER, 35)
+    // routine build
+    if GetGold() > 800 then
+      call BuildUnit(2, ORC_WATCH_TOWER, 40)
+      call BuildFront(2, ORC_WATCH_TOWER, 35)
+    endif
 
     if urgent_healing_count > 3 then
-          call BuildItem(1, HEALING_SALVE, 120)
-	  else
-          call BuildItem(1, HEALING_SALVE, 50)
+      call BuildItem(1, HEALING_SALVE, 120)
+    else
+      call BuildItem(1, HEALING_SALVE, 50)
     endif
     if urgent_healing_count > 2 then
       call BuildItem(2, HEALING_SALVE, 50)
     endif
     call BuildItem(1, M_SCROLL_OF_HEALING, 55)
-    
-      call BuildItem(1, SCROLL_OF_SPEED, 40)
 
+    call BuildItem(1, SCROLL_OF_SPEED, 40)
     call BuildItem(1, POTION_OF_LESSER_INVULNERBILITY, 50)
-    if hero[1] == BLADE_MASTER then
-      call BuildItem(1, LESSER_CLARITY_POTION, 35)
-    endif
+    call BuildItem(1, LESSER_CLARITY_POTION, 35)
     if tier == 1 then
       call BuildItem(1, M_TOWN_PORTAL, 100)
     endif
     if tier > 1 then
       call BuildItem(1, HEALING_POTION, 70)
       call BuildItem(1, TOWN_PORTAL, 180)
+      if c_ally_total > 0 then
+        call BuildItem(1, STAFF_OF_PRESERVATION, 30)
+      endif
     endif
+    if tier == 3 then
+      if c_ally_total > 0 then
+        call BuildItem(1, STAFF_OF_SANCTUARY, 30)
+      endif
+    endif
+
     call BuildUnit(1, VOODOO_LOUNGE, 45+30*(tier-1))
-    // DYNAMIC
+
+    // DYNAMIC and Global Mercenaries
     call ResetDynamicSystem()
     if tier == 1 then
       call AddUnitToAntiair(HEAD_HUNTER,29)
@@ -130,8 +148,8 @@ function global_build_sequence takes nothing returns nothing
       call AddUnitToAntiair(RAIDER,GetUpgradeLevel(old_id[UPG_ORC_ENSNARE]))
       call AddUnitToAnticasters(SPIRIT_WALKER,15*GetUpgradeLevel(old_id[UPG_ORC_SWALKER]))
       call AddUnitToAnticasters(SHAMAN,5)
-      call AddUnitToAntitowers(CATAPULT,8+GetUpgradeLevel(old_id[UPG_ORC_NAPTHA]))
-      call AddUnitToAntitowers(BATRIDER,1+GetUpgradeLevel(old_id[UPG_ORC_FIRE]))
+      call AddUnitToAntitowers(CATAPULT,8)
+      call AddUnitToAntitowers(BATRIDER,1)
       call AddUnitToAntitowers(RAIDER,1)
       call AddUnitToAntipiercing(RAIDER, 1)
       call AddUnitToAntipiercing(HEAD_HUNTER, 1)
@@ -163,8 +181,8 @@ function global_build_sequence takes nothing returns nothing
       call AddUnitToAntiair(RAIDER,1)
       call AddUnitToAnticasters(SPIRIT_WALKER,15)
       call AddUnitToAnticasters(SHAMAN,5)
-      call AddUnitToAntitowers(CATAPULT,8)
-      call AddUnitToAntitowers(BATRIDER,1)
+      call AddUnitToAntitowers(CATAPULT,8+GetUpgradeLevel(old_id[UPG_ORC_NAPTHA]))
+      call AddUnitToAntitowers(BATRIDER,1+GetUpgradeLevel(old_id[UPG_ORC_FIRE]))
       call AddUnitToAntitowers(RAIDER,1)
       call AddUnitToAntipiercing(RAIDER, 1)
       call AddUnitToAntipiercing(HEAD_HUNTER, 1)
@@ -191,44 +209,43 @@ function global_build_sequence takes nothing returns nothing
     endif
 
     // Global upgrades
+    call BuildAdvUpgr2(3, UPG_ORC_MELEE, 1,TownCountDone(GRUNT) + TownCountDone(TAUREN) + TownCountDone(RAIDER), 4,5,40)
+    call BuildAdvUpgr2(3, UPG_ORC_ARMOR, 1,TownCountDone(GRUNT) + TownCountDone(TAUREN) + TownCountDone(RAIDER) + TownCountDone(HEAD_HUNTER) + TownCountDone(CATAPULT) + TownCountDone(KODO_BEAST) + TownCountDone(WYVERN) + TownCountDone(BATRIDER), 3,5,40)
+    call BuildAdvUpgr2(3, UPG_ORC_RANGED, 1,TownCountDone(HEAD_HUNTER) + TownCountDone(CATAPULT) + TownCountDone(KODO_BEAST) + TownCountDone(WYVERN) + TownCountDone(BATRIDER), 4,5,40)
 
     // TIER 1 UPGRADES
     //--------------------------------------------------------
     if tier == 1 then
     endif
-    call BuildAdvUpgr2(3, UPG_ORC_MELEE, 1,TownCountDone(GRUNT) + TownCountDone(TAUREN) + TownCountDone(RAIDER), 4,5,40)
-    call BuildAdvUpgr2(3, UPG_ORC_ARMOR, 1,TownCountDone(GRUNT) + TownCountDone(TAUREN) + TownCountDone(RAIDER) + TownCountDone(HEAD_HUNTER) + TownCountDone(CATAPULT) + TownCountDone(KODO_BEAST) + TownCountDone(WYVERN) + TownCountDone(BATRIDER), 3,5,40)
-    call BuildAdvUpgr2(3, UPG_ORC_RANGED, 1,TownCountDone(HEAD_HUNTER) + TownCountDone(CATAPULT) + TownCountDone(KODO_BEAST) + TownCountDone(WYVERN) + TownCountDone(BATRIDER), 4,5,40)
+    if not (c_enemy_total == c_enemy[R_ELF]) then
+      call BuildAdvUpgr(2, UPG_ORC_SPIKES, 1, 1, 1, 10, 10)
+    else
+      call BuildAdvUpgr(2, UPG_ORC_SPIKES, 1, 1, 1, 5, 5)
+    endif
+    call BuildAdvUpgr2(1, UPG_ORC_PILLAGE, 1,TownCountDone(RAIDER) + TownCountDone(GRUNT),0.5,15,60)
 
     // TIER 2 UPGRADES
     //--------------------------------------------------------
     if tier == 2 then
     endif
-    if not (c_enemy_total == c_enemy[R_ELF]) then
-      call BuildAdvUpgr(2, UPG_ORC_SPIKES, 1, 1, 1, 10, 10)
-    endif
-    call BuildAdvUpgr2(1, UPG_ORC_PILLAGE, 2,TownCountDone(RAIDER) + TownCountDone(GRUNT),0.5,15,60)
-    call BuildAdvUpgr2(1, UPG_ORC_WAR_DRUMS, 2,TownCountDone(KODO_BEAST),0.25,10,60)
     call BuildAdvUpgr2(1, UPG_ORC_ENSNARE, 2,TownCountDone(RAIDER),0.33,15,80)
     call BuildAdvUpgr2(1, UPG_ORC_REGEN, 2,TownCountDone(HEAD_HUNTER)+TownCountDone(BATRIDER),1,15,60)
     call BuildAdvUpgr2(2, UPG_ORC_SHAMAN, 2,TownCountDone(SHAMAN),0.33,15,90)
     call BuildAdvUpgr2(2, UPG_ORC_DOCS, 2,TownCountDone(WITCH_DOCTOR), 0.33,15,90)
     call BuildAdvUpgr2(2, UPG_ORC_SWALKER, 2,TownCountDone(SPIRIT_WALKER), 0.33,15,90)
     call BuildAdvUpgr2(2, UPG_ORC_BERSERK, 2, TownCountDone(GRUNT), 0.33,15,60)	  
+    call BuildAdvUpgr(1, UPG_ORC_BURROWS, 2,1,1,0,50)
 
     // TIER 3 UPGRADES
     //--------------------------------------------------------
     if tier == 3 then
     endif
+    call BuildAdvUpgr2(1, UPG_ORC_WAR_DRUMS, 3,TownCountDone(KODO_BEAST),0.25,10,60)
     call BuildAdvUpgr2(1, UPG_ORC_NAPTHA, 3,TownCountDone(CATAPULT),0.25,15,60)
-    call BuildAdvUpgr(1, UPG_ORC_BURROWS, 3,1,1,0,50)
     call BuildAdvUpgr2(1, UPG_ORC_BERSERKER, 3,TownCountDone(HEAD_HUNTER), 0.33,15,75)
     call BuildAdvUpgr2(1, UPG_ORC_VENOM, 3,TownCountDone(WYVERN),0.33,15,85)
     call BuildAdvUpgr2(1, UPG_ORC_PULVERIZE, 3,TownCountDone(TAUREN),0.25,15,75)
     call BuildAdvUpgr2(1, UPG_ORC_FIRE, 3,TownCountDone(BATRIDER),0.33,15,75)
-
-
-    // Global Mercenaries
 
     // Harass
     if not towerrush and not town_threatened then
@@ -236,7 +253,6 @@ function global_build_sequence takes nothing returns nothing
       call Harass(3, HARASS_TARGET_PEONS, true, 5, 0.85, 0, GetPlayerRace(nearest_enemy) != RACE_UNDEAD , 120, 160)
       call Harass(4, HARASS_TARGET_PEONS, false, 12, 0.25, 0, hero[1] == BLADE_MASTER and hero_skills[1] == HERO_SKILL_MINOR and GetPlayerRace(nearest_enemy) != RACE_UNDEAD, 36, 150)
     endif
-
 
 
 
@@ -339,9 +355,9 @@ if tier == 3 then
       call BuildUpgr(2, UPG_ORC_DOCS, 75)
       call BuildUpgr(2, UPG_ORC_SHAMAN, 65)
       call BuildUpgr(1, UPG_ORC_PULVERIZE, 65)
-      call BuildUpgr(1, UPG_ORC_ENSNARE, 65)
+      call BuildUpgr(1, UPG_ORC_ENSNARE, 55)
       call BuildUpgr(1, UPG_ORC_BERSERK, 70)
-      call BuildUpgr(2, UPG_ORC_SPIKES, 40)
+
 
 
 
@@ -360,7 +376,7 @@ if tier == 3 then
 
 elseif tier == 2 then
 
-      call BuildUnit(1, hero[1], 140)     
+      call BuildUnit(1, hero[1], 140)
       call BuildUnit(1, hero[2], 130)
       call BuildUnit(5, GRUNT, 50)
       call BuildUnit(6, HEAD_HUNTER, 50)
@@ -372,8 +388,8 @@ elseif tier == 2 then
       call BuildUnit(4, WYVERN, 52)
       call BuildUnit(3, RAIDER, 50)
 
-
-      call BuildUpgr(1, UPG_ORC_SPIKES, 60)
+      call BuildUpgr(1, UPG_ORC_ENSNARE, 65)
+      call BuildUpgr(2, UPG_ORC_SPIKES, 60)
       call BuildUpgr(1, UPG_ORC_SHAMAN, 65)
       call BuildUpgr(1, UPG_ORC_DOCS, 75)
       call BuildUpgr(1, UPG_ORC_BERSERK, 70)
@@ -403,9 +419,8 @@ else
       call BuildUnit(1, STRONGHOLD, 45)
       call BuildUnit(6, GRUNT, 35)
       call BasicExpansionAM( GetMinesOwned() < 2 ,GREAT_HALL, 37)
-      call BuildFront(1, ORC_WATCH_TOWER, 36)
       call BuildUnit(2, CATAPULT, 22)
-
+      call BuildUpgr(1, UPG_ORC_SPIKES, 40)
 
 
 
@@ -525,7 +540,6 @@ elseif tier == 2 then
 
 else
 
-      call BuildFront(2, ORC_WATCH_TOWER, 42)
       call BuildUnit(1, hero[1], 150)
       call BuildUnit(10, GRUNT, 40)
       call BuildUnit(1, STRONGHOLD, 50)
@@ -658,7 +672,6 @@ elseif tier == 2 then
 
 else
 
-      call BuildFront(2, ORC_WATCH_TOWER, 42)
       call BuildUnit(1, hero[1], 150)
       call BuildUnit(10, GRUNT, 40)
       call BuildUnit(1, STRONGHOLD, 50)
@@ -694,7 +707,6 @@ endfunction
 //============================================================================
 function init_strategy_HHunters takes nothing returns nothing
     call AddRBlock(385, 50, 0, 0, ORC_BARRACKS, 60)
-    call AddBlock(1, ORC_BARRACKS, false, 0, FORGE, 60)
     call AddBlock(1, FORGE, false, 2, BURROW, 12)
 
     call AddHarass(2, 3, HEAD_HUNTER)
@@ -876,7 +888,6 @@ elseif tier == 2 then
 
 else
 
-      call BuildFront(2, ORC_WATCH_TOWER, 42)
       call BuildUnit(1, hero[1], 150)
       call BuildUnit(10, GRUNT, 40)
       call BuildUnit(1, STRONGHOLD, 50)
@@ -1009,7 +1020,6 @@ endfunction
 //============================================================================
 function init_strategy_HeadCatapults takes nothing returns nothing
     call AddRBlock(385, 50, 0, 0, ORC_BARRACKS, 60)
-    call AddBlock(1, ORC_BARRACKS, false, 0, FORGE, 60)
     call AddBlock(1, FORGE, false, 2, BURROW, 12)
 
     call AddHarass(2, 3, HEAD_HUNTER)
@@ -1210,7 +1220,6 @@ elseif tier == 2 then
 
 else
 
-      call BuildFront(2, ORC_WATCH_TOWER, 44)
       call BuildUnit(1, hero[1], 150)
       call BuildUnit(10, GRUNT, 40)
       call BuildUnit(1, STRONGHOLD, 50)
@@ -1544,7 +1553,6 @@ elseif tier == 2 then
 else
       call BuildUnit(10, GRUNT, 50)
       call BuildUpgr(Min(((TownCountDone(RAIDER)/2)-2),1), UPG_ORC_PILLAGE, 30)
-      call BuildUnit(2, ORC_WATCH_TOWER, 60)
       call BuildUnit(1, hero[1], 150)
       call BuildUnit(1, STRONGHOLD, 55)
       if not (c_enemy_total == c_enemy[R_ELF]) then
