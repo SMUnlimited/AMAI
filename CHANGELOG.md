@@ -323,6 +323,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed Console cannot set not ally's CHATTER , DEBUG , BALANCE , LANGUAGE
 - Fixed add water_expansion_list no check Resource Amount
 - Fixed harvesting ghouls unable to take effect
+- Fixed not set HERO_SKILL_MAJOR
 
 ## [3.2.2] - 2022-10-05
 

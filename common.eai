@@ -6818,8 +6818,17 @@ function GetItemHero takes item it returns unit
 endfunction
 
 //============================================================================
-function CheckSaveItem takes integer i returns boolean
-  return heroitemsave[i] and not IsUnitInvisible(hero_unit[i], Player(PLAYER_NEUTRAL_AGGRESSIVE)) and (BlzGetUnitAbilityCooldownRemaining(hero_unit[i], 'ANsa') == 0.00 or BlzGetUnitAbilityCooldownRemaining(hero_unit[i], 'ANpr') == 0.00)
+function CheckUseSaveItem takes integer i returns boolean
+  local boolean b = false
+  local real t = TimerGetElapsed(tq_timer)
+#INCLUDETABLE <$VER$\SaveItems.txt> #EFR
+  set %3itemsave[i] = %3item[i] != null and BlzGetUnitAbilityCooldownRemaining(hero_unit[i], %4) == 0.00
+#ENDINCLUDE
+#INCLUDETABLE <$VER$\SaveItems.txt> #EFR
+  set b = b or %3itemsave[i]
+#ENDINCLUDE
+  set herouseitemsave[i] = herouseitemsave[i] and b and not IsUnitInvisible(hero_unit[i], Player(PLAYERAGGRESSIVE))
+  return herouseitemsave[i]
 endfunction
 
 //============================================================================
@@ -8058,9 +8067,12 @@ function InitHeroArrays takes nothing returns nothing
     set hero[i] = 0
     set hero_built[i] = false
     set hero_unit[i] = null
-    set heroitemsave[i] = true
-    set sanctuaryitem[i] = null
-    set preservationitem[i] = null
+    set herouseitemsave[i] = false
+    #INCLUDETABLE <$VER$\SaveItems.txt> #EFR
+    set %3item[i] = null
+    #AFTERINCLUDE
+    set saveitemlength = %row
+    #ENDINCLUDE
     set i = i + 1
   endloop
   set hero_revive_prio[1] = hero1_revive_prio
@@ -10239,9 +10251,11 @@ function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
     if DistanceBetweenUnits(build_zeppelin, target) > 300 then
       call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + GetRandomReal(-200,200), GetUnitY(target) + GetRandomReal(-200,200))
     else
+      call IssueImmediateOrder(build_zeppelin, "stop")
       call IssueTargetOrder(build_zeppelin, "unload", peon)
-      call Sleep(1.2)  //unload time
+      call Sleep(0.2)  //unload time
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
+      call IssueImmediateOrder(peon, "stop")
       return true
     endif
   else
@@ -10356,7 +10370,6 @@ function StartExpansionAM takes integer qty, integer hall returns integer
         call Trace("AMAIStartexpa: zeppelin cannot expand")
         return BUILT_SOME
       endif
-
     endif
     set exp_time_count = ai_time	// This sets time to next expansion to current time so it waits enough time before starting another expansion 
     if race_uses_mine_expansion then
@@ -10380,8 +10393,12 @@ function BuyItem takes integer qty, integer id returns boolean
     //call Trace("Already ordered to get an item")
     return true
   endif
-  if (id == STAFF_OF_PRESERVATION and GetPlayerRace(ai_player) != RACE_NIGHTELF) or (id == STAFF_OF_SANCTUARY and GetPlayerRace(ai_player) != RACE_HUMAN) then
-    return false  // own race cannot buy
+
+  if false then  // own race cannot buy
+  #INCLUDETABLE <$VER$\SaveItems.txt> #EFR
+  elseif (id == %1 and GetPlayerRace(ai_player) != %2) then
+    return false
+  #ENDINCLUDE
   endif
   set shop_wanted = qty
   if buy_type[id] == BT_RACIAL_ITEM then
@@ -10411,7 +10428,6 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
     //call Trace("Already ordered to get an item")
     return true
   endif
-
   loop
     exitwhen i < 0 or i >= c_ally_total
     set m = GetRandomInt(0,c_ally_total-1)
@@ -10420,11 +10436,14 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
       set i = -1
     endif
   endloop
-  if (id == STAFF_OF_PRESERVATION and GetPlayerRace(ally_force[m]) != RACE_NIGHTELF) or (id == STAFF_OF_SANCTUARY and GetPlayerRace(ally_force[m]) != RACE_HUMAN) then
-    return false  // cannot buy
+  if false then  // cannot buy
+  #INCLUDETABLE <$VER$\SaveItems.txt> #EFR
+  elseif (id == %1 and GetPlayerRace(ally_force[m]) != %2) then
+    return false
+  #ENDINCLUDE
   endif
   set shop_unit = null
-  if m > 1 then
+  if i < 0 then
     set g = CreateGroup()
     call GroupEnumUnitsOfPlayer(g, ally_force[m], null)
     set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
@@ -12666,6 +12685,8 @@ function LoadSkills takes integer sa, integer hn, integer ta returns nothing
     set sk = HERO_SKILL_RARE
   elseif perc <= minor_hero_skill_value+rare_hero_skill_value then
     set sk = HERO_SKILL_MINOR
+  else
+    set sk = HERO_SKILL_MAJOR
   endif
   set hero_skills[sa] = sk // set global variable so we can use the fact of knowning what skill was chosen in AMAI
   call LoadSkillsExt((sa-1)*3*HERO_LEVEL_NUMBER + sk*HERO_LEVEL_NUMBER + (hn-1)*9*HERO_LEVEL_NUMBER)
