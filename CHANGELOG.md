@@ -166,6 +166,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - No longer transfer health points , now transfer town number , then hypovolemia unit can move other town , prevent players kill all at once
 - MICRO_HERO add wait
   - Use STAFF OF SANCTUARY and STAFF OF PRESERVATION
+  - teleporting add check MASS_TELEPORT
 - MICRO_UNITS add set DenyUnit
   - SaveUnit will save 'hphx' and racial_militia string
   - 'ohwd' and 'hphx' is UNIT_TYPE_SUMMONED , so now no exclude UNIT_TYPE_SUMMONED
