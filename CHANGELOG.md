@@ -165,7 +165,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - Stop at Shop buy item no longer recycle directly GuardPosition
    - No longer transfer health points , now transfer town number , then hypovolemia unit can move other town , prevent players kill all at once
 - MICRO_HERO add wait
-  - Use STAFF OF SANCTUARY and STAFF OF PRESERVATION
+  - Use STAFF_OF_TELEPORTATION
+  - Use STAFF OF SANCTUARY and STAFF OF PRESERVATION ，SANCTUARY and STAFF OF PRESERVATION belonging to heal items, avoid discarding
   - teleporting add check MASS_TELEPORT
 - MICRO_UNITS add set DenyUnit
   - SaveUnit will save 'hphx' and racial_militia string
@@ -200,6 +201,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Chcek Ally will check PLAYER_SLOT_STATE_PLAYING and Observer
 - StartHarass check unit num , because Group Order max control 12 unit
   - START_STRENGTH should be stacked in the same JOB
+- Harass get targets not take hidden unit
+  - Not attacking targets near major_hero and avoid sending too many unit group commands that may cause stuttering
+  - Reset INVISIBLE_ COUNT , STATE_ATTACKING and STATE_RETREAT when exit
 - ZEPPELIN_MOVE now can take POWER FOUNTAIN
 - MANA_FOUNTAIN now can take POWER FOUNTAIN
 - GetBuildLocation return home_location , when not take front_loc[0] , prevent leakage and build location(0,0)
