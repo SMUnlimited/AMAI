@@ -100,22 +100,36 @@ function TeleportToLoc takes unit u, location l returns nothing
 endfunction
 
 function ItemSingetp takes integer hn, boolean retreat returns boolean
-  local unit u = null
-  local location l = null
   local boolean b = false
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bsinge_tp\b/
+  local unit u = null
+  local location l = null
+  local group g = null
+  if %4[hn] == null or BlzGetUnitAbilityCooldownRemaining(hero_unit[i], 'AImt') != 0.00 then  // 'AImt' hard-coding , cannot change item
+    return b
+  endif
+  set g = CreateGroup()
   if retreat then
-    return UnitUseItemTarget(hero_unit[hn],%4[hn], own_town_tp[GetRandomInt(0,Max(exist_town_num-1,0))])
+    set l = exist_town[GetRandomInt(0,Max(exist_town_num-1,0))]
   elseif major_hero != null and UnitAlive(major_hero) then
-    set l = GetUnitLoc(major_hero)
-    set u = GetUnitHeroReplacement(u,l)  //hope don't interrupt casting
-    if u != null and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitType(u, UNIT_TYPE_HERO) then
-      set b = UnitUseItemTarget(hero_unit[hn],%4[hn],u)  //teleport to battle
+    set l = GetUnitLoc(major_hero)  //teleport to battle
+  endif
+  if l != null then
+    call GroupEnumUnitsInRangeOfLoc(g, l, 500, null)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null or (UnitAlive(u) and not IsUnitHidden(u) and not IsUnitLoaded(u) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitType(u, UNIT_TYPE_HERO))
+      call GroupRemoveUnit(g, u)
+    endloop
+    if u != null then
+      set b = UnitUseItemTarget(hero_unit[hn],%4[hn], u)  //hope don't interrupt casting
     endif
-    call RemoveLocation(l)
-    set l = null
     set u = null
   endif
+  call DestroyGroup(g)
+  set g = null
+  call RemoveLocation(l)
+  set l = null
 #ENDINCLUDE
   return b
 endfunction
@@ -123,11 +137,9 @@ endfunction
 function ItemSaveHero takes integer hn returns boolean
   local integer i = 1  // only supports three heroes
   local integer id = 0
-#INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bsinge_tp\b/
-  if %4[hn] != null and BlzGetUnitAbilityCooldownRemaining(hero_unit[i], 'AImt') == 0.00 and ItemSingetp(hn,true) then  // 'AImt' hard-coding , cannot change item
+  if not IsUnitInvisible(hero_unit[hn], Player(PLAYERAGGRESSIVE)) and ItemSingetp(hn,true) then
     return true
   endif
-#ENDINCLUDE
   loop
     exitwhen i > 3
     if i != hn and UnitAlive(hero_unit[i]) and CheckUseSaveItem(i) and DistanceBetweenUnits(hero_unit[i],hero_unit[hn]) < 700 then
@@ -275,7 +287,7 @@ function MicroHeroJob takes integer hn returns nothing
         call CreateDebugTag("HERO: Healing Bug Fix Job", 10, hero_unit[hn], 4.00, 2.00)
         call RecycleGuardPosition(hero_unit[hn])
         call GroupRemoveUnit(unit_healing, hero_unit[hn])
-        if DistanceBetweenUnits(major_hero,hero_unit[hn]) > 2000 then
+        if not retreat_controlled and not town_threatened  and not teleporting and DistanceBetweenUnits(major_hero,hero_unit[hn]) > 2000 then
           call ItemSingetp(hn,false)
         endif
       else
