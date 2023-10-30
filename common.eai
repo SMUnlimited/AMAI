@@ -792,6 +792,7 @@ globals
     unit array own_town_mine
     integer first_town_mine = 0
     location array exist_town
+    unit array tp_town
     integer exist_town_num = 0
 
     integer attacking_ghouls = 0
@@ -6921,13 +6922,16 @@ endfunction
 //============================================================================
 function GetArmyOfUnit takes unit u returns integer
   local integer i = 0
+  local player p = GetOwningPlayer(u)
   loop
     exitwhen i >= army_num
-    if IsUnitInGroup(u, army_group[i]) then
+    if Player(army_owner[i]) == p and IsUnitInGroup(u, army_group[i]) then
+      set p = null
       return i
     endif
     set i = i + 1
   endloop
+  set p = null
   return -1
 endfunction
 
@@ -7890,6 +7894,7 @@ function InitTownBuilt takes nothing returns nothing
   set town_built[0] = true
   set own_town_loc[0] = Location(GetLocationX(home_location), GetLocationY(home_location))
   set exist_town[0] = home_location
+  set tp_town[0] = GetOneOfId(tp_town[0],ai_player,old_id[racial_hall[1]])
   set own_town_dist[0] = 0
   set own_town_mine[0] = GetMineNearLoc(own_town_mine[0] ,home_location, 1500)
 endfunction
@@ -10279,6 +10284,8 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   local unit    u = null
   local integer gold_cost = 0
   local integer wood_cost = 0
+  local boolean f = false
+  local boolean w = false
   if countdone >= qty then
     return BUILT_ALL
   endif
@@ -10286,10 +10293,8 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     return BUILT_SOME
   endif
 
-  if first_town_mine > 1 then
-    if MultipleMinefix() then
-      return BUILT_ALL
-    endif
+  if first_town_mine > 1 and MultipleMinefix() then
+    return BUILT_ALL
   endif
 
   if current_expansion == null or CheckExpansionTaken(current_expansion) then
@@ -10349,12 +10354,15 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     endif
   endif
   //  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Peon Got")
-  if not IsUnitInGroup(current_expansion, water_expansion) and DistanceBetweenUnits(expansion_peon,current_expansion) > 6000 and not IsUnitInGroup(current_expansion, far_expansion) then
+  set f = IsUnitInGroup(current_expansion, far_expansion)
+  set w = IsWaterExpansion(current_expansion)
+  if not w and DistanceBetweenUnits(expansion_peon,current_expansion) > 6000 and not f then
     call GroupAddUnit(far_expansion, current_expansion)
+    set f = true
   endif
 
   if expansion_peon != null and UnitAlive(expansion_peon) then
-    if (IsWaterExpansion(current_expansion) or IsUnitInGroup(current_expansion, far_expansion)) and neutral_available[NEUTRAL_OBSERVATORY] then
+    if (w or f) and neutral_available[NEUTRAL_OBSERVATORY] then
       if build_zeppelin == null or not UnitAlive(build_zeppelin) then
         if not UnitAlive(build_zeppelin) then
           call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
@@ -10367,7 +10375,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
         endif
       endif
       call Trace("AMAIStartexpa: Is a water or far expansion so using zeppelin")
-      if (IsWaterExpansion(current_expansion) and build_zeppelin == null) or (build_zeppelin != null and not BuildMovePeonZeppelin(expansion_peon, current_expansion)) then
+      if (w and build_zeppelin == null) or (build_zeppelin != null and not BuildMovePeonZeppelin(expansion_peon, current_expansion)) then
         call Trace("AMAIStartexpa: zeppelin cannot expand")
         return BUILT_SOME
       endif
@@ -10855,6 +10863,7 @@ function LocalizeOldTown takes integer num returns boolean
   if u == null then
     if num != 0 then  //Prevent moving away from the starting loc
       set exist_town[exist_town_num] = home_location
+      set tp_town[exist_town_num] = tp_town[0]
     endif
     return false
   endif
@@ -10892,6 +10901,7 @@ function LocalizeNewTown takes integer num returns boolean
   set own_town_mine[num] = GetMineNearLoc(own_town_mine[num], own_town_loc[num], 1500)
   set own_town_dist[num] = DistanceBetweenPoints(home_location, own_town_loc[num])
   set exist_town[exist_town_num] = own_town_loc[num]
+  set tp_town[exist_town_num] = u
   set exist_town_num = exist_town_num + 1
   if debugging then
     call PingMinimap(GetUnitX(u), GetUnitY(u), 20)
