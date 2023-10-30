@@ -105,34 +105,28 @@ function ItemSingetp takes integer hn, boolean retreat returns boolean
   local unit u = null
   local location l = null
   local group g = null
-  local integer i = 0
   if %4[hn] == null or BlzGetUnitAbilityCooldownRemaining(hero_unit[i], 'AImt') != 0.00 then  // 'AImt' hard-coding , cannot change item
     return b
   endif
   if retreat then
-    set l = exist_town[GetRandomInt(0,Max(exist_town_num-1,0))]
+    set u = tp_town[GetRandomInt(0,Max(exist_town_num-1,0))]
   else
-    set l = GetUnitLoc(major_hero)  //teleport to battle
-    set i = 1
-  endif
-  if l != null then
+    set l = GetUnitLoc(major_hero)  //teleport to battle , hope don't interrupt casting
     set g = CreateGroup()
-    call GroupEnumUnitsInRangeOfLoc(g, l, 500, null)
+    call GroupEnumUnitsInRangeOfLoc(g, l, 300, null)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null or (UnitAlive(u) and not IsUnitHidden(u) and not IsUnitLoaded(u) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitType(u, UNIT_TYPE_HERO))
       call GroupRemoveUnit(g, u)
     endloop
-    if u != null then
-      set b = UnitUseItemTarget(hero_unit[hn],%4[hn], u)  //hope don't interrupt casting
-    endif
     call DestroyGroup(g)
     set g = null
-    set u = null
-    if i == 1 then
-      call RemoveLocation(l)
-    endif
+    call RemoveLocation(l)
     set l = null
+  endif
+  if u != null and UnitAlive(u) then
+    set b = UnitUseItemTarget(hero_unit[hn],%4[hn], u)
+    set u = null
   endif
 #ENDINCLUDE
   return b
@@ -141,7 +135,7 @@ endfunction
 function ItemSaveHero takes integer hn returns boolean
   local integer i = 1  // only supports three heroes
   local integer id = 0
-  if not IsUnitInvisible(hero_unit[hn], Player(PLAYERAGGRESSIVE)) and ItemSingetp(hn,true) then
+  if not IsUnitInvisible(hero_unit[hn], Player(PLAYER_NEUTRAL_AGGRESSIVE)) and ItemSingetp(hn,true) then
     return true
   endif
   loop
