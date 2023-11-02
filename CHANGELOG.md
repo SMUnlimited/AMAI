@@ -71,7 +71,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - if ELF or no wood harvest race have shredder , now adjust shredder loc , if shredder order is harvest , then when shredder harvest far enough the loc maybe can build
    - Rallypoint now is front_loc[0] further rallyloc, home_location may cause the unit to be avoid being stuck at home , but within front_loc build rallyloc still home_location
    - Regular burrow disarm , fix ORC cannot disarm
-   - New function GetTowerupgrade(call on races.eai) , used to tower upgrade( AI just build WATCH_TOWER , but no upgrade)
 - WISP_CHECK reform to HARVEST_CHECK , apply to all race
    - ELF no longer use accurate quantity control , prevent any wips will go harvestmine , but mine no vacancies
    - if home_location have more mine (range 1500 or UD/ELF no harves), then AI cannot harvestmine , no income , HARVEST_CHECK can help AI harvest
@@ -139,6 +138,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
 - function AttackGroupAddNeutrals the number of loop of is reduced , a little more efficiency
 - GetBuildingBuilt no take hidden and die
+  - If front loc unable to obtain , now will mandatory settings front_loc[0]
 - FastBuildBuilding , TryMilitiaExpansionFoot no take die
 - Buy JOB now use dynamic time_next_try , prevent waiting after moving to the shop
 - ComputeFrontPoints and CheckFastExpansion just run once , this code no need repeated
