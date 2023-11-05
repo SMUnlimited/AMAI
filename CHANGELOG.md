@@ -68,6 +68,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Ancient Expansion fixes (jzy-chitong56)
 - Fixed harass groups to use a more reasonable number of entries to prevent high processing and memory usage.
 - Fixed lead ally being determined to the incorrect player in some cases.
+- Fixed night elf worpal blades upgrade had the wrong code (jzy-chitong56)
 
 ## [3.2.2] - 2022-10-05
 
