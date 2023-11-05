@@ -10,9 +10,9 @@ function PeonMineCheck takes unit mine, boolean unloadpeon returns boolean
   local integer i = 0
   local integer peon = TownCount(racial_peon)
   local integer peond = TownCountDone(racial_peon)
-  local integer delaywisps = ver_optimal_gold - 1
+  local integer delaywisps = Min(ver_optimal_gold - 1,peond)
   call DisplayToAllJobDebug("HARVEST CHECK Job Start")
-  if peond > 6 then
+  if peond > Max(ver_optimal_gold,6) then
     set delaywisps = ver_optimal_gold
   endif
   if race_manual_loading then
@@ -31,14 +31,12 @@ function PeonMineCheck takes unit mine, boolean unloadpeon returns boolean
       endif
       call GroupRemoveUnit(g, u)
     endloop
-    if FoodSpace() <= 0 and i >= 3 and unloadpeon then  // no foodspace , no peon(at least keep 2 harvest mine) , need one harvest mine peon build Farms
-      if peon <= 4 and peon == peond then
-        set delaywisps = 2
-        set unloadpeon = IssueTargetOrder(mine, "unload", savewisp)
-      endif
-    elseif not hero_built[1] and peond < 7 then
+    if FoodSpace() <= 0 and i >= 3 and unloadpeon and peon <= 4 and peon == peond then  // no foodspace , no peon(at least keep 2 harvest mine) , need one harvest mine peon build Farms
+      set delaywisps = 2
+      set unloadpeon = IssueTargetOrder(mine, "unload", savewisp)
+    elseif not hero_built[1] and peon < 8 then
       set delaywisps = ver_optimal_gold - 2
-      set i = delaywisps
+      set i = Min(i,delaywisps)
     endif
     if i < delaywisps then
       set tempg = SelectByLoaded(tempg, false)
@@ -58,7 +56,6 @@ function PeonMineCheck takes unit mine, boolean unloadpeon returns boolean
     set tempg = null
     set savewisp = null
   elseif race_uses_mine_expansion then
-    set delaywisps = Min(ver_optimal_gold,peond)
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
     set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
     set g = SelectByAlive(g, true)
@@ -85,7 +82,7 @@ function PeonMineCheck takes unit mine, boolean unloadpeon returns boolean
     endif
     call DestroyGroup(tempg)
     set tempg = null
-  else //human and orc
+  else  //human and orc
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
     set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
     set g = SelectByAlive(g, true)
