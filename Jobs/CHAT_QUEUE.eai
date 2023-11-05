@@ -1,0 +1,35 @@
+#IFDEF GLOBAL
+  boolean i_locked_chat = false
+#ELSE
+function FireChat takes nothing returns nothing
+    local integer lockplayer = -1
+    if HaveStoredInteger(amaiCache, Int2Str(CHAT_LOCK), "lock") then
+      set lockplayer = GetStoredInteger(amaiCache, Int2Str(CHAT_LOCK), "lock")
+    endif  
+    //call Trace("Chat Queue: Player Lock: " + Int2Str(lockplayer) + " AI Player:" + Int2Str(GetAiPlayer()))
+    if chat_queue_size >= 0 then
+      call Trace("Chat Queue: Want to chat")
+      if lockplayer <= -1 then
+         call Trace("Chat Queue: Taking Lock")
+         call StoreInteger(amaiCache, Int2Str(CHAT_LOCK), "lock", GetAiPlayer())
+         call TQAddJob(1 + GetRandomInt(0, 2), CHAT_QUEUE, 0)
+         return
+      elseif lockplayer == GetAiPlayer() then
+        set i_locked_chat = true
+        call DisplayToPlayer(chat_queue[chat_queue_size] , chat_queue_player[chat_queue_size], chat_queue_importance[chat_queue_size])
+        set chat_queue_size = chat_queue_size - 1
+      endif
+    elseif lockplayer == GetAiPlayer() then
+       set i_locked_chat = false
+       call Trace("Chat Queue: Reset Lock")
+       call FlushStoredInteger(amaiCache, Int2Str(CHAT_LOCK), "lock")
+       call TQAddJob(16 + GetRandomInt(0, 4), CHAT_QUEUE, 0)
+       return
+    endif
+    if i_locked_chat then
+      call TQAddJob(5 + GetRandomInt(0, 5), CHAT_QUEUE, 0)
+    else
+      call TQAddJob(16 + GetRandomInt(0, 4), CHAT_QUEUE, 0)
+    endif
+endfunction
+#ENDIF

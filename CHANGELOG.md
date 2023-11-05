@@ -35,6 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
     - DEMON HUNTERS will can now sometimes learn Immolation.
 - Shredders now replace 10 peons (instead of 8)
 - Improvements to worker logic at game start. (jzy-chitong56)
+- To reduce chat spam for players, chat messages from the AI are now rate limited to reduce screen spam especially in large player maps.
 
 ### Removed
 - (DevTools) Old non-working installer has now been removed now we have new version in place.
@@ -69,6 +70,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed harass groups to use a more reasonable number of entries to prevent high processing and memory usage.
 - Fixed lead ally being determined to the incorrect player in some cases.
 - Fixed night elf worpal blades upgrade had the wrong code (jzy-chitong56)
+- Fixed an issue where the AMAI cache was not saving any data (jzy-chitong56)
 
 ## [3.2.2] - 2022-10-05
 
