@@ -509,12 +509,30 @@ globals
     integer racial_lumber = 0
     integer racial_rushcreep = 0
     unit rushcreep_target = null
+    integer array racial_barracks2  // tier2
+    integer racial_barracks2_total = 0
+    integer array racial_barracks3  // tier3
+    integer racial_barracks3_total = 0
+    integer racial_highlv_barracks = 0
     integer neutral_shredder = 0
     integer neutral_zeppelin = 0
     integer tp_item = 0
+    boolean array herouseitemsave
+  #INCLUDETABLE <$VER$\SaveItems.txt> #EFR
+    integer %3_item = %1
+    boolean array %3itemsave
+    item array %3item
+    #AFTERINCLUDE
+    integer saveitemlength = %row  // ROC no this function
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bsinge_tp\b/
+    integer singe_tp_item = %1
+    item array %4
+  #ENDINCLUDE
     integer tiernum = 3
     integer mapSize = 0
     boolean firstattackhp = false  //big map or more player first attack human player?
+    boolean take_all_ghouls_along = false
 
     integer array hero
     integer array hero_skills // The skill line chosen for the hero, major, minor or rare
@@ -1834,7 +1852,7 @@ function GetExpansionPeon2 takes unit u returns unit
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    exitwhen GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) and (GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == 0) and not IsUnitHidden(u) and not IsUnitLoaded(u)  // and not IsUnitInGroup(u, unit_buying_tavern) and not IsUnitInGroup(u, unit_buying_merc) and not IsUnitInGroup(u, unit_buying_item) and not IsUnitInGroup(u, unit_zepplin_move))  // if too much IsUnitInGroup , the game will laggy and collapse
+    exitwhen GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) and (GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == 0) and not IsUnitHidden(u) and not IsUnitLoaded(u)
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
@@ -4754,11 +4772,11 @@ endfunction
 
 function GetUnitHeroReplacement takes unit u , location l returns unit
   local group g = CreateGroup()
-  call GroupEnumUnitsOfPlayer(g,ai_player,null)
+  call GroupEnumUnitsInRangeOfLoc(g, l, battle_radius, null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if IsUnitInRangeLoc(u, l, battle_radius) and UnitAlive(u) and not IsUnitHidden(u) and IsUnitType(u, UNIT_TYPE_STRUCTURE) == false and IsUnitType(u, UNIT_TYPE_PEON) == false and IsStandardUnit(u) then
+    if UnitAlive(u) and not IsUnitHidden(u) and GetOwningPlayer(u) == ai_player and IsUnitType(u, UNIT_TYPE_STRUCTURE) == false and IsUnitType(u, UNIT_TYPE_PEON) == false and IsStandardUnit(u) then
       call DestroyGroup(g)
       set g = null
       return u
@@ -8077,8 +8095,6 @@ function InitHeroArrays takes nothing returns nothing
     set herouseitemsave[i] = false
     #INCLUDETABLE <$VER$\SaveItems.txt> #EFR
     set %3item[i] = null
-    #AFTERINCLUDE
-    set saveitemlength = %row
     #ENDINCLUDE
     set i = i + 1
   endloop
@@ -11243,7 +11259,7 @@ function FormGroupAM takes integer seconds returns nothing
     if count >= desire then
       call AddAssault(desire,old_id[unitid])
     else
-      if unitid != racial_ghoul or (GetWood() > TownCountDone(racial_ghoul)) then  // take_all_ghouls_along is true
+      if unitid != racial_ghoul or take_all_ghouls_along then
         set desire = attack_qty[index]
       endif
       if count < desire then
