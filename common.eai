@@ -750,6 +750,8 @@ globals
     integer expansion_target_bonus = 7
     integer comp_chosen_target_bonus = 5
     real comp_chosen_target_rate = 0.5
+    texttag debugstrattag = CreateTextTag()
+    texttag debugcountertag = CreateTextTag()
 
     boolean balancing = false
 
@@ -849,6 +851,10 @@ globals
     integer chat_list_length = 0
     string chat_race = ""
     integer chat_eq = 0
+    string array chat_queue
+    boolean array chat_queue_importance
+    player array chat_queue_player
+    integer chat_queue_size = -1
     constant integer C_STRATEGY = 0
 
 #INCLUDETABLE <ChatEvents.txt> #EFR
@@ -894,6 +900,7 @@ globals
     constant integer RACE_PREF = 4
     constant integer USE_SPECIAL_RACES = 5
     constant integer PROFILE_SELECTION = 6
+    constant integer CHAT_LOCK = 7
 
     gamecache amaiCache = InitGameCache("AMAI_AI.w3v")
 
@@ -1149,7 +1156,7 @@ endfunction
 // Properly clear the game caches to make sure they are empty on use
 function InitAMAIGameCache takes nothing returns nothing
   //call FlushGameCache(InitGameCache("AMAI_TM.w3v"))
-  //call FlushGameCache(amaiCache)
+  //call FlushGameCache(amaiCache)  // Do not flush as breaks further use of the cache
   //call FlushGameCache(InitGameCache("AMAI_Com.w3v"))
   //call FlushGameCache(InitGameCache("AMAI_Set.w3v"))
   //call FlushGameCache(InitGameCache("AMAI_CVM.w3v"))
@@ -1241,6 +1248,12 @@ function SetDebugTagColor takes texttag tt returns nothing
     call SetTextTagColor(tt, 79, 43, 5, AMAIPercentTo255(100-0))
   endif
   set c = null
+endfunction
+
+function UpdateDebugTextTag takes texttag tt, string s, real fontsize, real posx, real posy returns nothing
+  call SetTextTagText(tt, s, ( fontsize * 0.023 / 10))  // *0.023/10 creates the correct font size from given real
+  call SetTextTagPos(tt, posx, posy, 0)
+  call SetDebugTagColor(tt)
 endfunction
 
 function CreateDebugTagLoc takes string s, real fontsize, real posx, real posy, real lifespan, real fadespan returns nothing
@@ -3053,6 +3066,15 @@ endfunction
 //============================================================================
 //  (AMAI)    Chat function
 //============================================================================
+function QueueChat takes string text, player p, boolean important returns nothing
+  if (p == GetLocalPlayer() and chat_queue_size <= 100) then
+    set chat_queue_size = chat_queue_size + 1
+    set chat_queue[chat_queue_size] = text
+    set chat_queue_player[chat_queue_size] = p
+    set chat_queue_importance[chat_queue_size] = important
+  endif
+endfunction
+
 function DisplayChat takes boolean ally, boolean enemy, boolean obs, boolean important returns nothing
   local integer i = 0
   local integer std_rand = 0
@@ -3073,7 +3095,7 @@ function DisplayChat takes boolean ally, boolean enemy, boolean obs, boolean imp
         set rand = GetRandomInt(0, chat_list_length - 1)
       endloop
       call SetChatVarsPlayer(p)
-      call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)
+      call QueueChat(ApplyChatVars(chat_list[rand]), p, important)
     endif
     set i = i + 1
   endloop
@@ -3088,8 +3110,11 @@ function Chat takes integer c returns nothing
   endif
 
   if c == C_STRATEGY then
-    call DisplayToAlliesImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport() )
-    call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport() )
+    if IsPlayerAlly(ai_player,GetLocalPlayer()) or IsPlayerObserver(GetLocalPlayer()) and chatting then
+      call QueueChat(GetCurrentStrategyReport() + GetCurrentDynamicReport(), GetLocalPlayer(), true)
+    endif
+    //call DisplayToAlliesImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport() )
+    //call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport() )
   else
     if not (chatting or chat_important[c]) then
       return
@@ -7135,9 +7160,7 @@ function TQLoop takes nothing returns nothing
   local texttag t = null
   if debugging then
     set t = CreateTextTag()
-    call SetTextTagText(t, null, 0.1)
-    call SetTextTagPos(t, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300, 0)
-    call SetDebugTagColor(t)
+    call UpdateDebugTextTag(t, null, 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
     call SetTextTagPermanent(t, true)
   endif
   set tq_time[0] = 0
@@ -7150,7 +7173,7 @@ function TQLoop takes nothing returns nothing
     if tq_length > 0 then
       if not TQHandleOnce() then
         if debugging then
-          call SetTextTagText(t, Int2Str(tq_jid[1]), 0.1)
+          call UpdateDebugTextTag(t, Int2Str(tq_jid[1]), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
         endif
         set i = tq_time[1] - TimerGetElapsed(tq_timer) + 0.05
         if i > 0 then
