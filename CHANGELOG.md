@@ -100,6 +100,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) TQLoop add job Thread debug check ，now have a continuously displayed TextTag show JOB schedule , convenient to check where job has parked , this is more intuitive
 - Strength Dynamic Distribute , hlep AI change unit attack mode , eliminating the time required for build and immediately allowing existing units to cope with strength imbalance
    - Note: Original intention to control units that AI does not control , but use hard-coding
+- (sync)To reduce chat spam for players, chat messages from the AI are now rate limited to reduce screen spam especially in large player maps.
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
