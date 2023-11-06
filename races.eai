@@ -45,7 +45,6 @@ globals
 
     integer wave        = 1
     boolean peons_assigned = false
-    boolean take_all_ghouls_along = false
 
 
 endglobals
@@ -117,7 +116,7 @@ endfunction
 //	Initialization of racial units
 //============================================================================
 function initRacialUnits takes nothing returns nothing
-
+    local integer i = 0
 #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bpeon\b/
     set racial_peon = %1
 #ENDINCLUDE
@@ -185,6 +184,19 @@ function initRacialUnits takes nothing returns nothing
     set racial_militiahero = %1
 #ENDINCLUDE
 
+    loop
+      exitwhen i >= building_length
+      if not IsRacialHallId(building[i]) and needed3[building[i]] != UPGRADED and building[i] != racial_altar and building[i] != racial_shop and building[i] != racial_lumber then
+        if needed1[building[i]] == racial_hall[2] or needed2[building[i]] == racial_hall[2] or needed3[building[i]] == racial_hall[2] then
+          set racial_barracks2[racial_barracks2_total] = building[i]
+          set racial_barracks2_total = racial_barracks2_total + 1
+        elseif needed1[building[i]] == racial_hall[3] or needed2[building[i]] == racial_hall[3] or needed3[building[i]] == racial_hall[3] then
+          set racial_barracks3[racial_barracks3_total] = building[i]
+          set racial_barracks3_total = racial_barracks3_total + 1
+        endif
+      endif
+      set i = i + 1
+    endloop
 endfunction
 
 //============================================================================
@@ -771,6 +783,7 @@ function build_sequence_all takes nothing returns nothing
   local integer x = calculate_strat_timer()
   local integer counter_timer = R2I(RMin(I2R(calculate_strat_timer())/2,-60))
   local integer new_tier = 0
+  local integer i = 0
   local integer last_counter = -1
   local boolean set_counter = true
   local boolean reportStrategy = false
@@ -814,6 +827,10 @@ function build_sequence_all takes nothing returns nothing
       //call Trace("BUILD SEQUENCE: init_strategy")
       call init_strategy()
     endif
+    if debugging then
+      call UpdateDebugTextTag(debugstrattag, "Strat:" + GetCurrentStrategyName(), 18, GetLocationX(home_location) - 300, GetLocationY(home_location) - 300)
+      call SetTextTagPermanent(debugstrattag, true)
+    endif
 
     if (x > counter_timer and counter_timer < 0) or reset_counter then
       set chosen_counter = DetermineCounterForce()
@@ -827,11 +844,18 @@ function build_sequence_all takes nothing returns nothing
         set counter_timer = 2 // Once fired don't change again until strategy changes
       endif
     endif
+    if debugging then
+      call UpdateDebugTextTag(debugcountertag, "Counter:" + strengthtext[chosen_counter], 18, GetLocationX(home_location) - 600, GetLocationY(home_location) - 600)
+      call SetTextTagPermanent(debugcountertag, true)
+    endif
 
     if reportStrategy then
       set reportStrategy = false
-      call DisplayToAlliesImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
-      call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
+      if (IsPlayerObserver(GetLocalPlayer()) or IsPlayerAlly(GetLocalPlayer(), ai_player)) and chatting then
+        call QueueChat(GetCurrentStrategyReport() + GetCurrentDynamicReport(), GetLocalPlayer(), true)
+      endif
+      //call DisplayToAlliesImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
+      //call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
     endif
 
     set new_tier = GetTier()
@@ -839,8 +863,23 @@ function build_sequence_all takes nothing returns nothing
       set tier = new_tier
       //call Trace("BUILD SEQUENCE: initbuildarray2")
       call InitBuildArrayAM()
+      set racial_highlv_barracks = 0
     endif
-
+    if racial_highlv_barracks < 2 then  //If there is no high-level barracks, it is still necessary to build low-level units to transition
+      if tier == 2 then
+        loop
+          exitwhen i >= racial_barracks2_total
+          set racial_highlv_barracks = TownCountDone(racial_barracks2[i]) + racial_highlv_barracks
+          set i = i + 1
+        endloop
+      else
+        loop
+          exitwhen i >= racial_barracks3_total
+          set racial_highlv_barracks = TownCountDone(racial_barracks3[i]) + racial_highlv_barracks
+          set i = i + 1
+        endloop
+      endif
+    endif
     //call Trace("BUILD SEQUENCE: build_sequence")
     call Sleep(0.05)
     call build_sequence()
@@ -901,10 +940,20 @@ function main takes nothing returns nothing
   call removeNonBeginningStrats()
   call display_rp_strat()
   set chosen_counter = DetermineCounterForce()
+  if debugging then
+    //set debugcountertag = CreateTextTag()
+    call UpdateDebugTextTag(debugcountertag, "Counter:" + strengthtext[chosen_counter], 18, GetLocationX(home_location) - 600, GetLocationY(home_location) - 600)
+    call SetTextTagPermanent(debugcountertag, true)
+  endif
   set chosen_strategy = choose_strategy()
 
   set strategy = chosen_strategy
   call SetChatVar("Strategy", GetCurrentStrategyName())
+  if debugging then
+    //set debugstrattag = CreateTextTag()
+    call UpdateDebugTextTag(debugstrattag, "Strat:" + GetCurrentStrategyName(), 18, GetLocationX(home_location) - 300, GetLocationY(home_location) - 300)
+    call SetTextTagPermanent(debugstrattag, true)
+  endif
   call Trace("Strategy chosen")
   call AMAI_PickMeleeHero()
   // if race_towerrush_available then
