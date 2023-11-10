@@ -117,6 +117,7 @@ endfunction
 //============================================================================
 function initRacialUnits takes nothing returns nothing
     local integer i = 0
+    local integer lv = 0
 #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bpeon\b/
     set racial_peon = %1
 #ENDINCLUDE
@@ -186,13 +187,14 @@ function initRacialUnits takes nothing returns nothing
 
     loop
       exitwhen i >= building_length
-      if not IsRacialHallId(building[i],3) and needed3[building[i]] != UPGRADED and building[i] != racial_altar and building[i] != racial_shop and building[i] != racial_lumber then
-        if needed1[building[i]] == racial_hall[2] or needed2[building[i]] == racial_hall[2] or needed3[building[i]] == racial_hall[2] then
-          set racial_barracks2[racial_barracks2_length] = building[i]
-          set racial_barracks2_length = racial_barracks2_length + 1
-        elseif needed1[building[i]] == racial_hall[3] or needed2[building[i]] == racial_hall[3] or needed3[building[i]] == racial_hall[3] then
-          set racial_barracks3[racial_barracks3_length] = building[i]
-          set racial_barracks3_length = racial_barracks3_length + 1
+      set lv = GetRacialBuildHallLV(building[i])
+      if needed3[building[i]] != UPGRADED and lv > 1 and not IsRacialHallId(building[i],3) then
+        if lv == 2 then
+          set racial_highbuild_lv2[racial_highbuild_lv2_length] = building[i]
+          set racial_highbuild_lv2_length = racial_highbuild_lv2_length + 1
+        elseif lv == 3 then
+          set racial_highbuild_lv3[racial_highbuild_lv3_length] = building[i]
+          set racial_highbuild_lv3_length = racial_highbuild_lv3_length + 1
         endif
       endif
       set i = i + 1
@@ -724,11 +726,11 @@ function peon_assignment takes nothing returns nothing
       if FoodSpace() <= 0 and TownCount(racial_peon) == TownCountDone(racial_peon) and TownCount(racial_peon) <= 4 then  // Scenario A
         call HarvestGold(0, 2)  // no foodspace , no peon , need one harvest mine peon build Farms
         call HarvestWood(0, TownCountDone(racial_peon) - 2)  //seize a seat
-        call HarvestGold(0, ver_optimal_gold)                //seize a seat
+        call HarvestGold(0, ver_optimal_gold-2)              //seize a seat
       elseif not hero_built[1] and TownCount(racial_peon) < 8 then  // Scenario B , game just started
         call HarvestGold(0, 3)  // need more wisp HarvestWood , avoidance no wood cannot build and AI stop construction
         call HarvestWood(0, TownCountDone(racial_peon) - 3)  //seize a seat
-        call HarvestGold(0, ver_optimal_gold)                //seize a seat
+        call HarvestGold(0, ver_optimal_gold-3)              //seize a seat
       else  //Scenario C
         call HarvestGold(0, ver_optimal_gold)
       endif
@@ -862,24 +864,29 @@ function build_sequence_all takes nothing returns nothing
       set tier = new_tier
       //call Trace("BUILD SEQUENCE: initbuildarray2")
       call InitBuildArrayAM()
-      set racial_barracks2_total = 0
-      set racial_barracks3_total = 0
+      if tier > 1 then
+        set racial_highbuild_lv2_total = 0
+        set racial_highbuild_lv3_total = 0
+      endif
     endif
 
     //If no high-level barracks, it is still necessary to build low-level units to transition
-    if racial_barracks2_total < 2 then
-      loop
-        exitwhen i >= racial_barracks2_length
-        set racial_barracks2_total = TownCountDone(racial_barracks2[i]) + racial_barracks2_total
-        set i = i + 1
-      endloop
-    endif
-    if racial_barracks3_total < 2 then
-      loop
-        exitwhen i >= racial_barracks3_length
-        set racial_barracks3_total = TownCountDone(racial_barracks3[i]) + racial_barracks3_total
-        set i = i + 1
-      endloop
+    if tier > 1 then
+      if racial_highbuild_lv2_total < 2 then
+        loop
+          exitwhen i >= racial_highbuild_lv2_length
+          set racial_highbuild_lv2_total = TownCountDone(racial_highbuild_lv2[i]) + racial_highbuild_lv2_total
+          set i = i + 1
+        endloop
+        set i = 0
+      endif
+      if racial_highbuild_lv3_total < 2 then
+        loop
+          exitwhen i >= racial_highbuild_lv3_length
+          set racial_highbuild_lv3_total = TownCountDone(racial_highbuild_lv3[i]) + racial_highbuild_lv3_total
+          set i = i + 1
+        endloop
+      endif
     endif
     //call Trace("BUILD SEQUENCE: build_sequence")
     call Sleep(0.05)

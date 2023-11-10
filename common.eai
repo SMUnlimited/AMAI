@@ -509,12 +509,12 @@ globals
     integer racial_lumber = 0
     integer racial_rushcreep = 0
     unit rushcreep_target = null
-    integer array racial_barracks2  // tier2
-    integer racial_barracks2_length = 0
-    integer racial_barracks2_total = 2
-    integer array racial_barracks3  // tier3
-    integer racial_barracks3_length = 0
-    integer racial_barracks3_total = 2
+    integer array racial_highbuild_lv2  // tier2
+    integer racial_highbuild_lv2_length = 0
+    integer racial_highbuild_lv2_total = 2
+    integer array racial_highbuild_lv3  // tier3
+    integer racial_highbuild_lv3_length = 0
+    integer racial_highbuild_lv3_total = 2
     integer neutral_shredder = 0
     integer neutral_zeppelin = 0
     integer tp_item = 0
@@ -3076,9 +3076,8 @@ function QueueChat takes string text, player p, boolean important returns nothin
     set chat_queue_importance[chat_queue_size] = important
     if chat_queue_size > 5 then
       // Remove oldest message
-      set i = 0
       loop
-        exitwhen i == chat_queue_size
+        exitwhen i >= chat_queue_size
         set chat_queue[i] = chat_queue[i+1]
         set chat_queue_player[i] = chat_queue_player[i+1]
         set chat_queue_importance[i] = chat_queue_importance[i+1]
@@ -6470,6 +6469,21 @@ function IsRacialHallId takes integer id, integer min_tier returns boolean
 endfunction
 
 //============================================================================
+function GetRacialBuildHallLV takes integer id returns integer
+  local integer i = 1
+  if id != 0 then
+    loop
+      exitwhen i > tiernum
+      if racial_hall[i] != 0 and (needed1[id] == racial_hall[i] or needed2[id] == racial_hall[i] or needed3[id] == racial_hall[i]) then
+        return i
+      endif
+      set i = i + 1
+    endloop
+  endif
+  return 1  // hall , tower , farm , altar , shop , expansion , lumber , goldmine , UPGRADED
+endfunction
+
+//============================================================================
 function ChooseExpansion takes nothing returns nothing
   local integer i = 0
   local integer exp_chosen = 0
@@ -6865,15 +6879,17 @@ endfunction
 //============================================================================
 function GetItemHero takes item it returns unit
   local integer i = 1
-  loop
-    exitwhen i > 3 or it == null
-    if hero_built[i] and UnitAlive(hero_unit[i]) then
-      if UnitHasItem(hero_unit[i], it) then
-        return hero_unit[i]
+  if it != null then
+    loop
+      exitwhen i > 3
+      if hero_built[i] and UnitAlive(hero_unit[i]) then
+        if UnitHasItem(hero_unit[i], it) then
+          return hero_unit[i]
+        endif
       endif
-    endif
-    set i = i + 1
-  endloop
+      set i = i + 1
+    endloop
+  endif
   return null
 endfunction
 
@@ -9472,36 +9488,45 @@ endfunction
 
 // Change unit attack mode , eliminating the time required for build and immediately allowing existing units to cope with strength imbalance
 // Original intention to control units that AI does not control , but use hard-coding
-function ExecuteDistribute takes group g, integer order, boolean unitbuff returns nothing
+function ExecuteAirDistribute takes group sg, boolean anti returns nothing
   local integer i = GetRandomInt(0, Max(GetUnitCountDone('ugar'),GetUnitCountDone('edot')))
   local integer c = 0  // Allow random retention strength and accelerate cycle
   local integer id = 0
+  local integer order = 852155
   local unit u = null
+  local group g = null
+  if anti == false then
+    set order = 852156
+  endif
+  set g = CopyGroup(sg,g)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or i == c
     set id = GetUnitTypeId(u)
-    if id == 'edot' then
+    if id == 'edot' or id == 'edtm' then
       call IssueImmediateOrderById( u, order)
       set c = c + 1
-    elseif id == 'ugar' and GetUnitAbilityLevel(u, 'Aatp') > 0 and (GetUnitAbilityLevel(u, 'Batp') == 0) == unitbuff then
-      call IssueImmediateOrderById( u, 852677)
+    elseif id == 'ugar' and GetUnitAbilityLevel(u, 'Aatp') <= 0 and (GetUnitAbilityLevel(u, 'Batp') == 0) == anti then
+      call IssueImmediateOrderById( u, 852677)  // check Ability Level , prevent war3 is old ver or map is ROC
       set c = c + 1
     endif
     call GroupRemoveUnit(g, u)
   endloop
+  call DestroyGroup(g)
+  set g = null
   set u = null
 endfunction
 
 function StrengthDynamicDistribute takes nothing returns nothing
   local group g = CreateGroup()
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)  // only unit
+  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
   set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
-  if dydistribute_air then  // now just have air , If possible , please add
-    call ExecuteDistribute(g,852155,true)
-  else
-    call ExecuteDistribute(g,852156,false)
+  set g = SelectByUnitStandard(g,true)
+  if TownCountDone(DRUID_TALON) > 0 or TownCountDone(GARGOYLE) > 0 then
+    call ExecuteAirDistribute(g,dydistribute_air)  // now just have air , If possible , please add , one strength one function
   endif
   call DestroyGroup(g)
   set g = null
