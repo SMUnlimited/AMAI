@@ -3307,7 +3307,7 @@ function GetTeleportLandPoint takes location l returns location
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null  //Find a enemy unit , land to unit loc , prevent army land to hall , cannot expand
-    if not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitInvisible(u, ai_player) and IsPlayerEnemy(ai_player,GetOwningPlayer(u)) and not IsUnitHidden(u) then
+    if UnitAlive(u) and not IsUnitHidden(u) and IsPlayerEnemy(ai_player,GetOwningPlayer(u)) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitInvisible(u, ai_player) then
       set teleportloc = GetUnitLoc(u)
       call DestroyGroup(g)
       set g = null
@@ -3457,9 +3457,7 @@ endfunction
 // (AMAI)	CopyGroup
 //==========================================================================
 function CopyGroup takes group sg , group copyg returns group
-  if copyg == null then
-    set copyg = CreateGroup()
-  endif
+  set copyg = CreateGroup()
   if FirstOfGroup(sg) != null then
     call BlzGroupAddGroupFast(sg,copyg)
   endif
@@ -4061,12 +4059,10 @@ endfunction
 function GetOneOfId takes unit u, player p, integer id returns unit
   local group g = CreateGroup()
   call GroupEnumUnitsOfPlayer(g, p, null)
-  set g = SelectByHidden(g, false)
-  set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitTypeId(u) == id then
+    if UnitAlive(u) and not IsUnitHidden(u) and GetUnitTypeId(u) == id then
       call DestroyGroup(g)
       set g = null
       return u
@@ -4084,13 +4080,10 @@ endfunction
 function GetOneOfIdNearLoc takes unit u, player p, integer id, location l, real dist returns unit
   local group g = CreateGroup()
   call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
-  set g = SelectByPlayer(g, p, true)
-  set g = SelectByHidden(g, false)
-  set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitTypeId(u) == id then
+    if UnitAlive(u) and not IsUnitHidden(u) and GetOwningPlayer(u) == p and GetUnitTypeId(u) == id then
       call DestroyGroup(g)
       set g = null
       return u
@@ -4674,7 +4667,7 @@ function GetUnitToBuy takes unit ru, unit buy_place returns unit
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) and IsUnitType(u, UNIT_TYPE_STRUCTURE) == false and IsUnitType(u, UNIT_TYPE_PEON) == false and IsUnitType(u, UNIT_TYPE_SUMMONED) == false and not IsUnitIllusion(u) and not IsUnitBuying(u) and IsStandardUnit(u) then
+    if GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_SUMMONED) and not IsUnitIllusion(u) and not IsUnitBuying(u) and IsStandardUnit(u) then
       set newdistance = DistanceBetweenUnits(buy_place, u)
       if newdistance < distance then
         set distance = newdistance
@@ -4786,7 +4779,7 @@ function GetUnitHero takes unit u returns unit
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and IsUnitType(u, UNIT_TYPE_STRUCTURE) == false and IsUnitType(u, UNIT_TYPE_PEON) == false and IsStandardUnit(u) then
+    if UnitAlive(u) and not IsUnitHidden(u) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and IsStandardUnit(u) then
       call DestroyGroup(g)
       set g = null
       return u
@@ -4804,7 +4797,7 @@ function GetUnitHeroReplacement takes unit u , location l returns unit
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and GetOwningPlayer(u) == ai_player and IsUnitType(u, UNIT_TYPE_STRUCTURE) == false and IsUnitType(u, UNIT_TYPE_PEON) == false and IsStandardUnit(u) then
+    if UnitAlive(u) and not IsUnitHidden(u) and GetOwningPlayer(u) == ai_player and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and IsStandardUnit(u) then
       call DestroyGroup(g)
       set g = null
       return u
@@ -5259,7 +5252,7 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
     set u = FirstOfGroup(g)
     exitwhen u == null
     set p = GetOwningPlayer(u)
-    if UnitAlive(u) and not IsUnitHidden(u) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerEnemy(ai_player, p) and IsUnitType(u,UNIT_TYPE_STRUCTURE) == false and IsUnitType(u,UNIT_TYPE_PEON) == false and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
+    if UnitAlive(u) and not IsUnitHidden(u) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerEnemy(ai_player, p) and not IsUnitType(u,UNIT_TYPE_STRUCTURE) and not IsUnitType(u,UNIT_TYPE_PEON) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
       set strength = GetUnitStrength(u)
       set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
@@ -5304,7 +5297,7 @@ endfunction
 
 //============================================================================
 function IsUnitTower takes unit u returns boolean
-  if IsUnitType(u, UNIT_TYPE_STRUCTURE) == true and IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) == true and not IsUnitHidden(u) then
+  if IsUnitType(u, UNIT_TYPE_STRUCTURE) and IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) then
     return true
   endif
   return false
@@ -5340,7 +5333,7 @@ function GetLocationStrength takes real x, real y, real radius returns real
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and IsUnitType(u,UNIT_TYPE_PEON) == false and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
+    if UnitAlive(u) and not IsUnitHidden(u) and not IsUnitType(u,UNIT_TYPE_PEON) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
       set strength = GetUnitStrength(u)
       set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
@@ -6307,8 +6300,8 @@ function CheckExpansionRebuild takes nothing returns boolean
   local group g = CreateGroup()
   local unit u = null
   call GroupEnumUnitsInRange(g, GetUnitX(current_expansion), GetUnitY(current_expansion), expansion_taken_radius, null)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  //set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)  // no need the Select
+  //set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)  // no need the Select
+  //set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
 
   if FirstOfGroup(g) != null then
     loop
@@ -9462,7 +9455,7 @@ function ExecuteAirDistribute takes group sg, boolean anti returns nothing
     if id == 'edot' or id == 'edtm' then
       call IssueImmediateOrderById( u, order)
       set c = c + 1
-    elseif id == 'ugar' and GetUnitAbilityLevel(u, 'Aatp') <= 0 and (GetUnitAbilityLevel(u, 'Batp') == 0) == anti then
+    elseif id == 'ugar' and GetUnitAbilityLevel(u, 'Aatp') > 0 and (GetUnitAbilityLevel(u, 'Batp') == 0) == anti then
       call IssueImmediateOrderById( u, 852677)  // check Ability Level , prevent war3 is old ver or map is ROC
       set c = c + 1
     endif
