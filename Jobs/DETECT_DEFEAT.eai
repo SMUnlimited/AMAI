@@ -66,29 +66,46 @@ function KillYourself takes boolean end_ai returns nothing
     local group g = null
     local unit u = null
     local integer i = 0
+    local player p = null
     if SaveYourself() then
       return
     endif
-    if not player_defeated then
+    if not player_defeated and not (GetPlayerSlotState(ai_player) == PLAYER_SLOT_STATE_LEFT) then
       call Chat(C_AGG)
       call Chat(C_EGG)
       call Sleep(3)
       set g = CreateGroup()
       call GroupEnumUnitsOfPlayer(g, ai_player, null)
-      if destroy_buildings_on_defeat then
+      if destroy_buildings_on_defeat and no_ai_ally then
         loop
           set u = FirstOfGroup(g)
           exitwhen u == null
           call KillUnit(u)
           call GroupRemoveUnit(g, u )
         endloop
+        set player_defeated = true
       else
         loop
-          set u = FirstOfGroup(g)
-          exitwhen u == null
-          call SetUnitOwner(u, Player(PLAYER_NEUTRAL_PASSIVE), true)
-          call GroupRemoveUnit(g, u )
+          exitwhen i >= c_ally_total
+          set p = ally_force[i]
+          if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
+            call SetPlayerAlliance(ai_player, p, ALLIANCE_HELP_REQUEST,  true)
+            call SetPlayerAlliance(ai_player, p, ALLIANCE_HELP_RESPONSE, true)
+            call SetPlayerAlliance(ai_player, p, ALLIANCE_SHARED_XP,     true)
+            call SetPlayerAlliance(ai_player, p, ALLIANCE_SHARED_SPELLS, true)
+            call SetPlayerAlliance(ai_player, p, ALLIANCE_SHARED_VISION, true)
+            call SetPlayerAlliance(ai_player, p, ALLIANCE_SHARED_CONTROL, true)
+            call SetPlayerAlliance(ai_player, p, ALLIANCE_SHARED_ADVANCED_CONTROL, true)
+          endif
+          set i = i + 1
         endloop
+        call RemovePlayer(ai_player, PLAYER_GAME_RESULT_DEFEAT)
+        //loop
+        //  set u = FirstOfGroup(g)
+        //  exitwhen u == null
+        //  call SetUnitOwner(u, Player(PLAYER_NEUTRAL_PASSIVE), true)
+        //  call GroupRemoveUnit(g, u )
+        //endloop
       endif
       call DestroyGroup(g)
       set g = null
@@ -99,10 +116,9 @@ function KillYourself takes boolean end_ai returns nothing
         call ExchangeOnce()
       endif
       if not destroy_buildings_on_defeat then
-        call SetPlayerAlliance(ai_player, Player(PLAYER_NEUTRAL_AGGRESSIVE), ALLIANCE_PASSIVE, true)  // trigger the victory/defeat recognition triggers
-        call SetPlayerAlliance(ai_player, Player(PLAYER_NEUTRAL_AGGRESSIVE), ALLIANCE_PASSIVE, false)
+        //call SetPlayerAlliance(ai_player, Player(PLAYER_NEUTRAL_AGGRESSIVE), ALLIANCE_PASSIVE, true)  // trigger the victory/defeat recognition triggers
+        //call SetPlayerAlliance(ai_player, Player(PLAYER_NEUTRAL_AGGRESSIVE), ALLIANCE_PASSIVE, false)
       endif
-      set player_defeated = true
     endif
 //    if end_ai then
 //      call PauseCompAI(ai_player,true)
