@@ -3039,7 +3039,7 @@ function QueueChat takes string text, player p, boolean important returns nothin
             // Remove oldest message
             set i = 0
             loop
-              exitwhen i == chat_queue_size
+              exitwhen i >= chat_queue_size
               set chat_queue[i] = chat_queue[i+1]
               set chat_queue_player[i] = chat_queue_player[i+1]
               set chat_queue_importance[i] = chat_queue_importance[i+1]
@@ -3050,7 +3050,7 @@ function QueueChat takes string text, player p, boolean important returns nothin
     endif
 endfunction
 
-function DisplayChat takes boolean ally, boolean enemy, boolean obs, boolean important returns nothing
+function DisplayChat takes boolean ally, boolean enemy, boolean obs, boolean important, boolean immediate returns nothing
   local integer i = 0
   local integer std_rand = 0
   local integer rand = 0
@@ -3070,7 +3070,11 @@ function DisplayChat takes boolean ally, boolean enemy, boolean obs, boolean imp
         set rand = GetRandomInt(0, chat_list_length - 1)
       endloop
       call SetChatVarsPlayer(p)
-      call QueueChat(ApplyChatVars(chat_list[rand]), p, important)
+      if immediate then
+        call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)
+      else
+        call QueueChat(ApplyChatVars(chat_list[rand]), p, important)
+      endif
     endif
     set i = i + 1
   endloop
@@ -3080,6 +3084,7 @@ endfunction
 //============================================================================
 function Chat takes integer c returns nothing
   local real chance = 0
+  local boolean immediate = false
   if campaign_ai then
     return
   endif
@@ -3103,8 +3108,11 @@ function Chat takes integer c returns nothing
     else
       return
     endif
+    if c == C_AGG or c == C_EGG then
+      set immediate = true
+    endif  
     if chance >= GetRandomReal(0.00,100.00) then
-      call DisplayChat(chat_target_ally[c], chat_target_enemy[c], chat_target_obs[c], chat_important[c])
+      call DisplayChat(chat_target_ally[c], chat_target_enemy[c], chat_target_obs[c], chat_important[c], immediate)
     endif
   endif
 endfunction
