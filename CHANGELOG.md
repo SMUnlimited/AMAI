@@ -36,7 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Shredders now replace 10 peons (instead of 8)
 - Improvements to worker logic at game start. (jzy-chitong56)
 - To reduce chat spam for players, chat messages from the AI are now rate limited to reduce screen spam especially in large player maps.
-- Team games ai's that are defeated will no longer destroy its base and will share control with its human allies.
+- Team games ai's that are defeated will no longer destroy its base or do a desperation attack and instead will share control with its human allies.
   - When there is no human allies and two AI shares the same race it will give its units to that AI.
 
 ### Removed
