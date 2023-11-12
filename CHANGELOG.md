@@ -37,6 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Improvements to worker logic at game start. (jzy-chitong56)
 - To reduce chat spam for players, chat messages from the AI are now rate limited to reduce screen spam especially in large player maps.
 - Team games ai's that are defeated will no longer destroy its base and will share control with its human allies.
+  - When there is no human allies and two AI shares the same race it will give its units to that AI.
 
 ### Removed
 - (DevTools) Old non-working installer has now been removed now we have new version in place.

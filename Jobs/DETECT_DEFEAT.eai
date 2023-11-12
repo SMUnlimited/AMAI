@@ -67,6 +67,8 @@ function KillYourself takes boolean end_ai returns nothing
     local unit u = null
     local integer i = 0
     local player p = null
+    local player sharedRacePlayer = null
+    local boolean humanPlayers = false
     if SaveYourself() then
       return
     endif
@@ -96,29 +98,37 @@ function KillYourself takes boolean end_ai returns nothing
             call SetPlayerAlliance(ai_player, p, ALLIANCE_SHARED_VISION, true)
             call SetPlayerAlliance(ai_player, p, ALLIANCE_SHARED_CONTROL, true)
             call SetPlayerAlliance(ai_player, p, ALLIANCE_SHARED_ADVANCED_CONTROL, true)
+            if GetPlayerController(p) == MAP_CONTROL_USER then
+              set humanPlayers = true
+            endif
+            if (GetPlayerRace(ai_player) == GetPlayerRace(p) and GetPlayerController(p) != MAP_CONTROL_USER) then
+              set sharedRacePlayer = p
+            endif
           endif
           set i = i + 1
         endloop
+        if not no_ai_ally then
+          set wood_exchange_level = 0
+          set gold_exchange_level = 0
+          call RemoveFromOwnForce(ai_player)
+          call ExchangeOnce()
+        endif
+        if not humanPlayers and sharedRacePlayer != null then
+          loop
+            set u = FirstOfGroup(g)
+            exitwhen u == null
+            call SetUnitOwner(u, sharedRacePlayer, true)
+            call GroupRemoveUnit(g, u )
+          endloop
+        endif
         call RemovePlayer(ai_player, PLAYER_GAME_RESULT_DEFEAT)
-        //loop
-        //  set u = FirstOfGroup(g)
-        //  exitwhen u == null
-        //  call SetUnitOwner(u, Player(PLAYER_NEUTRAL_PASSIVE), true)
-        //  call GroupRemoveUnit(g, u )
-        //endloop
       endif
       call DestroyGroup(g)
       set g = null
-      if not no_ai_ally then
-        set wood_exchange_level = 0
-        set gold_exchange_level = 0
-        call RemoveFromOwnForce(ai_player)
-        call ExchangeOnce()
-      endif
-      if not destroy_buildings_on_defeat then
+      //if not destroy_buildings_on_defeat then
         //call SetPlayerAlliance(ai_player, Player(PLAYER_NEUTRAL_AGGRESSIVE), ALLIANCE_PASSIVE, true)  // trigger the victory/defeat recognition triggers
         //call SetPlayerAlliance(ai_player, Player(PLAYER_NEUTRAL_AGGRESSIVE), ALLIANCE_PASSIVE, false)
-      endif
+      //endif
     endif
 //    if end_ai then
 //      call PauseCompAI(ai_player,true)
