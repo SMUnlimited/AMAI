@@ -78,6 +78,7 @@ function KillYourself takes boolean end_ai returns nothing
       call Sleep(3)
       set g = CreateGroup()
       call GroupEnumUnitsOfPlayer(g, ai_player, null)
+      set g = SelectByAlive(g, true)
       if destroy_buildings_on_defeat and (no_ai_ally and not humanPlayerAllys) then
         loop
           set u = FirstOfGroup(g)
@@ -85,7 +86,6 @@ function KillYourself takes boolean end_ai returns nothing
           call KillUnit(u)
           call GroupRemoveUnit(g, u )
         endloop
-        set player_defeated = true
       else
         loop
           exitwhen i >= c_ally_total
@@ -97,7 +97,7 @@ function KillYourself takes boolean end_ai returns nothing
             call SetPlayerAlliance(ai_player, p, ALLIANCE_SHARED_SPELLS, true)
             call SetPlayerAlliance(ai_player, p, ALLIANCE_SHARED_VISION, true)
             call SetPlayerAlliance(ai_player, p, ALLIANCE_SHARED_CONTROL, true)
-          call SetPlayerAlliance(ai_player, p, ALLIANCE_SHARED_ADVANCED_CONTROL, true)
+            call SetPlayerAlliance(ai_player, p, ALLIANCE_SHARED_ADVANCED_CONTROL, true)
           endif
           set i = i + 1
         endloop
@@ -111,13 +111,18 @@ function KillYourself takes boolean end_ai returns nothing
           loop
             set u = FirstOfGroup(g)
             exitwhen u == null
-            call SetUnitOwner(u, sharedRacePlayer, true)
+            if not IsUnitHidden(u) then
+              call SetUnitOwner(u, sharedRacePlayer, true)
+            else
+              call KillUnit(u)
+            endif
             call GroupRemoveUnit(g, u )
           endloop
         endif
         call RemovePlayer(ai_player, PLAYER_GAME_RESULT_DEFEAT)
-        set player_defeated = true
+        set p = null
       endif
+      set player_defeated = true
       call DestroyGroup(g)
       set g = null
       //if not destroy_buildings_on_defeat then
@@ -131,26 +136,26 @@ function KillYourself takes boolean end_ai returns nothing
 endfunction
 
 function Defeated takes nothing returns nothing
-    if not (no_ai_ally and not humanPlayerAllys) then
-      call Chat(C_Goldproblem)
-      if ask_for_gold == false then
-        set ask_for_gold = true
-        return
-      elseif GetGold() >= gold_problem_level then
-        set ask_for_gold = false
-        call Chat(C_Thanks)
-        set desperation_assault = false
-        return
-      endif
+  if not (no_ai_ally and not humanPlayerAllys) then
+    call Chat(C_Goldproblem)
+    if ask_for_gold == false then
+      set ask_for_gold = true
+      return
+    elseif GetGold() >= gold_problem_level then
+      set ask_for_gold = false
+      call Chat(C_Thanks)
+      set desperation_assault = false
+      return
     endif
-    if (p_surrender[profile]) >= 3 and FoodUsed() < 15 and not (no_ai_ally and not humanPlayerAllys) then
-      call KillYourself(no_ai_ally) // If no resources, and easily surrender just give up
-    else
-      if SaveYourself() then
-        return
-      endif
-      set desperation_assault = true
+  endif
+  if (p_surrender[profile]) >= 3 and FoodUsed() < 15 and not (no_ai_ally and not humanPlayerAllys) then
+    call KillYourself(no_ai_ally) // If no resources, and easily surrender just give up
+  else
+    if SaveYourself() then
+      return
     endif
+    set desperation_assault = true
+  endif
 endfunction
 
 function CheckDefeated takes nothing returns nothing
@@ -322,5 +327,6 @@ function DetectDefeatJob takes nothing returns nothing
   if not player_defeated then
     call TQAddJob(13 * sleep_multiplier, DETECT_DEFEAT, 0)
   endif
+  set p = null
 endfunction
 #ENDIF
