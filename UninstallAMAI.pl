@@ -15,7 +15,7 @@ sub process_dir {
 			print "Installing AMAI to dir $dirname\\$filename\n";
 			process_dir ("$dirname\\$filename", $commander);
 		} elsif ($filename =~ m/\.w3m$/ || $filename =~ m/\.w3x$/ ) {
-			print "UnInstalling AMAI and Commander and Icon to $dirname/$filename\n";
+			print "UnInstalling AMAI and Commander to $dirname/$filename\n";
 			system "MPQEditor htsize \"$dirname/$filename\" 64";
 
 			system "MPQEditor d \"$dirname/$filename\" Scripts\\common.ai";
