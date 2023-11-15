@@ -97,6 +97,7 @@ sub process_dir {
 			system "MPQEditor d \"$dirname/$filename\" UI\\MiniMap\\AMAI_MiniMap-WaypointMarker.mdx";
 
 			system "MPQEditor d \"$dirname/$filename\" war3map.imp";
+   			system "MPQEditor d \"$dirname/$filename\" war3map.w3t";
 			system "MPQEditor d \"$dirname/$filename\" war3mapSkin.w3t";
 
 			system "MPQEditor f \"$dirname/$filename\""
