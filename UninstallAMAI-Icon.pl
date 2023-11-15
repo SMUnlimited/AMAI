@@ -12,11 +12,11 @@ sub process_dir {
 	while ($filename = readdir($DIR)) {
 		next if $filename eq "." || $filename eq "..";
 		if ((-d "$dirname/$filename") ) {
-			print "Installing AMAI to dir $dirname\\$filename\n";
+			print "Uninstalling AMAI and Commander and Icon to dir $dirname\\$filename\n";
 			process_dir ("$dirname\\$filename", $commander);
 		} elsif ($filename =~ m/\.w3m$/ || $filename =~ m/\.w3x$/ ) {
-			print "UnInstalling AMAI and Commander and Icon to $dirname/$filename\n";
-			system "MPQEditor htsize \"$dirname/$filename\" 64";
+			print "Uninstalling AMAI and Commander and Icon to $dirname/$filename\n";
+			system "MPQEditor htsize \"$dirname/$filename\" 128";
 
 			system "MPQEditor d \"$dirname/$filename\" Scripts\\common.ai";
 			system "MPQEditor d \"$dirname/$filename\" Scripts\\elf.ai";
