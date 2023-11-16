@@ -53,9 +53,9 @@ function CheckShredderLoc takes nothing returns nothing
         set g = SelectByHidden(g, false)
         set shredderbuild = BlzGroupGetSize(g) < 5
       endif
+      call RemoveLocation(loc)
+      set loc = null
     endif
-    call RemoveLocation(loc)
-    set loc = null
   endif
   call DestroyGroup(g)
   set g = null
@@ -75,8 +75,8 @@ function CheckRallyPoint takes location loc, real range returns nothing
   set g = CreateGroup()
   call GroupEnumUnitsInRangeOfLoc(g, home_location, range, null)  // ohter town no need set
   set g = SelectByPlayer(g, ai_player, true)
-  set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, false)  //avoid peon go to rallypoint
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, false)  //avoid peon go to rallypoint
   set g = SelectByAlive(g, true)
   set g = SelectByHidden(g, false)
   call GroupPointOrderLoc(g, "setrally",loc)
@@ -85,18 +85,20 @@ function CheckRallyPoint takes location loc, real range returns nothing
 endfunction
 
 function StructureControlJob takes nothing returns nothing
-  call DisplayToAllJobDebug("STRUCTURE_CONTROL JOB START")
-  call CheckRallyPoint(rally_point,1600)
-  call CheckRallyPoint(home_location,1100)  //avoid being blocked by front_loc build
-  if racial_lumber == 0 or race_no_wood_harvest then  //help fix ELF build blocking
-    set homebuild = CheckBuildLoc(home_location,800,5)
-    set minebuild = CheckBuildLoc(mine_loc,700,4)
-    if TownCountDone(neutral_shredder) > 0 then
-      call CheckShredderLoc()  // harvest wood will have new loc can build
+  if not town_threatened then
+    call DisplayToAllJobDebug("STRUCTURE_CONTROL JOB START")
+    call CheckRallyPoint(rally_point,1600)
+    call CheckRallyPoint(home_location,1100)  //avoid being blocked by front_loc build
+    if racial_lumber == 0 or race_no_wood_harvest then  //help fix ELF build blocking
+      set homebuild = CheckBuildLoc(home_location,800,5)
+      set minebuild = CheckBuildLoc(mine_loc,700,4)
+      if TownCountDone(neutral_shredder) > 0 then
+        call CheckShredderLoc()  // harvest wood will have new loc can build
+      endif
     endif
-  endif
-  if TownCountDone(BURROW) > 0 and not town_threatened then
-    call CheckBurrow(old_id[BURROW])
+    if TownCountDone(BURROW) > 0 then
+      call CheckBurrow(old_id[BURROW])
+    endif
   endif
   if not pathing_done then
     call TQAddJob(sleep_multiplier * 5, STRUCTURE_CONTROL, 0)
