@@ -28,7 +28,7 @@ sub process_dir {
         system "MPQEditor a \"$dirname/$filename\" Icons\\CommandButtons\\*.dds ReplaceableTextures\\CommandButtons";
         system "MPQEditor a \"$dirname/$filename\" Icons\\CommandButtonsDisabled\\*.dds ReplaceableTextures\\CommandButtonsDisabled";
         system "MPQEditor a \"$dirname/$filename\" Icons\\war3map.imp war3map.imp";
-        system "MPQEditor a \"$dirname/$filename\" Icons\\war3mapSkin.w3t war3mapSkin.w3t";
+        system "MPQEditor a \"$dirname/$filename\" Icons\\war3map.w3t war3map.w3t";
       }
 			system "MPQEditor f \"$dirname/$filename\""
 		}
