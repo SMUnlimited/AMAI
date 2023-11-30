@@ -33,9 +33,9 @@ pjass ROC\common.j Scripts\ROC\common.ai Scripts\ROC\undead.ai
 jassparser ROC\common.j Scripts\ROC\common.ai Scripts\ROC\undead.ai
 ECHO _____________________________
 ECHO creating \Scripts\Blizzard.j VSAI Flag set to %VSAI%
-perl SplitBlizzardJ.pl
-if %VSAI% == 1 perl ejass.pl Blizzard3VAI.eai ROC VER:ROC > Blizzard3Gen.j
-if %VSAI% == 0 perl ejass.pl Blizzard3.eai ROC VER:ROC > Blizzard3Gen.j
+perl SplitBlizzardJ.pl ROC
+if %VSAI% == 1 perl ejass.pl Blizzard3VAI.eai ROC VER:ROC > ROC\tmp\Blizzard3Gen.j
+if %VSAI% == 0 perl ejass.pl Blizzard3.eai ROC VER:ROC > ROC\tmp\Blizzard3Gen.j
 perl ejass.pl Blizzard.eai ROC VER:ROC > Scripts\Blizzard.j
 ECHO \Scripts\Blizzard.j created
 pjass ROC\common.j Scripts\Blizzard.j
