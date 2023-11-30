@@ -34,9 +34,9 @@ pjass TFT\common.j Scripts\TFT\common.ai Scripts\TFT\undead.ai
 jassparser TFT\common.j Scripts\TFT\common.ai Scripts\TFT\undead.ai
 ECHO _____________________________
 ECHO creating \Scripts\Blizzard.j VSAI Flag set to %VSAI%
-perl SplitBlizzardJ.pl
-if %VSAI% == 1 perl ejass.pl Blizzard3VAI.eai TFT VER:TFT > Blizzard3Gen.j
-if %VSAI% == 0 perl ejass.pl Blizzard3.eai TFT VER:TFT > Blizzard3Gen.j
+perl SplitBlizzardJ.pl TFT
+if %VSAI% == 1 perl ejass.pl Blizzard3VAI.eai TFT VER:TFT > TFT\tmp\Blizzard3Gen.j
+if %VSAI% == 0 perl ejass.pl Blizzard3.eai TFT VER:TFT > TFT\tmp\Blizzard3Gen.j
 perl ejass.pl Blizzard.eai TFT VER:TFT > Scripts\Blizzard.j
 ECHO \Scripts\Blizzard.j created
 pjass TFT\common.j Scripts\Blizzard.j
