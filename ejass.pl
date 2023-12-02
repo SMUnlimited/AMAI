@@ -61,7 +61,7 @@ $file[$level]{"else"} = "";
 $file[$level]{"now"} = "then";
 $file[$level]{"skip"} = "";
 
-open(INFILE, $ARGV[0]) or die "File <$ARGV[0]> not found!";
+open(INFILE, $ARGV[0]) or die "WARN File <$ARGV[0]> not found!";
 
 #warn "$level <$skip> " . $file[$level]{"if"} . " " . $file[$level]{"now"} . " :";
 while (<INFILE>) {
@@ -114,7 +114,7 @@ while (<INFILE>) {
 	}
 	elsif (not $skip) {
 		if (/#INCLUDE <([^>]*)>/) {
-			open(FILE, $1) or die "File <$1> not found!";
+			open(FILE, $1) or die "WARN: File <$1> not found!";
 			my @include;
 			print (@include = <FILE>);
 			close(FILE);
