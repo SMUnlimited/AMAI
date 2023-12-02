@@ -1,5 +1,5 @@
 @ECHO OFF
-call MakeTFTBase.bat 0
+call MakeVERBase.bat 0 TFT
 ECHO =============================
 ECHO Making AMAI finished
 pause

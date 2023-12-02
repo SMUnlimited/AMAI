@@ -15,7 +15,7 @@ unless ( $ARGV[0] and $ARGV[0] !~ /-[h?]/ ) {
 	exit;
 }
 
-my $libfile = $ARGV[0];
+my $libfile = $ARGV[1];
 my @scriptfiles;
 my @stringrefs = ();
 my %constants;
@@ -34,11 +34,11 @@ if ($ARGV[0] eq '-b') {
   $opt_blizzard = 1;
 }
 else {
-  if ($ARGV[1] eq '-l') {
-    @scriptfiles = AssembleScriptNames($ARGV[2], $ARGV[3]);
+  if ($ARGV[2] eq '-l') {
+    @scriptfiles = AssembleScriptNames($ARGV[3], $ARGV[4]);
   }
   else {
-    @scriptfiles = @ARGV[1..$#ARGV];
+    @scriptfiles = @ARGV[2..$#ARGV];
   }
   open(KEYWORDS, 'keywords.txt') or die "File <keywords.txt> not found!";
   while (<KEYWORDS>) {
@@ -54,7 +54,7 @@ else {
   }
   close(NORENAME);
   
-  open(COMMON, 'common.j') or die "File <common.j> not found!";
+  open(COMMON, $ARGV[0]) or die "File <$ARGV[0]> not found!";
   my @common = <COMMON>;
   AddKeywords(\@common,1);
   undef @common;
