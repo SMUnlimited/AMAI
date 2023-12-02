@@ -1,6 +1,7 @@
 #! /usr/bin/perl5 -w
 # Splits the official blizzard J file into sections to add the AMAI code within
 use strict;
+use File::Copy;
 
 sub process_blizzj {
   my $mode = 1;
@@ -61,5 +62,10 @@ sub process_blizzj {
   close $in;
   close $bliz6;
 }
+my $ver = $ARGV[0];
+process_blizzj($ver);
 
-process_blizzj($ARGV[0]);
+copy("$ver/VanillaAI/elf2.ai", "Scripts/$ver/elf2.ai") or die "Copy failed: $!";
+copy("$ver/VanillaAI/human2.ai", "Scripts/$ver/human2.ai") or die "Copy failed: $!";
+copy("$ver/VanillaAI/orc2.ai", "Scripts/$ver/orc2.ai") or die "Copy failed: $!";
+copy("$ver/VanillaAI/undead2.ai", "Scripts/$ver/undead2.ai") or die "Copy failed: $!";
