@@ -252,7 +252,7 @@ globals
 #PRAGMA START VERSION SETTINGS
     real sleep_multiplier = 1  // increases performance by checking stuff not so often
     integer slm_start = 4  // how many computer players is needed tor the sleep multiplier to start increasing
-    integer slm_end = 18 // how many computer players is needed tor the sleep multiplier to stop increasing
+    integer slm_end = 10 // how many computer players is needed tor the sleep multiplier to stop increasing
     real slm_start_mult = 1 // how much is the sleep multiplied when it's below the slm_start codition
     real slm_end_mult = 3.2  // how much is the sleep multiplied when it's above the slm_end codition
     real hero_radius = 200  // scanning this small area around hero to detect if the hero gets surrounded by enemy or is in danger of becoming that so it should move
@@ -517,18 +517,10 @@ globals
     integer neutral_shredder = 0
     integer neutral_zeppelin = 0
     integer tp_item = 0
-    boolean array herouseitemsave
-  #INCLUDETABLE <$VER$\SaveItems.txt> #EFR
-    integer %3_item = %1
-    boolean array %3itemsave
-    item array %3item
-    #AFTERINCLUDE
-    integer saveitemlength = %row  // ROC no this function
-  #ENDINCLUDE
-  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bsinge_tp\b/
-    integer singe_tp_item = %1
-    item array %4
-  #ENDINCLUDE
+    integer sanctuary_item = 0
+    integer preservation_item = 0
+    integer singe_tp_item = 0
+    boolean array herocanuse
     integer tiernum = 3
     integer mapSize = 0
     boolean firstattackhp = false  //big map or more player first attack human player?
@@ -793,8 +785,8 @@ globals
     integer strat_prev = 0  // strategy chosen by the ai before this one
     integer hero_prev = 0  // hero chosen by the ai before this one
     integer picked_hero = 0
-    boolean first_ai = true
-    integer next_ai = 0
+    // boolean first_ai = true
+    // integer next_ai = 0
     boolean no_ai_ally = false
     boolean no_ally_ctrl = true
 
@@ -812,7 +804,6 @@ globals
     unit array own_town_mine
     integer first_town_mine = 0
     location array exist_town
-    unit array tp_town
     integer exist_town_num = 0
 
     integer attacking_ghouls = 0
@@ -942,7 +933,6 @@ globals
     boolean no_creep_attack	= false
     boolean no_player_attack	= false
     boolean strat_change_allowed = true
-    boolean surrender_allowed = true
     integer attack_target_p	= 0
     integer attack_target_x	= 0
     integer attack_target_y	= 0
@@ -1616,8 +1606,8 @@ function UpdateDebugPlayer takes nothing returns nothing
 		if GetPlayerSlotState(Player(debug_player)) != PLAYER_SLOT_STATE_PLAYING then
 			set debug_player = debug_player + 1
 		endif
-		if debug_player > 24 then
-			set debug_player = 24 // Do not go above 24
+		if debug_player > GetBJMaxPlayers() then
+			set debug_player = GetBJMaxPlayers() // Do not go above MaxPlayers
 		endif
 endfunction
 
@@ -1862,12 +1852,13 @@ endfunction
 // Get a peon. Should be used if you really need a peon and GetExpansionPeon failed
 function GetExpansionPeon2 takes unit u returns unit
   local group g = CreateGroup()
-
+  local integer id = 0
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    exitwhen GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) and (GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == 0) and not IsUnitHidden(u) and not IsUnitLoaded(u)
+    set id = GetUnitCurrentOrder(u)
+    exitwhen GetUnitTypeId(u) == old_id[racial_peon] and (id == OrderId("harvest") or id == OrderId("resumeharvesting") or id == 0) and not IsUnitHidden(u) and UnitAlive(u) and not IsUnitLoaded(u)
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
@@ -3089,7 +3080,7 @@ function QueueChat takes string text, player p, boolean important returns nothin
   endif
 endfunction
 
-function DisplayChat takes boolean ally, boolean enemy, boolean obs, boolean important returns nothing
+function DisplayChat takes boolean ally, boolean enemy, boolean obs, boolean important, boolean immediate returns nothing
   local integer i = 0
   local integer std_rand = 0
   local integer rand = 0
@@ -3109,7 +3100,11 @@ function DisplayChat takes boolean ally, boolean enemy, boolean obs, boolean imp
         set rand = GetRandomInt(0, chat_list_length - 1)
       endloop
       call SetChatVarsPlayer(p)
-      call QueueChat(ApplyChatVars(chat_list[rand]), p, important)
+      if immediate then
+        call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)
+      else
+        call QueueChat(ApplyChatVars(chat_list[rand]), p, important)
+      endif
     endif
     set i = i + 1
   endloop
@@ -3118,18 +3113,19 @@ endfunction
 
 function QueueStrategy takes string text returns nothing
   set chat_strategy = text
-endfunction 
+endfunction
 
 //============================================================================
 function Chat takes integer c returns nothing
   local real chance = 0
+  local boolean immediate = false
   if campaign_ai then
     return
   endif
 
   if c == C_STRATEGY then
     if IsPlayerAlly(ai_player,GetLocalPlayer()) or IsPlayerObserver(GetLocalPlayer()) and chatting then
-      call QueueChat(GetCurrentStrategyReport() + GetCurrentDynamicReport(), GetLocalPlayer(), true)
+      call QueueStrategy(GetCurrentStrategyReport() + GetCurrentDynamicReport())
     endif
     //call DisplayToAlliesImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport() )
     //call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport() )
@@ -3146,8 +3142,11 @@ function Chat takes integer c returns nothing
     else
       return
     endif
+    if c == C_AGG or c == C_EGG then
+      set immediate = true
+    endif  
     if chance >= GetRandomReal(0.00,100.00) then
-      call DisplayChat(chat_target_ally[c], chat_target_enemy[c], chat_target_obs[c], chat_important[c])
+      call DisplayChat(chat_target_ally[c], chat_target_enemy[c], chat_target_obs[c], chat_important[c], immediate)
     endif
   endif
 endfunction
@@ -3308,11 +3307,13 @@ function GetTeleportLandPoint takes location l returns location
   local real x = GetLocationX(l)
   local real y = GetLocationY(l)
   call GroupEnumUnitsInRangeOfLoc(g, l, 900, null)
-  call RemoveLocation(teleportloc)  // set new loc , cannot return teleportloc
+  if teleportloc != null then
+    call RemoveLocation(teleportloc)  // set new loc , cannot return teleportloc
+  endif
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null  //Find a enemy unit , land to unit loc , prevent army land to hall , cannot expand
-    if UnitAlive(u) and not IsUnitHidden(u) and IsPlayerEnemy(ai_player,GetOwningPlayer(u)) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitInvisible(u, ai_player) then
+    if IsPlayerEnemy(ai_player,GetOwningPlayer(u)) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitInvisible(u, ai_player) and UnitAlive(u) and not IsUnitHidden(u) then
       set teleportloc = GetUnitLoc(u)
       call DestroyGroup(g)
       set g = null
@@ -3402,6 +3403,8 @@ function countAllyEnemy takes nothing returns nothing
   local integer i = 0
   local boolean self_came = false
   local boolean next_came = false
+  local boolean first_ai = true
+  local integer next_ai = 0
   local player p = null
 
   loop
@@ -3805,15 +3808,11 @@ endfunction
 //==========================================================================
 function IsStandardUnit takes unit u returns boolean
   if GetUnitTypeId(u) != 'nzep' then
-    if IsUnitInGroup(u, unit_healing) then
-      return false
-    elseif IsUnitInGroup(u, unit_harassing) then
+    if IsUnitInGroup(u, unit_healing) or IsUnitInGroup(u, unit_harassing) then
       return false
     endif
   else
-    if IsUnitInGroup(u, unit_rescueing) then
-      return false
-    elseif IsUnitInGroup(u, unit_zepplin_move) then
+    if IsUnitInGroup(u, unit_rescueing) or IsUnitInGroup(u, unit_zepplin_move) then
       return false
     endif
   endif
@@ -3821,11 +3820,7 @@ function IsStandardUnit takes unit u returns boolean
 endfunction
 
 function IsUnitBuying takes unit u returns boolean
-  if IsUnitInGroup(u, unit_buying_item) then
-    return true
-  elseif IsUnitInGroup(u, unit_buying_merc) then
-    return true
-  elseif IsUnitInGroup(u, unit_buying_tavern) then
+  if IsUnitInGroup(u, unit_buying_item) or IsUnitInGroup(u, unit_buying_merc) or IsUnitInGroup(u, unit_buying_tavern) then
     return true
   endif
   return false
@@ -4067,7 +4062,7 @@ function GetOneOfId takes unit u, player p, integer id returns unit
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and GetUnitTypeId(u) == id then
+    if GetUnitTypeId(u) == id and UnitAlive(u) and not IsUnitHidden(u) then
       call DestroyGroup(g)
       set g = null
       return u
@@ -4088,7 +4083,7 @@ function GetOneOfIdNearLoc takes unit u, player p, integer id, location l, real 
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and GetOwningPlayer(u) == p and GetUnitTypeId(u) == id then
+    if GetUnitTypeId(u) == id and GetOwningPlayer(u) == p and UnitAlive(u) and not IsUnitHidden(u) then
       call DestroyGroup(g)
       set g = null
       return u
@@ -4672,7 +4667,7 @@ function GetUnitToBuy takes unit ru, unit buy_place returns unit
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_SUMMONED) and not IsUnitIllusion(u) and not IsUnitBuying(u) and IsStandardUnit(u) then
+    if not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_SUMMONED) and not IsUnitIllusion(u) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) and not IsUnitBuying(u) and IsStandardUnit(u) then
       set newdistance = DistanceBetweenUnits(buy_place, u)
       if newdistance < distance then
         set distance = newdistance
@@ -4701,6 +4696,8 @@ function GetUnitOfTypeNearUnit takes integer ut, unit nu, unit ru returns unit
 
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectById(g, ut, true)
+  set g = SelectByAlive(g, true)
+  set g = SelectByHidden(g, false)
   set ru = GetNearestOfGroup(ru, g, unitloc)
   call DestroyGroup(g)
   set g = null
@@ -4719,6 +4716,7 @@ function GetUnusedZeppelinNearUnit takes unit ru, unit nu returns unit
   call GroupEnumUnitsOfType(g, "goblinzeppelin", null)
   set g = SelectByPlayer(g, ai_player, true)
   set g = SelectByOrderOr(g, 0, order_cancel, true)
+  set g = SelectByAlive(g, true)
   set g = SelectByUnitStandard(g, true)
   set ru = GetNearestOfGroup(ru, g, unitloc)
   call DestroyGroup(g)
@@ -4784,7 +4782,7 @@ function GetUnitHero takes unit u returns unit
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and IsStandardUnit(u) then
+    if not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_SUMMONED) and not IsUnitType(u, UNIT_TYPE_PEON) and UnitAlive(u) and not IsUnitHidden(u) and IsStandardUnit(u) then
       call DestroyGroup(g)
       set g = null
       return u
@@ -4802,7 +4800,7 @@ function GetUnitHeroReplacement takes unit u , location l returns unit
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and GetOwningPlayer(u) == ai_player and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and IsStandardUnit(u) then
+    if GetOwningPlayer(u) == ai_player and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_SUMMONED) and not IsUnitType(u, UNIT_TYPE_PEON) and UnitAlive(u) and not IsUnitHidden(u) and IsStandardUnit(u) then
       call DestroyGroup(g)
       set g = null
       return u
@@ -5013,15 +5011,14 @@ endfunction
 //============================================================================
 function GetHeroStrength takes unit u returns integer
   local integer lvl = GetHeroLevel(u)
-  if not IsUnitInGroup(u, unit_healing) then
+  if GetOwningPlayer(u) != ai_player or not IsUnitInGroup(u, unit_healing) then
     if lvl >= ver_hero_ultimate_level then
       return R2I((ver_hero_base_value + lvl + ver_hero_ultimate_value)/2 + 0.5)
     else
       return R2I((ver_hero_base_value + lvl)/2 + 0.5)
     endif
-  else
-    return 0
   endif
+  return 0
 endfunction
 
 //============================================================================
@@ -5034,7 +5031,7 @@ function GetPlayerHeroStrengthMod takes player p returns integer
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and IsUnitType(u, UNIT_TYPE_HERO) then
+    if IsUnitType(u, UNIT_TYPE_HERO) and UnitAlive(u) then
       set sum = sum + R2I(GetHeroStrength(u) * handicap * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)))
     endif
     call GroupRemoveUnit(g,u)
@@ -5089,7 +5086,7 @@ function GetPlayerStrength takes player p returns real
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+    if not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and not IsUnitHidden(u) then
     //call Trace("A Unit strength added: " + Int2Str(R2I(GetUnitStrength(u))))
       set sum = sum + GetUnitStrength(u)
     endif
@@ -5160,7 +5157,7 @@ function GetPlayerAntiAirStrength takes player p returns real
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+    if IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and not IsUnitHidden(u) then
       set sum = sum + GetUnitStrength(u)
     endif
     call GroupRemoveUnit(g,u)
@@ -5180,7 +5177,7 @@ function IsCreepsAwake takes real x, real y, real radius returns boolean
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or awake_creeps
-    if UnitAlive(u) and GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
+    if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and UnitAlive(u) and not IsUnitHidden(u) then
       set awake_creeps = not IsUnitType(u, UNIT_TYPE_SLEEPING)
     endif
     call GroupRemoveUnit(g,u)
@@ -5204,7 +5201,7 @@ function GetLocationCreepStrength takes real x, real y, real radius returns inte
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
+    if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and UnitAlive(u) and not IsUnitHidden(u) then
       //call Trace("Getting unit strength begin")
       set strength = GetUnitStrength(u)
       set sum = sum + strength
@@ -5234,7 +5231,7 @@ function GetLocationCreepAirStrength takes real x, real y, real radius returns i
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsUnitType(u, UNIT_TYPE_FLYING) then
+    if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsUnitType(u, UNIT_TYPE_FLYING) and UnitAlive(u) and not IsUnitHidden(u) then
       set airsum = airsum + GetUnitStrength(u)
     endif
     call GroupRemoveUnit(g,u)
@@ -5257,7 +5254,7 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
     set u = FirstOfGroup(g)
     exitwhen u == null
     set p = GetOwningPlayer(u)
-    if UnitAlive(u) and not IsUnitHidden(u) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerEnemy(ai_player, p) and not IsUnitType(u,UNIT_TYPE_STRUCTURE) and not IsUnitType(u,UNIT_TYPE_PEON) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
+    if IsPlayerEnemy(ai_player, p) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != Player(PLAYER_NEUTRAL_PASSIVE) and not IsUnitType(u,UNIT_TYPE_STRUCTURE) and not IsUnitType(u,UNIT_TYPE_PEON) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) and UnitAlive(u) and not IsUnitHidden(u) then
       set strength = GetUnitStrength(u)
       set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
@@ -5282,14 +5279,14 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
   call GroupEnumUnitsInRange(g,x,y,radius,null)
   if only_structures then
     set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  else
+  else  // include structures
     set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
   endif
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
     set p = GetOwningPlayer(u)
-    if GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerEnemy(ai_player, p) then
+    if IsPlayerEnemy(ai_player, p) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != Player(PLAYER_NEUTRAL_PASSIVE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) then
       set sum = sum + 1
     endif
     call GroupRemoveUnit(g,u)
@@ -5317,7 +5314,7 @@ function GetLocationTowerStrength takes real x, real y, real radius returns inte
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitTower(u) then
+    if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitTower(u) and UnitAlive(u) and not IsUnitHidden(u) then
       set sum = sum + 1
     endif
     call GroupRemoveUnit(g,u)
@@ -5338,7 +5335,7 @@ function GetLocationStrength takes real x, real y, real radius returns real
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and not IsUnitType(u,UNIT_TYPE_PEON) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) then
+    if not IsUnitType(u,UNIT_TYPE_PEON) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) and UnitAlive(u) and not IsUnitHidden(u) then
       set strength = GetUnitStrength(u)
       set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
@@ -5391,7 +5388,7 @@ function GetOwnStrength takes nothing returns integer
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitInGroup(u, unit_healing) then
+    if not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitInGroup(u, unit_healing) then
       set strength = GetUnitStrength(u)
       if GetUnitTypeId(u) == old_id[racial_ghoul] then
         if ghoul_num < max_ghouls then
@@ -5746,7 +5743,7 @@ function BuildBRAtCreep takes nothing returns nothing
   endif
   set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_rushcreep], loc, 600)
   if loc != null and DistanceBetweenPoints(loc, home_location) < distance then  //Prevent some islands/shallow water terrain from creating u on the other side of the map
-    if GetLocationCreepStrength(GetLocationX(loc), GetLocationY(loc), 510) <= 0 then  //if have enemy , cannot build
+    if GetLocationEnemyStrength(GetLocationX(loc), GetLocationY(loc), 510, false) <= 0 then  //if have enemy , cannot build
       set u = GetExpansionPeon2(u)
       if u == null or GetUnitCurrentOrder(u) != OrderId("harvest") then
         set g = CreateGroup()
@@ -5794,6 +5791,7 @@ function MultipleMinefix takes nothing returns boolean
     else
       set first_town_mine = 0
     endif
+    call Trace("Multiple Mine fix done , no more mine")
     return false
   endif
   loop
@@ -5833,41 +5831,38 @@ function CheckExpansionTaken takes unit expa returns boolean
   local group g = null
   local unit u = null
   local player p = null
-  if expa == null then
-    return false
-  elseif expa == not_taken_expansion then // Used in the ancient expansion and item expansion system
-    return true
-  endif
-  set g = CreateGroup()
-  call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
-  call GroupRemoveUnit(g, expa)
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    set p = GetOwningPlayer(u)
-    if GetUnitState(u, UNIT_STATE_LIFE) > 0 and IsUnitType(u, UNIT_TYPE_STRUCTURE) and p != Player(PLAYER_NEUTRAL_PASSIVE) then
-      if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
-        call DestroyGroup(g)
-        set g = null
-        set u = null
-        set p = null
-        if not IsUnitHidden(u) then
-          call GroupRemoveUnit(far_expansion, expa)
+  if expa != null or expa == not_taken_expansion then  // not taken used in the ancient expansion and item expansion system
+    set g = CreateGroup()
+    call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
+    call GroupRemoveUnit(g, expa)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      set p = GetOwningPlayer(u)
+      if p != Player(PLAYER_NEUTRAL_PASSIVE) and IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 then
+        if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
+          call DestroyGroup(g)
+          set g = null
+          set u = null
+          set p = null
+          if not IsUnitHidden(u) then
+            call GroupRemoveUnit(far_expansion, expa)
+          endif
+          return true
+        elseif p != ai_player and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) then  // Creeps dosn't mean expansion is taken
+          call DestroyGroup(g)
+          set g = null
+          set u = null
+          set p = null
+          return true
         endif
-        return true
-      elseif p != ai_player and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) then  // Creeps dosn't mean expansion is taken
-        call DestroyGroup(g)
-        set g = null
-        set u = null
-        set p = null
-        return true
       endif
-    endif
-    call GroupRemoveUnit(g, u)
-  endloop
-  call DestroyGroup(g)
-  set g = null
-  set p = null
+      call GroupRemoveUnit(g, u)
+    endloop
+    call DestroyGroup(g)
+    set g = null
+    set p = null
+  endif
   return false
 endfunction
 
@@ -5893,18 +5888,14 @@ function GetExpFoeGroup takes group g , unit mine returns group
 endfunction
 
 function GetCreepGuardGroup takes group g , integer nn returns group
-  if g != null then
-    call DestroyGroup(g)
-  endif
   set g = CreateGroup()
-  if nearest_neutral[nn] == null then
-    return g
-  endif
-  call GroupEnumUnitsInRange(g, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), 750, null)
-  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
-  set g = SelectByAlive(g, true)
-  if FirstOfGroup(g) == null and nn != NEUTRAL_TAVERN then
-    set g = CheckCreepsByRadius(g, nearest_neutral[nn], 750 * 1.5)
+  if nearest_neutral[nn] != null then
+    call GroupEnumUnitsInRange(g, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), 750, null)
+    set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
+    set g = SelectByAlive(g, true)
+    if FirstOfGroup(g) == null and nn != NEUTRAL_TAVERN then
+      set g = CheckCreepsByRadius(g, nearest_neutral[nn], 750 * 1.5)
+    endif
   endif
   return g
 endfunction
@@ -6159,7 +6150,6 @@ endfunction
 //============================================================================
 function remove_exp takes integer h returns nothing
   local integer i = h
-  set exp_number = exp_number - 1
   loop
     exitwhen i >= exp_number
     set exp_rp[i] = exp_rp[i + 1]
@@ -6167,6 +6157,7 @@ function remove_exp takes integer h returns nothing
     set exp_dist[i] = exp_dist[i + 1]
     set i = i + 1
   endloop
+  set exp_number = exp_number - 1
 endfunction
 
 //============================================================================
@@ -6312,7 +6303,7 @@ function CheckExpansionRebuild takes nothing returns boolean
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if UnitAlive(u) and GetOwningPlayer(u) == ai_player and (GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL)) then
+      if GetOwningPlayer(u) == ai_player and (GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL)) and UnitAlive(u) then
         call DestroyGroup(g)
         set g = null
         set u = null
@@ -6346,7 +6337,7 @@ function ExpansionFormula takes integer exp_d, unit exp_u returns integer
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and GetOwningPlayer(u) == ai_player and (IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitType(u, UNIT_TYPE_PEON)) then
+    if GetOwningPlayer(u) == ai_player and (IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitType(u, UNIT_TYPE_PEON)) and UnitAlive(u) then
       call DestroyGroup(g)
       set g = null
       set u = null
@@ -6498,19 +6489,18 @@ function GetNeutralGuard takes integer nn returns boolean
   local location l = null
   local unit u = null
   local boolean b = false
-  if nearest_neutral[nn] == null or FirstOfGroup(neutral_guards[nn]) == null then
-    return b
+  if nearest_neutral[nn] != null and FirstOfGroup(neutral_guards[nn]) != null then
+    set g = CopyGroup(neutral_guards[nn],g)
+    set g = SelectByAlive(g, true)
+    set l = GetUnitLoc(nearest_neutral[nn])
+    set u = GetNearestOfGroup(u, g, l)
+    call RemoveLocation(l)
+    set l = null
+    call DestroyGroup(g)
+    set g = null
+    set b = (u != null)
+    set u = null
   endif
-  set g = CopyGroup(neutral_guards[nn],g)
-  set g = SelectByAlive(g, true)
-  set l = GetUnitLoc(nearest_neutral[nn])
-  set u = GetNearestOfGroup(u, g, l)
-  call RemoveLocation(l)
-  set l = null
-  call DestroyGroup(g)
-  set g = null
-  set b = (u != null)
-  set u = null
   return b
 endfunction
 
@@ -6518,23 +6508,22 @@ function CanCreepGuardsSleep takes integer nn returns boolean
   local group g = null
   local unit u = null
   local boolean b = false
-  if nearest_neutral[nn] == null then
-    return b
+  if nearest_neutral[nn] != null then
+    if FirstOfGroup(neutral_guards[nn]) == null then
+      return true
+    endif
+    set g = CopyGroup(neutral_guards[nn],g)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      exitwhen not UnitCanSleep(u)
+      call GroupRemoveUnit(g, u)
+    endloop
+    call DestroyGroup(g)
+    set g = null
+    set b = (u == null)
+    set u = null
   endif
-  if FirstOfGroup(neutral_guards[nn]) == null then
-    return true
-  endif
-  set g = CopyGroup(neutral_guards[nn],g)
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    exitwhen not UnitCanSleep(u)
-    call GroupRemoveUnit(g, u)
-  endloop
-  call DestroyGroup(g)
-  set g = null
-  set b = (u == null)
-  set u = null
   return b
 endfunction
 
@@ -6588,13 +6577,12 @@ function AddFrontPoint takes location l returns nothing
   local real x = GetLocationX(l)
   local real y = GetLocationY(l)
   local unit pathable = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), groundid, x, y, 270.00)
-  if DistanceBetweenPoints_dk(GetUnitLoc(pathable), l) <= 200 then
+  if DistanceBetweenPoints_dd(GetUnitLoc(pathable), l) <= 200 then
     call CreateDebugTagLoc("Front Point Added", 10, x, y, 60.00, 55.00)
-    set front_loc[front_loc_num] = l
+    set front_loc[front_loc_num] = Location(x,y)
     set front_loc_num = front_loc_num + 1
   else
-    //call CreateDebugTagLoc("Front Point : Not Buildable", 10, x, y, 60.00, 55.00)
-    call RemoveLocation(l)
+    call CreateDebugTagLoc("Front Point : Not Buildable", 10, x, y, 60.00, 55.00)
   endif
   call RemoveUnit(pathable)
   set pathable = null
@@ -6606,8 +6594,7 @@ function ComputeFrontPoints takes nothing returns nothing
   local integer n = 0
   local player p = null
   local unit array u
-  local location loc = null
-  local player mainplayer = Player(GetAiPlayer())
+  //local player mainplayer = Player(GetAiPlayer())
   local boolean pathingdone = true
   local boolean array patherdone
   local location l = null
@@ -6616,10 +6603,10 @@ function ComputeFrontPoints takes nothing returns nothing
     exitwhen i >= c_enemy_total
     set p = enemy_force[i]
     if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
-      set loc = GetPlayerStartLocationLoc(p)
+      set l = GetPlayerStartLocationLoc(p)
       set u[n] = CreatePathingUnit(u[n])
-      call IssuePointOrder(u[n], "move", GetLocationX(loc), GetLocationY(loc))
-      call RemoveLocation(loc)
+      call IssuePointOrder(u[n], "move", GetLocationX(l), GetLocationY(l))
+      call RemoveLocation(l)
       set n = n + 1
     endif
     set i = i + 1
@@ -6648,8 +6635,6 @@ function ComputeFrontPoints takes nothing returns nothing
             set patherdone[i] = true
             call RemoveUnit(u[i])
             set u[i] = null
-          //else
-            //call RemoveLocation(l)
           endif
           call RemoveLocation(l)
           set pathingdone = false
@@ -6660,31 +6645,34 @@ function ComputeFrontPoints takes nothing returns nothing
     exitwhen pathingdone
     call Sleep(0.1)
   endloop
-  if front_loc[0] == null or front_loc_num == 0 then  // front fix
-    set loc = GetPlayerStartLocationLoc(enemy_force[0])
-    set front_loc[0] = GetBuildLocationInDistanceFromLoc_d(groundid, loc, front_base_distance)
-    set front_loc_num = front_loc_num + 1
-    set loc = null
+  if front_loc[0] == null or front_loc_num == 0 then
+    call Trace("fix front_loc[0]" )
+    if Player(0) != ai_player then
+      set l = GetPlayerStartLocationLoc(Player(0))
+    else
+      set l = GetPlayerStartLocationLoc(Player(1))
+    endif
+    set front_loc[0] = GetLocationInDistanceFromBaseToLoc(l, front_base_distance)
+    if front_loc_num == 0 then
+      set front_loc_num = front_loc_num + 1
+    endif
+    call RemoveLocation(l)
   endif
   set front_locs_computed = true
   set l = null
-  set loc = null
   set p = null
-  set mainplayer = null
+  //set mainplayer = null
 
 endfunction
 
 //============================================================================
 function PingFrontPoints takes nothing returns nothing
   local integer i = 0
-  local location l = null
   loop
     exitwhen i >= front_loc_num
-    set l = front_loc[i]
-    call PingMinimap(GetLocationX(l), GetLocationY(l), 20)
+    call PingMinimap(GetLocationX(front_loc[i]), GetLocationY(front_loc[i]), 20)
     set i = i + 1
   endloop
-  set l = null
 endfunction
 
 //==========================================================================
@@ -6849,16 +6837,8 @@ endfunction
 
 //============================================================================
 function CheckUseSaveItem takes integer i returns boolean
-  local boolean b = false
-  local real t = TimerGetElapsed(tq_timer)
-#INCLUDETABLE <$VER$\SaveItems.txt> #EFR
-  set %3itemsave[i] = %3item[i] != null and BlzGetUnitAbilityCooldownRemaining(hero_unit[i], %4) == 0.00
-#ENDINCLUDE
-#INCLUDETABLE <$VER$\SaveItems.txt> #EFR
-  set b = b or %3itemsave[i]
-#ENDINCLUDE
-  set herouseitemsave[i] = herouseitemsave[i] and b and not IsUnitInvisible(hero_unit[i], Player(PLAYER_NEUTRAL_AGGRESSIVE))
-  return herouseitemsave[i]
+  set herocanuse[i] = not UnitInvis(hero_unit[i]) and not IsUnitBuying(hero_unit[i]) and IsStandardUnit(hero_unit[i]) 
+  return herocanuse[i]
 endfunction
 
 //============================================================================
@@ -7164,9 +7144,15 @@ function TQLoop takes nothing returns nothing
           call Sleep(RMin(i ,1))
         endif
       else
+        if debugging then
+          call UpdateDebugTextTag(t, "-", 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
+        endif
         call Sleep(0.05)
       endif
     else
+      if debugging then
+        call UpdateDebugTextTag(t, "", 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
+      endif
       call Trace("TQLOOP: No job is ready to fire")
       call Sleep(sleep_multiplier)
     endif
@@ -7194,6 +7180,7 @@ function CheckNeutral takes integer nn returns nothing
     //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "checkneutral")
     set nearest_neutral[nn] = GetNearestNeutral(nearest_neutral[nn],neutral_id[nn])
     //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "finished check")
+    call DestroyGroup(neutral_guards[nn])
     set neutral_guards[nn] = GetCreepGuardGroup(neutral_guards[nn],nn)
     set neutral_guarded[nn] = GetNeutralGuard(nn)
     set neutral_night_buy[nn] = CanCreepGuardsSleep(nn)
@@ -7211,6 +7198,7 @@ endfunction
 //==========================================================================
 function InitNeutralBuildings takes nothing returns nothing
   local group g = CreateGroup()
+  local integer id = 0
   local integer i = 0
   local integer j = 0
   local integer k = 0
@@ -7253,30 +7241,31 @@ function InitNeutralBuildings takes nothing returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitTypeId(u) == neutral_id[NEUTRAL_TAVERN] then
+    set id = GetUnitTypeId(u)
+    if id == neutral_id[NEUTRAL_TAVERN] then
       set neutral_available[NEUTRAL_TAVERN] = true
-    elseif GetUnitTypeId(u) == neutral_id[NEUTRAL_MERCHANT] then
+    elseif id == neutral_id[NEUTRAL_MERCHANT] then
       set neutral_available[NEUTRAL_MERCHANT] = true
-    elseif GetUnitTypeId(u) == neutral_id[NEUTRAL_OBSERVATORY] then
+    elseif id == neutral_id[NEUTRAL_OBSERVATORY] then
       set neutral_available[NEUTRAL_OBSERVATORY] = true
-    elseif GetUnitTypeId(u) == neutral_id[NEUTRAL_HEALING_FOUNTAIN] then
+    elseif id == neutral_id[NEUTRAL_HEALING_FOUNTAIN] then
       set neutral_available[NEUTRAL_HEALING_FOUNTAIN] = true
-    elseif GetUnitTypeId(u) == neutral_id[NEUTRAL_MANA_FOUNTAIN] then
+    elseif id == neutral_id[NEUTRAL_MANA_FOUNTAIN] then
       set neutral_available[NEUTRAL_MANA_FOUNTAIN] = true
-    elseif GetUnitTypeId(u) == neutral_id[NEUTRAL_POWER_FOUNTAIN] then
+    elseif id == neutral_id[NEUTRAL_POWER_FOUNTAIN] then
       set neutral_available[NEUTRAL_POWER_FOUNTAIN] = true
-    elseif GetUnitTypeId(u) == neutral_id[NEUTRAL_HEAL_WARD] and not IsUnitType(u, UNIT_TYPE_SUMMONED) then
+    elseif id == neutral_id[NEUTRAL_HEAL_WARD] and not IsUnitType(u, UNIT_TYPE_SUMMONED) then
       set neutral_available[NEUTRAL_HEAL_WARD] = true
-    elseif GetUnitTypeId(u) == neutral_id[NEUTRAL_SHIPYARD] then
+    elseif id == neutral_id[NEUTRAL_SHIPYARD] then
       set neutral_available[NEUTRAL_SHIPYARD] = true
-    elseif GetUnitTypeId(u) == neutral_id[NEUTRAL_MARKETPLACE] then
+    elseif id == neutral_id[NEUTRAL_MARKETPLACE] then
       set neutral_available[NEUTRAL_MARKETPLACE] = true
     else
       if not mercfound then
         set i = 0
         loop
           set i = i + 1
-          if GetUnitTypeId(u) == camp[i] then
+          if id == camp[i] then
             set mercfound = true
           endif
           exitwhen mercfound or i >= j
@@ -7286,7 +7275,7 @@ function InitNeutralBuildings takes nothing returns nothing
         set k = 0
         loop
           set k = k + 1
-          if GetUnitTypeId(u) == roost[k] then
+          if id == roost[k] then
             set roostfound = true
           endif
           exitwhen roostfound or k >= m
@@ -7316,8 +7305,6 @@ if mercfound then
 #INCLUDETABLE <$VER$\MercTypes.txt>
   set merc_%1 = merc_types[%row]
 #ENDINCLUDE
-
-  set merc_number = 0
   set j = 0
   loop
     exitwhen j >= 4
@@ -7326,7 +7313,6 @@ if mercfound then
     endif
     set j = j + 1
   endloop
-
   set neutral_id[NEUTRAL_MERC_CAMP] = camp[i]
   set neutral_available[NEUTRAL_MERC_CAMP] = true
 endif
@@ -7342,7 +7328,6 @@ if roostfound then
   endif
   set dragon_number = $DRAGONTYPENUM$
 #ENDINCLUDE
-
   set neutral_id[NEUTRAL_DRAGON_ROOST] = roost[k]
   set neutral_available[NEUTRAL_DRAGON_ROOST] = true
 endif
@@ -7428,16 +7413,17 @@ function PathingThread takes nothing returns nothing
   call CheckAllNeutralsQuick() // Old system check
   call MakeExpansionList()
   set water_map = water_expansion_list_length >= expansion_list_length
-  set active_expansion = water_expansion_list_length + expansion_list_length > c_enemy_total + c_ally_total + mapSize  // have more mine , should positive Expansion
+  set active_expansion = water_expansion_list_length + expansion_list_length >= (c_enemy_total + c_ally_total + 1) * 2  // have more mine , should positive Expansion
   set first_expansion_chosen = first_expansion_chosen == true or (water_expansion_list_length > 0)  // no expansion but have water expansion , can take expansion
   call ChooseExpansion()
   call CheckFastExpansion()
   call CheckAllNeutrals() // The more advanced new system check
+  call Trace("pathing done")
   if not job_running then
     return
   endif
+  call Trace("pathing thread run job" )
   set pathing_done = true
-  call Trace("pathing done")
   loop // this job no need run on job system , help job system more focused on combat
     exitwhen player_defeated
     call Sleep(1)
@@ -7472,18 +7458,7 @@ function PathingThread takes nothing returns nothing
       call ItemRepeatCheck()
     endif
     if ModuloInteger(t, 5*w) == 0 then
-      if active_expansion and exp_number < c_enemy_total + c_ally_total + 1 then
-        set active_expansion = false
-      endif
       call StructureControlJob()
-      loop
-        exitwhen i >= NEUTRAL_COUNT
-        if neutral_guarded[i] then
-          call NeutralGuardedJob(i)
-        endif
-        set i = i + 1
-      endloop
-      set i = 0
     endif
     if ModuloInteger(t, 6*w) == 0 then
       if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null then
@@ -7499,7 +7474,7 @@ function PathingThread takes nothing returns nothing
         call NeutralEnemyCheckJob(NEUTRAL_HEAL_WARD)
       endif
     endif
-    if surrender_allowed and ModuloInteger(t, 13*w) == 0 then
+    if ModuloInteger(t, 13*w) == 0 then
       call DetectDefeatJob()
     endif
     if ModuloInteger(t, 15*w) == 0 then
@@ -7507,9 +7482,20 @@ function PathingThread takes nothing returns nothing
     endif
     if force_number > 1 and ModuloInteger(t, 30*w) == 0 then
       call ExchangeJob()
+      if active_expansion and GetPlayerUnitTypeCount(Player(PLAYER_NEUTRAL_PASSIVE),'ngol') < (c_enemy_total + c_ally_total + 1) * 2 then
+        set active_expansion = false
+      endif
+      set i = 0
+      loop
+        exitwhen i >= NEUTRAL_COUNT
+        if neutral_guarded[i] then
+          call NeutralGuardedJob(i)
+        endif
+        set i = i + 1
+      endloop
     endif
     if t >= 1000 then // initialization , prevent excessive size , computational complexity
-      set t = 0
+      set t = 1
     else
       set t = t + 1
     endif
@@ -7684,12 +7670,10 @@ function cmd_attack takes integer cmd, integer data returns nothing
     call DisplayToAllies(chat_confirm_attack_unit)
 
   elseif cmd == 17 then // Towerrush
-    if race_towerrush_available then
-      if not towerrush then
-        call TowerRushCheck(1)
-        //call DisplayToAllies(chat_towerrush)
-        return
-      endif
+    if race_towerrush_available and not towerrush then
+      call TowerRushCheck(1)
+      //call DisplayToAllies(chat_towerrush)
+      return
     else
       call DisplayToAllies(chat_no_towerrush)
       call DisplayToObserversImportant( chat_no_towerrush )
@@ -7774,9 +7758,6 @@ function cmd_misc takes integer cmd, integer data returns nothing
 
   elseif cmd == 53 then
     set strat_change_allowed = not strat_change_allowed
-
-  elseif cmd == 54 then
-    set surrender_allowed = not surrender_allowed
 
   elseif cmd == 60 then // Show strat name
     call DisplayToAllies(GetCurrentStrategyReport() + GetCurrentDynamicReport())
@@ -7886,7 +7867,7 @@ function InitCheckHarvest takes nothing returns nothing
         endif
       endif
     endif
-    if (IsUnitType(u, UNIT_TYPE_TOWNHALL) or GetUnitTypeId(u) == old_id[racial_expansion]) and GetOwningPlayer(u) != ai_player then
+    if GetOwningPlayer(u) != ai_player and (IsUnitType(u, UNIT_TYPE_TOWNHALL) or GetUnitTypeId(u) == old_id[racial_expansion]) then
       set p = p + 1  // have more player , need fix harvest , but maybe no need fix expensive
     endif
     call GroupRemoveUnit(g, u)
@@ -7908,6 +7889,7 @@ function InitCheckHarvest takes nothing returns nothing
   set g = null
   call HarvestGold(0,3)
   call HarvestWood(0,2)  // Early triggering Harvest , convenient HARVEST_CHECK job check peon
+  call Trace("first town mine mode :" + Int2Str(first_town_mine))
 endfunction
 
 //===========================================================================
@@ -7921,7 +7903,6 @@ function InitTownBuilt takes nothing returns nothing
   set town_built[0] = true
   set own_town_loc[0] = Location(GetLocationX(home_location), GetLocationY(home_location))
   set exist_town[0] = home_location
-  set tp_town[0] = GetOneOfId(tp_town[0],ai_player,old_id[racial_hall[1]])
   set own_town_dist[0] = 0
   set own_town_mine[0] = GetMineNearLoc(own_town_mine[0] ,home_location, 1500)
 endfunction
@@ -8099,10 +8080,6 @@ function InitHeroArrays takes nothing returns nothing
     set hero[i] = 0
     set hero_built[i] = false
     set hero_unit[i] = null
-    set herouseitemsave[i] = false
-    #INCLUDETABLE <$VER$\SaveItems.txt> #EFR
-    set %3item[i] = null
-    #ENDINCLUDE
     set i = i + 1
   endloop
   set hero_revive_prio[1] = hero1_revive_prio
@@ -8121,6 +8098,18 @@ function InitNeutralSpecial takes nothing returns nothing
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\btp\b/
   set tp_item = %1
 #ENDINCLUDE
+#INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bsinge_tp\b/
+  set singe_tp_item = %1
+#ENDINCLUDE
+endfunction
+
+function InitSpecialItem takes nothing returns nothing
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bpreservation_item\b/
+  set preservation_item = %1
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bsanctuary_item\b/
+  set sanctuary_item = %1
+  #ENDINCLUDE
 endfunction
 
 //===========================================================================
@@ -8191,20 +8180,15 @@ endfunction
 //===========================================================================
 function InitSpecialRaces takes nothing returns nothing
   local integer i = 0
-  local integer s = S2I("SR_Special")
-  local player p = null
+  local string s = null
   loop
     exitwhen i >= GetBJMaxPlayers()
-    set p = Player(i)
-    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(p) then
-      call SaveInteger(com, RACE, i, s)
-      call SaveInteger(com, RACE_PREF, i, s)
-      set player_race[i] = s
-      set player_race_pref[i] = s
-    endif
+    set s = Int2Str(i)
+    set player_race[i] = LoadInteger(com, RACE, i)
+    set player_race_pref[i] = LoadInteger(com, RACE_PREF, i)
     set i = i + 1
   endloop
-  set p = null
+  set s = null
 endfunction
 
 //===========================================================================
@@ -8214,28 +8198,26 @@ function InitStandardRaces takes nothing returns nothing
   loop
     exitwhen i >= GetBJMaxPlayers()
     set p = Player(i)
-    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(p) then
-      set player_race_pref[i] = SR_RANDOM
-      if GetPlayerRace(p) == RACE_NIGHTELF then
-        set player_race[i] = SR_ELF
-        if IsPlayerRacePrefSet(p, RACE_PREF_NIGHTELF) then
-          set player_race_pref[i] = SR_ELF
-        endif
-      elseif GetPlayerRace(p) == RACE_HUMAN then
-        set player_race[i] = SR_HUMAN
-        if IsPlayerRacePrefSet(p, RACE_PREF_HUMAN) then
-          set player_race_pref[i] = SR_HUMAN
-        endif
-      elseif GetPlayerRace(p) == RACE_ORC then
-        set player_race[i] = SR_ORC
-        if IsPlayerRacePrefSet(p, RACE_PREF_ORC) then
-          set player_race_pref[i] = SR_ORC
-        endif
-      else
-        set player_race[i] = SR_UNDEAD
-        if IsPlayerRacePrefSet(p, RACE_PREF_UNDEAD) then
-          set player_race_pref[i] = SR_UNDEAD
-        endif
+    set player_race_pref[i] = SR_RANDOM
+    if GetPlayerRace(p) == RACE_NIGHTELF then
+      set player_race[i] = SR_ELF
+      if IsPlayerRacePrefSet(p, RACE_PREF_NIGHTELF) then
+        set player_race_pref[i] = SR_ELF
+      endif
+    elseif GetPlayerRace(p) == RACE_HUMAN then
+      set player_race[i] = SR_HUMAN
+      if IsPlayerRacePrefSet(p, RACE_PREF_HUMAN) then
+        set player_race_pref[i] = SR_HUMAN
+      endif
+    elseif GetPlayerRace(p) == RACE_ORC then
+      set player_race[i] = SR_ORC
+      if IsPlayerRacePrefSet(p, RACE_PREF_ORC) then
+        set player_race_pref[i] = SR_ORC
+      endif
+    else
+      set player_race[i] = SR_UNDEAD
+      if IsPlayerRacePrefSet(p, RACE_PREF_UNDEAD) then
+        set player_race_pref[i] = SR_UNDEAD
       endif
     endif
     set i = i + 1
@@ -8302,6 +8284,7 @@ function InitAMAI takes nothing returns nothing
   set income_per_mine = income_per_mine * Max(difficulty - 1, 1)
   call Trace("Init AMAI step 1")
   call InitNeutralSpecial()
+  call InitSpecialItem()
   call InitHeroArrays()
   call InitArrays()  // Has been moved to be set before all other code as is only variable declaration
   call InitChatArrays()
@@ -8326,10 +8309,10 @@ function InitAMAI takes nothing returns nothing
   call SetNearestEnemy()
   call InitTownBuilt()
   set max_farms = GetMaxFarms()
-  set mine_loc = GetUnitLoc(own_town_mine[0])
-  if (c_ally_total + c_enemy_total >= 10 or mapSize > 3 or (mapSize < 3 and c_enemy_user_total < 3)) and c_enemy_user_total > 0 then
-    set firstattackhp = true
+  if own_town_mine[0] != null then
+    set mine_loc = GetUnitLoc(own_town_mine[0])
   endif
+  set firstattackhp = c_enemy_user_total > 0 and (c_ally_total + c_enemy_total >= 10 or mapSize > 3 or (mapSize < 3 and c_enemy_user_total < 3))
 //    call DebugSequenceStart("DebugRun")
 
 endfunction
@@ -8780,13 +8763,13 @@ endfunction
 //============================================================================
 function remove_hero takes integer h returns nothing
   local integer i = h
-  set hero_number = hero_number - 1
   loop
     exitwhen i >= hero_number
     set hero_rp[i] = hero_rp[i + 1]
     set all_heroes[i] = all_heroes[i + 1]
     set i = i + 1
   endloop
+  set hero_number = hero_number - 1
 endfunction
 
 //============================================================================
@@ -8860,17 +8843,18 @@ function GetMinesHarvested takes nothing returns integer
   local integer i = twm
   local integer sum = 0
   local integer mine = racial_expansion
+  local boolean b = race_manual_loading == true or race_uses_mine_expansion == true
   if race_manual_loading then
     set mine = race_manual_loading_mine
   endif
-  if first_town_mine > 0 or race_manual_loading or race_uses_mine_expansion then  //home_location have multiple mine or just one mine but UD and ELF cannot harvested
+  if b or first_town_mine > 0 then  //home_location have multiple mine or just one mine but UD and ELF cannot harvested
     set twm = TownCountDone(mine)
     set i = twm
   endif
   if twm < 0 then
     return 0
   endif
-  if race_manual_loading or race_uses_mine_expansion then
+  if b then
     return i
   else
     loop
@@ -8976,10 +8960,11 @@ endfunction
 function RBlockListCheck takes integer qty, integer t returns integer
   local integer i = 0
   local integer max_qty = qty
+  local integer f = FoodUsed()
   loop
     exitwhen i >= rbl_length
     if ai_time < rbl_expire_time[i] and rbl_allow_type[i] == t then
-      if total_gold < rbl_req_gold[i] or total_wood < rbl_req_wood[i] or FoodUsed() < rbl_req_food[i] then
+      if total_gold < rbl_req_gold[i] or total_wood < rbl_req_wood[i] or f < rbl_req_food[i] then
         set max_qty = Min(max_qty, rbl_allow_qty[i])
         set blocked_gold = Max(blocked_gold, rbl_req_gold[i])
         set blocked_wood = Max(blocked_wood, rbl_req_wood[i])
@@ -9245,12 +9230,12 @@ endfunction
 
 //============================================================================
 function SetBuildReact takes integer food, integer min1, integer unit1, integer min2, integer unit2, real enemy_strength, real strength1, real strength2, integer prio returns nothing
-  local integer num1 = R2I(LinearInterpolation(strength1, strength2, I2R(food), 0, enemy_strength))/GetFoodUsed(old_id[unit1])
-  local integer num2 = (food - num1 * GetFoodUsed(old_id[unit1]))/GetFoodUsed(old_id[unit2])
+  local integer num1 = R2I(LinearInterpolation(strength1, strength2, I2R(food), 0, enemy_strength))/Max(GetFoodUsed(old_id[unit1]),1)
+  local integer num2 = (food - num1 * GetFoodUsed(old_id[unit1]))/Max(GetFoodUsed(old_id[unit2]),1)
   local integer prio1 = 0
   local integer prio2 = 0
-  local integer food1 = food/GetFoodUsed(old_id[unit1])
-  local integer food2 = food/GetFoodUsed(old_id[unit2])
+  local integer food1 = food/Max(GetFoodUsed(old_id[unit1]),1)
+  local integer food2 = food/Max(GetFoodUsed(old_id[unit2]),1)
 
   if food1 > food2 then
     set prio1 = prio+(food1-1)*2 - (min1+num1-1)*2        // So builds starting at the max priority possible
@@ -9425,12 +9410,12 @@ function DynamicBuildUnit takes integer count, integer prio returns nothing
 	local integer num
 	if chosen_counter_unit > 0 then
 		if IsUnitIdType(old_id[chosen_counter_unit], UNIT_TYPE_STRUCTURE) == false and not (buy_type[chosen_counter_unit] > BT_RACIAL_ITEM and buy_type[chosen_counter_unit] < BT_MERCHANT_ITEM) then // Normal units/upgrades
-			set num = R2I((count - FoodUsed())/GetFoodUsed(old_id[chosen_counter_unit]))
+			set num = R2I((count - FoodUsed())/Max(GetFoodUsed(old_id[chosen_counter_unit]),1))
 			if num > 0 and GetUnitCount(old_id[chosen_counter_unit]) < num then
 				call BuildUnit(Min(num, GetUnitCountDone(old_id[chosen_counter_unit]) + 10), chosen_counter_unit, prio)
 			endif
 		elseif buy_type[chosen_counter_unit] > BT_RACIAL_ITEM and buy_type[chosen_counter_unit] < BT_MERCHANT_ITEM then // A neutral mercenary
-			set num = R2I((count - FoodUsed())/GetFoodUsed(old_id[chosen_counter_unit]))
+			set num = R2I((count - FoodUsed())/Max(GetFoodUsed(old_id[chosen_counter_unit]),1))
 			if num > 0 then
 				call BuildUnit(GetUnitCountDone(old_id[chosen_counter_unit]) + 1, chosen_counter_unit, prio)
 			endif
@@ -9442,49 +9427,46 @@ endfunction
 
 // Change unit attack mode , eliminating the time required for build and immediately allowing existing units to cope with strength imbalance
 // Original intention to control units that AI does not control , but use hard-coding
-function ExecuteAirDistribute takes group sg, boolean anti returns nothing
-  local integer i = GetRandomInt(0, Max(GetUnitCountDone('ugar'),GetUnitCountDone('edot')))
+function ExecuteAirDistribute takes group g, boolean anti returns nothing
+  local integer i = GetRandomInt(0, Max(TownCountDone(GARGOYLE),TownCountDone(DRUID_TALON)))
   local integer c = 0  // Allow random retention strength and accelerate cycle
   local integer id = 0
   local integer order = 852155
   local unit u = null
-  local group g = null
+  call Trace("Strength Dynamic Distribute - Air")
   if anti == false then
     set order = 852156
   endif
-  set g = CopyGroup(sg,g)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or i == c
     set id = GetUnitTypeId(u)
-    if id == 'edot' or id == 'edtm' then
+    if (id == 'edot' or id == 'edtm') and IsStandardUnit(u) then
       call IssueImmediateOrderById( u, order)
       set c = c + 1
-    elseif id == 'ugar' and GetUnitAbilityLevel(u, 'Aatp') > 0 and (GetUnitAbilityLevel(u, 'Batp') == 0) == anti then
-      call IssueImmediateOrderById( u, 852677)  // check Ability Level , prevent war3 is old ver or map is ROC
+    elseif id == 'ugar' and GetUnitAbilityLevel(u, 'Aatp') > 0 and (GetUnitAbilityLevel(u, 'Batp') == 0) == anti and IsStandardUnit(u) then  // 'ugar' have Ability , check Level prevent war3 is old ver or map is ROC
+      call IssueImmediateOrderById( u, 852677)
       set c = c + 1
     endif
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
-  set g = null
   set u = null
 endfunction
 
 function StrengthDynamicDistribute takes nothing returns nothing
+  local group cg = null
   local group g = CreateGroup()
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)  // only unit
-  set g = SelectUnittype(g, UNIT_TYPE_SUMMONED, false)
   set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
-  set g = SelectByUnitStandard(g,true)
+  call Trace("Strength Dynamic Distribute")
   if TownCountDone(DRUID_TALON) > 0 or TownCountDone(GARGOYLE) > 0 then
-    call ExecuteAirDistribute(g,dydistribute_air)  // now just have air , If possible , please add , one strength one function
+    call ExecuteAirDistribute(CopyGroup(cg,g),dydistribute_air)  // now just have air , If possible , please add , one strength one function
   endif
   call DestroyGroup(g)
   set g = null
+  set cg = null
 endfunction
 
 function DynamicStrategySelector takes nothing returns nothing
@@ -9515,7 +9497,7 @@ function InitHarass takes nothing returns nothing
 endfunction
 
 function AddHarass takes integer groupnum, integer qty, integer unitid returns nothing
-  if (harass_size[groupnum] < max_harass_groups ) then
+  if harass_size[groupnum] < max_harass_groups then
     set harass_qty[harass_size[groupnum]] = qty
     set harass_units[harass_size[groupnum]] = unitid
     set harass_size[groupnum] = harass_size[groupnum] + 1
@@ -9858,13 +9840,14 @@ endfunction
 
 //============================================================================
 function GetBuildLocation takes integer bloc returns location
+  local integer i = Max(GetRandomInt(0, front_loc_num - 1),0)
   if bloc == BLOC_MINE then
     return mine_loc
   endif
-  if front_loc[0] != null then
-    return front_loc[GetRandomInt(0, front_loc_num - 1)]
+  if front_loc[i] != null then
+    return front_loc[i]
   endif
-  return home_location
+  return front_loc[0]
 endfunction
 
 //============================================================================
@@ -9959,11 +9942,12 @@ endfunction
 //============================================================================
 function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc returns integer
   local unit peon = GetExpansionPeon()
-  local unit utemp1 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], home_location, 270.0)  //utemp is seat, leave a passage , unit can ensure correct position
-  local unit utemp2 = null
+  local unit utemp1 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], home_location, 270.0)
+  local unit utemp2 = null  //utemp is seat, leave a passage , unit can ensure correct position
   local unit u = null
   local location l = null
   local real d = 0
+  local integer i = 0
   if bloc != BLOC_MINE then
     set utemp2 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], GetBuildLocation(bloc), 270.0)
   endif
@@ -9971,8 +9955,10 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
   set l = GetUnitLoc(u)
   call RemoveUnit(utemp1)
   set utemp1 = null
-  call RemoveUnit(utemp2)
-  set utemp2 = null
+  if bloc != BLOC_MINE then
+    call RemoveUnit(utemp2)
+    set utemp2 = null
+  endif
   call RemoveUnit(u)
   set u = null
   if peon == null then
@@ -9994,9 +9980,14 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
       set d = DistanceBetweenPoints(l,home_location)
       if d >= front_base_distance + 400 or d < 600 then
         call Trace("BuildatspecialLoc: Build loc too far or close, fix build loc")
-        if front_loc[0] != null then
+        if front_loc_num > 0 then
+          set i = GetRandomInt(0, front_loc_num - 1)
           call RemoveLocation(l)
-          set l = AIGetProjectedLoc(front_loc[GetRandomInt(0, front_loc_num - 1)], home_location, 200, 0)
+          if front_loc[i] != null then
+            set l = AIGetProjectedLoc(front_loc[i], home_location, 200, 0)
+          else
+            set l = AIGetProjectedLoc(front_loc[0], home_location, GetRandomInt(100, 200), GetRandomInt(-90, 90))
+          endif
         endif
       endif
     endif
@@ -10440,15 +10431,14 @@ function BuyItem takes integer qty, integer id returns boolean
     return true
   endif
 
-  if false then  // own race cannot buy
-  #INCLUDETABLE <$VER$\SaveItems.txt> #EFR
-  elseif (id == %1 and GetPlayerRace(ai_player) != %2) then
+  if (id == sanctuary_item and GetPlayerRace(ai_player) != RACE_HUMAN) or (id == preservation_item and GetPlayerRace(ai_player) != RACE_NIGHTELF) then
     return false
-  #ENDINCLUDE
   endif
   set shop_wanted = qty
   if buy_type[id] == BT_RACIAL_ITEM then
-    set shop_unit = GetOneOfId(shop_unit, ai_player, old_id[racial_shop])
+    if shop_unit == null or GetOwningPlayer(shop_unit) != ai_player then
+      set shop_unit = GetOneOfId(shop_unit, ai_player, old_id[racial_shop])
+    endif
     set shop_distance_limit = raceshop_distance_limit
   else
     set shop_unit = nearest_neutral[NEUTRAL_MERCHANT]
@@ -10482,29 +10472,28 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
       set i = -1
     endif
   endloop
-  if false then  // cannot buy
-  #INCLUDETABLE <$VER$\SaveItems.txt> #EFR
-  elseif (id == %1 and GetPlayerRace(ally_force[m]) != %2) then
-    return false
-  #ENDINCLUDE
-  endif
   set shop_unit = null
   if i < 0 then
+    if (id == sanctuary_item and GetPlayerRace(ally_force[m]) != RACE_HUMAN) or (id == preservation_item and GetPlayerRace(ally_force[m]) != RACE_NIGHTELF) then
+      return false
+    endif
     set g = CreateGroup()
     call GroupEnumUnitsOfPlayer(g, ally_force[m], null)
     set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
     loop
       set u = FirstOfGroup(g)
-      exitwhen u == null
+      exitwhen u == null or i > 1
       if GetUnitAbilityLevel(u, 'Aall') > 0 and UnitAlive(u) and not IsUnitHidden(u) then  // select ally shop , use JOB TrackTown record ally shop is best, but worried about affecting efficiency , if use new JOB then too wasteful
         if shop_unit == null or GetRandomInt(0,1) == 1 then
           set shop_unit = u  // get Random shop
+          set i = i + 1
         endif
       endif
       call GroupRemoveUnit(g, u)
     endloop
     call DestroyGroup(g)
     set g = null
+    set u = null
   endif
   if shop_unit == null then
     return false
@@ -10654,12 +10643,40 @@ function FarmBuilder takes nothing returns nothing
 endfunction
 
 //============================================================================
+function MercBuilder takes integer unitid1, integer unitid2 returns nothing
+  local integer i = GetRandomInt(0,100)
+  if GetGold() > 500 and GetWood() > 400 and neutral_available[NEUTRAL_MERC_CAMP] and not neutral_ordered[NEUTRAL_MERC_CAMP] then
+    if i > 30 then
+      call BuildUnit(1, unitid1, 45 + tier * 10)
+    else
+      call BuildUnit(1, unitid2, 45 + tier * 10)
+    endif
+  endif
+endfunction
+
+function DragonBuilder takes nothing returns nothing
+  local integer i = GetRandomInt(0,100)
+  if GetGold() > 600 and GetWood() > 500 then
+    if neutral_available[NEUTRAL_DRAGON_ROOST] and not neutral_ordered[NEUTRAL_DRAGON_ROOST] and i > 80 then
+      call BuildUnit(1, dragons[tier], 45 + tier * 10)
+    endif
+    if neutral_available[NEUTRAL_MERC_CAMP] and not neutral_ordered[NEUTRAL_MERC_CAMP] and i > 50 then
+      call BuildUnit(1, merc_unit[GetRandomInt(0,3)], 45 + tier * 10)
+    endif
+  endif
+endfunction
+
+//============================================================================
 function ShredderBuilder takes nothing returns nothing
   local real g = GetGold()
   local real w = Max(GetWood(),1)
   local real gdivw = g / w
-  if neutral_available[NEUTRAL_OBSERVATORY] and gdivw > 4 and g - w > 500 and w < 550 and ai_time - available_time[neutral_shredder] >= -1 then
-    call BuildUnit(1, neutral_shredder, peon_prio)
+  if neutral_available[NEUTRAL_OBSERVATORY] and gdivw > 4 and g - w > 500 and w < 550 and g > GetUnitGoldCost2(neutral_shredder) and w > GetUnitWoodCost2(neutral_shredder) and ai_time - available_time[neutral_shredder] >= -1 then
+    if (race_has_ghouls) then
+      call BuildUnit(1, neutral_shredder, Max(ghoul_prio - 4,1))
+    else
+      call BuildUnit(1, neutral_shredder, Max(peon_prio - 10,1))
+    endif
   endif
 endfunction
 
@@ -10693,12 +10710,11 @@ endfunction
 //============================================================================
 function PeonBuilder takes nothing returns nothing
   local integer mo = GetMinesHarvested()
-  local integer sc = TownCount(neutral_shredder)
+  local integer sc = 0
   local real w = GetWood()
-  if race_uses_shredder then
+  if race_uses_shredder and neutral_shredder != 0 then
+    set sc = TownCount(neutral_shredder)
     call ShredderBuilder()
-  else
-    set sc = 0
   endif
   //if w <= maximum_peon_wood then
   //  call BuildPeons( peon_1_mine_number * mo + Max(max_lumber_peons - shredder_peon_count*sc, 1 )  )  // number of peons per mine + wood peons
@@ -10831,13 +10847,13 @@ function InitHeroInfo takes integer hn returns nothing
   if hero_loc[hn] != null then
     call RemoveLocation(hero_loc[hn])
   endif
-  set hero_loc[hn] = GetUnitLoc(hero_unit[hn])
   if hero_enemy_loc[hn] != null then
     call RemoveLocation(hero_enemy_loc[hn])
   endif
   if hero_ally_loc[hn] != null then
     call RemoveLocation(hero_ally_loc[hn])
   endif
+  set hero_loc[hn] = GetUnitLoc(hero_unit[hn])
   set hero_enemy_loc[hn] = Location(0,0)
   set hero_ally_loc[hn] = Location(0,0)
   set hero_hp[hn] = 1
@@ -10881,41 +10897,13 @@ function CheckUnitNewTown takes unit u, integer num returns boolean
   return true
 endfunction
 
-//============================================================================
-function LocalizeOldTown takes integer num returns boolean
-  local group g = CreateGroup()
-  local unit u = null
-  call GroupEnumUnitsInRangeOfLoc(g, own_town_loc[num], 2000, null)
-  set g = SelectByPlayer(g,ai_player,true)
-  set g = SelectByHidden(g,false)
-  set g = SelectByAlive(g,true)
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    exitwhen IsUnitType(u, UNIT_TYPE_STRUCTURE)
-    call GroupRemoveUnit(g,u)
-  endloop
-  call DestroyGroup(g)
-  set g = null
-  if u == null then
-    if num != 0 then  //Prevent moving away from the starting loc
-      set exist_town[exist_town_num] = home_location
-      set tp_town[exist_town_num] = tp_town[0]
-    endif
-    return false
-  endif
-  set exist_town_num = exist_town_num + 1
-  set u = null
-  return true
-endfunction
-
 function LocalizeNewTown takes integer num returns boolean
   local group g = CreateGroup()
   local unit u = null
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectById(g, old_id[racial_expansion], true)
   set g = SelectByHidden(g,false)
   set g = SelectByAlive(g,true)
-  set g = SelectById(g, old_id[racial_expansion], true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -10938,7 +10926,6 @@ function LocalizeNewTown takes integer num returns boolean
   set own_town_mine[num] = GetMineNearLoc(own_town_mine[num], own_town_loc[num], 1500)
   set own_town_dist[num] = DistanceBetweenPoints(home_location, own_town_loc[num])
   set exist_town[exist_town_num] = own_town_loc[num]
-  set tp_town[exist_town_num] = u
   set exist_town_num = exist_town_num + 1
   if debugging then
     call PingMinimap(GetUnitX(u), GetUnitY(u), 20)
@@ -10948,17 +10935,42 @@ function LocalizeNewTown takes integer num returns boolean
 endfunction
 
 //============================================================================
+function LocalizeOldTown takes integer num returns nothing
+  local group g = CreateGroup()
+  local unit u = null
+  call GroupEnumUnitsInRangeOfLoc(g, own_town_loc[num], 2000, null)
+  set g = SelectByPlayer(g,ai_player,true)
+  set g = SelectByHidden(g,false)
+  set g = SelectByAlive(g,true)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    exitwhen IsUnitType(u, UNIT_TYPE_STRUCTURE)
+    call GroupRemoveUnit(g,u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  if u == null then
+    set exist_town[exist_town_num] = home_location  //Prevent moving away from home_location , but home_location destroyed when num is 0
+    return
+  endif
+  set exist_town[exist_town_num] = own_town_loc[num]
+  set exist_town_num = exist_town_num + 1
+  set u = null
+endfunction
+
+//============================================================================
 function CheckTownBuilt takes nothing returns nothing
   local integer i = 0
-  set exist_town_num = 0
+  set exist_town_num = 1  // 0 is home_location
   loop
     exitwhen i >= max_towns
     if not town_built[i] then
       if (TownCountEx(racial_expansion, true, i) > 0 and not (TownCountEx(racial_expansion, true, 50) > 0)) then
         set town_built[i] = LocalizeNewTown(i)
       endif
-    else
-        set town_built[i] = LocalizeOldTown(i)
+    elseif i > 0 then
+      call LocalizeOldTown(i)
     endif
     set i = i + 1
   endloop
@@ -11215,7 +11227,6 @@ endfunction
 function AttackGroupAddUnknown takes nothing returns nothing
   local group g = CreateGroup()
   local unit u = null
-  local integer id = 0
   local integer i = 0
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
@@ -11231,9 +11242,9 @@ function AttackGroupAddUnknown takes nothing returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set id = GetUnitTypeId(u)
-    if (IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) or IsUnitType(u, UNIT_TYPE_ATTACKS_GROUND)) and id != 'ngir' then
-      call AddAssault(60,id)  //other hero and unit , like other race and custom
+    set i = GetUnitTypeId(u)
+    if (IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) or IsUnitType(u, UNIT_TYPE_ATTACKS_GROUND)) and i != 'ngir' then
+      call AddAssault(60,i)  //other hero and unit , like other race and custom
     endif
     call GroupRemoveUnit(g, u)
   endloop
@@ -11316,6 +11327,8 @@ function GetDistractionTarget takes unit ru, unit target returns unit
   call GroupEnumUnitsOfPlayer(g, GetOwningPlayer(target), null)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   set g = SelectByLocation(g, unitloc, 3000, false)
+  set g = SelectByAlive(g, true)
+  set g = SelectByHidden(g, false)
   set ru = GetFarestOfGroup(ru, g, unitloc)
   call RemoveLocation(unitloc)
   set unitloc = null
@@ -11432,10 +11445,12 @@ function DesperationAssault takes nothing returns nothing
     call Trace("Adding desperation troops")
     set g = CreateGroup()
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
+    call SelectByHidden(g, false)
+    call SelectByAlive(g, true)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if (IsUnitType(u, UNIT_TYPE_ANCIENT) or not IsUnitType(u, UNIT_TYPE_STRUCTURE)) then
+      if IsUnitType(u, UNIT_TYPE_ANCIENT) or not IsUnitType(u, UNIT_TYPE_STRUCTURE) then
         call AddAssault(60, GetUnitTypeId(u))
       endif
       call GroupRemoveUnit(g, u )
@@ -11461,11 +11476,12 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     exitwhen isfleeing and CaptainRetreating() and not desperation_assault
     exitwhen CaptainIsEmpty() and not desperation_assault
     //exitwhen not UnitAlive(target) and CaptainIsHome()  // A fail safe mechanism if getlocationnoncreepstrength malfunctions: not needed as issue now fixed
-    if GetOwningPlayer(target) == ai_player or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player)) then
+    if IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player)) then
       set g = CreateGroup()
       call GroupEnumUnitsInRange(g,GetUnitX(target), GetUnitY(target),battle_radius,null)
-      set g = SelectByAlive(g,true)
       set g = SelectByEnemy(g,ai_player, true)
+      set g = SelectByAlive(g,true)
+      set g = SelectByHidden(g,false)
       if not UnitAlive(target) or UnitInvis(target) then
         set g = SelectByVisible(g,ai_player,true)  // to find enemies that ai has noticed
       endif
@@ -11511,17 +11527,17 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     else
       set attack_length_counter = attack_length_counter + 1
     endif
-    if not desperation_assault then // Do not bother reforming in desperation mode, full attack speed
-      if reform and CaptainInCombat(true) then
+    if not desperation_assault and reform then // Do not bother reforming in desperation mode, full attack speed
+      if CaptainInCombat(true) then
         set combat_length_counter = combat_length_counter + 1
-      elseif reform then
+      else
         set attack_length_counter = attack_length_counter + 1
         set combat_length_counter = 0
       endif
-      if reform and CaptainInCombat(true) and combat_length_counter > attack_reform_length * 3 then
+      if CaptainInCombat(true) and combat_length_counter > attack_reform_length * 3 then
         set combat_length_counter = 0
         call FormGroupAM(2)
-      elseif reform and not CaptainInCombat(true) and attack_length_counter > attack_reform_length then
+      elseif not CaptainInCombat(true) and attack_length_counter > attack_reform_length then
         set attack_length_counter = 0
         set combat_length_counter = 0
         call FormGroupAM(2)
@@ -11563,8 +11579,8 @@ endfunction
 
 //============================================================================
 function BRRush takes nothing returns nothing
-  local location buildloc = null
   local location loc = null
+  local location l = null
   local unit u = null
   local unit utemp = null
   local group g = CreateGroup()
@@ -11573,7 +11589,7 @@ function BRRush takes nothing returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or i == 1
-    if UnitAlive(u) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsPlayerEnemy(ai_player,GetOwningPlayer(u)) then
+    if IsPlayerEnemy(ai_player,GetOwningPlayer(u)) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and UnitAlive(u) then
       set i = 1  // have other player
     elseif GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == 'eaom' then
       set utemp = u
@@ -11584,7 +11600,7 @@ function BRRush takes nothing returns nothing
   set g = null
   set attack_running = true
   if i != 1 and GetUnitState(utemp, UNIT_STATE_LIFE) >= GetUnitState(utemp, UNIT_STATE_MAX_LIFE) * 0.65 then
-    set buildloc = GetUnitLoc(utemp)
+    set l = GetUnitLoc(utemp)
     call RemoveGuardPosition(utemp)
     call IssueImmediateOrder(utemp, "unroot")  //try unroot
     call Sleep(2.8)  //unroot time
@@ -11597,12 +11613,12 @@ function BRRush takes nothing returns nothing
     call Chat(C_Done)
     call SleepInCombatAM()
     call Trace("===BR Finished===")
-    call IssuePointOrderLoc( utemp, "move", buildloc)  //prevent inability cannot root
+    call IssuePointOrderLoc(utemp, "move", l)  //prevent inability cannot root
     call Sleep(0.02)
-    call IssuePointOrderLoc( utemp, "root", buildloc)  //root tree
-    call TQAddUnitJob(GetTimeToReachLoc(utemp, buildloc) + 2, RESET_GUARD_POSITION, 0, u)
-    call RemoveLocation(buildloc)
-    set buildloc = null
+    call IssuePointOrderLoc(utemp, "root", l)  //root tree
+    call TQAddUnitJob(GetTimeToReachLoc(utemp, l) + 2, RESET_GUARD_POSITION, 0, u)
+    call RemoveLocation(l)
+    set l = null
   else
     call AttackMoveKill(rushcreep_target)
     call ReformUntilTargetDeadAM(rushcreep_target, true)
@@ -11615,6 +11631,7 @@ function BRRush takes nothing returns nothing
     set rushcreep_target = null
   endif
   set utemp = null
+  set u = null
 endfunction
 
 //============================================================================
@@ -11694,7 +11711,7 @@ function AttackMoveTowerRush takes nothing returns nothing
 			set attack_running = true
 			call Sleep(0.05)
 		elseif tower_attack_run then
-			if (builder[10] == null or GetUnitState(builder[10], UNIT_STATE_LIFE) <= 0) then
+			if builder[10] == null or GetUnitState(builder[10], UNIT_STATE_LIFE) <= 0 then
 				call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1200, null)
 				set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
 				set g = SelectByAlive(g, true)
@@ -11745,7 +11762,6 @@ function AttackMoveTowerRush takes nothing returns nothing
 	call DestroyGroup(g)
 	set g = null
 	set attack_running = false
-	call SetAllianceTarget(null)
 endfunction
 
 //============================================================================
@@ -11790,7 +11806,7 @@ function GetFittingCreep takes unit u, integer str returns unit
   endif
   set allow_air = air_strength <= anti_air_strength
 
-  if (not allow_air) then
+  if not allow_air then
     set u = GetCreepCamp(1, lvl, false)
   endif
 
@@ -11839,7 +11855,6 @@ function CreepAttack takes integer str returns nothing
   endif
   call FormGroupAM(3)
   call AttackMoveKillCreep(target)
-  call SetAllianceTarget(null)
   set target = null
 endfunction
 
@@ -11866,13 +11881,10 @@ endfunction
 // (AMAI)  ChooseAttackTarget
 //============================================================================
 function GetRangePenalty takes unit target returns integer
-  if major_hero == null then
+  if major_hero == null or not UnitAlive(major_hero) or not UnitAlive(target) then
     return 0
-  elseif UnitAlive(target) == false then
-    return 0
-  else
-    return R2I(DistanceBetweenUnits(major_hero, target)/1400)
   endif
+  return R2I(DistanceBetweenUnits(major_hero, target)/1400)
 endfunction
 
 //============================================================================
@@ -11882,7 +11894,7 @@ function GetWeakestEnemy takes nothing returns player
   local integer minstr = 1000
   local integer cstr = 0
   loop
-    exitwhen i == c_enemy_total
+    exitwhen i >= c_enemy_total
     if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set cstr = GetUnexactPlayerStrength(enemy_force[i])
       if cstr < minstr and GetBuilding(enemy_force[i]) != null then
@@ -11905,7 +11917,7 @@ function GetStrongestEnemy takes nothing returns player
   local integer maxstr = 0
   local integer cstr = 0
   loop
-    exitwhen i == c_enemy_total
+    exitwhen i >= c_enemy_total
     if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set cstr = GetUnexactPlayerStrength(enemy_force[i])
       if cstr > maxstr then
@@ -11929,7 +11941,7 @@ function GetWeakAndNearEnemy takes nothing returns player
   local integer cstr = 0
   local unit cbuilding = null
   loop
-    exitwhen i == c_enemy_total
+    exitwhen i >= c_enemy_total
     if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set cbuilding = GetBuilding(enemy_force[i])
       if cbuilding != null and UnitAlive(cbuilding) then
@@ -11987,7 +11999,7 @@ function GetSecondNearestEnemy takes nothing returns player
   local integer cstr = 0
   local unit cbuilding = null
   loop
-    exitwhen i == c_enemy_total
+    exitwhen i >= c_enemy_total
     if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set cbuilding = GetBuilding(enemy_force[i])
       if cbuilding != null and UnitAlive(cbuilding) then
@@ -12161,8 +12173,9 @@ function ChooseAnEnemyTarget takes unit u returns unit
   endif
   call GroupEnumUnitsOfPlayer(g, target_enemy, null)
   set enemy_base = GetPlayerStartLocationLoc(target_enemy)
-  set g = SelectByAlive(g, true)
   set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+  set g = SelectByAlive(g, true)
+  set g = SelectByHidden(g, false)
   set g = SelectByLocation(g, enemy_base, 1000, false)
   set u = FirstOfGroup(g)
   if u == null then
@@ -12236,7 +12249,7 @@ function Militia_Expansion takes integer m returns nothing
   //call BuildExpa( TownCount(racial_expansion)+1, racial_expansion, farm_prio + 50 )
   call DisplayToAlliesChat(militia_expansion_chat)
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  set g = SelectNumberOfId(g, 100, old_id[racial_peon] )
+  set g = SelectNumberOfId(g, 100, old_id[racial_peon])
   set g = SelectByAlive(g, true)
   set g = GetNearestSubGroupOfGroup(g, home_location, m)
   //set expansion_peon = FirstOfGroup(g)
@@ -12270,8 +12283,9 @@ function Militia_Expansion takes integer m returns nothing
   call Chat(C_Done)
   call SleepInCombatAM()
   call Trace("===Attack Fully Finished===")
-  call GroupPointOrder(g, "move", GetLocationX(home_location), GetLocationY(home_location))
+  //call GroupPointOrder(g, "move", GetLocationX(home_location), GetLocationY(home_location))  //no need
   call GroupImmediateOrder(g, "militiaoff" )
+  call GroupRecycleGuardPositionInstant(g)
   set attack_running = false
   //call SetCaptainHome(ATTACK_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
   set militia_check_enabled = true
@@ -12279,7 +12293,7 @@ function Militia_Expansion takes integer m returns nothing
   //set captain_flee = true
   //set militia = false
   set take_exp = false
-  call DestroyGroup(g)
+  //call DestroyGroup(g)
   set g = null
   set cg = null
   set efoe = null
@@ -12344,6 +12358,7 @@ function SetLeadAlly takes nothing returns nothing
     endif
     set i = i + 1
   endloop
+  set p = null
 endfunction
 
 //============================================================================
@@ -12370,7 +12385,6 @@ if desperation_assault and not no_attack then
         call FormGroupAM(3)
         call DesperationAssault()
         call AttackMoveKillAAM(common)
-        call SetAllianceTarget(null)
         set common = null
         return
       endif
@@ -12384,7 +12398,6 @@ if desperation_assault and not no_attack then
     call FormGroupAM(3)
     call DesperationAssault()
     call AttackMoveKillAAM(common)
-    call SetAllianceTarget(null)
     set common = null
     return
   endif
@@ -12542,8 +12555,9 @@ if not creeping_only then	// Do the normal attack sequence
       call AttackMoveKillCreep(GetExpFoe(creep))
       set item_attack_running = false
       set creep = null
-    elseif item_exp_state > 0 then
+    elseif item_exp_state > 1 then
       call AttackMoveKillXYAAM(R2I(GetLocationX(item_exp_guard_loc)),R2I(GetLocationY(item_exp_guard_loc)))  //Prevent the army from leaving before using the item , so no set item_attack_running
+      set item_attack_running = false
     endif
     return
   endif
@@ -12567,7 +12581,6 @@ if not creeping_only then	// Do the normal attack sequence
     call AttackMoveKillAAM(double_expansion_target)
     if not UnitAlive(double_expansion_target) then
       set double_expansion_target = null
-      call SetAllianceTarget(null)
     endif
     return
   endif
@@ -12598,7 +12611,6 @@ if not creeping_only then	// Do the normal attack sequence
         call Sleep(10)
         set attacking_expansion = false
         set creep = null
-        call SetAllianceTarget(null)
         return
       endif
       set creep = null
@@ -12616,8 +12628,7 @@ if not creeping_only then	// Do the normal attack sequence
         call Chat(C_Ally)
         call FormGroupAM(3)
         call AttackMoveKillAAM(common)
-        call Trace("Attack complete")
-        call SetAllianceTarget(null)
+        call Trace("Attack Alliance Target complete")
         set common = null
         return
       endif
@@ -12627,13 +12638,13 @@ if not creeping_only then	// Do the normal attack sequence
   if not no_player_attack then
     if firstattackhp then  // player too much or big map , first attack HumanPlayer
       set humanhall = GetNearHumanPlayerEnemy(humanhall)
-      set firstattackhp = tier > 2 and (GetRandomInt(0,4) < 2)  // attack no longer working , the human player survived
+      set firstattackhp = (tier > 2 and (GetRandomInt(0,4) < 2)) or humanhall != null  // attack no longer working , the human player survived
       if humanhall != null then
         call Chat(C_Attack)
+        call Trace("Attack real human player")
         call SetAllianceTarget(humanhall)
         call FormGroupAM(3)
         call AttackMoveKillAAM(humanhall)
-        call SetAllianceTarget(null)
         set humanhall = null
         return
       endif
@@ -12651,7 +12662,6 @@ if not creeping_only then	// Do the normal attack sequence
         call Chat(C_Megatarget)
         call FormGroupAM(3)
         call AttackMoveKillAAM(mega)
-        call SetAllianceTarget(null)
         set mega = null
         return
       endif
@@ -12664,11 +12674,11 @@ if not creeping_only then	// Do the normal attack sequence
       if hall != null and UnitAlive(hall) then
         call SetChatVarsAttack(hall)
         call Chat(C_Attack)
+        call Trace("Attack Choose player")
         call SetAllianceTarget(alli_target)
         //set alli_target = null
         call FormGroupAM(3)
         call AttackMoveKillAAM(hall)
-        call SetAllianceTarget(null)
         set hall = null
         return
       endif
@@ -12773,9 +12783,9 @@ function AwaitMeleeHeroesAM takes nothing returns boolean
       set hero_available = true
     endif
     exitwhen player_defeated or hero_available
-    call Trace("AwaitMeleeHeroesAM: No Heroes Ready")
     set i = i + 1
     if i > 3 then
+      call Trace("AwaitMeleeHeroesAM: No Heroes Ready")
       call Sleep(2 * sleep_multiplier)
       set i = 1
     endif
@@ -12944,9 +12954,9 @@ function HealArmy takes nothing returns nothing
   local real healthTrigger = 0.75
   loop
     set hs = GetArmyHealthState()
-    set mass_healed = false
-    exitwhen (urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger) // and not shop_ordered	
+    exitwhen urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger // and not shop_ordered
     exitwhen player_defeated or town_threatened or ver_heroes == false
+    set mass_healed = false  // Still a large proportion of army is strong so exit loop
     call Trace("function HealArmy: Army is badly damaged and needs healing " + Real2Str(hs))
     set mh_item = GetMassHealingItem()
     if mh_item > 0 then
@@ -12984,17 +12994,21 @@ function HealArmy takes nothing returns nothing
           endif
           if hs <= healthTrigger then
             call Sleep(sleepLength * sleep_multiplier) // Wait some time for item effects to work
+          elseif hs < 1 then
+            call Sleep(2 * sleep_multiplier)
           endif
         endif
       else
         call StartEmergencyItem(1, mh_item)
         if hs <= healthTrigger then
           call Sleep(8*sleep_multiplier) // Wait some time for item to be bought
+        elseif hs < 1 then
+          call Sleep(2 * sleep_multiplier)
         endif
       endif
+    elseif hs < 1 then
+      call Sleep((2 + hs) * sleep_multiplier)  //  natural recovery
     endif
-    call Sleep(2 * sleep_multiplier)
-    exitwhen hs > healthTrigger // Still a large proportion of army is strong so exit loop
   endloop
   set mh_i = null
   set u = null
@@ -13131,20 +13145,27 @@ function universal_peon_assignment takes nothing returns nothing
   call HarvestGold(T,1)
   call HarvestWood(0,pwh)
   call HarvestWood(0,swh)
-
-  loop
-    //set i = i + 1
-    exitwhen i > Max(T + 3,TownCountDone(racial_expansion))
-    if T != i and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then
-      if gdivw < 3.0 or g < 300 then
-        call HarvestGold(i,ver_optimal_gold)
-      else
-        call HarvestGold(i,ver_optimal_gold - 2)
+  set T = Max(T + 3,TownCountDone(racial_expansion))
+  if FoodUsed() <= 20 and FoodCap() >= 90 then  // later stages of the game, AI may not be harvest
+    loop
+      exitwhen i > T
+      call HarvestGold(i,ver_optimal_gold)
+      set i = i + 1
+    endloop
+  else
+    loop
+      //set i = i + 1
+      exitwhen i > T
+      if T != i and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then
+        if gdivw < 3.0 or g < 300 then
+          call HarvestGold(i,ver_optimal_gold)
+        else
+          call HarvestGold(i,ver_optimal_gold - 2)
+        endif
       endif
-    endif
-    set i = i + 1
-  endloop
-
+      set i = i + 1
+    endloop
+  endif
   call HarvestWood(0,20)
 endfunction
 
@@ -13241,1710 +13262,19 @@ endfunction
 
 
 //_________________________________________________________________________________________________________________________________________________
-//_________________________________________________________________________________________________________________________________________________
-
-//============================================================================
-// Standard common.ai V1.18 by Blizzard Entertainment (Implementation by Strategy Master)
-//============================================================================
-
-//============================================================================
-function InitAI takes nothing returns nothing
-  set ai_player = Player(GetAiPlayer())
-  set sleep_seconds = 0
-  call InitAiUnits()
-  call InitArrays()
-  call StopGathering()
-endfunction
-
-//============================================================================
-function StandardAI takes code heroes, code peons, code attacks returns nothing
-
-    local boolean isNewbie = (MeleeDifficulty() == MELEE_NEWBIE)
-
-    call InitAI()
-
-    call SetMeleeAI()
-
-    call SetDefendPlayer(true)
-    call SetGroupsFlee(not isNewbie)
-    call SetHeroesBuyItems(not isNewbie)
-    call SetHeroesFlee(true)
-    call SetHeroesTakeItems(true)
-    call SetIgnoreInjured(true)
-    call SetPeonsRepair(true)
-    call SetSmartArtillery(not isNewbie)
-    call SetTargetHeroes(not isNewbie)
-    call SetUnitsFlee(not isNewbie)
-    call SetWatchMegaTargets(true)
-
-    call CreateCaptains()
-
-    call SetHeroLevels(heroes)
-
-    call Sleep(0.1)
-    call StartThread(peons)
-    call StartThread(attacks)
-endfunction
-
-//============================================================================
-//  Utility Functions
-//============================================================================
-
-function SetZepNextWave takes nothing returns nothing
-    set zep_next_wave = true
-endfunction
-
-function SuicideSleep takes integer seconds returns nothing
-    set sleep_seconds = sleep_seconds - seconds
-    loop
-        exitwhen seconds <= 0
-        exitwhen allow_signal_abort and CommandsWaiting() != 0
-
-        if seconds >= 5 then
-            call Sleep(5)
-            set seconds = seconds - 5
-        else
-            call Sleep(seconds)
-            set seconds = 0
-        endif
-    endloop
-endfunction
-
-//============================================================================
-function WaitForSignal takes nothing returns integer
-    local integer cmd
-    local boolean display = false //xxx
-    loop
-        exitwhen CommandsWaiting() != 0
-
-        //xxx
-        call Trace("waiting for a signal to begin AI script...\n")
-        set display = true
-        call Sleep(2)
-        exitwhen CommandsWaiting() != 0
-        call Sleep(2)
-        exitwhen CommandsWaiting() != 0
-        call Sleep(2)
-        exitwhen CommandsWaiting() != 0
-        call Sleep(2)
-        exitwhen CommandsWaiting() != 0
-        call Sleep(2)
-        //xxx
-
-    endloop
-
-    //xxx
-    if display then
-        call Trace("signal received, beginning AI script\n")
-    endif
-    //xxx
-
-    set cmd = GetLastCommand()
-    call PopLastCommand()
-    return cmd
-endfunction
-
-//============================================================================
-function SetWoodPeons takes integer count returns nothing
-    set campaign_wood_peons = count
-endfunction
-
-//============================================================================
-function SetGoldPeons takes integer count returns nothing
-    set campaign_gold_peons = count
-endfunction
-
-//============================================================================
-function SetHarvestLumber takes boolean harvest returns nothing
-    if harvest then
-        set campaign_wood_peons = 3
-    else
-        set campaign_wood_peons = 0
-    endif
-endfunction
-
-//============================================================================
-function SetFormGroupTimeouts takes boolean state returns nothing
-    set form_group_timeouts = state
-endfunction
-
-//============================================================================
-function DoCampaignFarms takes boolean state returns nothing
-    set do_campaign_farms = state
-endfunction
-
-//============================================================================
-function GetMinorCreep takes nothing returns unit
-    return GetCreepCamp(0,9,false)
-endfunction
-
-//============================================================================
-function GetMajorCreep takes nothing returns unit
-    return GetCreepCamp(10,100,allow_air_creeps)
-endfunction
-
-//============================================================================
-function InitBuildArray takes nothing returns nothing
-    set build_length = 0
-endfunction
-
-//============================================================================
-function InitMeleeGroup takes nothing returns nothing
-    call InitAssaultGroup()
-    call RemoveInjuries()
-    call RemoveSiege()
-endfunction
-
-//============================================================================
-function PrepFullSuicide takes nothing returns nothing
-    call InitAssaultGroup()
-    call InitDefenseGroup()
-    set campaign_gold_peons = 0
-    set campaign_wood_peons = 0
-endfunction
-
-//============================================================================
-function SetReplacements takes integer easy, integer med, integer hard returns nothing
-    if difficulty == EASY then
-        call SetReplacementCount(easy)
-    elseif difficulty == NORMAL then
-        call SetReplacementCount(med)
-    else
-        call SetReplacementCount(hard)
-    endif
-endfunction
-
-//============================================================================
-function StartTownBuilder takes code func returns nothing
-    call StartThread(func)
-endfunction
-
-//============================================================================
-function SetBuildAll takes integer t, integer qty, integer unitid, integer town returns nothing
-    if qty > 0 then
-        set build_qty[build_length] = qty
-        set build_type[build_length] = t
-        set build_item[build_length] = unitid
-        set build_town[build_length] = town
-        set build_length = build_length + 1
-    endif
-endfunction
-
-//============================================================================
-function SetBuildUnit takes integer qty, integer unitid returns nothing
-    call SetBuildAll(BUILD_UNIT,qty,unitid,-1)
-endfunction
-
-//============================================================================
-function SetBuildNext takes integer qty, integer unitid returns nothing
-    local integer has = GetUnitCount(unitid)
-    if has >= qty then
-        return
-    endif
-    call SetBuildAll(BUILD_UNIT,GetUnitCountDone(unitid)+1,unitid,-1)
-endfunction
-
-//============================================================================
-function SetBuildUnitEx takes integer easy, integer med, integer hard, integer unitid returns nothing
-    if difficulty == EASY then
-        call SetBuildAll(BUILD_UNIT,easy,unitid,-1)
-    elseif difficulty == NORMAL then
-        call SetBuildAll(BUILD_UNIT,med,unitid,-1)
-    else
-        call SetBuildAll(BUILD_UNIT,hard,unitid,-1)
-    endif
-endfunction
-
-//============================================================================
-function SecondaryTown takes integer town, integer qty, integer unitid returns nothing
-    call SetBuildAll(BUILD_UNIT,qty,unitid,town)
-endfunction
-
-//============================================================================
-function SecTown takes integer town, integer qty, integer unitid returns nothing
-    call SetBuildAll(BUILD_UNIT,qty,unitid,town)
-endfunction
-
-//============================================================================
-function SetBuildUpgr takes integer qty, integer unitid returns nothing
-    if MeleeDifficulty() != MELEE_NEWBIE or qty == 1 then
-        call SetBuildAll(BUILD_UPGRADE,qty,unitid,-1)
-    endif
-endfunction
-
-//============================================================================
-function SetBuildUpgrEx takes integer easy, integer med, integer hard, integer unitid returns nothing
-    if difficulty == EASY then
-        call SetBuildAll(BUILD_UPGRADE,easy,unitid,-1)
-    elseif difficulty == NORMAL then
-        call SetBuildAll(BUILD_UPGRADE,med,unitid,-1)
-    else
-        call SetBuildAll(BUILD_UPGRADE,hard,unitid,-1)
-    endif
-endfunction
-
-//============================================================================
-function SetBuildExpa takes integer qty, integer unitid returns nothing
-    call SetBuildAll(BUILD_EXPAND,qty,unitid,-1)
-endfunction
-
-//============================================================================
-function StartUpgrade takes integer level, integer upgid returns boolean
-    local integer gold_cost
-    local integer wood_cost
-
-    if GetUpgradeLevel(upgid) >= level then
-        return true
-    endif
-
-    set gold_cost = GetUpgradeGoldCost(upgid)
-    if total_gold < gold_cost then
-        return false
-    endif
-
-    set wood_cost = GetUpgradeWoodCost(upgid)
-    if total_wood < wood_cost then
-        return false
-    endif
-
-    return SetUpgrade(upgid)
-endfunction
-
-//============================================================================
-function BuildFactory takes integer unitid returns nothing
-    if GetGold() > 1000 and GetWood() > 500 then
-        call SetBuildUnit( 2, unitid )
-    else
-        call SetBuildUnit( 1, unitid )
-    endif
-endfunction
-
-//============================================================================
-function GuardSecondary takes integer townid, integer qty, integer unitid returns nothing
-    if TownHasHall(townid) and TownHasMine(townid) then
-        call SecondaryTown( townid, qty, unitid )
-    endif
-endfunction
-
-//============================================================================
-function BasicExpansion takes boolean build_it, integer unitid returns nothing
-    if build_it and HallsCompleted(unitid) then
-        call SetBuildExpa( TownCount(unitid)+1, unitid )
-    endif
-endfunction
-
-//============================================================================
-function UpgradeAll takes integer baseid, integer newid returns nothing
-    call SetBuildUnit( TownCountDone(baseid), newid )
-endfunction
-
-//============================================================================
-//  FoodPool
-//============================================================================
-function FoodPool takes integer food, boolean weak, integer id1, integer use1, boolean strong, integer id2, integer use2 returns nothing
-    if strong then
-        call SetBuildUnit( (food - use1 * TownCount(id1)) / use2, id2 )
-    elseif weak then
-        call SetBuildUnit( (food - use2 * TownCount(id2)) / use1, id1 )
-    endif
-endfunction
-
-//============================================================================
-//  MeleeTownHall
-//============================================================================
-function MeleeTownHall takes integer townid, integer unitid returns nothing
-    if TownHasMine(townid) and not TownHasHall(townid) then
-        call SecondaryTown ( townid, 1, unitid )
-    endif
-endfunction
-
-//============================================================================
-function WaitForUnits takes integer unitid, integer qty returns nothing
-    loop
-        exitwhen TownCountDone(unitid) == qty
-        call Sleep(2)
-    endloop
-endfunction
-
-//============================================================================
-function StartUnit takes integer ask_qty, integer unitid, integer town returns boolean
-    local integer have_qty
-    local integer need_qty
-    local integer afford_gold
-    local integer afford_wood
-    local integer afford_qty
-    local integer gold_cost
-    local integer wood_cost
-
-    //------------------------------------------------------------------------
-    // if we have all we're asking for then make nothing
-    //
-    if town == -1 then
-        set have_qty = TownCount(unitid)
-    else
-        set have_qty = TownCountTown(unitid,town)
-    endif
-
-    if have_qty >= ask_qty then
-        return true
-    endif
-    set need_qty = ask_qty - have_qty
-
-    //------------------------------------------------------------------------
-    // limit the qty we're requesting to the amount of resources available
-    //
-    set gold_cost = GetUnitGoldCost(unitid)
-    set wood_cost = GetUnitWoodCost(unitid)
-
-    if gold_cost == 0 then
-        set afford_gold = need_qty
-    else
-        set afford_gold = total_gold / gold_cost
-    endif
-    if afford_gold < need_qty then
-        set afford_qty = afford_gold
-    else
-        set afford_qty = need_qty
-    endif
-
-    if wood_cost == 0 then
-        set afford_wood = need_qty
-    else
-        set afford_wood = total_wood / wood_cost
-    endif
-    if afford_wood < afford_qty then
-        set afford_qty = afford_wood
-    endif
-
-    // if we're waiting on gold/wood; pause build orders
-    if afford_qty < 1 then
-        return false
-    endif
-
-    //------------------------------------------------------------------------
-    // whether we make right now what we're requesting or not, assume we will
-    // and deduct the cost of the units from our fake gold total right away
-    //
-    set total_gold = total_gold - gold_cost * need_qty
-    set total_wood = total_wood - wood_cost * need_qty
-
-    if total_gold < 0 then
-        set total_gold = 0
-    endif
-    if total_wood < 0 then
-        set total_wood = 0
-    endif
-
-    //------------------------------------------------------------------------
-    // give the AI a chance to make the units (it may not be able to right now
-    // but that doesn't stop us from trying other units after this as long
-    // as we have enough money to make this AND the needed, unbuilt ones)
-    //
-    return SetProduce(afford_qty,unitid,town)
-endfunction
-
-//============================================================================
-function WaitForTown takes integer towns, integer townid returns nothing
-    local integer i = 0
-    loop
-        call Sleep(10)
-        exitwhen TownCount(townid) >= towns
-        set i = i + 1
-        exitwhen i == GetBJMaxPlayers()
-    endloop
-endfunction
-
-//============================================================================
-function StartExpansion takes integer qty, integer hall returns boolean
-    local integer count
-    local integer town
-    local unit    peon = null
-    local integer gold_cost
-    local boolean b = true
-
-    set count = TownCount(hall)
-    if count >= qty then
-        return true
-    endif
-
-    set town = GetNextExpansion()
-    if town == -1 then
-        return true
-    endif
-
-    set take_exp = true
-
-    set gold_cost = GetUnitGoldCost(hall)
-    if gold_cost > total_gold then
-        return false
-    endif
-    set total_gold = total_gold - gold_cost
-
-    if GetExpansionFoe() != null then
-        return true
-    endif
-
-    set peon = GetExpansionPeon()
-    if peon != null then
-      set b = SetExpansion(peon,hall)
-      set peon = null
-      return b
-    endif
-    return true
-endfunction
-
-//============================================================================
-function OneBuildLoop takes nothing returns nothing
-    local integer index = 0
-    local integer qty
-    local integer id
-    local integer tp
-
-    set total_gold = GetGold() - gold_buffer
-    set total_wood = GetWood()
-
-    loop
-        exitwhen index == build_length
-
-        set qty = build_qty [index]
-        set id  = build_item[index]
-        set tp  = build_type[index]
-
-        //--------------------------------------------------------------------
-        if tp == BUILD_UNIT then
-            if not StartUnit(qty,id,build_town[index]) then
-                return
-            endif
-
-        //--------------------------------------------------------------------
-        elseif tp == BUILD_UPGRADE then
-            call StartUpgrade(qty,id)
-
-        //--------------------------------------------------------------------
-        else // tp == BUILD_EXPAND
-            if not StartExpansion(qty,id) then
-                return
-            endif
-        endif
-
-        set index = index + 1
-    endloop
-endfunction
-
-//============================================================================
-function BuildLoop takes nothing returns nothing
-    call OneBuildLoop()
-    call StaggerSleep(1,2)
-    loop
-        call OneBuildLoop()
-        call Sleep(2)
-    endloop
-endfunction
-
-//============================================================================
-function StartBuildLoop takes nothing returns nothing
-    call StartThread(function BuildLoop)
-endfunction
-
-//============================================================================
-function SetInitialWave takes integer seconds returns nothing
-    set sleep_seconds = seconds
-endfunction
-
-//============================================================================
-function AddSleepSeconds takes integer seconds returns nothing
-    set sleep_seconds = sleep_seconds + seconds
-endfunction
-
-//============================================================================
-function SleepForever takes nothing returns nothing
-    call Trace("going to sleep forever\n") //xxx
-    loop
-        call Sleep(100)
-    endloop
-endfunction
-
-//============================================================================
-function PlayGame takes nothing returns nothing
-    call StartBuildLoop()
-    call SleepForever()
-endfunction
-
-//============================================================================
-function ConvertNeeds takes integer unitid returns nothing
-    if GetUnitCount(unitid) < 1 then
-        call StartUnit(1,unitid,-1)
-    endif
-endfunction
-
-//============================================================================
-function Conversions takes integer desire, integer unitid returns nothing
-
-  if GetUnitCount(unitid) >= desire then
-    return
-  endif
-
-  #INCLUDETABLE <$VER$\UnitConversions.txt> #EFR
-  if unitid == %1 then
-    call ConvertNeeds(%2)
-    call ConvertNeeds(%3)
-    call MergeUnits(desire,%2,%3,%1)
-  endif
-  #ENDINCLUDE
-
-  #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "BUILT_FROM"
-  if unitid == %1 then
-    call ConvertNeeds(%3)
-    call ConvertUnits(desire, %3)
-  endif
-  #ENDINCLUDE
-
-endfunction
-
-//============================================================================
-function SetAssaultGroup takes integer qty, integer max, integer unitid returns nothing
-    call Conversions(max,unitid)
-
-    if qty <= 0 and TownCountDone(unitid) == 0 then
-        return
-    endif
-    set harass_qty[harass_length] = qty
-    set harass_max[harass_length] = max
-    set harass_units[harass_length] = unitid
-    set harass_length = harass_length + 1
-endfunction
-
-//============================================================================
-function Interleave3 takes integer e1, integer m1, integer h1, integer u1, integer e2, integer m2, integer h2, integer u2, integer e3, integer m3, integer h3, integer u3 returns nothing
-    local integer i1 = 1
-    local integer i2 = 1
-    local integer i3 = 1
-    local integer q1
-    local integer q2
-    local integer q3
-
-    if difficulty == EASY then
-        set q1 = e1
-        set q2 = e2
-        set q3 = e3
-    elseif difficulty == NORMAL then
-        set q1 = m1
-        set q2 = m2
-        set q3 = m3
-    else // difficulty == HARD
-        set q1 = h1
-        set q2 = h2
-        set q3 = h3
-    endif
-
-    loop
-        exitwhen q1<=0 and q2<=0 and q3<=0
-
-        if q1 > 0 then
-            call SetAssaultGroup(i1,i1,u1)
-            set q1 = q1 - 1
-            set i1 = i1 + 1
-        endif
-
-        if q2 > 0 then
-            call SetAssaultGroup(i2,i2,u2)
-            set q2 = q2 - 1
-            set i2 = i2 + 1
-        endif
-
-        if q3 > 0 then
-            call SetAssaultGroup(i3,i3,u3)
-            set q3 = q3 - 1
-            set i3 = i3 + 1
-        endif
-    endloop
-endfunction
-
-//============================================================================
-function SetMeleeGroup takes integer unitid returns nothing
-    if unitid == hero_id then
-        call SetAssaultGroup(1,9,unitid)
-    else
-        call SetAssaultGroup((TownCountDone(unitid)*3)/4,20,unitid)
-    endif
-endfunction
-
-//============================================================================
-function CampaignDefender takes integer level, integer qty, integer unitid returns nothing
-    if qty > 0 and difficulty >= level then
-        set defense_qty[defense_length] = qty
-        set defense_units[defense_length] = unitid
-        set defense_length = defense_length + 1
-        call Conversions(qty,unitid)
-        call SetBuildUnit(qty,unitid)
-    endif
-endfunction
-
-//============================================================================
-function CampaignDefenderEx takes integer easy, integer med, integer hard, integer unitid returns nothing
-    if difficulty == EASY then
-        call CampaignDefender(EASY,easy,unitid)
-    elseif difficulty == NORMAL then
-        call CampaignDefender(NORMAL,med,unitid)
-    else
-        call CampaignDefender(HARD,hard,unitid)
-    endif
-endfunction
-
-//============================================================================
-function CampaignAttacker takes integer level, integer qty, integer unitid returns nothing
-    if qty > 0 and difficulty >= level then 
-        call SetAssaultGroup(qty,qty,unitid)
-    endif
-endfunction
-
-//============================================================================
-function CampaignAttackerEx takes integer easy, integer med, integer hard, integer unitid returns nothing
-    if difficulty == EASY then
-        call CampaignAttacker(EASY,easy,unitid)
-    elseif difficulty == NORMAL then
-        call CampaignAttacker(NORMAL,med,unitid)
-    else
-        call CampaignAttacker(HARD,hard,unitid)
-    endif
-endfunction
-
-//============================================================================
-function FormGroup takes integer seconds, boolean testReady returns nothing
-    local integer index
-    local integer count
-    local integer unitid
-    local integer desire
-    local integer readyPercent
-
-    // normally test for CaptainReadiness() of 50%
-    if testReady == true then
-        set readyPercent = 50
-        call Trace("forming group, requiring healthy guys\n") //xxx
-    else
-        set readyPercent = 0
-        call Trace("forming group, unit health not important\n") //xxx
-    endif
-
-    call Trace("trying to gather forces\n") //xxx
-
-    loop
-        call SuicideSleep(seconds)
-        call InitAssault()
-
-        set index = 0
-        loop
-            exitwhen index == harass_length
-
-            set unitid = harass_units[index]
-            set desire = harass_max[index]
-            set count  = TownCountDone(unitid)
-
-            call Conversions(desire,unitid)
-
-            if count >= desire then
-                call AddAssault(desire,unitid)
-            else
-                set desire = harass_qty[index]
-
-                if count < desire then
-                    call AddAssault(desire,unitid)
-                else
-                    call AddAssault(count,unitid)
-                endif
-            endif
-
-            set index = index + 1
-        endloop
-
-        //xxx
-        if form_group_timeouts and (sleep_seconds < -60) then
-            call Trace("exit form group -- timeout\n")
-        elseif CaptainInCombat(true) then
-            call Trace("exit form group -- can't form while already in combat\n")
-        elseif CaptainIsFull() and CaptainReadiness() >= readyPercent then
-            call Trace("exit form group -- ready\n")
-        endif
-        //xxx
-
-        // time out and send group anyway if time has already expired
-        exitwhen form_group_timeouts and (sleep_seconds < -60)
-        exitwhen CaptainInCombat(true)
-        exitwhen CaptainIsFull() and CaptainReadiness() >= readyPercent
-    endloop
-endfunction
-
-//============================================================================
-function WavePrepare takes integer unitid returns integer
-    return GetUnitBuildTime(unitid)
-endfunction
-
-//============================================================================
-function PrepTime takes nothing returns integer
-    local integer unitid
-    local integer missing
-    local integer prep
-    local integer count
-    local integer largest = 30
-    local integer index = 0
-
-    loop
-        exitwhen index == harass_length
-
-        set unitid  = harass_units[index]
-        set missing = harass_qty[index] + IgnoredUnits(old_id[unitid]) - TownCount(unitid)
-        set prep    = WavePrepare(unitid) * missing
-
-        if prep > largest then
-            set largest = prep
-        endif
-
-        set index = index + 1
-    endloop
-    call TraceI("next wave will require around %d seconds to build and gather\n",largest) //xxx
-
-    return largest
-endfunction
-
-//============================================================================
-function PrepSuicideOnPlayer takes integer seconds returns boolean
-    local integer wave_prep   = PrepTime()
-    local integer save_length
-
-    set save_length = harass_length
-    set harass_length = 0
-
-    call AddSleepSeconds(seconds)
-    if sleep_seconds-wave_prep > 0 then
-        call TraceI("going to sleep for %d seconds before gathering next attack wave\n",sleep_seconds-wave_prep) //xxx
-        call SuicideSleep(sleep_seconds-wave_prep)
-    endif
-
-    call Trace("preparing suicide attack wave\n") //xxx
-
-    set harass_length = save_length
-    if harass_length < 1 then
-        call Trace("ERROR - no units specificed, exiting early\n") //xxx
-        return false
-    endif
-
-    return true
-endfunction
-
-//============================================================================
-function SleepUntilAtGoal takes nothing returns nothing
-    loop
-        exitwhen CaptainRetreating()
-        exitwhen CaptainAtGoal()        // reached goal
-        exitwhen CaptainIsHome()        // failed to path and returned home
-        exitwhen CaptainIsEmpty()       // all units died
-        call SuicideSleep(3)
-    endloop
-endfunction
-
-//============================================================================
-function SleepInCombat takes nothing returns nothing
-    local integer count = 0
-    debug call Trace("SleepInCombat\n")
-    loop
-        loop
-            exitwhen not CaptainInCombat(true)  // goal is cleared
-            exitwhen CaptainIsEmpty()           // duh
-            call SuicideSleep(1)
-        endloop
-
-        set count = count + 1
-        exitwhen count >= 8
-
-        //xxx this is what it should have been; do this for next patch?
-        //call SuicideSleep(1)
-    endloop
-    debug call Trace("exit SleepInCombat\n")
-endfunction
-
-//============================================================================
-function AttackMoveXYA takes integer x, integer y returns nothing
-
-    if zep_next_wave then
-        call LoadZepWave(x,y)
-        set zep_next_wave = false
-    endif
-
-    call AttackMoveXY(x,y)
-    call SleepUntilAtGoal()
-    call SleepInCombat()
-endfunction
-
-//============================================================================
-function SuicideOnPlayerWave takes nothing returns nothing
-    call Trace("waiting for attack wave to enter combat\n") //xxx
-    loop
-        //xxx
-        if allow_signal_abort and CommandsWaiting() != 0 then
-            call Trace("ABORT -- attack wave override\n")
-        endif
-
-        if CaptainInCombat(true) then
-            call Trace("done - captain has entered combat\n")
-        endif
-
-        if CaptainIsEmpty() then
-            call Trace("done - all units are dead\n")
-        endif
-
-        if sleep_seconds < -300 then
-            call Trace("done - timeout, took too long to reach engage the enemy\n")
-        endif
-        //xxx
-
-        exitwhen allow_signal_abort and CommandsWaiting() != 0
-
-        exitwhen CaptainInCombat(true)
-        exitwhen CaptainIsEmpty()
-        call SuicideSleep(10)
-        exitwhen sleep_seconds < -300
-    endloop
-
-    call Trace("waiting for attack wave to die\n") //xxx
-    loop
-        //xxx
-        if allow_signal_abort and CommandsWaiting() != 0 then
-            call Trace("ABORT - attack wave override\n")
-        endif
-
-        if CaptainIsEmpty() then
-            call Trace("done - all units are dead\n")
-        endif
-
-        if sleep_seconds < -300 then
-            call Trace("done - timeout, took too long to reach engage the enemy\n")
-        endif
-        //xxx
-
-        exitwhen allow_signal_abort and CommandsWaiting() != 0
-
-        exitwhen CaptainIsEmpty()
-        call SuicideSleep(10)
-        exitwhen sleep_seconds < -300
-    endloop
-endfunction
-
-//--------------------------------------------------------------------------------------------------
-function CommonSuicideOnPlayer takes boolean standard, boolean bldgs, integer seconds, player p, integer x, integer y returns nothing
-    local integer save_peons
-
-    if not PrepSuicideOnPlayer(seconds) then
-        return
-    endif
-
-    set save_peons = campaign_wood_peons
-    set campaign_wood_peons = 0
-
-    loop
-        //xxx
-        if allow_signal_abort and CommandsWaiting() != 0 then
-            call Trace("ABORT -- attack wave override\n")
-        endif
-        //xxx
-
-        exitwhen allow_signal_abort and CommandsWaiting() != 0
-
-        loop
-            exitwhen allow_signal_abort and CommandsWaiting() != 0
-
-            call FormGroup(5,true)
-            exitwhen sleep_seconds <= 0
-            call TraceI("waiting %d seconds before suicide\n",sleep_seconds) //xxx
-        endloop
-
-        if standard then
-            if bldgs then
-                exitwhen SuicidePlayer(p,sleep_seconds >= -60)
-            else
-                exitwhen SuicidePlayerUnits(p,sleep_seconds >= -60)
-            endif
-        else
-            call AttackMoveXYA(x,y)
-        endif
-
-        call TraceI("waiting %d seconds before timeout\n",60+sleep_seconds) //xxx
-        call SuicideSleep(5)
-    endloop
-
-    set campaign_wood_peons = save_peons
-    set harass_length = 0
-
-    call SuicideOnPlayerWave()
-endfunction
-
-//--------------------------------------------------------------------------------------------------
-function SuicideOnPlayer takes integer seconds, player p returns nothing
-    call CommonSuicideOnPlayer(true,true,seconds,p,0,0)
-endfunction
-
-//--------------------------------------------------------------------------------------------------
-function SuicideOnUnits takes integer seconds, player p returns nothing
-    call CommonSuicideOnPlayer(true,false,seconds,p,0,0)
-endfunction
-
-//--------------------------------------------------------------------------------------------------
-function SuicideOnPoint takes integer seconds, player p, integer x, integer y returns nothing
-    call CommonSuicideOnPlayer(false,false,seconds,p,x,y)
-endfunction
-
-//============================================================================
-function SuicideUntilSignal takes integer seconds, player p returns nothing
-    local integer save
-    local integer wave_prep = PrepTime()
-
-    loop
-        call AddSleepSeconds(seconds)
-        if sleep_seconds-wave_prep > 0 then
-            call SuicideSleep(sleep_seconds-wave_prep)
-        endif
-
-        set save = campaign_wood_peons
-        set campaign_wood_peons = 0
-        loop
-            loop
-                call FormGroup(5, true)
-                exitwhen sleep_seconds <= 0
-                exitwhen CommandsWaiting() != 0
-            endloop
-            exitwhen SuicidePlayer(p,sleep_seconds >= -60)
-            exitwhen CommandsWaiting() != 0
-            call SuicideSleep(3)
-        endloop
-        set campaign_wood_peons = save
-
-        loop
-            exitwhen CaptainIsEmpty()
-            exitwhen CommandsWaiting() != 0
-            call SuicideSleep(5)
-        endloop
-        exitwhen CommandsWaiting() != 0
-    endloop
-endfunction
-
-//--------------------------------------------------------------------------------------------------
-function SuicideOnce takes integer easy, integer med, integer hard, integer unitid returns nothing
-    if difficulty == EASY then
-        call SuicideUnit(easy,unitid)
-    elseif difficulty == NORMAL then
-        call SuicideUnit(med,unitid)
-    else
-        call SuicideUnit(hard,unitid)
-    endif
-endfunction
-
-//--------------------------------------------------------------------------------------------------
-function SuicideUnitA takes integer unitid returns nothing
-    if unitid != 0 then
-        call SuicideUnit(1,unitid)
-    endif
-    call Sleep(0.1)
-endfunction
-
-//--------------------------------------------------------------------------------------------------
-function SuicideUnitB takes integer unitid, integer playerid returns nothing
-    if unitid != 0 then
-        call SuicideUnitEx(1,unitid,playerid)
-    endif
-    call Sleep(0.1)
-endfunction
-
-//--------------------------------------------------------------------------------------------------
-function SuicideUnits takes integer u1, integer u2, integer u3, integer u4, integer u5, integer u6, integer u7, integer u8, integer u9, integer uA returns nothing
-    call Trace("MASS SUICIDE - this script is now technically done\n") //xxx
-
-    call PrepFullSuicide()
-    loop
-        call SuicideUnitA(u1)
-        call SuicideUnitA(u2)
-        call SuicideUnitA(u3)
-        call SuicideUnitA(u4)
-        call SuicideUnitA(u5)
-        call SuicideUnitA(u6)
-        call SuicideUnitA(u7)
-        call SuicideUnitA(u8)
-        call SuicideUnitA(u9)
-        call SuicideUnitA(uA)
-    endloop
-endfunction
-
-//--------------------------------------------------------------------------------------------------
-function SuicideUnitsEx takes integer playerid, integer u1, integer u2, integer u3, integer u4, integer u5, integer u6, integer u7, integer u8, integer u9, integer uA returns nothing
-    call Trace("MASS SUICIDE - this script is now technically done\n") //xxx
-
-    call PrepFullSuicide()
-    loop
-        call SuicideUnitB(u1,playerid)
-        call SuicideUnitB(u2,playerid)
-        call SuicideUnitB(u3,playerid)
-        call SuicideUnitB(u4,playerid)
-        call SuicideUnitB(u5,playerid)
-        call SuicideUnitB(u6,playerid)
-        call SuicideUnitB(u7,playerid)
-        call SuicideUnitB(u8,playerid)
-        call SuicideUnitB(u9,playerid)
-        call SuicideUnitB(uA,playerid)
-    endloop
-endfunction
-
-//--------------------------------------------------------------------------------------------------
-function SuicideOnPlayerEx takes integer easy, integer med, integer hard, player p returns nothing
-    if difficulty == EASY then
-        call SuicideOnPlayer(easy,p)
-    elseif difficulty == NORMAL then
-        call SuicideOnPlayer(med,p)
-    else
-        call SuicideOnPlayer(hard,p)
-    endif
-endfunction
-
-//--------------------------------------------------------------------------------------------------
-function SuicideOnUnitsEx takes integer easy, integer med, integer hard, player p returns nothing
-    if difficulty == EASY then
-        call SuicideOnUnits(easy,p)
-    elseif difficulty == NORMAL then
-        call SuicideOnUnits(med,p)
-    else
-        call SuicideOnUnits(hard,p)
-    endif
-endfunction
-
-//--------------------------------------------------------------------------------------------------
-function SuicideOnPointEx takes integer easy, integer med, integer hard, player p, integer x, integer y returns nothing
-    if difficulty == EASY then
-        call SuicideOnPoint(easy,p,x,y)
-    elseif difficulty == NORMAL then
-        call SuicideOnPoint(med,p,x,y)
-    else
-        call SuicideOnPoint(hard,p,x,y)
-    endif
-endfunction
-
-//============================================================================
-function ForeverSuicideOnPlayer takes integer seconds, player p returns nothing
-    local integer length = harass_length
-    loop
-        exitwhen allow_signal_abort and CommandsWaiting() != 0
-        call SuicideOnPlayer(seconds,p)
-        set harass_length = length
-    endloop
-endfunction
-
-//============================================================================
-function CommonSleepUntilTargetDead takes unit target, boolean reform returns nothing
-    loop
-        exitwhen CaptainRetreating()
-        exitwhen CaptainReadinessHP() <= 40
-
-        exitwhen not UnitAlive(target)
-        exitwhen UnitInvis(target) and not IsUnitDetected(target,ai_player)
-
-        if not TownThreatened() then
-            call AttackMoveKill(target)
-        endif
-
-        call SuicideSleep(3)
-
-        if reform and sleep_seconds < -40 then
-            if CaptainInCombat(true) then
-                set sleep_seconds = sleep_seconds + 5
-            else
-                set sleep_seconds = 0
-                call FormGroup(1,false)
-            endif
-        endif
-    endloop
-endfunction
-
-//============================================================================
-function SleepUntilTargetDead takes unit target returns nothing
-    call CommonSleepUntilTargetDead(target,false)
-endfunction
-
-//============================================================================
-function ReformUntilTargetDead takes unit target returns nothing
-    debug call Trace("ReformUntilTargetDead\n")
-    call CommonSleepUntilTargetDead(target,true)
-endfunction
-
-//============================================================================
-function AttackMoveKillA takes unit target returns nothing
-    if target == null then
-        call SuicideSleep(3)
-        return
-    endif
-
-    debug call Trace("AttackMoveKillA\n")
-    call AttackMoveKill(target)
-    call ReformUntilTargetDead(target)
-    call SleepInCombat()
-endfunction
-
-//============================================================================
-function MinorCreepAttack takes nothing returns nothing
-    local unit target = GetMinorCreep()
-    call SetAllianceTarget(target)
-    call FormGroup(3, true)
-    call AttackMoveKillA(target)
-    set target = null
-endfunction
-
-//============================================================================
-function MajorCreepAttack takes nothing returns nothing
-    local unit target = GetMajorCreep()
-    call SetAllianceTarget(target)
-    call FormGroup(3,true)
-    call AttackMoveKillA(target)
-    set target = null
-endfunction
-
-//============================================================================
-function CreepAttackEx takes nothing returns nothing
-    local unit target = GetCreepCamp(min_creeps,max_creeps,allow_air_creeps)
-    call SetAllianceTarget(target)
-    call FormGroup(3,true)
-    call AttackMoveKillA(target)
-    set target = null
-endfunction
-
-//============================================================================
-function AnyPlayerAttack takes nothing returns nothing
-  local unit hall = GetEnemyExpansion()
-
-  if hall == null then
-    call StartGetEnemyBase()
-    loop
-      exitwhen not WaitGetEnemyBase()
-      call SuicideSleep(1)
-    endloop
-    set hall = GetEnemyBase()
-  endif
-
-  call SetAllianceTarget(hall)
-  call FormGroup(3,true)
-  call AttackMoveKillA(hall)
-  set hall = null
-endfunction
-
-//============================================================================
-function ExpansionAttack takes nothing returns nothing
-    local unit creep = GetExpansionFoe()
-    local integer x
-
-    call FormGroup(3, true)
-    if creep == null then
-        set x = GetExpansionX()
-        if x != -1 then
-            call AttackMoveXYA(x,GetExpansionY())
-        endif
-    else
-        call AttackMoveKillA(creep)
-    endif
-    set creep = null
-endfunction
-
-//============================================================================
-//  AddSiege
-//============================================================================
-function AddSiege takes nothing returns nothing
-
-  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bsiege\b/
-    call SetAssaultGroup( 0, 9, %1 )
-  #ENDINCLUDE
-
-endfunction
-
-//===========================================================================
-//  GetAllyCount
-//============================================================================
-function GetAllyCount takes player whichPlayer returns integer
-    local integer    playerIndex = 0
-    local integer    count = 0
-    local player     indexPlayer
-
-    loop
-        set indexPlayer = Player(playerIndex)
-        if whichPlayer != indexPlayer then
-            if GetPlayerAlliance(whichPlayer,indexPlayer,ALLIANCE_PASSIVE) then
-                if GetPlayerAlliance(indexPlayer,whichPlayer,ALLIANCE_PASSIVE) then
-                    if GetPlayerStructureCount(indexPlayer,true) > 0 then
-                        set count = count + 1
-                    endif
-                endif
-            endif
-        endif
-        set playerIndex = playerIndex + 1
-        exitwhen playerIndex == GetBJMaxPlayers()
-    endloop
-    set indexPlayer = null
-    return count
-endfunction
-
-//============================================================================
-//  SingleMeleeAttack
-//============================================================================
-function SingleMeleeAttack takes boolean needs_exp, boolean has_siege, boolean major_ok, boolean air_units returns nothing
-    local boolean   can_siege
-    local real      daytime 
-    local unit      hall
-    local unit      mega
-    local unit      creep
-    local unit      common
-    local integer   minexp
-    local boolean   allies
-
-    call Trace("===SingleMeleeAttack===\n") //xxx
-
-    if TownThreatened() then
-        call Trace("sleep 2, town threatened\n") //xxx
-        call Sleep(2)
-        return
-    endif
-
-    // purchase zeppelins
-    //
-    if get_zeppelin and GetGold() > 300 and GetWood() > 100 then
-        call Trace("purchase zep\n") //xxx
-        call PurchaseZeppelin()
-        set get_zeppelin = false
-        set ready_for_zeppelin = false
-        return
-    endif
-    set ready_for_zeppelin = true
-
-    // coordinate with allies
-    //
-    set allies = GetAllyCount(ai_player) > 0
-    if allies and MeleeDifficulty() != MELEE_NEWBIE then
-        set common = GetAllianceTarget()
-        if common != null then
-            call Trace("join ally force\n") //xxx
-            if GetMegaTarget() != null then
-                call AddSiege()
-            endif
-            call FormGroup(3,true)
-            call AttackMoveKillA(common)
-            call SetAllianceTarget(null)
-            set common = null
-            return
-        endif
-    endif
-
-    // take expansions as needed
-    //
-    if needs_exp then
-        call Trace("needs exp\n") //xxx
-        set creep = GetExpansionFoe()
-        if creep != null then
-            call Trace("attack exp\n") //xxx
-            call SetAllianceTarget(creep)
-            call FormGroup(3,true)
-            call AttackMoveKillA(creep)
-            call Sleep(20)
-            set take_exp = false
-            set creep = null
-            return
-        endif
-    endif
-
-    // all-out attack if the player is weak
-    //
-    if MeleeDifficulty() != MELEE_NEWBIE then
-        set mega = GetMegaTarget()
-        if mega != null then
-            call Trace("MEGA TARGET!!!\n") //xxx
-            call AddSiege()
-            call FormGroup(3,true)
-            call AttackMoveKillA(mega)
-            set mega = null
-            return
-        endif
-    endif
-
-    // deny player an expansion
-    //
-    set hall = GetEnemyExpansion()
-    set daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
-    set can_siege = has_siege and (air_units or (daytime>=4 and daytime<=12))
-
-    if hall!=null and (can_siege or not IsTowered(hall)) then
-
-        call Trace("test player town attack\n") //xxx
-
-        if MeleeDifficulty() == MELEE_NEWBIE then
-            set minexp = 3
-        elseif allies and MeleeDifficulty() == MELEE_NORMAL then
-            set minexp = 1
-        else
-            set minexp = 0 // HARD, INSANE, and NORMAL with no allies
-        endif
-
-        if exp_seen >= minexp then
-            call Trace("do player town attack\n") //xxx
-            set exp_seen = 0
-            call AddSiege()
-            call SetAllianceTarget(hall)
-            call FormGroup(3,true)
-            call AttackMoveKillA(hall)
-            set hall = null
-            return
-        endif
-        set hall = null
-        set exp_seen = exp_seen + 1
-    endif
-
-    // attack player's main base when siege is available
-    //
-    if can_siege then
-        call Trace("attack player's town\n") //xxx
-        call AddSiege()
-        call AnyPlayerAttack()
-        return
-    endif
-
-    // extended, more specific method of determining creep levels
-    //
-    if min_creeps != -1 then
-        call TraceI("custom creep attack %d\n",max_creeps) //xxx
-        call CreepAttackEx()
-        return
-    endif
-
-    // nothing better to do, so kill a creep camp
-    //
-    if major_ok then
-        call Trace("major creep attack\n") //xxx
-        call MajorCreepAttack()
-        return
-    endif
-
-    call Trace("minor creep attack\n") //xxx
-    call MinorCreepAttack()
-endfunction
-
-//============================================================================
-function GetZeppelin takes nothing returns nothing
-    if ready_for_zeppelin then
-        set get_zeppelin = true
-    endif
-endfunction
-
-//============================================================================
-function BuildAttackers takes nothing returns nothing
-    local integer index = 0
-    local integer unitid
-    local integer desire
-    local integer count
-
-    loop
-        exitwhen index == harass_length
-
-        set unitid = harass_units[index]
-        set desire = harass_qty[index] + IgnoredUnits(unitid)
-        set count  = TownCount(unitid)
-
-        if count != desire then
-            if not StartUnit(desire,unitid,-1) then
-                return
-            endif
-        endif
-
-        set index = index + 1
-    endloop
-endfunction
-
-//============================================================================
-function BuildDefenders takes nothing returns nothing
-    local integer index = 0
-    local integer unitid
-    local integer qty
-    loop
-        exitwhen index == defense_length
-
-        set unitid = defense_units[index]
-        set qty = defense_qty[index]
-
-        call Conversions(qty,unitid)
-        call AddDefenders(qty,unitid)
-
-        set index = index + 1
-    endloop
-endfunction
-
-//============================================================================
-function CampaignBasicsA takes nothing returns nothing
-    local integer food_each = GetFoodMade(racial_farm)
-    local integer on_wood
-
-    call ClearHarvestAI()
-
-    if CaptainInCombat(false) then
-        set on_wood = 0
-    else
-        set on_wood = campaign_wood_peons
-    endif
-
-    call HarvestGold(0,campaign_gold_peons)
-    call HarvestWood(0,on_wood)
-
-    if harvest_town1 then
-        call HarvestGold(1,campaign_gold_peons)
-        call HarvestWood(1,on_wood)
-    endif
-
-    if harvest_town2 then
-        call HarvestGold(2,campaign_gold_peons)
-        call HarvestWood(2,on_wood)
-    endif
-
-    if harvest_town3 then
-        call HarvestGold(3,campaign_gold_peons)
-        call HarvestWood(3,on_wood)
-    endif
-
-    if do_campaign_farms and FoodUsed()+food_each-1 > food_each*(TownCount(racial_farm)+1) then
-        call StartUnit(TownCount(racial_farm)+1,racial_farm,-1)
-    endif
-
-    if build_campaign_attackers then
-        call BuildAttackers()
-    endif
-
-    if not CaptainInCombat(false) then
-        call BuildDefenders()
-    endif
-
-    call FillGuardPosts()
-    call ReturnGuardPosts()
-endfunction
-
-//============================================================================
-function CampaignBasics takes nothing returns nothing
-    call Sleep(1)
-    call CampaignBasicsA()
-    call StaggerSleep(1,5)
-    loop
-        call CampaignBasicsA()
-        call Sleep(campaign_basics_speed)
-    endloop
-endfunction
-
-//============================================================================
-function CampaignAI takes integer farms, code heroes returns nothing
-    if GetGameDifficulty() == MAP_DIFFICULTY_EASY then
-        set difficulty = EASY
-
-        call SetTargetHeroes(false)
-        call SetUnitsFlee(false)
-
-    elseif GetGameDifficulty() == MAP_DIFFICULTY_NORMAL then
-        set difficulty = NORMAL
-
-        call SetTargetHeroes(false)
-        call SetUnitsFlee(false)
-
-    elseif GetGameDifficulty() == MAP_DIFFICULTY_HARD then
-        set difficulty = HARD
-
-        call SetPeonsRepair(true)
-    else
-        set difficulty = INSANE
-    endif
-
-    call InitAI()
-    call InitBuildArray()
-    call InitAssaultGroup()
-    call CreateCaptains()
-
-    call SetNewHeroes(false)
-    if heroes != null then
-        call SetHeroLevels(heroes)
-    endif
-
-    call SetHeroesFlee(false)
-    call SetGroupsFlee(false)
-    call SetSlowChopping(true)
-    call GroupTimedLife(false)
-    call SetCampaignAI()
-    call Sleep(0.1)
-
-    set racial_farm = farms
-    call StartThread(function CampaignBasics)
-    call StartBuildLoop()
-endfunction
-
-//============================================================================
-function UnsummonAll takes nothing returns nothing
-    local unit bldg
-    loop
-        set bldg = GetBuilding(ai_player)
-        exitwhen bldg==null
-        call Unsummon(bldg)
-        call Sleep(2)
-    endloop
-endfunction
-
-//============================================================================
-//  SkillArrays
-//============================================================================
-function SkillArrays takes nothing returns integer
-    local integer level = GetHeroLevelAI()
-    if level > max_hero_level then
-        set max_hero_level = level
-    endif
-
-    if GetHeroId() == hero_id then
-        return skills1[level]
-    elseif GetHeroId() == hero_id2 then
-        return skills2[level]
-    else
-        return skills3[level]
-    endif
-endfunction
-
-//--------------------------------------------------------------------------------------------------
-//  SetSkillArray
-//--------------------------------------------------------------------------------------------------
-function SetSkillArray takes integer index, integer id returns nothing
-    local integer i = 1
-
-    if index == 1 then
-        if hero_id != id then
-            return
-        endif
-        loop
-            set skills1[i] = skill[i]
-            exitwhen i == 10
-            set i = i + 1
-        endloop
-    elseif index == 2 then
-        if hero_id2 != id then
-            return
-        endif
-        loop
-            set skills2[i] = skill[i]
-            exitwhen i == 10
-            set i = i + 1
-        endloop
-    else
-        if hero_id3 != id then
-            return
-        endif
-        loop
-            set skills3[i] = skill[i]
-            exitwhen i == 10
-            set i = i + 1
-        endloop
-    endif
-endfunction
-
-//============================================================================
-//  AwaitMeleeHeroes
-//============================================================================
-function AwaitMeleeHeroes takes nothing returns nothing
-    if GetUnitCountDone(hero_id2) > 0 then
-        set two_heroes = true
-    endif
-    loop
-        exitwhen GetUnitCountDone(hero_id)>0 and (take_exp or (not two_heroes or GetUnitCountDone(hero_id2)>0))
-        call Sleep(1)
-    endloop
-endfunction
-
-//============================================================================
-//  PickMeleeHero 
-//============================================================================
-function PickMeleeHero takes race raceid returns integer
-    local integer first
-    local integer second
-    local integer third
-    local integer last
-    local integer array heroes
-    local integer i
-#INCLUDETABLE <$VER$\GlobalSettings.txt> #EFR #COND '%1' eq 'ver_neutral_hero_number' 
-    set %1 = %2
-#ENDINCLUDE
-    call InitAiUnits()  // This function makes all unit ids go back to there originals
-    set i = ver_neutral_hero_number
-    //------------------------------------------------------------------------
-    if raceid == RACE_HUMAN then
-    //------------------------------------------------------------------------
-
-    #INCLUDETABLE <$VER$\Races.txt> #COND '%1' eq 'HUMAN'
-      #INCLUDETABLE <$VER$\%1\Heroes.txt> #EFR
-        set heroes[#EVAL{%row}] = %1
-      #ENDINCLUDE
-    #ENDINCLUDE
-
-    //------------------------------------------------------------------------
-    elseif raceid == RACE_ORC then
-    //------------------------------------------------------------------------
-    #INCLUDETABLE <$VER$\Races.txt> #COND '%1' eq 'ORC'
-      #INCLUDETABLE <$VER$\%1\Heroes.txt> #EFR
-        set heroes[#EVAL{%row}] = %1
-      #ENDINCLUDE
-    #ENDINCLUDE
-
-    //------------------------------------------------------------------------
-    elseif raceid == RACE_NIGHTELF then
-    //------------------------------------------------------------------------
-    #INCLUDETABLE <$VER$\Races.txt> #COND '%1' eq 'ELF'
-      #INCLUDETABLE <$VER$\%1\Heroes.txt> #EFR
-        set heroes[#EVAL{%row}] = %1
-      #ENDINCLUDE
-    #ENDINCLUDE
-
-    //------------------------------------------------------------------------
-    elseif raceid == RACE_UNDEAD then
-    //------------------------------------------------------------------------
-    #INCLUDETABLE <$VER$\Races.txt> #COND '%1' eq 'UNDEAD'
-      #INCLUDETABLE <$VER$\%1\Heroes.txt> #EFR
-        set heroes[#EVAL{%row}] = %1
-      #ENDINCLUDE
-    #ENDINCLUDE
-
-    else
-        set hero_id = 0
-    endif
-
-    //if VersionCompatible(VERSION_FROZEN_THRONE) then
-        set last = race_hero_number + i
-    //else
-    //    set last = race_hero_number
-    //endif
-
-    set first  = GetRandomInt(i+1,last)
-    set second = GetRandomInt(i+1,last-1)
-    if VersionCompatible(VERSION_FROZEN_THRONE) then
-      set third  = GetRandomInt(i+1,last-2)
-    else
-      set third = i+1
-    endif
-    set hero_id        = heroes[first]
-    set heroes[first]  = heroes[last]
-    set hero_id2       = heroes[second]
-    set heroes[second] = heroes[last-1]
-    set hero_id3       = heroes[third]
-
-    return hero_id
-endfunction
+//AMAI VS AI Support
+#INCLUDESCRIPT <common_original.eai>
 
 //function main takes nothing returns nothing
 
 //endfunction
-
 //library themain
 //
-   //! inject main
-   //some function calls may go here
-
-   // this places vjass initializations there, notice structs are first initialized then library initializers
-   // are called
-   //! dovjassinit
-   //! endinject
+//! inject main
+//some function calls may go here
+// this places vjass initializations there, notice structs are first initialized then library initializers
+// are called
+//! dovjassinit
+//! endinject
 //
 //endlibrary

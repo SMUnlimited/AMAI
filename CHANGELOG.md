@@ -29,7 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
    - TFT Demon Hunters will now be more active in learning to IMMOLATION
 - (DevTools) Add MakeROC.bat , Although it's useless
 - (DevTools) MakeVAIXX.bat Synchronize code for non VS AI scripts, include ROC
-- (DevTools) MPQEditor.exe update to 3.6.0.858
+- (DevTools) MPQEditor.exe update to 4.0.0.908
+- (DevTools) Uninstall AMAI Scripts
 - When BJ debugging is on , If the first human player is Observer, system will set all AI Alliance and share control with the Observer , that Observer can view the build construction location and the learning of hero skills
    - Strategy report not send to the alliance Observer , to avoid repeated display
    - Towerruch report will send to the alliance Observer
@@ -101,6 +102,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Strength Dynamic Distribute , hlep AI change unit attack mode , eliminating the time required for build and immediately allowing existing units to cope with strength imbalance
    - Note: Original intention to control units that AI does not control , but use hard-coding
 - (sync)To reduce chat spam for players, chat messages from the AI are now rate limited to reduce screen spam especially in large player maps.
+- (sync)Team games ai's that are defeated will no longer destroy its base or do a desperation attack and instead will share control with its human allies.
+   - When there is no human allies and two AI shares the same race it will give its units to that AI.
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
@@ -134,6 +137,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Build peon have compensate , when startloc have more mine
 - If race_manual_loading or race_uses_mine_expansion , GetMinesHarvested will return TownCountDone(mine)
 - Adjust HarvestGold mun, star game will have 4 peon HarvestGold , 1 peon HarvestWood(ELF is 2)
+- Adjust game later stage HarvestGold methods , hope to handle the issue of peon and gold mines, but not Harvest
 - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1))) , all build_sequence_XX no call BuildUnit(1, shop) , and build shop leave to the global_build_sequence
 - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)
 - Now GetFittingCreep calculation air_strength will additional judge GetCreepCamp(1, lvl, true) == null
@@ -188,6 +192,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - ANCIENT EXPANSION change
   - add judgment , when expansion location have unit , judgment the unit OwningPlayer , if player is AGGRESSIVE ,just set ancient_exp_state to 4 , else build
   - if no mine , set ancient_exp_state to 1 , and check all hall tree , use move tree expansion
+  - Can carry nearby ancient trees
 - Militia_Expansion now check water_expansion , no take water_expansion
 - Militia_Expansion and Militia_Expansion JOB now use Militia ability
   - now peon can shape shifting Militia
@@ -230,6 +235,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Adjust all races global_build_sequence build shop priority(10+(80*(tier-1)))  , all build_sequence_XX no call BuildUnit(1, shop) ,then AddBlock maybe can run ,and build shop leave to the global_build_sequence
   - Adjust all races setting.txt , now if the races cannot used's set , the initial value is 0 or "" (like human race_ancient_expansion_help_id)，fix ROC ELF race_has_moonwells to true
   - Adjust UPG_BOMBS BuildAdvUpgr2 chance unitcount to 0.2 , Maximum to 35 , In the test, after building COPTER, the enemy has no AIR , the COPTER no research UPG_BOMBS not useful
+  - After the base upgrade, if the advanced barracks are not built properly, lower level units will continue to be trained
+  - Purchase mercenaries to increase randomness
 - Remove Duplicates ROC GlobalSettings.txt front_base_distance
 - GetSumLoc no longer used within the loop , prevent loc exceeding map range
 - Debug show PingFrontPoints
@@ -285,7 +292,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed build and training stopped at the beginning of the game due to insufficient resources , now will skip this one , build or training the next one
 - Fixed build BLOC_FRONT , now will check build Loc and home distance , avoid island terrain let the build construction too far away , like issues 116
 - Fixed expansion to much , AI cannot harvest, universal_peon_assignment and peon_assignment now will contrast TownCountDone(racial_expansion) and TownHasMine(townid) , use the max
-- Fixed some SingleMeleeAttackAM's SetAllianceTarget error
 - Fixed BlockListCheck cannot limitation RefreshNeeded Refresh needed1[unitid] ~ needed3[unitid] , now BlockListCheck normal work , like 2.54
 - Fixed GOBLIN_TINKER abnormal skill learning
 - Fixed TFT ORC Strategy VersusHuman key building to Tauren Totem(Thank Slayer95 , Pull #123)
@@ -330,6 +336,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed add water_expansion_list no check Resource Amount
 - Fixed harvesting ghouls unable to take effect
 - Fixed not set HERO_SKILL_MAJOR
+- (sync)Fixed handling of shredder priority to not overtake priority or standard peons.
+
 
 ## [3.2.2] - 2022-10-05
 
