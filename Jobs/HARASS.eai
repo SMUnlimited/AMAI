@@ -119,7 +119,8 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
   local boolean healing = false
 
   call DisplayToAllJobDebug("HARASS JOB START")
-  if not UnitAliveInGroup(harasser) then
+  set harasser = SelectByAlive(harasser, true)
+  if FirstOfGroup(harasser) == null then
     call SaveBoolean(additional_info, key, STATE_RETREAT , false)
     call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
     call SaveInteger(additional_info, key, INVISIBLE_COUNT , 0)
@@ -162,11 +163,10 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
 
   if target != null and (IsUnitHidden(target) or IsUnitLoaded(target) or IsUnitInvisible(target, ai_player)) then	// Checks to see if unit is not targetable and after small period will change to target it can hit
     set hiddencount = hiddencount + 1
-    call SaveInteger(additional_info, key, INVISIBLE_COUNT , hiddencount)
   else
     set hiddencount = 0
-    call SaveInteger(additional_info, key, INVISIBLE_COUNT , hiddencount)
   endif
+  call SaveInteger(additional_info, key, INVISIBLE_COUNT , hiddencount)
 
   if target == null or not UnitAlive(target) or hiddencount > 2 then
     if target != null then
@@ -193,7 +193,7 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
   //endif
 
   if target != null and UnitAlive(target) then
-    if UnitAlive(major_hero) and major_hero != null and DistanceBetweenUnits(target,major_hero) <= 1800 then
+    if (major_hero != null and UnitAlive(major_hero) and DistanceBetweenUnits(target,major_hero) <= 1800) or (main_army >= 0 and army_loc[main_army] != null and DistanceBetweenPoints_kd(army_loc[main_army],GetUnitLoc(target)) <= 1800) then
       call SaveBoolean(additional_info, key, STATE_RETREAT , false)
       call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
       call SaveInteger(additional_info, key, INVISIBLE_COUNT , 0)
@@ -295,7 +295,7 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
       else
         if timedelay >= 5 or timedelay == -1 or (hu != null and IsUnitDetected(hu, GetOwningPlayer(target))) then
           call GroupTargetOrder(harasser, "attack", target)
-          call IssueTargetOrder(hu, "attack", target)
+          //call IssueTargetOrder(hu, "attack", target)
         endif
         call CreateDebugTag("HARASS: Attack Target", 10, target, 3.00, 1.50)
         //call CreateDebugTag("HARASS: Changing Target", 10, hu, 3.00, 1.50)

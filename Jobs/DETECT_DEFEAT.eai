@@ -18,13 +18,14 @@ function SaveYourself takes nothing returns boolean
     if current_expansion == null then
       call ChooseExpansion()
     endif
-    if race_ancient_expansion_available == true and TownCountDone(racial_expansion) > 0 then
+    if race_ancient_expansion_available == true and not ancient_expanding then
       call TQAddJob(2, ANCIENT_EXPANSION, 0)
       set ancient_expanding = true
       set SaveYourselfMode = ANCIENT_EXPANSION
       return true
-    elseif race_militia_available == true then
+    elseif race_militia_available == true and not militia_expanding then
       call TQAddJob(2, MILITIA_EXPAND, 0)
+      set militia_expanding = true
       set SaveYourselfMode = MILITIA_EXPAND
       return true
     endif
@@ -37,8 +38,10 @@ function SaveYourself takes nothing returns boolean
         return true
       endif
     elseif SaveYourselfMode == MILITIA_EXPAND then
-      if not HallsCompleted(racial_expansion) or GetMinesOwned() > 0 then
-        set SaveYourselfMode = -1
+      if ancient_expanding == true then
+        return true  // In self rescue, wait
+      elseif not HallsCompleted(racial_expansion) or GetMinesOwned() > 0 then
+        set SaveYourselfMode = -1  // Self rescue successful , because ancient_expanding is false and have mine
         return true
       endif
     endif
@@ -48,20 +51,19 @@ endfunction
 
 function RemoveFromOwnForce takes player p returns nothing
   local integer i = 0
+  if i >= force_number then
+    return
+  endif
   loop
-    if i >= force_number then
-      return
-    endif
     exitwhen own_force[i] == p
     set i = i + 1
   endloop
-  set force_number = force_number - 1
-  set i = 0
   loop
     exitwhen i >= force_number
     set own_force[i] = own_force[i+1]
     set i = i + 1
   endloop
+  set force_number = force_number - 1
 endfunction
 
 function KillYourself takes boolean end_ai returns nothing
@@ -119,12 +121,12 @@ function KillYourself takes boolean end_ai returns nothing
             call GroupRemoveUnit(g, u )
           endloop
         endif
-        call RemovePlayer(ai_player, PLAYER_GAME_RESULT_DEFEAT)
         set p = null
       endif
       set player_defeated = true
       call DestroyGroup(g)
       set g = null
+      call RemovePlayer(ai_player, PLAYER_GAME_RESULT_DEFEAT)
       //if not destroy_buildings_on_defeat then
         //call SetPlayerAlliance(ai_player, Player(PLAYER_NEUTRAL_AGGRESSIVE), ALLIANCE_PASSIVE, true)  // trigger the victory/defeat recognition triggers
         //call SetPlayerAlliance(ai_player, Player(PLAYER_NEUTRAL_AGGRESSIVE), ALLIANCE_PASSIVE, false)
@@ -148,7 +150,7 @@ function Defeated takes nothing returns nothing
       return
     endif
   endif
-  if (p_surrender[profile]) >= 3 and FoodUsed() < 15 and not (no_ai_ally and not humanPlayerAllys) then
+  if p_surrender[profile] >= 3 and FoodUsed() < 15 and not (no_ai_ally and not humanPlayerAllys) then
     call KillYourself(no_ai_ally) // If no resources, and easily surrender just give up
   else
     if SaveYourself() then
@@ -177,7 +179,7 @@ function CheckDefeated takes nothing returns nothing
   local unit u = null
   local player p = null
   local real enemy_sum = 0
-  local real player_sum = GetPlayerStrength(ai_player)
+  local real player_sum = GetOwnStrength()
   local real ally_sum = 0
   local integer i = 0
 
@@ -191,6 +193,7 @@ function CheckDefeated takes nothing returns nothing
     call GroupEnumUnitsInRange(g,GetLocationX(home_location),GetLocationY(home_location),front_base_distance,null)
     set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), false)
     set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
+    set g = SelectByHidden(g, false)  // towerrush will create hidden unit
     set g = SelectByAlive(g, true)
     loop
       set u = FirstOfGroup(g)
@@ -212,7 +215,7 @@ function CheckDefeated takes nothing returns nothing
     endif
     set i = i + 1
   endloop
-  set ally_sum = ally_sum + GetOwnStrength()
+  set ally_sum = ally_sum + player_sum
   set p = null
 // Have nothing left checks
   if GetPlayerUnitCount(ai_player, true) == 0 and GetPlayerStructureCount(ai_player, true) == 0 then
@@ -221,7 +224,7 @@ function CheckDefeated takes nothing returns nothing
   endif
 
   if food_use == 0 and hall_count == 0 then
-    if (agg <= 0 and (no_ai_ally and not humanPlayerAllys)) then
+    if agg <= 0 and no_ai_ally and not humanPlayerAllys then
       if SaveYourself() then
         return
       endif
@@ -233,7 +236,7 @@ function CheckDefeated takes nothing returns nothing
   endif
 
   if food_use < 6 and hall_count == 0 and worker_count == 0 then
-    if (agg <= 1 and (no_ai_ally and not humanPlayerAllys)) then
+    if agg <= 1 and no_ai_ally and not humanPlayerAllys then
       if SaveYourself() then
         return
       endif
@@ -302,6 +305,7 @@ endfunction
 function DetectDefeatJob takes nothing returns nothing
   local integer i = 0
   local player p = null
+  local race r = GetPlayerRace(ai_player)
   call DisplayToAllJobDebug("DETECT_DEFEAT Job Start")
   set no_ai_ally = true
   loop
@@ -310,11 +314,9 @@ function DetectDefeatJob takes nothing returns nothing
     if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
       if GetPlayerController(p) == MAP_CONTROL_USER then
         set humanPlayerAllys = true
-      else
+      elseif r == GetPlayerRace(p) then
         set no_ai_ally = false
-        if GetPlayerRace(ai_player) == GetPlayerRace(p) then
-          set sharedRacePlayer = p
-        endif
+        set sharedRacePlayer = p
       endif
     endif
     set i = i + 1
@@ -328,5 +330,6 @@ function DetectDefeatJob takes nothing returns nothing
     call TQAddJob(13 * sleep_multiplier, DETECT_DEFEAT, 0)
   endif
   set p = null
+  set r = null
 endfunction
 #ENDIF

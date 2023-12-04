@@ -41,7 +41,7 @@ function BuildMilitiaExpansion takes unit peon , integer unitid returns boolean
 endfunction
 
 function GetMilitiaExpansionStrength takes nothing returns integer
-	return GetLocationCreepStrength(GetUnitX(militia_expansion), GetUnitY(militia_expansion), expansion_radius)
+  return GetLocationCreepStrength(GetUnitX(militia_expansion), GetUnitY(militia_expansion), expansion_radius)
 endfunction
 
 function TryMilitiaExpansionFoot takes nothing returns nothing
@@ -50,7 +50,7 @@ local unit u = null
 local integer ownstrength = 0
 local integer expansionstrength = 0
 local location l = null
-local boolean buildend = false
+local boolean buildone = false
 
 	call DisplayToAllJobDebug("MILITIA_EXPAND JOB START")
 
@@ -62,62 +62,64 @@ local boolean buildend = false
 	if militia_state == 0 then
 		if not militia_expanding then
 			if current_expansion != null then
-				set militia_time_count = militia_time_count + 1
 				call Trace("Expansion Distance: " + Int2Str(R2I(GetExpansionDistance())))
 				set expansionstrength = GetExpansionStrength()
 				//if GetExpansionDistance() <= 6600 and expansionstrength < 20 then //and militia_time_count < militia_time_out then //and expansionstrength < 36 then // and hero[1] == racial_militiahero then
 				if GetExpansionDistance() <= 5800 and expansionstrength < 20 then
 					call Trace("Our Strength:" + Int2Str(ownstrength) + " Expansion Strength:" + Int2Str(expansionstrength))
-					if TownCountDone(hero[1])>0 and not town_threatened and GetPlayerStrength(ai_player) >= minimum_attack_strength and TownCountDone(racial_peon) > 6 and ownstrength + 6 >= expansionstrength then
+					if TownCountDone(hero[1]) > 0 and not town_threatened and ownstrength >= minimum_attack_strength and TownCountDone(racial_peon) > 6 and ownstrength + 6 >= expansionstrength then
 						set gold_buffer = GetUnitGoldCost2(racial_expansion)
 						set wood_buffer = GetUnitWoodCost2(racial_expansion)
 						set militia_expansion = current_expansion
-						if GetGold() >= GetUnitGoldCost2(racial_expansion) and GetWood() >= GetUnitWoodCost2(racial_expansion) then
+						if GetGold() >= gold_buffer and GetWood() >= wood_buffer then
 							if GetMilitiaExpansionStrength() <= 0 then
-								set militia_expanding = false
 								set militia_state = 2
+								call Trace("Militia state 0 expand")
 							else
-								set militia_expanding = true
-								call Trace("Militia active")
+								call Trace("Militia state 0 active")
 								set militia_state = 1
 							endif
+							set militia_expanding = true
+							call TQAddJob(7, MILITIA_EXPAND, 0)
 						endif
 					endif
 				else
 					set gold_buffer = 0
 					set wood_buffer = 0
-					call Trace("MILITIA_EXPAND: Militia expansion will not be done")
+					set militia_time_count = 0
+					set militia_expanding = false
+					call Trace("MILITIA_EXPAND State 0 : Militia expansion will not be done")
 					//set militia = false
-					set buildend = true
 				endif
 			endif
 		endif
-		if not buildend then
-			call TQAddJob(7, MILITIA_EXPAND, 0)
-			return
-		endif
+		return
 	elseif militia_state == 1 then
 		set gold_buffer = GetUnitGoldCost2(racial_expansion)
 		set wood_buffer = GetUnitWoodCost2(racial_expansion)
 		set u = GetExpFoe(u)
 		if ownstrength + 6 < GetExpansionStrength() then
-			set militia_expanding = false
 			set militia_state = 0 // Lost units so stop trying to expand
+			call TQAddJob(2, MILITIA_EXPAND, 0)
+			call Trace("Militia state 1 to state 0")
 		elseif GetMilitiaExpansionStrength() <= 0 and u == null then
-			set militia_expanding = false
 			set militia_state = 2
 			call Trace("Militia state 1 done")
+		call TQAddJob(2, MILITIA_EXPAND, 0)
 		else
-			set militia_expanding = true
+			set militia_state = 0
+			set militia_time_count = 0
+			set gold_buffer = 0
+			set wood_buffer = 0
+			set militia_expanding = false
+			call Trace("Militia state 1 end")
 		endif
 		set u = null
-		call TQAddJob(2, MILITIA_EXPAND, 0)
 		return
 	elseif militia_state == 2 then
 		call Trace("Militia state 2")
 		if GetMilitiaExpansionStrength() > 0 then
 			set militia_state = 1
-			set militia_expanding = true
 		endif
 		set gold_buffer = GetUnitGoldCost2(racial_expansion)
 		set wood_buffer = GetUnitWoodCost2(racial_expansion)
@@ -145,22 +147,33 @@ local boolean buildend = false
 		//set militia_fastb2 = FirstOfGroup(g)
 		//call GroupRemoveUnit(g, militia_fastb2)
 		//set militia_fastb3 = FirstOfGroup(g)
-		call RemoveGuardPosition(militia_builder)
 		call DestroyGroup(g)
 		set g = null
 		if militia_builder != null then
 			set militia_state = 3
 			call Trace("Militia state 2 done")
+		else
+			set militia_time_count = militia_time_count + 1
 		endif
-		call TQAddJob(2, MILITIA_EXPAND, 0)
+		if militia_time_count < 3 then
+			call TQAddJob(2, MILITIA_EXPAND, 0)
+		else
+			set militia_state = 0
+			set militia_time_count = 0
+			set gold_buffer = 0
+			set wood_buffer = 0
+			set militia_expanding = false
+			call Trace("Militia state 2 Ended , not take peon")
+		endif
 		return
 	elseif militia_state == 3 then
 		if GetMilitiaExpansionStrength() > 0 then
 			set militia_state = 1
-			set militia_expanding = true
+			call Trace("Militia state 3 to state 1")
 		endif
 		if militia_builder == null or GetUnitState(militia_builder, UNIT_STATE_LIFE) <=0 then
 			set militia_state = 2
+			call Trace("Militia state 3 to state 2")
 		else
 			if CheckExpansionTaken(militia_expansion) then
 				//set militia = false
@@ -170,9 +183,11 @@ local boolean buildend = false
 				set militia_loc = null
 				set gold_buffer = 0
 				set wood_buffer = 0
-				call Trace("Militia Ended")
+				set militia_time_count = 0
+				call Trace("Militia state 3 Ended , expansion is take by other player")
 				call RecycleGuardPosition(militia_builder)
-				set buildend = true
+				set buildone = true
+				set militia_expanding = false
 			else
 				if militia_loc == null then
 					call GetMilitiaExpansionLoc(old_id[racial_expansion])
@@ -180,16 +195,22 @@ local boolean buildend = false
 				if GetGold() >= GetUnitGoldCost2(racial_hall[1]) and GetWood() >= GetUnitWoodCost2(racial_hall[1]) then
 					//call IssueTargetOrder(militia_fastb1, "stop", current_expansion)
 					//call IssueTargetOrder(militia_fastb2, "stop", current_expansion)
-					call RecycleGuardPosition(militia_builder)  // has to be here or peasant comes off construction
-					set buildend = BuildMilitiaExpansion(militia_builder, old_id[racial_expansion])
+					call RemoveGuardPosition(militia_builder)  // has to be here or peasant comes off construction
+					set buildone = BuildMilitiaExpansion(militia_builder, old_id[racial_expansion])
+					call TQAddUnitJob(200, RESET_GUARD_POSITION_ONLY, 80, militia_builder)
 					//set militia = false
-					//set militia_state = 0
-					//set militia_expansion = null
-					call Trace("Militia Build commanded")
+					set militia_time_count = 0
+					set gold_buffer = 0
+					set wood_buffer = 0
+					set militia_state = 0
+					set militia_expansion = null
+					set militia_expanding = false
+					call Trace("Militia state 3 , Build commanded")
 				else 
 					set gold_buffer = GetUnitGoldCost2(racial_expansion)
 					set wood_buffer = GetUnitWoodCost2(racial_expansion)
-					call Trace("Moving near")
+					set buildone = true
+					call Trace("Militia state 3 , Moving near")
 					call RemoveGuardPosition(militia_builder)
 					if militia_loc == null then
 						call IssueTargetOrder(militia_builder, "move", current_expansion)
@@ -201,7 +222,7 @@ local boolean buildend = false
 				endif
 			endif
 		endif
-		if not buildend then
+		if not buildone then
 			call TQAddJob(3, MILITIA_EXPAND, 0)
 			return
 		endif

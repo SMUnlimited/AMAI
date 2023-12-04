@@ -12,7 +12,7 @@
     integer most_threatened_enemy_town = -1
     integer town_num = 0
     real town_radius = 2500
-    group in_town_group = CreateGroup()
+    group array in_town_group
 #ELSE
 function CopyTown takes integer from, integer to returns nothing
   set town_owner[to] = town_owner[from]
@@ -53,20 +53,21 @@ function TrackTown takes integer num returns boolean
   //local location l = null
   local real x = 0
   local real y = 0
-
+  local integer p = town_owner[num]
   set town_value[num] = 0
   set town_count[num] = 0
   set town_can_tp[num] = false
   call GroupEnumUnitsInRangeOfLoc(g, town_loc[num], town_radius, null)
-  set g = SelectByPlayer(g, Player(town_owner[num]), true)
+  set g = SelectByPlayer(g, Player(p), true)  //Use filtering to avoid running out of memory
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  set g = SelectByAlive2(g, true)
+  set g = SelectByHidden(g, false)
+  set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if not IsUnitInGroup(u, in_town_group) then
+    if not IsUnitInGroup(u, in_town_group[p]) then
       call GroupAddUnit(town_group[num], u)
-      call GroupAddUnit(in_town_group, u)
+      call GroupAddUnit(in_town_group[p], u)
       set x = x + GetUnitX(u)  // Prevent loc exceeding map range
       set y = y + GetUnitY(u)
       //set l = GetSumLoc_dd(l,GetUnitLoc(u))
@@ -116,12 +117,6 @@ function TrackExistingTowns takes nothing returns nothing
 endfunction
 
 function SeedNewTownAtLoc takes location l, integer p returns nothing
-  if town_loc[town_num] != null then
-    call RemoveLocation(town_loc[town_num])
-  endif
-  if town_group[town_num] != null then
-    call DestroyGroup(town_group[town_num])
-  endif
   set town_owner[town_num] = p
   set town_loc[town_num] = l
   set town_threat[town_num] = 0
@@ -135,12 +130,13 @@ function SeedNewTownsForPlayer takes integer p returns nothing
   local group g = CreateGroup()
   local unit u = null
   call GroupEnumUnitsOfPlayer(g, Player(p), null)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  set g = SelectByAlive(g,true)
-  loop
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)  //Use filtering to avoid running out of memory
+  set g = SelectByHidden(g, false)
+  set g = SelectByAlive(g, true)
+    loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if not IsUnitInGroup(u, in_town_group) then  //IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and
+    if not IsUnitInGroup(u, in_town_group[p]) then
       call SeedNewTownAtLoc(GetUnitLoc(u), p)
     endif
     call GroupRemoveUnit(g, u)
@@ -151,20 +147,30 @@ endfunction
 
 function SeedNewTowns takes nothing returns nothing
   local integer p = 0
+  local player sp = null
   loop
     exitwhen p >= GetBJMaxPlayers()
-    if GetPlayerSlotState(Player(p)) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(Player(p)) then
+    set sp = Player(p)
+    if GetPlayerSlotState(sp) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(sp) and GetPlayerStructureCount(sp, false) > 0 then
       call SeedNewTownsForPlayer(p)
     endif
+    call DestroyGroup(in_town_group[p])
     set p = p + 1
   endloop
+  set sp = null
 endfunction
 
 function TownTrackJob takes nothing returns nothing
+  local integer i = 0
   call DisplayToAllJobDebug("TOWN_TRACK Job Start")
-  call GroupClear(in_town_group)
+  loop
+    exitwhen i >= GetBJMaxPlayers()
+    set in_town_group[i] = CreateGroup()
+    set i = i + 1
+  endloop
+  //call GroupClear(in_town_group)
   call TrackExistingTowns()
   call SeedNewTowns()
-  call TQAddJob(9, TOWN_TRACK, 0)
+  call TQAddJob(9 + Max(0,c_ally_total - c_enemy_total + 1), TOWN_TRACK, 0)
 endfunction
 #ENDIF
