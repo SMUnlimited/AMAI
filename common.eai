@@ -7898,6 +7898,7 @@ function InitTownBuilt takes nothing returns nothing
   loop
     exitwhen i >= max_towns
     set town_built[i] = false
+    set own_town_loc[i] = null
     set i = i + 1
   endloop
   set town_built[0] = true
@@ -10844,16 +10845,8 @@ endfunction
 
 //============================================================================
 function InitHeroInfo takes integer hn returns nothing
-  if hero_loc[hn] != null then
-    call RemoveLocation(hero_loc[hn])
-  endif
-  if hero_enemy_loc[hn] != null then
-    call RemoveLocation(hero_enemy_loc[hn])
-  endif
-  if hero_ally_loc[hn] != null then
-    call RemoveLocation(hero_ally_loc[hn])
-  endif
   set hero_loc[hn] = GetUnitLoc(hero_unit[hn])
+  set hero_dir[hn] = Location(0,0)
   set hero_enemy_loc[hn] = Location(0,0)
   set hero_ally_loc[hn] = Location(0,0)
   set hero_hp[hn] = 1
@@ -10951,7 +10944,11 @@ function LocalizeOldTown takes integer num returns nothing
   call DestroyGroup(g)
   set g = null
   if u == null then
-    set exist_town[exist_town_num] = home_location  //Prevent moving away from home_location , but home_location destroyed when num is 0
+    if own_town_loc[0] != null then
+      set exist_town[exist_town_num] = own_town_loc[0]  //Prevent home_location destroyed
+    else
+      set exist_town[exist_town_num] = home_location  //home_location destroyed
+    endif
     return
   endif
   set exist_town[exist_town_num] = own_town_loc[num]
@@ -10962,14 +10959,14 @@ endfunction
 //============================================================================
 function CheckTownBuilt takes nothing returns nothing
   local integer i = 0
-  set exist_town_num = 1  // 0 is home_location
+  set exist_town_num = 0
   loop
     exitwhen i >= max_towns
     if not town_built[i] then
       if (TownCountEx(racial_expansion, true, i) > 0 and not (TownCountEx(racial_expansion, true, 50) > 0)) then
         set town_built[i] = LocalizeNewTown(i)
       endif
-    elseif i > 0 then
+    else
       call LocalizeOldTown(i)
     endif
     set i = i + 1
