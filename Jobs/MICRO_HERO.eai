@@ -122,7 +122,7 @@ function ItemSingetp takes integer hn, boolean retreat returns boolean
         endif
         if not retreat then
           call RemoveLocation(l)
-          call TQAddUnitJob(3, RESET_HEALTH, 80, hero_unit[hn])
+          call TQAddUnitJob(2.8, RESET_HEALTH, 80, hero_unit[hn])  //Reduce latency
         endif
         set l = null
       endif
@@ -136,37 +136,32 @@ function ItemSaveHero takes integer hn returns boolean
   local integer i = 1  // only supports three heroes
   local integer id = 0
   local item t = null
-  if UnitInvis(hero_unit[hn]) then
-    return false
-  elseif ItemSingetp(hn,true) then
-    return true
-  elseif TownCountDone(racial_hall[1]) == 0 then
-    return false
-  endif
-  loop
-    exitwhen i > 3
-    if i != hn and hero_built[i] and UnitAlive(hero_unit[i]) and DistanceBetweenUnits(hero_unit[i],hero_unit[hn]) < 700 and CheckUseSaveItem(i) then
-      set id = GetUnitCurrentOrder(hero_unit[i])
-      if id == 0 or id == OrderId("attack") or id == OrderId("stop") or id == OrderId("move") then
-        if GetUnitAbilityLevel(hero_unit[i], 'ANsa') > 0 then
-          set t = GetItemOfTypeOnUnit(sanctuary_item,hero_unit[i])
-          if t != null and UnitUseItemTarget(hero_unit[i],t,hero_unit[hn]) then
-            set t = null
-            return true
-          endif
-        elseif GetUnitAbilityLevel(hero_unit[i], 'ANpr') > 0 then
-          set t = GetItemOfTypeOnUnit(preservation_item,hero_unit[i])
-          if t != null and UnitUseItemTarget(hero_unit[i],t,hero_unit[hn]) then
-            set t = null
-            return true
+  if not UnitInvis(hero_unit[hn]) and TownCountDone(racial_hall[1]) > 0 then
+    loop
+      exitwhen i > 3
+      if i != hn and hero_built[i] and UnitAlive(hero_unit[i]) and DistanceBetweenUnits(hero_unit[i],hero_unit[hn]) < 700 and CheckUseSaveItem(i) then
+        set id = GetUnitCurrentOrder(hero_unit[i])
+        if id == 0 or id == OrderId("attack") or id == OrderId("stop") or id == OrderId("move") then
+          if GetUnitAbilityLevel(hero_unit[i], 'ANsa') > 0 then
+            set t = GetItemOfTypeOnUnit(sanctuary_item,hero_unit[i])
+            if t != null and UnitUseItemTarget(hero_unit[i],t,hero_unit[hn]) then
+              set t = null
+              return true
+            endif
+          elseif GetUnitAbilityLevel(hero_unit[i], 'ANpr') > 0 then
+            set t = GetItemOfTypeOnUnit(preservation_item,hero_unit[i])
+            if t != null and UnitUseItemTarget(hero_unit[i],t,hero_unit[hn]) then
+              set t = null
+              return true
+            endif
           endif
         endif
       endif
-    endif
-    set i = i + 1
-  endloop
-  set t = null
-  return false
+      set i = i + 1
+    endloop
+    set t = null
+  endif
+  return ItemSingetp(hn,true)
 endfunction
 
 function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothing
@@ -299,15 +294,13 @@ function MicroHeroJob takes integer hn returns nothing
         call ItemSingetp(hn,false)
       endif
     else
-      set healing = true
+      set healing = IsUnitInGroup(hero_unit[hn], unit_healing)
     endif
     set new_hp = GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) / GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE)
     set current_order = GetUnitCurrentOrder(hero_unit[hn])
 
     //  call DisplayToAll("MicroH Start")
-    if hero_dir[hn] != null then
-      call RemoveLocation(hero_dir[hn])
-    endif
+    call RemoveLocation(hero_dir[hn])
     //set hero_dir[hn] = GetSubtractionLoc_dd(GetUnitLoc(hero_unit[hn]), hero_loc[hn])
     set hero_dir[hn] = hero_loc[hn]
     set hero_loc[hn] = GetUnitLoc(hero_unit[hn])
