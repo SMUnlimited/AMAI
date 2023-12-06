@@ -1,7 +1,7 @@
 #IFDEF GLOBAL
   integer item_exp_state = 0
   unit itemhero = null
-  boolean item_attack_running = false
+  boolean item_attack_ruard = false
   boolean expitem_buy = false
   location item_exp_guard_loc = Location(0,0)
 #ELSE
@@ -28,7 +28,6 @@ function ItemExpansionJob takes nothing returns nothing
   if (itemhero != null and GetUnitState(itemhero, UNIT_STATE_LIFE) <= 0) or town_threatened or current_expansion == null then
     call RecycleGuardPosition(itemhero)
     call Trace("Item expansion : Cannot Expansion or no expansion")  // no call ChooseExpansion() , this is passive expansion , avoidance buy repeat item
-    set item_attack_running = false
     set item_expanding = false
     set expitem_buy = false
     set item_exp_state = 0
@@ -65,6 +64,7 @@ function ItemExpansionJob takes nothing returns nothing
       set l = GetUnitLoc(current_expansion)
       call RemoveLocation(item_exp_guard_loc)
       set item_exp_guard_loc = AIGetProjectedLoc(l, loc, 850, 0)  //Guarding position
+      set item_attack_ruard = true
       call RemoveLocation(loc)
       set loc = null
       call RemoveLocation(l)
@@ -77,7 +77,6 @@ function ItemExpansionJob takes nothing returns nothing
     call Trace("Item expansion state 1 - Rush Expansion")
     if u == null then
       set item_exp_state = 2
-      set item_attack_running = false
       set time_next_try = 1
     endif
   elseif item_exp_state == 2 then
@@ -86,13 +85,18 @@ function ItemExpansionJob takes nothing returns nothing
     if itemhero != null and exp_item != null and (current_expansion == not_taken_expansion or not CheckExpansionTaken(current_expansion)) then
       call CreateDebugTag("Item expansion state 2 - use item", 10, itemhero, 3.00, 1.50)
       set loc = UseExpansionItem(itemhero, exp_item)
+      set l = GetUnitLoc(current_expansion)
+      call RemoveLocation(item_exp_guard_loc)
+      set item_exp_guard_loc = AIGetProjectedLoc(l, loc, 850, 0)  //Guarding position
+      set item_attack_ruard = true
       call RemoveLocation(loc)
       set loc = null
+      call RemoveLocation(l)
+      set l = null
       set time_next_try = 1
     else
       call Trace("Item expansion state 2 - End")
       call RecycleGuardPosition(itemhero)
-      set item_attack_running = false
       set item_expanding = false
       set expitem_buy = false
       set item_exp_state = 0
