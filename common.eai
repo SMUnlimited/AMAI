@@ -7505,7 +7505,7 @@ endfunction
 // (AMAI) Queue utility functions
 //============================================================================
 function QueueReset takes nothing returns nothing
-  set queue_length 	= 0
+  set queue_length = 0
   set queue_pointer	= 0
 endfunction
 
@@ -9559,6 +9559,7 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     set harasser = null
     return
   endif
+  set harass_size[groupnum] = i
   set harass_time[groupnum] = ai_time
   call SaveReal(additional_info, key, START_STRENGTH, strength)
   call SaveBoolean(additional_info, key, AVOID_TOWERS, avoid_towers)
@@ -9575,21 +9576,16 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
 endfunction
 
 function GetHarassGroupStrength takes integer groupnum returns real
+  local integer i = 0
   local real sum = 0
   local real p = GetPlayerHandicap(ai_player)
   local integer id = 0
-  local unit u = null
-  local group g = null
-  set g = CopyGroup(unit_harassing,g)
   loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    set id = GetUnitTypeId(u)
-    set sum = TownCountDone(id) * GetFoodUsed(id) * p
-    call GroupRemoveUnit(g, u)
+    exitwhen i >= harass_size[groupnum]
+    set id = harass_units[i*max_harass_groups + groupnum]
+    set sum = sum + Min(harass_qty[i*max_harass_groups + groupnum], TownCountDone(id)) * GetFoodUsed(old_id[id]) * p
+    set i = i + 1
   endloop
-  call DestroyGroup(g)
-  set g = null
   return sum
 endfunction
 
@@ -12543,13 +12539,11 @@ if not creeping_only then	// Do the normal attack sequence
   //
   if item_expanding then
     call Trace("An Item Expansion Attack or Guard")
-    set item_attack_running = true
     call FormGroupAM(3)
     if item_exp_state == 1 then
       call AttackMoveKillCreep(GetExpFoe(creep))
-      set item_attack_running = false
       set creep = null
-    elseif item_exp_state > 1 then
+    elseif item_attack_ruard then
       call AttackMoveKillXYAAM(R2I(GetLocationX(item_exp_guard_loc)),R2I(GetLocationY(item_exp_guard_loc)))  //Prevent the army from leaving before using the item , so no set item_attack_running
       set item_attack_running = false
     endif
