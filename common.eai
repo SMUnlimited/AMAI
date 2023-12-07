@@ -7136,9 +7136,6 @@ function TQLoop takes nothing returns nothing
     exitwhen player_defeated
     if tq_length > 0 then
       if not TQHandleOnce() then
-        if debugging then
-          call UpdateDebugTextTag(t, "-", 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
-        endif
         set i = tq_time[1] - TimerGetElapsed(tq_timer) + 0.05
         if i > 0 then
           call Sleep(RMin(i ,1))
@@ -7349,12 +7346,14 @@ endfunction
 
 //============================================================================
 function CheckNeutralQuick takes integer nn returns nothing
+set nearest_neutral[nn] = null
+set neutral_guarded[nn] = false
+set neutral_night_buy[nn] = false
+set neutral_ordered[nn] = false
+set neutral_sent[nn] = null
+set buy_time_large[nn] = -1
+set buy_time_small[nn] = -1
 if neutral_available[nn] == true then
-  set neutral_ordered[nn] = false
-  set neutral_sent[nn] = null
-  set buy_time_large[nn] = -1
-  set buy_time_small[nn] = -1
-
 //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "checkneutral")
   set nearest_neutral[nn] = GetNearestNeutralQuick(nearest_neutral[nn],neutral_id[nn])
   set neutral_guards[nn] = GetCreepGuardGroup(neutral_guards[nn],nn)
@@ -7397,7 +7396,7 @@ endfunction
 function PathingThread takes nothing returns nothing
   local integer i = 0
   local integer t = 0
-  local integer w = R2I(sleep_multiplier)
+  local integer w = Max(1,R2I(sleep_multiplier))
   call SetAIArray()
   //  set command_wait = 0.5
   //  set command_wait = 3
@@ -7441,10 +7440,10 @@ function PathingThread takes nothing returns nothing
       call SellZigguratJob()
     endif
     if ModuloInteger(t, 50) == 0 then
-      if race_ancient_expansion_available and SaveYourselfMode != ANCIENT_EXPANSION then
+      if race_ancient_expansion_available then
         call AncientExpansionCheck()
       endif
-      if militia and SaveYourselfMode != MILITIA_EXPAND then
+      if militia and not militia_expanding then
         call TryMilitiaExpansionFoot()
       endif
       if race_item_expansion_available then
@@ -10492,6 +10491,7 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
   if shop_unit == null then
     return false
   endif
+  call Trace("Buying item form ally shop")
   set shop_wanted = qty
   set shop_distance_limit = raceshop_distance_limit
   set shop_ordered = true
@@ -10639,7 +10639,7 @@ endfunction
 //============================================================================
 function MercBuilder takes integer unitid1, integer unitid2 returns nothing
   local integer i = GetRandomInt(0,100)
-  if GetGold() > 500 and GetWood() > 400 and neutral_available[NEUTRAL_MERC_CAMP] and not neutral_ordered[NEUTRAL_MERC_CAMP] then
+  if GetGold() > 400 and GetWood() > 300 and neutral_available[NEUTRAL_MERC_CAMP] and not neutral_ordered[NEUTRAL_MERC_CAMP] then
     if i > 30 then
       call BuildUnit(1, unitid1, 45 + tier * 10)
     else
@@ -10651,10 +10651,10 @@ endfunction
 function DragonAndMercBuilder takes nothing returns nothing
   local integer i = GetRandomInt(0,100)
   if GetGold() > 600 and GetWood() > 500 then
-    if neutral_available[NEUTRAL_DRAGON_ROOST] and not neutral_ordered[NEUTRAL_DRAGON_ROOST] and i > 80 then
+    if neutral_available[NEUTRAL_DRAGON_ROOST] and not neutral_ordered[NEUTRAL_DRAGON_ROOST] and i > 70 then
       call BuildUnit(1, dragons[tier], 45 + tier * 10)
     endif
-    if neutral_available[NEUTRAL_MERC_CAMP] and not neutral_ordered[NEUTRAL_MERC_CAMP] and i > 50 then
+    if GetGold() > 1000 and GetWood() > 800 and neutral_available[NEUTRAL_MERC_CAMP] and not neutral_ordered[NEUTRAL_MERC_CAMP] and i > 40 then
       call BuildUnit(1, merc_unit[GetRandomInt(0,3)], 45 + tier * 10)
     endif
   endif
