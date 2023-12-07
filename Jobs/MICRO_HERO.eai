@@ -96,13 +96,15 @@ function ItemSingetp takes integer hn, boolean retreat returns boolean
   local location l = null
   local group g = null
   local item t = null
+  local integer i = 0
   if GetUnitAbilityLevel(hero_unit[hn], 'AImt') > 0 then  // check life preventing control skills
     set t = GetItemOfTypeOnUnit(singe_tp_item,hero_unit[hn])
     if t != null then
       if not retreat then  // teleport to battle , hope don't interrupt casting
         set l = GetUnitLoc(major_hero)
-      elseif GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE) >= 0.4 then
-        set l = exist_town[GetRandomInt(0,Max(exist_town_num-1,0))]
+      elseif GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) / GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE) >= 0.4 then
+        set i = GetRandomInt(0,Max(exist_town_num-1,0))
+        set l = Location(GetLocationX(exist_town[i]), GetLocationY(exist_town[i]))
       endif
       if l != null then
         set g = CreateGroup()
@@ -120,10 +122,7 @@ function ItemSingetp takes integer hn, boolean retreat returns boolean
           set b = UnitUseItemTarget(hero_unit[hn],t, u)
           set u = null
         endif
-        if not retreat then
-          call RemoveLocation(l)
-          call TQAddUnitJob(2.8, RESET_HEALTH, 80, hero_unit[hn])  //Reduce latency
-        endif
+        call RemoveLocation(l)
         set l = null
       endif
     endif
@@ -136,19 +135,19 @@ function ItemSaveHero takes integer hn returns boolean
   local integer i = 1  // only supports three heroes
   local integer id = 0
   local item t = null
-  if not UnitInvis(hero_unit[hn]) and TownCountDone(racial_hall[1]) > 0 then
+  if not UnitInvis(hero_unit[hn]) then
     loop
       exitwhen i > 3
       if i != hn and hero_built[i] and UnitAlive(hero_unit[i]) and DistanceBetweenUnits(hero_unit[i],hero_unit[hn]) < 700 and CheckUseSaveItem(i) then
         set id = GetUnitCurrentOrder(hero_unit[i])
         if id == 0 or id == OrderId("attack") or id == OrderId("stop") or id == OrderId("move") then
-          if GetUnitAbilityLevel(hero_unit[i], 'ANsa') > 0 then
+          if GetUnitAbilityLevel(hero_unit[i], 'ANsa') > 0 and GetPlayerStructureCount(ai_player, true) > 0 then
             set t = GetItemOfTypeOnUnit(sanctuary_item,hero_unit[i])
             if t != null and UnitUseItemTarget(hero_unit[i],t,hero_unit[hn]) then
               set t = null
               return true
             endif
-          elseif GetUnitAbilityLevel(hero_unit[i], 'ANpr') > 0 then
+          elseif GetUnitAbilityLevel(hero_unit[i], 'ANpr') > 0 and TownCountDone(racial_hall[1]) > 0 then
             set t = GetItemOfTypeOnUnit(preservation_item,hero_unit[i])
             if t != null and UnitUseItemTarget(hero_unit[i],t,hero_unit[hn]) then
               set t = null
@@ -290,8 +289,8 @@ function MicroHeroJob takes integer hn returns nothing
       call CreateDebugTag("HERO: Healing Bug Fix Job", 10, hero_unit[hn], 4.00, 2.00)
       call RecycleGuardPosition(hero_unit[hn])
       call GroupRemoveUnit(unit_healing, hero_unit[hn])
-      if not retreat_controlled and not town_threatened and not teleporting and major_hero != null and UnitAlive(major_hero) and DistanceBetweenUnits(major_hero,hero_unit[hn]) > 2000 then
-        call ItemSingetp(hn,false)
+      if not retreat_controlled and not town_threatened and not teleporting and major_hero != null and UnitAlive(major_hero) and DistanceBetweenUnits(major_hero,hero_unit[hn]) > 2000 and ItemSingetp(hn,false) then
+        call TQAddUnitJob(2.8, RESET_HEALTH, 80, hero_unit[hn])  //Reduce latency
       endif
     else
       set healing = IsUnitInGroup(hero_unit[hn], unit_healing)
