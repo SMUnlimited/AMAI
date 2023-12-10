@@ -11,13 +11,14 @@ function GetHarassPeonTarget takes unit ru, unit u returns unit
   local group g = CreateGroup()
   local location unitloc = GetUnitLoc(u)
   local player p = GetNearestEnemyToLoc_k(unitloc)
-
-  call GroupEnumUnitsOfPlayer(g, p, null)
-  set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
-  set g = SelectByAlive(g, true)
-  set g = SelectByLoaded(g, false)
-  set g = SelectByHidden(g, false) // Hopefully to get peons not currently building
-  set ru = GetNearestOfGroup(ru, g, unitloc)
+  if p != null then
+    call GroupEnumUnitsOfPlayer(g, p, null)
+    set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
+    set g = SelectByAlive(g, true)
+    set g = SelectByLoaded(g, false)
+    set g = SelectByHidden(g, false) // Hopefully to get peons not currently building
+    set ru = GetNearestOfGroup(ru, g, unitloc)
+  endif
   call RemoveLocation(unitloc)
   call DestroyGroup(g)
   set unitloc = null
@@ -31,12 +32,14 @@ function GetHarassExpansionTarget takes unit ru, unit u returns unit
   local location unitloc = GetUnitLoc(u)
   local player p = GetNearestEnemyToLoc_k(unitloc)
   local location baseloc = GetPlayerStartLocationLoc(p)
-  call GroupEnumUnitsOfPlayer(g, p, null)
-  set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
-  set g = SelectByLocation(g, baseloc, 1000, false)
-  set g = SelectByAlive(g, true)
-  set g = SelectByHidden(g, false)
-  set ru = GetNearestOfGroup(ru, g, unitloc)
+  if p !+ null then
+    call GroupEnumUnitsOfPlayer(g, p, null)
+    set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+    set g = SelectByLocation(g, baseloc, 1000, false)
+    set g = SelectByAlive(g, true)
+    set g = SelectByHidden(g, false)
+    set ru = GetNearestOfGroup(ru, g, unitloc)
+  endif
   call RemoveLocation(unitloc)
   call RemoveLocation(baseloc)
   call DestroyGroup(g)
@@ -63,13 +66,14 @@ function GetHarassMainHallTarget takes unit ru, unit u returns unit
   local location unitloc = GetUnitLoc(u)
   local player p = GetNearestEnemyToLoc_k(unitloc)
   local location baseloc = GetPlayerStartLocationLoc(p)
-
-  call GroupEnumUnitsOfPlayer(g, p, null)
-  set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
-  set g = SelectByAlive(g, true)
-  set g = SelectByHidden(g, false)
-  set g = SelectByLocation(g, baseloc, 1000, true)
-  set ru = GetNearestOfGroup(ru, g, unitloc)
+  if p != null then
+    call GroupEnumUnitsOfPlayer(g, p, null)
+    set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+    set g = SelectByAlive(g, true)
+    set g = SelectByHidden(g, false)
+    set g = SelectByLocation(g, baseloc, 1000, true)
+    set ru = GetNearestOfGroup(ru, g, unitloc)
+  endif
   call RemoveLocation(unitloc)
   call RemoveLocation(baseloc)
   call DestroyGroup(g)
@@ -119,11 +123,10 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
   local boolean healing = false
 
   call DisplayToAllJobDebug("HARASS JOB START")
-  set harasser = SelectByAlive(harasser, true)
-  if FirstOfGroup(harasser) == null then
+  if not UnitAliveInGroup(harasser) then
     call SaveBoolean(additional_info, key, STATE_RETREAT , false)
     call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
-    call SaveInteger(additional_info, key, INVISIBLE_COUNT , 0)
+    call SaveInteger(additional_info, key, INVISIBLE_COUNT, 0)
     set target = null
     return
   endif
@@ -172,6 +175,7 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
     if target != null then
       call GroupOrderWindWalkInstant_d(CopyGroup(harasser,g))
       set g = null
+      set target = null
     endif
     if ht == HARASS_TARGET_PEONS then
       set target = GetHarassPeonTarget(target, hu)

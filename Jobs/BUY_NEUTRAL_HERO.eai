@@ -7,7 +7,7 @@ function BuyNeutralHero takes integer id returns nothing
   local real time_next_try = 0
   local real distance = 0
   local integer nn = GetNeutralNumber(id)
-  local unit buying_unit = neutral_sent[nn]
+  //local unit buying_unit = neutral_sent[nn]
   local unit tavern = nearest_neutral[nn]
   local boolean place_guarded = neutral_guarded[nn]
 
@@ -15,14 +15,10 @@ function BuyNeutralHero takes integer id returns nothing
 
   //call Trace("Get Tavern Hero Job")
 
-  if TownCountDone(id) >= neutral_wanted[nn] then
+  if TownCount(id) >= neutral_wanted[nn] then
     call RecycleGuardPosition(neutral_sent[nn])
     call GroupRemoveUnit(unit_buying_tavern, neutral_sent[nn])
-    set neutral_sent[nn] = null
     set neutral_ordered[nn] = false
-    set buy_time_large[nn] = -1
-    set buy_time_small[nn] = -1
-    set buying_unit = null
     set tavern = null
     return
   endif
@@ -31,44 +27,41 @@ function BuyNeutralHero takes integer id returns nothing
     set time_next_try = (18 - daytime)*20
   else
 
-    if buying_unit == null or GetUnitState(buying_unit, UNIT_STATE_LIFE) <= 0 then
-      if GetUnitState(buying_unit, UNIT_STATE_LIFE) <= 0 then
-        call GroupRemoveUnit(unit_buying_tavern, buying_unit)
+    if neutral_sent[nn] == null or GetUnitState(neutral_sent[nn], UNIT_STATE_LIFE) <= 0 then
+      if GetUnitState(neutral_sent[nn], UNIT_STATE_LIFE) <= 0 then
+        call GroupRemoveUnit(unit_buying_tavern, neutral_sent[nn])
       endif
       set neutral_sent[nn] = GetUnitToBuy(neutral_sent[nn], tavern)
       if neutral_sent[nn] == null then
-        call TQAddJob(sleep_multiplier, BUY_NEUTRAL, id)
+        call TQAddJob(sleep_multiplier, BUY_NEUTRAL_HERO, id)
         call Trace("No unit to get neutral hero")
-        set buying_unit = null
         set tavern = null
         return
       endif
-      set buying_unit = neutral_sent[nn]
       call Trace("unit for neutral hero obtained")
-      call GroupAddUnit(unit_buying_tavern, buying_unit)
+      call GroupAddUnit(unit_buying_tavern, neutral_sent[nn])
     endif
 
-    set timetotravel = GetTimeToReachUnit(buying_unit, tavern)
+    set timetotravel = GetTimeToReachUnit(neutral_sent[nn], tavern)
 
     if current_time < (neutral_hero_time*5) - timetotravel then
-      set time_next_try = RMax((neutral_hero_time*5) - timetotravel - current_time, 0.5 )
+      set time_next_try = RMax((neutral_hero_time*5) - timetotravel - current_time, 0.5)
     else
-      set distance = DistanceBetweenUnits(buying_unit, tavern)
-      call RemoveGuardPosition(buying_unit)
+      set distance = DistanceBetweenUnits(neutral_sent[nn], tavern)
+      call RemoveGuardPosition(neutral_sent[nn])
       if distance >= buy_distance then
-        call CreateDebugTag("Move to Tavern", 10, buying_unit, 3.00, 1.50)
-        call IssuePointOrder(buying_unit, "move", GetUnitX(tavern), GetUnitY(tavern))
-        set time_next_try = RMin(4, RMax(I2R(R2I(distance / buy_distance)),1))
+        call CreateDebugTag("Move to Tavern", 10, neutral_sent[nn], 3.00, 1.50)
+        call IssuePointOrder(neutral_sent[nn], "move", GetUnitX(tavern), GetUnitY(tavern))
+        set time_next_try = RMin(4, Max(R2I(distance / buy_distance),1))
       else
-        call CreateDebugTag("buy tavern hero", 10, buying_unit, 3.00, 1.50) 
-        call IssueImmediateOrder(buying_unit, "stop")
+        call CreateDebugTag("buy tavern hero", 10, neutral_sent[nn], 3.00, 1.50)
+        call IssueImmediateOrder(neutral_sent[nn], "stop")
         call IssueNeutralImmediateOrderById(ai_player, tavern, old_id[id])
         set time_next_try = 0.5
       endif
     endif
   endif
   call TQAddJob(time_next_try, BUY_NEUTRAL_HERO, id)
-  set buying_unit = null
   set tavern = null
 endfunction
 
