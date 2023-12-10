@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Use the cloak of shadows ability in micro actions (jzy-chitong56)
 - Maps with multiple mines at the starting location can now be handled. (jzy-chitong56)
 - Some expansions when far away or impossible to get to will be attempted with a zeppelin. (jzy-chitong56)
+- Older versions of war3 are still popular so now support included in the one AMAI version to make it easier for fixes and improvements to be immediately available for the older clients.
 - (DevTools) AI Versions now maintain there own copy of warcraft API's and generated blizzard.j files. This allows a single copy of AMAI to build previous versions of AMAI.
 
 ### Changed

@@ -16,6 +16,7 @@ As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601
 | 3.0        | Min 1.32+ | Full Support for the 1.32+ |
 | 3.1        | Min 1.32.10+ |  |
 | 3.2        | Min 1.33  |  |
+| 3.3        | Min 1.36, Min 1.24 - 1.31 classic |  |
 
 * Avoid v1.29 of Warcraft 3 as it breaks various things and prevents AMAI from chatting. This is just an issue with this version and you can downgrade or upgrade.
 
@@ -40,10 +41,11 @@ For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.htm
 ![installer](installer.jpg)
 
 ## Commandline install
-- From a windows commandline or powershell type `InstallTFTToMap.bat "C:\mymap.w3m"` and press enter to install AMAI to maps
-- If you want to have the Commander installed to control team mates or easily change language settings additionally run `InstallCommanderToMap.bat "C:\mymap.w3m"`
+- From a windows commandline or powershell type `InstallTFTToMap.bat "C:\mymap.w3m" 1` and press enter to install AMAI to maps
+- If you do not want to have the Commander installed to control team mates or easily change language settings instead run `InstallCommanderToMap.bat "C:\mymap.w3m" 0`
 ![example](example.jpg)
 - Alternatively for complex installs if you have `perl` installed from a commandline you can type `perl InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` and press enter to install AMAI to all maps in a directory and subdirectories.
+- You can disable the commander for this install via the `perl InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI" "false"`
 - After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
 
 ## Notes
@@ -91,7 +93,7 @@ Tested with strawbery perl 5.30 and Tk 804.034
 - From a command prompt type *InstallTFTToMap.bat "C:\mymap.w3m"* and press enter to install the AI scripts to Warcraft 3 maps.
 
 ## ROC Build
-- This version is intended to be played in the original ROC (Reigns of Chaos) version of the game. Because ROC was force upgraded to TFT in war3 1.31 this is only available on older versions.
+- This version is intended to be played in the classic ROC (Reigns of Chaos) version of the game which is not available in reforged/1.32+
 - Run/double click *makeROC.bat* to create the ROC scripts.
 - From a command prompt type *InstallROCtoMap.bat "C:\mymap.w3m"* and press enter to install the AI scripts to Warcraft 3 maps.
 
@@ -126,17 +128,16 @@ The Commander allows you to give orders to your ally AI's.
 
 There will also be language selection dialogs to change the language of dialogs and AI chat messages.
 
-To *disable* the commander do not run the `InstallCommanderToMap.bat` script or run the `DisableCommander.bat "C:\mymap.w3m"` script afterwards.
-For the perl directory install script you can specify not to run it via the `perl InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI" "false"`
+To *disable* the commander do not install in the first place or run the `DisableCommander.bat "C:\mymap.w3m"` script afterwards.
 
-You must disable the commander if you want to play on an older version of warcraft 3 or custom melee maps.
+You must disable the commander if you want to play on custom melee maps.
 
- Another dialog may also appear with options
+Once installed another dialog will appear with game mode options
 
-1) No Commander - Disables the commander in game
-2) With Commander - Press 'ESC' to bring up the commander menu.
+1) No Commander - Disables the commander during this game
+2) With Commander - Commander is availaable. Press 'ESC' to bring up the commander menu.
 3) Computers Only - Same as commander except humans do not play, humans forces are removed and humans can only issue orders via the commander to try and make the ally ai win.
-4) Joint Control - Same as 'Computers Only' but humans can also directly control there ally ai's forces.
+4) Joint Control - Same as 'Computers Only' but humans can also directly control their ally ai's forces.
 
 ## Commander Advanced Settings
 
