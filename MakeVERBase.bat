@@ -38,8 +38,8 @@ ECHO creating \Scripts\Blizzard.j VSAI Flag set to %VSAI%
 perl SplitBlizzardJ.pl %VER%
 if %VSAI% == 1 perl ejass.pl Blizzard3VAI.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
 if %VSAI% == 0 perl ejass.pl Blizzard3.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
-perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\Blizzard.j
+perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\Blizzard_%VER%.j
 ECHO \Scripts\Blizzard.j created
-pjass %VER%\common.j Scripts\Blizzard.j
-jassparser %VER%\common.j Scripts\Blizzard.j
+pjass %VER%\common.j Scripts\Blizzard_%VER%.j
+jassparser %VER%\common.j Scripts\Blizzard_%VER%.j
 ECHO _____________________________

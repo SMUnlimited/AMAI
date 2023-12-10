@@ -2,7 +2,7 @@
 SET VER=%1
 ECHO Optimizing Scripts
 perl Optimize.pl %VER%\common.j Scripts\%VER%\common.ai -l %VER%\Races.txt Scripts\%VER%\$2
-perl Optimize.pl -b Scripts\Blizzard.j
+perl Optimize.pl -b Scripts\Blizzard_%VER%.j
 ECHO Optimizing finished
 ECHO _____________________________
 pjass %VER%\common.j Scripts\%VER%\common.ai
@@ -15,7 +15,7 @@ pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\orc.ai
 ECHO _____________________________
 pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\undead.ai
 ECHO _____________________________
-pjass %VER%\common.j Scripts\Blizzard.j
+pjass %VER%\common.j Scripts\Blizzard_%VER%.j
 ECHO =============================
 ECHO Making AMAI finished
 pause

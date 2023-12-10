@@ -22,8 +22,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Use the cloak of shadows ability in micro actions (jzy-chitong56)
 - Maps with multiple mines at the starting location can now be handled. (jzy-chitong56)
 - Some expansions when far away or impossible to get to will be attempted with a zeppelin. (jzy-chitong56)
+- (DevTools) AI Versions now maintain there own copy of warcraft API's and generated blizzard.j files. This allows a single copy of AMAI to build previous versions of AMAI.
 
 ### Changed
+- Bat scripts to install to a single map have more power to control install of commander by passing argument 1 or 0 to the script. No argument provided will install commander by default.
+  - No Commander `./InstallROCToMap.bat "E:\Files\Documents\Warcraft III\Maps\AMAI\frozenthrone\community\(24)BrokenCity.w3x" 0`
 - Chinese Translation improvements. (jzy-chitong56)
 - (DevTools) Updated MPQEditor to 4.0.0.894 (jzy-chitong56)
 - Language dialog will be available on game start even when the commander is disabled (jzy-chitong56)
