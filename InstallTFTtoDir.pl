@@ -23,7 +23,7 @@ sub process_dir {
 			system "MPQEditor htsize \"$dirname/$filename\" 64";
 			system "MPQEditor a \"$dirname/$filename\" Scripts\\TFT\\*.ai Scripts";
       if (!(defined($commander)) || $commander eq "true") {
-        system "MPQEditor a \"$dirname/$filename\" Scripts\\Blizzard.j Scripts\\Blizzard.j";
+        system "MPQEditor a \"$dirname/$filename\" Scripts\\Blizzard_TFT.j Scripts\\Blizzard.j";
       }
 			system "MPQEditor f \"$dirname/$filename\""
 		}
