@@ -104,6 +104,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (sync)To reduce chat spam for players, chat messages from the AI are now rate limited to reduce screen spam especially in large player maps.
 - (sync)Team games ai's that are defeated will no longer destroy its base or do a desperation attack and instead will share control with its human allies.
    - When there is no human allies and two AI shares the same race it will give its units to that AI.
+- Add GetRandomPlusMinus , take 1 or -1
 
 ### Changed
 - Towerrush adjustment , now all races can used Towerrush , but only used on map by Player upper limit <= 6 (this restriction is also used for commands)
@@ -268,6 +269,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Fixed InitSpecialRaces not save hashtable but load hashtable
   - add player races boolean for check ally and enemy race , check ally race use to set ally shopping build sequence
 - HeroBugFixHealthCheck no longer check unit_healing group
+- Build Lumber can try to avoid the absence of trees near the start location
 
 ###Fixed
 - Fixed some translation errors
