@@ -1,6 +1,5 @@
 @ECHO OFF
-ECHO Making AMAI VS AI
-call MakeVERBase.bat 1 TFT
+call MakeVERBase.bat 0 REFORGED
 ECHO =============================
 ECHO Making AMAI finished
 pause

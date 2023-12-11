@@ -8,6 +8,7 @@ sub process_blizzj {
   my $flag = 0;
   my $ver = $_[0];
   mkdir "$ver/tmp";
+  mkdir "Scripts/$ver";
   open my $in, '<', "$ver/blizzard.j" or die "blizzard.j not found $!";
   open my $bliz1, '>',"$ver/tmp/Blizzard1.j" or die "Unable to write blizzard1.j $!";
   open my $bliz2, '>',"$ver/tmp/Blizzard2.j" or die "Unable to write blizzard2.j $!";

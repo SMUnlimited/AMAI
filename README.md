@@ -11,12 +11,8 @@ As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601
 # Warcraft Requirements
 | AMAI Version    | War3 Support                   | Comments |
 | -----------|--------------------------------|---------------|
-| 2.5.4      | Min 1.24+ - Max 1.28 | Classic edition from 2008 |
-| 2.6.2      | Min 1.24+ | Some support for 1.30+ features|
-| 3.0        | Min 1.32+ | Full Support for the 1.32+ |
-| 3.1        | Min 1.32.10+ |  |
-| 3.2        | Min 1.33  |  |
 | 3.3        | Min 1.36, Min 1.24 - 1.31 classic |  |
+| 2.5.4      | Min 1.24+ - Max 1.28 | Classic edition from 2008 |
 
 * Avoid v1.29 of Warcraft 3 as it breaks various things and prevents AMAI from chatting. This is just an issue with this version and you can downgrade or upgrade.
 
@@ -40,13 +36,20 @@ For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.htm
 - You can install to a single map or a whole directory.
 ![installer](installer.jpg)
 
+## Versions
+There are multiple editions of AMAI available to install based on your warcraft 3 version you run with. You must use the correct abrievation to install the correct scripts.
+Improvements and fixes to the core AI engine will improve the older scripts as well.
+- REFORGED(RFG) : The AI scripts intended for the latest version of warcraft 3 1.36+ (regardless if you own **Reforged** or not)
+- TFT : The classic Frozen Throne AI scripts intended for TFT 1.24 version of warcraft 3. Has some forwards compatability support up to 1.31 including 24 player support although tech tree changes in later versions will not be available to the AI.
+- ROC : The classic Reign of Chaos AI scripts intended for ROC 1.24 version of warcraft 3. Has some forwards compatability support up to 1.31 including 24 player support although tech tree changes in later versions will not be available to the AI.
+
 ## Commandline install
-- From a windows commandline or powershell type `InstallTFTToMap.bat "C:\mymap.w3m" 1` and press enter to install AMAI to maps
-- If you do not want to have the Commander installed to control team mates or easily change language settings instead run `InstallCommanderToMap.bat "C:\mymap.w3m" 0`
+- From a windows commandline or powershell type `InstallRFGToMap.bat "C:\mymap.w3m" 1` and press enter to install AMAI to maps
+- If you do not want to have the Commander installed to control team mates or easily change language settings instead run `InstallRFGToMap.bat "C:\mymap.w3m" 0`
 ![example](example.jpg)
-- Alternatively for complex installs if you have `perl` installed from a commandline you can type `perl InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI"` and press enter to install AMAI to all maps in a directory and subdirectories.
-- You can disable the commander for this install via the `perl InstallTFTtoDir.pl "C:\Documents\Warcraft III\Maps\AMAI" "false"`
-- After installing AMAI on your map just start Warcraft3: RoC or TFT and play the map against and/or with computers to make use of AMAI.
+- Alternatively for complex installs if you have `perl` installed from a commandline you can type `perl InstallToDir.pl REFORGED "C:\Documents\Warcraft III\Maps\AMAI"` and press enter to install AMAI to all maps in a directory and subdirectories.
+- You can disable the commander for this install via the `perl InstallToDir.pl REFORGED "C:\Documents\Warcraft III\Maps\AMAI" "false"`
+- After installing AMAI on your map just start Warcraft 3 and play the map against and/or with computers to make use of AMAI.
 
 ## Notes
 - Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on completly custom maps (e.g towerdefence), it will make no difference on such maps.
@@ -82,20 +85,16 @@ Tested with strawbery perl 5.30 and Tk 804.034
 - The build process creates the executable for the current operating system only. To create other executables, the process must be run on the corresponding operating system.
 - I will be working on the possibility of building the linux executable on windows.
 
-## TFT Build
-- Run/double click *makeTFT.bat* to create the standard scripts for the AI.
-- From a command prompt type *InstallTFTToMap.bat "C:\mymap.w3m"* and press enter to install the AI scripts to Warcraft 3 maps.
+## Build Scripts
+- You need to use the various `make` bat files to create the AI scripts for various versions
+- Run/double click *makeRFG.bat* to create the reforged scripts.
+- Then install like normal e.g from a command prompt type *InstallRFGToMap.bat "C:\mymap.w3m"* and press enter.
 - Run up a custom game and select the map to play.
 
 ## VS AI Build
 - This special version will make *odd* teams run with AMAI and *even* teams run with the standard blizzard AI.
-- Run/double click *makeVAITFT.bat* to create the AMAI vs AI scripts.
-- From a command prompt type *InstallTFTToMap.bat "C:\mymap.w3m"* and press enter to install the AI scripts to Warcraft 3 maps.
-
-## ROC Build
-- This version is intended to be played in the classic ROC (Reigns of Chaos) version of the game which is not available in reforged/1.32+
-- Run/double click *makeROC.bat* to create the ROC scripts.
-- From a command prompt type *InstallROCtoMap.bat "C:\mymap.w3m"* and press enter to install the AI scripts to Warcraft 3 maps.
+- Run/double click one of the `makeVAI` bat files e.g *makeVAITFT.bat* to create the AMAI vs AI scripts for the classic TFT version.
+- Then install like normal e.g from a command prompt type *InstallTFTToMap.bat "C:\mymap.w3m"* and press enter.
 
 # Features
 - **Personality Profiles**: Each AI opponent has a set profile which modifies how it reacts or plays the game. Some can be real chickens and never dare to attack you while others will rush you down.
@@ -128,7 +127,7 @@ The Commander allows you to give orders to your ally AI's.
 
 There will also be language selection dialogs to change the language of dialogs and AI chat messages.
 
-To *disable* the commander do not install in the first place or run the `DisableCommander.bat "C:\mymap.w3m"` script afterwards.
+To *disable* the commander pass the correct option to the install scripts in the first place or run the `DisableCommander.bat "C:\mymap.w3m"` script afterwards.
 
 You must disable the commander if you want to play on custom melee maps.
 
