@@ -3,6 +3,7 @@ SET VSAI=%1
 SET VER=%2
 ECHO Making AMAI
 mkdir Scripts\
+mkdir Scripts\%VER%\
 ECHO _____________________________
 ECHO creating \Scripts\%VER%\common.ai
 perl ejass.pl common.eai %VER% VER:%VER% > Scripts\%VER%\common.ai
