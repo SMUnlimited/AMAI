@@ -39,9 +39,9 @@ For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.htm
 ## Versions
 There are multiple editions of AMAI available to install based on your warcraft 3 version you run with. You must use the correct abrievation to install the correct scripts.
 Improvements and fixes to the core AI engine will improve the older scripts as well.
-- REFORGED(RFG) : The AI scripts intended for the latest version of warcraft 3 1.36+ (regardless if you own **Reforged** or not)
-- TFT : The classic Frozen Throne AI scripts intended for TFT 1.24 version of warcraft 3. Has some forwards compatability support up to 1.31 including 24 player support although tech tree changes in later versions will not be available to the AI.
-- ROC : The classic Reign of Chaos AI scripts intended for ROC 1.24 version of warcraft 3. Has some forwards compatability support up to 1.31 including 24 player support although tech tree changes in later versions will not be available to the AI.
+- **REFORGED(RFG)** : The AI scripts intended for the latest version of warcraft 3 1.36+ (regardless if you own **Reforged** or not)
+- **TFT** : The classic Frozen Throne AI scripts intended for TFT 1.24 version of warcraft 3. Has some forwards compatability support up to 1.31 including 24 player support although tech tree changes in later versions will not be available to the AI.
+- **ROC** : The classic Reign of Chaos AI scripts intended for ROC 1.24 version of warcraft 3. Has some forwards compatability support up to 1.31 including 24 player support although tech tree changes in later versions will not be available to the AI.
 
 ## Commandline install
 - From a windows commandline or powershell type `InstallRFGToMap.bat "C:\mymap.w3m" 1` and press enter to install AMAI to maps

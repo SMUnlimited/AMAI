@@ -32,6 +32,9 @@ const installOnDirectory = async () => {
   const args = process.argv.slice(2);
   const installCommander = (args[1] == 'true');
   const response = args[0];
+  const ver = args[2]
+
+  process.send(`#### Installing AMAI ${ver} ####`);
 
   // TODO: change to receive array of maps
   if (fs.statSync(response).isDirectory()) {
@@ -40,6 +43,15 @@ const installOnDirectory = async () => {
   } else {
     // on single map
     arrayOfFiles.push(response);
+  }
+  
+  if (!fs.existsSync(`Scripts\\${ver}\\common.ai`)) {
+    process.send(`ERROR: Cannot find resources\\AMAI\\Scripts\\${ver}\\common.ai`)
+    return
+  }
+  if (installCommander && !fs.existsSync(`Scripts\\Blizzard_${ver}.j`)) {
+    process.send(`ERROR: Cannot find resources\\AMAI\\Scripts\\blizzard_${ver}.j`)
+    return
   }
 
   if(arrayOfFiles) {
@@ -50,7 +62,7 @@ const installOnDirectory = async () => {
       const ext = path.extname(file).toLowerCase();
 
       if(ext.indexOf(`w3m`) >= 0 || ext.indexOf(`w3x`) >= 0) {
-        process.send(`#### Installing into file: ${file} ####`);
+        process.send(`#### Installing ${ver} into file: ${file} ####`);
       } else {
         process.send(`skip file: ${file}`);
         continue;
@@ -78,7 +90,7 @@ const installOnDirectory = async () => {
           [
             'a',
             file,
-            `Scripts\\TFT\\*.ai`,
+            `Scripts\\${ver}\\*.ai`,
             `Scripts`
           ],
           { encoding : `utf8` }
@@ -101,7 +113,7 @@ const installOnDirectory = async () => {
             [
               'a',
               file,
-              `Scripts\\Blizzard.j`,
+              `Scripts\\Blizzard_${ver}.j`,
               `Scripts\\Blizzard.j`,
             ],
             { encoding : `utf8` }
