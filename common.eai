@@ -498,6 +498,12 @@ globals
     integer racial_lumber = 0
     integer racial_rushcreep = 0
     unit rushcreep_target = null
+    integer array racial_highbuild_lv2  // tier2
+    integer racial_highbuild_lv2_length = 0
+    integer racial_highbuild_lv2_total = 2
+    integer array racial_highbuild_lv3  // tier3
+    integer racial_highbuild_lv3_length = 0
+    integer racial_highbuild_lv3_total = 2
     integer neutral_shredder = 0
     integer neutral_zeppelin = 0
     integer tp_item = 0
@@ -724,7 +730,8 @@ globals
     boolean balancing = false
     texttag debugstrattag = CreateTextTag()
     texttag debugcountertag = CreateTextTag()
-    
+    texttag debugjobtag = CreateTextTag()
+
 //==============================================================
 // (AMAI)  Healing System Globals
 //==============================================================
@@ -1041,8 +1048,9 @@ globals
     integer totalanti_%1 = 0
     integer array dychance_%1
     integer totalchance_%1 = 0
+    boolean dydistribute_%1 = false
     #ENDINCLUDE
-    
+
     #INCLUDESCRIPT <$VER$\custom_common_vars.eai>
 
 endglobals
@@ -1790,6 +1798,14 @@ function GetRandomDiff takes integer maxdiff returns integer
     return GetRandomInt(0,maxdiff)
   else
     return -GetRandomInt(0,maxdiff)
+  endif
+endfunction
+
+function GetRandomPlusMinus takes nothing returns integer
+  if GetRandomInt(0,1) == 1 then
+    return 1
+  else
+    return -1
   endif
 endfunction
 
@@ -5612,7 +5628,11 @@ function GetLumberLocationAtBase takes nothing returns location
     set ground_id = old_id[racial_ghoul]
   endif
   set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), ground_id, GetLocationX(home_location), GetLocationY(home_location))
-  call IssueImmediateOrder(u, "autoharvestlumber")
+  if not IssueImmediateOrder(u, "autoharvestlumber") then  // home_location near no tree , so move unit , random x y coordinates
+    call IssuePointOrder(u, "move", GetLocationX(home_location) + GetRandomInt(1000,1100)*GetRandomPlusMinus(), GetLocationY(home_location) + GetRandomInt(1000,1100)*GetRandomPlusMinus())
+    call Sleep(2.00)
+    call IssueImmediateOrder(u, "autoharvestlumber")
+  endif
   call Sleep(5.00)
   set x = GetUnitX(u)
   set y = GetUnitY(u)
@@ -6397,6 +6417,20 @@ function IsRacialHallId takes integer id, integer min_tier returns boolean
   return false
 endfunction
 
+function GetRacialBuildHallLV takes integer id returns integer
+  local integer i = 1
+  if id != 0 then
+    loop
+      exitwhen i > tiernum
+      if racial_hall[i] != 0 and (needed1[id] == racial_hall[i] or needed2[id] == racial_hall[i] or needed3[id] == racial_hall[i]) then
+        return i
+      endif
+      set i = i + 1
+    endloop
+  endif
+  return 1  // hall , tower , farm , altar , shop , expansion , lumber , goldmine , UPGRADED
+endfunction
+
 //============================================================================
 function ChooseExpansion takes nothing returns nothing
   local integer i = 0
@@ -7049,6 +7083,9 @@ function TQHandleOnce takes nothing returns boolean
   if TimerGetElapsed(tq_timer) >= tq_time[1] then
     call TQRemoveRoot()
     call TQDoJob(jid, par, unit_par, group_par)
+    if debugging then
+      call UpdateDebugTextTag(debugjobtag, Int2Str(jid), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
+    endif
     set unit_par = null
     set group_par = null
     return true
@@ -7076,11 +7113,8 @@ endfunction
 //============================================================================
 function TQLoop takes nothing returns nothing
   local real i = 0
-  local texttag t = null
   if debugging then
-    set t = CreateTextTag()
-    call UpdateDebugTextTag(t, null, 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
-    call SetTextTagPermanent(t, true)
+    call SetTextTagPermanent(debugjobtag, true)
   endif
   set tq_time[0] = 0
   call TimerStart(tq_timer, 1000000, false, null)
@@ -7091,9 +7125,6 @@ function TQLoop takes nothing returns nothing
     exitwhen player_defeated
     if tq_length > 0 then
       if not TQHandleOnce() then
-        if debugging then
-          call UpdateDebugTextTag(t, Int2Str(tq_jid[1]), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
-        endif
         set i = tq_time[1] - TimerGetElapsed(tq_timer) + 0.05
         if i > 0 then
           call Sleep(RMin(i ,1))
@@ -7102,12 +7133,15 @@ function TQLoop takes nothing returns nothing
         call Sleep(0.05)
       endif
     else
+      if debugging then
+        call UpdateDebugTextTag(debugjobtag, "", 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
+      endif
       call Trace("TQLOOP: No job is ready to fire")
       call Sleep(sleep_multiplier)
     endif
   endloop
   if debugging then
-    call SetTextTagText(t, "Shutting down Job Thread", 0.1)
+    call SetTextTagText(debugjobtag, "Shutting down Job Thread", 0.1)
   endif
   call Trace("Shutting down Job Thread")
   loop
@@ -9302,6 +9336,48 @@ function DynamicStrategySelector takes nothing returns nothing
 
 endfunction
 
+function ExecuteAirDistribute takes group g, boolean anti returns nothing
+  local integer i = GetRandomInt(0, Max(TownCountDone(GARGOYLE),TownCountDone(DRUID_TALON)))
+  local integer c = 0  // Allow random retention strength and accelerate cycle
+  local integer id = 0
+  local integer order = 852155
+  local unit u = null
+  call Trace("Strength Dynamic Distribute - Air")
+  if anti == false then
+    set order = 852156
+  endif
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null or i == c
+    set id = GetUnitTypeId(u)
+    if (id == 'edot' or id == 'edtm') and IsStandardUnit(u) then
+      call IssueImmediateOrderById( u, order)
+      set c = c + 1
+    elseif id == 'ugar' and (GetUnitAbilityLevel(u, 'Batp') == 0) == anti and IsStandardUnit(u) then  // 'ugar' have Ability , check Level prevent war3 is old ver or map is ROC
+      call IssueImmediateOrderById( u, 852677)
+      set c = c + 1
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set u = null
+endfunction
+
+function StrengthDynamicDistribute takes nothing returns nothing
+  local group cg = null
+  local group g = CreateGroup()
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectByHidden(g, false)
+  set g = SelectByAlive(g, true)
+  call Trace("Strength Dynamic Distribute")
+  if TownCountDone(DRUID_TALON) > 0 or TownCountDone(GARGOYLE) > 0 then
+    call ExecuteAirDistribute(CopyGroup(g),dydistribute_air)  // now just have air , If possible , please add , one strength one function
+  endif
+  call DestroyGroup(g)
+  set g = null
+  set cg = null
+endfunction
+
 //============================================================================
 // (AMAI) Harrass Functions
 //============================================================================
@@ -10415,6 +10491,28 @@ function FarmBuilder takes nothing returns nothing
     call BuildFarms(2)
   elseif FoodSpace() <= farm_food then
     call BuildFarms(1)
+  endif
+endfunction
+
+function MercBuilder takes integer unitid1, integer unitid2 returns nothing
+  local integer i = GetRandomInt(0,100)
+  if GetGold() > 400 and GetWood() > 300 and neutral_available[NEUTRAL_MERC_CAMP] and not neutral_ordered[NEUTRAL_MERC_CAMP] then
+    if i > 30 then
+      call BuildUnit(1, unitid1, 45 + tier * 10)
+    else
+      call BuildUnit(1, unitid2, 45 + tier * 10)
+    endif
+  endif
+endfunction
+
+function DragonAndMercBuilder takes nothing returns nothing
+  local integer i = GetRandomInt(0,100)
+  if GetGold() > 600 and GetWood() > 500 then
+    if i > 30 and neutral_available[NEUTRAL_DRAGON_ROOST] and not neutral_ordered[NEUTRAL_DRAGON_ROOST] then
+      call BuildUnit(1, dragons[tier], 45 + tier * 10)
+    elseif neutral_available[NEUTRAL_MERC_CAMP] and not neutral_ordered[NEUTRAL_MERC_CAMP] then
+      call BuildUnit(1, merc_unit[GetRandomInt(0,3)], 45 + tier * 10)
+    endif
   endif
 endfunction
 
