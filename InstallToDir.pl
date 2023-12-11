@@ -14,7 +14,7 @@ sub process_dir {
     next if $filename eq "." || $filename eq "..";
     if ((-d "$dirname/$filename") ) {
       print "Installing $ver AMAI to dir $dirname\\$filename\n";
-      process_dir ("$dirname\\$filename", $commander);
+      process_dir ($ver, "$dirname\\$filename", $commander);
     } elsif ($filename =~ m/\.w3m$/ || $filename =~ m/\.w3x$/ ) {
       if (!(defined($commander)) || $commander eq "true") {
         print "Installing $ver AMAI and Commander to $dirname/$filename\n";
