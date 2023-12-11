@@ -1,4 +1,4 @@
-ECHO Apply backwards compatability scripts
+ECHO Apply forwards compatability scripts
 SET VER=%1
 perl -i -pe"s/GetBJMaxPlayers/GetBJMaxPlayersAMAI/g" Scripts/%VER%/common.ai
 perl -i -pe"s/GetBJMaxPlayers/GetBJMaxPlayersAMAI/g" Scripts/Blizzard_%VER%.j
