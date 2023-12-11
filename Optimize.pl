@@ -196,10 +196,15 @@ sub RemoveIfFalseThen {
         $iniffalse = 0;
         $_ = "if$1\n";
       }
+      elsif (/else/) {
+        $iniffalse = 0;
+        $_ = "if true then\n";
+      }
       elsif (/endif/) {
         $iniffalse = 0;
         $_ = '';
       }
+
     }
     elsif (/if false then/) {
       $iniffalse = 1;
