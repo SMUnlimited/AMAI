@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Added
 - Older versions of war3 are still popular so now you can install scripts to the older editions of warcraft from within this version.
   - (DevTools) AI Versions now maintain there own copy of warcraft API's and generated blizzard.j files. This allows a single copy of AMAI to build previous versions of AMAI.
+- Installer will now check to make sure AMAI scripts are in the correct location instead of just continuing to appear to work.
 - New English taunts and messages created from generated AI.
 - Ability to perform expansions using items (jzy-chitong56)
 - Heroes will attempt to avoid/swap specific items from their inventory or when they already have a specific skill (jzy-chitong56)
