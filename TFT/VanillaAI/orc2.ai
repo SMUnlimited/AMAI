@@ -1,0 +1,653 @@
+//==================================================================================================
+//  $Id: orc.ai,v 1.14 2003/04/23 19:26:00 bfitch Exp $
+//==================================================================================================
+globals
+    boolean basic_opening       = true
+
+    integer hunter_code         = HEAD_HUNTER
+
+    boolean b_hero1_done        = false
+    boolean b_hero2_done        = false
+    boolean b_ensnare           = false
+
+    integer c_altar_done        = 0
+    integer c_barracks_done     = 0
+    integer c_batrider          = 0
+    integer c_batrider_done     = 0
+    integer c_bestiary_done     = 0
+    integer c_burrow            = 0
+    integer c_burrow_done       = 0
+    integer c_cat               = 0
+    integer c_cat_done          = 0
+    integer c_doc               = 0
+    integer c_doc_done          = 0
+    integer c_food_made         = 0
+    integer c_food_used         = 0
+    integer c_forge_done        = 0
+    integer c_fortress_done     = 0
+    integer c_gold              = 0
+    integer c_gold_owned        = 0
+    integer c_great_hall        = 0
+    integer c_great_hall_done   = 0
+    integer c_grunt             = 0
+    integer c_grunt_done        = 0
+    integer c_hero1_done        = 0
+    integer c_hero2_done        = 0
+    integer c_hero3_done        = 0
+    integer c_hunter            = 0
+    integer c_hunter_done       = 0
+    integer c_kodo              = 0
+    integer c_kodo_done         = 0
+    integer c_lodge_done        = 0
+    integer c_mines             = 0
+    integer c_peon_done         = 0
+    integer c_raider            = 0
+    integer c_raider_done       = 0
+    integer c_shaman            = 0
+    integer c_shaman_done       = 0
+    integer c_stronghold_done   = 0
+    integer c_swalker           = 0
+    integer c_swalker_done      = 0
+    integer c_tauren            = 0
+    integer c_tauren_done       = 0
+    integer c_totem_done        = 0
+    integer c_voodoo_done       = 0
+    integer c_wyvern            = 0
+    integer c_wyvern_done       = 0
+    integer c_zep               = 0
+endglobals
+
+//--------------------------------------------------------------------------------------------------
+//  set_skills
+//--------------------------------------------------------------------------------------------------
+function set_skills takes nothing returns nothing
+
+    set skill[ 1] = MIRROR_IMAGE
+    set skill[ 2] = CRITICAL_STRIKE
+    set skill[ 3] = WIND_WALK
+    set skill[ 4] = MIRROR_IMAGE
+    set skill[ 5] = MIRROR_IMAGE
+    set skill[ 6] = BLADE_STORM
+    set skill[ 7] = CRITICAL_STRIKE
+    set skill[ 8] = CRITICAL_STRIKE
+    set skill[ 9] = WIND_WALK
+    set skill[10] = WIND_WALK
+
+    call SetSkillArray(1,BLADE_MASTER)
+    call SetSkillArray(2,BLADE_MASTER)
+    call SetSkillArray(3,BLADE_MASTER)
+
+    set skill[ 1] = CHAIN_LIGHTNING
+    set skill[ 2] = SPIRIT_WOLF
+    set skill[ 3] = CHAIN_LIGHTNING
+    set skill[ 4] = SPIRIT_WOLF
+    set skill[ 5] = CHAIN_LIGHTNING
+    set skill[ 6] = EARTHQUAKE
+    set skill[ 7] = SPIRIT_WOLF
+    set skill[ 8] = FAR_SIGHT
+    set skill[ 9] = FAR_SIGHT
+    set skill[10] = FAR_SIGHT
+
+    call SetSkillArray(1,FAR_SEER)
+    call SetSkillArray(2,FAR_SEER)
+    call SetSkillArray(3,FAR_SEER)
+
+    set skill[ 1] = SHOCKWAVE
+    set skill[ 2] = ENDURANE_AURA
+    set skill[ 3] = SHOCKWAVE
+    set skill[ 4] = ENDURANE_AURA
+    set skill[ 5] = SHOCKWAVE
+    set skill[ 6] = REINCARNATION
+    set skill[ 7] = ENDURANE_AURA
+    set skill[ 8] = WAR_STOMP
+    set skill[ 9] = WAR_STOMP
+    set skill[10] = WAR_STOMP
+
+    call SetSkillArray(1,TAUREN_CHIEF)
+    call SetSkillArray(2,TAUREN_CHIEF)
+    call SetSkillArray(3,TAUREN_CHIEF)
+
+    set skill[ 1] = HEALING_WAVE
+    set skill[ 2] = SERPENT_WARD
+    set skill[ 3] = HEALING_WAVE
+    set skill[ 4] = SERPENT_WARD
+    set skill[ 5] = HEALING_WAVE
+    set skill[ 6] = VOODOO
+    set skill[ 7] = SERPENT_WARD
+    set skill[ 8] = HEX
+    set skill[ 9] = HEX
+    set skill[10] = HEX
+
+    call SetSkillArray(1,SHADOW_HUNTER)
+    call SetSkillArray(2,SHADOW_HUNTER)
+    call SetSkillArray(3,SHADOW_HUNTER)
+endfunction
+
+//--------------------------------------------------------------------------------------------------
+//  setup_force
+//--------------------------------------------------------------------------------------------------
+function setup_force takes nothing returns nothing
+    call AwaitMeleeHeroes()
+    call InitMeleeGroup()
+
+    call SetMeleeGroup( hero_id         )
+    call SetMeleeGroup( hero_id2        )
+    call SetMeleeGroup( hero_id3        )
+    call SetMeleeGroup( GRUNT           )
+    call SetMeleeGroup( RAIDER          )
+    call SetMeleeGroup( TAUREN          )
+    call SetMeleeGroup( HEAD_HUNTER     )
+    call SetMeleeGroup( BERSERKER       )
+    call SetMeleeGroup( WYVERN          )
+    call SetMeleeGroup( WITCH_DOCTOR    )
+    call SetMeleeGroup( SHAMAN          )
+    call SetMeleeGroup( KODO_BEAST      )
+    call SetMeleeGroup( BATRIDER        )
+    call SetMeleeGroup( SPIRIT_WALKER   )
+
+    call SetInitialWave(10)
+endfunction
+
+//--------------------------------------------------------------------------------------------------
+//  force_level
+//--------------------------------------------------------------------------------------------------
+function force_level takes nothing returns integer
+    local integer level = 4
+    set level = level + 2 * (c_hunter_done + c_raider_done + c_batrider_done + c_shaman_done + c_doc_done + c_swalker_done)
+    set level = level + 3 * (c_grunt_done + c_kodo_done + c_wyvern_done)
+    set level = level + 5 * (c_hero3_done + c_tauren_done)
+    set level = level + 6 *  c_hero2_done
+    return level
+endfunction
+
+//--------------------------------------------------------------------------------------------------
+//  attack_sequence
+//--------------------------------------------------------------------------------------------------
+function attack_sequence takes nothing returns nothing
+    local boolean needs_exp
+    local boolean has_siege
+    local boolean air_units
+    local integer level
+
+    loop
+        exitwhen c_hero1_done > 0 and c_grunt_done >= 2
+        call Sleep(2)
+    endloop
+
+    if MeleeDifficulty() == MELEE_NEWBIE then
+        call Sleep(240)
+    endif
+
+    call StaggerSleep(0,2)
+    loop
+        loop
+            exitwhen not CaptainRetreating()
+            call Sleep(2)
+        endloop
+
+        call setup_force()
+
+        set level = force_level()
+        set max_creeps = level * 4 / 5
+        set min_creeps = max_creeps - 10
+        if min_creeps < 0 then
+            set min_creeps = 0
+        endif
+
+        set air_units        = c_wyvern_done > 0 or c_batrider_done > 0
+        set needs_exp        = take_exp and (level >= 9 or c_gold_owned < 2000)
+        set has_siege        = level >= 40 or 2*c_cat_done + c_raider_done + c_batrider_done >= 2
+        set allow_air_creeps = c_wyvern_done + c_raider_done + c_hunter_done >= 3
+
+        call SingleMeleeAttack(needs_exp,has_siege,false,air_units)
+
+        if MeleeDifficulty() == MELEE_NEWBIE then
+            call Sleep(60)
+        endif
+    endloop
+endfunction
+
+//--------------------------------------------------------------------------------------------------
+//  init_vars
+//--------------------------------------------------------------------------------------------------
+function init_vars takes nothing returns nothing
+
+    if GetUpgradeLevel(UPG_ORC_BERSERK) >= 1 then
+        set hunter_code = HEAD_HUNTER
+    else
+        set hunter_code = BERSERKER
+    endif
+
+    set b_hero1_done        = GetUnitCountDone(hero_id) >= 1
+    set b_hero2_done        = GetUnitCountDone(hero_id2) >= 1
+    set b_ensnare           = GetUpgradeLevel(UPG_ORC_ENSNARE) >= 1
+
+    set c_altar_done        = GetUnitCountDone(ORC_ALTAR)
+    set c_barracks_done     = GetUnitCountDone(ORC_BARRACKS)
+    set c_batrider          = GetUnitCount(BATRIDER)
+    set c_batrider_done     = GetUnitCountDone(BATRIDER)
+    set c_bestiary_done     = GetUnitCountDone(BESTIARY)
+    set c_burrow            = GetUnitCount(BURROW)
+    set c_burrow_done       = GetUnitCountDone(BURROW)
+    set c_cat               = GetUnitCount(CATAPULT)
+    set c_cat_done          = GetUnitCountDone(CATAPULT)
+    set c_doc               = GetUnitCount(WITCH_DOCTOR)
+    set c_doc_done          = GetUnitCountDone(WITCH_DOCTOR)
+    set c_food_made         = c_great_hall * GetFoodMade(GREAT_HALL) + c_burrow * GetFoodMade(BURROW)
+    set c_food_used         = FoodUsed()
+    set c_forge_done        = GetUnitCountDone(FORGE)
+    set c_fortress_done     = TownCountDone(FORTRESS)
+    set c_gold              = GetGold()
+    set c_gold_owned        = GetGoldOwned()
+    set c_great_hall        = TownCount(GREAT_HALL)
+    set c_great_hall_done   = TownCountDone(GREAT_HALL)
+    set c_grunt             = GetUnitCount(GRUNT)
+    set c_grunt_done        = GetUnitCountDone(GRUNT)
+    set c_hero1_done        = GetUnitCountDone(hero_id)
+    set c_hero2_done        = GetUnitCountDone(hero_id2)
+    set c_hero3_done        = GetUnitCountDone(hero_id3)
+    set c_hunter_done       = TownCountDone(HEAD_HUNTER)
+    set c_kodo              = GetUnitCount(KODO_BEAST)
+    set c_kodo_done         = GetUnitCountDone(KODO_BEAST)
+    set c_lodge_done        = GetUnitCountDone(LODGE)
+    set c_mines             = GetMinesOwned()
+    set c_peon_done         = GetUnitCountDone(PEON)
+    set c_raider            = GetUnitCount(RAIDER)
+    set c_raider_done       = GetUnitCountDone(RAIDER)
+    set c_shaman            = GetUnitCount(SHAMAN)
+    set c_shaman_done       = GetUnitCountDone(SHAMAN)
+    set c_stronghold_done   = TownCountDone(STRONGHOLD)
+    set c_swalker           = TownCount(SPIRIT_WALKER)
+    set c_swalker_done      = TownCountDone(SPIRIT_WALKER)
+    set c_tauren            = GetUnitCount(TAUREN)
+    set c_tauren_done       = GetUnitCountDone(TAUREN)
+    set c_totem_done        = GetUnitCountDone(TOTEM)
+    set c_voodoo_done       = GetUnitCountDone(VOODOO_LOUNGE)
+    set c_wyvern            = GetUnitCount(WYVERN)
+    set c_wyvern_done       = GetUnitCountDone(WYVERN)
+    set c_zep               = GetUnitCount(ZEPPELIN)
+
+    if basic_opening and (b_hero2_done or (MeleeDifficulty() == MELEE_NEWBIE and c_stronghold_done >= 1)) then
+        set basic_opening = false
+    endif
+endfunction
+
+//--------------------------------------------------------------------------------------------------
+//  set_vars
+//--------------------------------------------------------------------------------------------------
+function set_vars takes nothing returns nothing
+    loop
+        call init_vars()
+        call Sleep(1)
+    endloop
+endfunction
+
+//--------------------------------------------------------------------------------------------------
+//  do_upgrades
+//--------------------------------------------------------------------------------------------------
+function do_upgrades takes nothing returns nothing
+
+    if c_totem_done >= 1 and c_tauren >= 1 then
+        call SetBuildUpgr( 1, UPG_ORC_PULVERIZE )
+    endif
+
+    if c_forge_done >= 1 then
+        if c_fortress_done >= 1 then
+            call SetBuildUpgr( 1, UPG_ORC_BURROWS   )
+
+            call SetBuildUpgr( 3, UPG_ORC_MELEE     )
+            call SetBuildUpgr( 3, UPG_ORC_RANGED    )
+            call SetBuildUpgr( 3, UPG_ORC_ARMOR     )
+            call SetBuildUpgr( 3, UPG_ORC_SPIKES    )
+
+        elseif c_stronghold_done >= 1 then
+            call SetBuildUpgr( 2, UPG_ORC_MELEE     )
+            call SetBuildUpgr( 2, UPG_ORC_RANGED    )
+            call SetBuildUpgr( 2, UPG_ORC_ARMOR     )
+        else
+            call SetBuildUpgr( 1, UPG_ORC_MELEE     )
+            call SetBuildUpgr( 1, UPG_ORC_RANGED    )
+            call SetBuildUpgr( 1, UPG_ORC_ARMOR     )
+        endif
+    endif
+
+    if c_bestiary_done >= 1 then
+        if c_raider >= 1 then
+            call SetBuildUpgr( 1, UPG_ORC_ENSNARE )
+        endif
+
+        if c_fortress_done >= 1 then
+            if c_wyvern >= 1 then
+                call SetBuildUpgr( 1, UPG_ORC_VENOM )      
+            endif
+
+            if c_forge_done >= 1 and c_kodo >= 1 then
+                call SetBuildUpgr( 1, UPG_ORC_WAR_DRUMS )
+            endif
+
+            if c_voodoo_done >= 1 and c_batrider >= 1 then
+                call SetBuildUpgr( 1, UPG_ORC_FIRE )
+            endif
+        endif
+    endif
+
+    if c_barracks_done >= 1 then
+        if c_fortress_done >= 1 and c_grunt >= 2 then
+            call SetBuildUpgr( 1, UPG_ORC_BERSERK   )    
+        endif
+
+        if c_stronghold_done >= 1 and c_hunter >= 2 then
+            if c_forge_done >= 1 then
+                call SetBuildUpgr( 1, UPG_ORC_BERSERKER )
+            endif
+            call SetBuildUpgr( 1, UPG_ORC_REGEN )
+        endif
+    endif
+
+    if c_lodge_done >= 1 then
+        if c_fortress_done >= 1 then
+            if c_shaman >= 1 then
+                call SetBuildUpgr( 2, UPG_ORC_SHAMAN    ) 
+            endif
+            if c_doc >= 1 then
+                call SetBuildUpgr( 2, UPG_ORC_DOCS      ) 
+            endif
+            if c_swalker >= 1 then
+                call SetBuildUpgr( 2, UPG_ORC_SWALKER   )
+            endif
+        else
+            if c_shaman >= 2 then
+                call SetBuildUpgr( 1, UPG_ORC_SHAMAN    ) 
+            endif
+            if c_doc >= 2 then
+                call SetBuildUpgr( 1, UPG_ORC_DOCS      ) 
+            endif
+            if c_swalker >= 1 then
+                call SetBuildUpgr( 1, UPG_ORC_SWALKER   )
+            endif
+        endif
+    endif
+
+    if c_great_hall_done >= 1 and c_raider >= 1 then
+        call SetBuildUpgr( 1, UPG_ORC_PILLAGE )
+    endif
+
+    if c_forge_done >= 1 then
+        if c_fortress_done >= 1 then
+            call SetBuildUpgr( 3, UPG_ORC_SPIKES    )
+        elseif c_stronghold_done >= 1 then
+            call SetBuildUpgr( 2, UPG_ORC_SPIKES    )
+        else
+            call SetBuildUpgr( 1, UPG_ORC_SPIKES    )
+        endif
+    endif
+endfunction
+
+//--------------------------------------------------------------------------------------------------
+//  build_sequence
+//--------------------------------------------------------------------------------------------------
+function build_sequence takes nothing returns nothing
+    local integer peons
+
+    call InitBuildArray()
+
+    if basic_opening then
+
+        call MeleeTownHall( 0, GREAT_HALL )
+        call MeleeTownHall( 1, GREAT_HALL )
+
+        call SetBuildUnit(  6, PEON             )
+        call SetBuildUnit(  1, ORC_ALTAR        )
+        call SetBuildUnit(  7, PEON             )
+        call SetBuildUnit(  1, BURROW           )
+        call SetBuildUnit(  8, PEON             )
+        call SetBuildUnit(  2, BURROW           )
+        call SetBuildUnit( 10, PEON             )
+        call SetBuildUnit(  1, hero_id          )
+        call SetBuildUnit( 11, PEON             )
+        call SetBuildUnit(  1, ORC_BARRACKS     )
+        call SetBuildUnit(  1, FORGE            )
+        call SetBuildUnit( 14, PEON             )
+        call SetBuildUnit(  1, GRUNT            )
+        call SetBuildUpgr(  1, UPG_ORC_MELEE    )
+        call SetBuildUnit(  2, GRUNT            )
+        call SetBuildUnit(  3, BURROW           )
+        call SetBuildUnit(  1, HEAD_HUNTER      )
+        call SetBuildUnit(  1, VOODOO_LOUNGE    )
+        call SetBuildUpgr(  1, UPG_ORC_RANGED   )
+        call SetBuildUnit(  3, HEAD_HUNTER      )
+        call SetBuildUpgr(  1, UPG_ORC_ARMOR    )
+        call SetBuildUnit(  4, GRUNT            )
+
+        call BasicExpansion( c_mines < 2, GREAT_HALL )
+
+        if MeleeDifficulty() != MELEE_NEWBIE then
+            call GuardSecondary( 1, 1, BURROW )
+            call GuardSecondary( 1, 2, ORC_WATCH_TOWER )
+        endif
+
+        call SetBuildUnit(  4, BURROW           )
+        call SetBuildUnit(  6, GRUNT            )
+        call SetBuildUnit(  1, STRONGHOLD       )
+        call SetBuildUpgr(  1, UPG_ORC_SPIKES   )
+
+        if MeleeDifficulty() != MELEE_NEWBIE then
+            call SetBuildUnit(  1, hero_id2     )
+        endif
+
+        call SetBuildUnit(  5, BURROW           )
+        call SetBuildUnit(  1, CATAPULT         )
+        call SetBuildUpgr(  2, UPG_ORC_MELEE    )
+        call SetBuildUpgr(  1, UPG_ORC_PILLAGE  )
+        call SetBuildUnit(  2, CATAPULT         )
+        return
+    endif
+
+    // need a peon or nothing will get built
+    //
+    if c_great_hall_done >= 1 then
+        set peons = 6 - GetWood() / 200
+        if peons < 3 then
+            set peons = 3
+        endif
+        if c_mines < 2 or c_great_hall_done < 2 then
+            set peons = peons + 5
+        else
+            set peons = peons + 10
+        endif
+        if peons > 15 then
+            set peons = 15
+        endif
+        call SetBuildNext( peons, PEON )
+    endif
+
+    // need a great hall or we can't resource and make more peons
+    //
+    if c_great_hall < 1 and c_peon_done >= 1 then
+        call MeleeTownHall( 0, GREAT_HALL )
+        call MeleeTownHall( 1, GREAT_HALL )
+        call MeleeTownHall( 2, GREAT_HALL )
+    endif
+
+    if c_gold > 500 and GetWood() < 100 then
+        call SetBuildNext( 15, PEON )
+    endif
+
+    // if we have low gold in our mines then we need to expand
+    //
+    if c_gold_owned < 2000 then
+        call BasicExpansion( c_mines < 2, GREAT_HALL )
+        if MeleeDifficulty() != MELEE_NEWBIE then
+            call GuardSecondary( 1, 1, BURROW )
+        endif
+    endif
+
+    // get enough burrows to handle current food demand
+    //
+    if c_food_used + 5 >= c_food_made then
+        call SetBuildUnit(  c_burrow_done + 1, BURROW )
+    endif
+
+    // always rebuild heroes for defense
+    //
+    if c_altar_done >= 1 then
+        if b_hero1_done and MeleeDifficulty() != MELEE_NEWBIE then
+            call SetBuildUnit( 1, hero_id2 )
+        else
+            call SetBuildUnit( 1, hero_id )
+        endif
+    else
+        call SetBuildUnit( 1, ORC_ALTAR )
+    endif
+
+    // minimum melee defense
+    //
+    if c_totem_done >= 1 then
+        call SetBuildUnit( 2, TAUREN        )
+    else
+        call SetBuildUnit( 1, ORC_BARRACKS  )
+        call SetBuildUnit( 3, GRUNT         )
+    endif
+
+    // minimum ranged/air defense and siege units
+    //
+    if c_bestiary_done >= 1 then
+        if c_fortress_done >= 1 then
+            call SetBuildUnit( 2, WYVERN )
+        elseif b_ensnare then
+            call SetBuildUnit( 2, RAIDER )
+        else
+            call SetBuildUnit( 1, ORC_BARRACKS  )
+            call SetBuildUnit( 3, hunter_code   )
+        endif
+
+        if c_voodoo_done >= 1 and c_fortress_done >= 1 then
+            call SetBuildUnit( 2, BATRIDER  )
+        else
+            call SetBuildUnit( 3, RAIDER    )
+        endif
+    else
+        call SetBuildUnit( 1, ORC_BARRACKS  )
+        call SetBuildUnit( 3, hunter_code   )
+        call SetBuildUnit( 2, CATAPULT      )
+    endif
+
+    // if we have a lot of gold then advance the tech tree
+    //
+    if c_gold > 1000 then
+
+        if MeleeDifficulty() != MELEE_NEWBIE then
+            call GuardSecondary( 1, 1, BURROW           )
+            call GuardSecondary( 1, 1, ORC_WATCH_TOWER  )
+            call GuardSecondary( 1, 2, BURROW           )
+            call GuardSecondary( 1, 2, ORC_WATCH_TOWER  )
+        endif
+
+        call SetBuildUnit( 1, ORC_BARRACKS  )
+        call SetBuildUnit( 1, FORGE         )
+        call SetBuildUnit( 1, VOODOO_LOUNGE )
+        call SetBuildUnit( 1, STRONGHOLD    )
+        call SetBuildUnit( 1, LODGE         )
+        call SetBuildUnit( 1, BESTIARY      )
+        call SetBuildUnit( 1, FORTRESS      )
+        call SetBuildUnit( 1, TOTEM         )
+
+        call do_upgrades()
+
+        if c_gold > 2000 then
+            call BuildFactory( ORC_BARRACKS )
+            call BuildFactory( LODGE        )
+            call BuildFactory( BESTIARY     )
+            call BuildFactory( TOTEM        )
+        endif
+
+    elseif c_food_used >= UPKEEP_TIER1 then
+        call do_upgrades()
+    endif
+
+    call BasicExpansion( c_mines < 2, GREAT_HALL )
+    if MeleeDifficulty() != MELEE_NEWBIE then
+        call GuardSecondary( 1, 1, BURROW )
+        call GuardSecondary( 1, 2, ORC_WATCH_TOWER )
+    endif
+
+    if c_food_used >= UPKEEP_TIER2 - 10 and c_gold < 2000 then
+        return
+    endif
+
+    // full up with more troops in general
+    //
+    if c_totem_done >= 1 then
+        call SetBuildNext( 4, TAUREN    )
+    else
+        call SetBuildNext( 6, GRUNT     )
+    endif
+
+    if c_bestiary_done >= 1 then
+        if c_fortress_done >= 1 then
+            call SetBuildNext( 3, WYVERN )
+        elseif b_ensnare then
+            call SetBuildNext( 4, RAIDER )
+        endif
+        if c_forge_done >= 1 then
+            call SetBuildUnit( 1, KODO_BEAST )
+        endif
+    endif
+
+    if c_lodge_done >= 1 then
+        call SetBuildUnit( 1, SHAMAN        )
+        call SetBuildUnit( 1, WITCH_DOCTOR  )
+        call SetBuildUnit( 1, SPIRIT_WALKER )
+        call SetBuildNext( 4, SHAMAN        )
+        call SetBuildNext( 2, WITCH_DOCTOR  )
+    endif
+
+    if c_gold_owned < 10000 then
+        call BasicExpansion( c_mines < 3, GREAT_HALL )
+        if MeleeDifficulty() != MELEE_NEWBIE then
+            call GuardSecondary( 2, 1, BURROW )
+            call GuardSecondary( 2, 2, ORC_WATCH_TOWER )
+        endif
+    endif
+
+    if c_food_used >= 60 and c_zep < 3 then
+        call GetZeppelin()
+    endif
+endfunction
+
+//--------------------------------------------------------------------------------------------------
+//  peon_asignment
+//--------------------------------------------------------------------------------------------------
+function peon_assignment takes nothing returns nothing
+    local integer T
+    loop
+        call ClearHarvestAI()
+
+        set T = TownWithMine()
+
+        call HarvestGold(T,4)
+        call HarvestWood(0,1)
+        call HarvestGold(T,1)
+        call HarvestWood(0,1)
+
+        if c_great_hall_done > 1 and c_mines > 1 then
+            call HarvestGold(T+1,5)
+        endif
+
+        call HarvestWood(0,10)
+
+        call build_sequence()
+        call Sleep(GetRandomInt(1,3))
+    endloop
+endfunction
+
+//--------------------------------------------------------------------------------------------------
+//	main
+//--------------------------------------------------------------------------------------------------
+function main takes nothing returns nothing
+    call PickMeleeHero(RACE_ORC)
+    call set_skills()
+    call StandardAI(function SkillArrays, function peon_assignment, function attack_sequence)
+    call StartThread(function set_vars)
+    call PlayGame()
+endfunction
