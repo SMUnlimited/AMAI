@@ -44,13 +44,13 @@ const installOnDirectory = async () => {
     // on single map
     arrayOfFiles.push(response);
   }
-  
+
   if (!fs.existsSync(`Scripts\\${ver}\\common.ai`)) {
-    process.send(`ERROR: Cannot find resources\\AMAI\\Scripts\\${ver}\\common.ai`)
+    process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\common.ai`)
     return
   }
   if (installCommander && !fs.existsSync(`Scripts\\Blizzard_${ver}.j`)) {
-    process.send(`ERROR: Cannot find resources\\AMAI\\Scripts\\blizzard_${ver}.j`)
+    process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\blizzard_${ver}.j`)
     return
   }
 
