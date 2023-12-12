@@ -34,7 +34,7 @@ const installOnDirectory = async () => {
   const response = args[0];
   const ver = args[2]
 
-  process.send(`#### Installing AMAI ${ver} ####`);
+  process.send(`#### Installing AMAI for ${ver} ####`);
 
   // TODO: change to receive array of maps
   if (fs.statSync(response).isDirectory()) {
