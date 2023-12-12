@@ -8,7 +8,7 @@ import { ElectronService } from '../electron/electron.service';
 export class MenuService {
   public template: any = [
     {
-      label: 'Files',
+      label: 'Install',
       submenu: [
         {
           label: 'Install Reforged on Folder',
