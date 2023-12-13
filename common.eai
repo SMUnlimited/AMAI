@@ -5824,7 +5824,7 @@ function CheckExpansionTaken takes unit expa returns boolean
       set g = null
       set u = null
       if not IsUnitHidden(u) then
-        call GroupRemoveUnit(far_expansion, expa)
+        //call GroupRemoveUnit(far_expansion, expa)
       endif
       return true
     elseif GetOwningPlayer(u) != ai_player and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then		// Creeps dosn't mean expansion is taken
@@ -6284,7 +6284,7 @@ function CheckExpansionRebuild takes nothing returns boolean
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL) == true then
+      if GetUnitTypeId(u) == old_id[racial_expansion] then
         call DestroyGroup(g)
         set g = null
         set u = null
@@ -6409,6 +6409,9 @@ function ChooseExpansion takes nothing returns nothing
     exitwhen i >= expansion_list_length
     if GetResourceAmount(expansion_list[i]) > gold and not CheckExpansionTaken(expansion_list[i]) and DistanceBetweenPoints_kd(home_location,GetUnitLoc(expansion_list[i])) > 1500 then
       call add_exp(expansion_list[i], expansion_dist[i], expansion_ancient[i], expansion_creeps[i])
+      if (expansion_dist[i] > 6000/512 ) then
+        call GroupAddUnit(far_expansion, expansion_list[i])
+      endif
     endif
     set i = i + 1
   endloop
@@ -10064,7 +10067,6 @@ endfunction
 
 //============================================================================
 function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
-  // Disabled just in case
   if IsUnitInTransport(peon, build_zeppelin) then
     if DistanceBetweenUnits(build_zeppelin, target) > 300 then
       call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + GetRandomReal(-200,200), GetUnitY(target) + GetRandomReal(-200,200))
@@ -10118,6 +10120,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     endif
   endif
   if CheckExpansionTaken(current_expansion) then
+    call Trace("AMAIStartexpa: Expansion Taken by someone else")
     set current_expansion = null
     return BUILT_ALL
   endif
@@ -10170,10 +10173,6 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   //  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Peon Got")
   set f = IsUnitInGroup(current_expansion, far_expansion)
   set w = IsWaterExpansion(current_expansion)
-  if not w and DistanceBetweenUnits(expansion_peon,current_expansion) > 6000 and not f then
-    call GroupAddUnit(far_expansion, current_expansion)
-    set f = true
-  endif
 
   if expansion_peon != null and UnitAlive(expansion_peon) then
     if (w or f) and neutral_available[NEUTRAL_OBSERVATORY] then
@@ -10183,18 +10182,20 @@ function StartExpansionAM takes integer qty, integer hall returns integer
         endif
         set build_zeppelin = GetUnusedZeppelinNearUnit(build_zeppelin, expansion_peon)
         if build_zeppelin == null then
-          call Trace("No Zeppelin found for transporting peon")
+          call Trace("AMAIStartexpa: No Zeppelin found for transporting peon")
         else
           call GroupAddUnit(unit_zepplin_move, build_zeppelin)
         endif
       endif
-      call Trace("AMAIStartexpa: Is a water or far expansion so using zeppelin")
-      if (w and build_zeppelin == null) or (build_zeppelin != null and not BuildMovePeonZeppelin(expansion_peon, current_expansion)) then
-        call Trace("AMAIStartexpa: zeppelin cannot expand")
+      if (w and build_zeppelin == null) then
+        call Trace("AMAIStartexpa: Water expansion required waiting to create a zeppelin")
+        return BUILT_SOME
+      endif
+      if (build_zeppelin != null and not BuildMovePeonZeppelin(expansion_peon, current_expansion)) then
+        call Trace("AMAIStartexpa: Expanding via a zeppelin")
         return BUILT_SOME
       endif
     endif
-    set exp_time_count = ai_time	// This sets time to next expansion to current time so it waits enough time before starting another expansion 
     if race_uses_mine_expansion then
       call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, expansion_peon)
       call IssueTargetOrderById(expansion_peon, old_id[hall], current_expansion)
@@ -10521,6 +10522,7 @@ if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(
   endif
 endif
 if CheckExpansionTaken(current_expansion) then
+  call Trace("ExpansionBuilder: Expansion taken by someone else")
   set current_expansion = null
   return
 endif
@@ -10532,14 +10534,11 @@ if first_town_mine > 0 and (race_uses_mine_expansion or race_manual_loading) the
   set mines = Min(TownCount(i),mines)  // check actual number of gold mines
 endif
 
-set i = 2
-if active_expansion == true then
-  set i = 3
-endif
 set u = GetExpFoe(u)
-if mines < i and ai_time - exp_time_count > exp_first_time then
+if mines < 2 and ai_time - exp_time_count > exp_first_time then
   if u != null then
     set take_exp = true
+    call Trace("ExpansionBuilder:Need to Creep Mine 2")
     //if attacking_expansion then
     //  set exp_prepared = true
     //  call Trace("ExpansionBuilder: Ready to expand to mine 2 - odd")
@@ -10547,23 +10546,25 @@ if mines < i and ai_time - exp_time_count > exp_first_time then
   else
     set take_exp = false
     set exp_prepared = true
-    call Trace("ExpansionBuilder:Ready to expand to mine 2")	
+    call Trace("ExpansionBuilder:Ready to expand to mine 2")
   endif
 endif
 
-if mines < 3 and ai_time - exp_time_count > exp_second_time then
+if mines < 3 and ai_time - exp_time_count > exp_second_time or (active_expansion and ai_time - exp_time_count > exp_first_time) then
   if u != null then
     set take_exp = true
+    call Trace("ExpansionBuilder:Need to Creep Mine 3")
   else
     set take_exp = false
     set exp_prepared = true
-    call Trace("ExpansionBuilder:Ready to expand to mine 3")		
+    call Trace("ExpansionBuilder:Ready to expand to mine 3")
   endif
 endif
 
 if not exp_prepared and u == null then
   set rebuild = CheckExpansionRebuild()
   if rebuild then
+    call Trace("ExpansionBuilder:Ready to rebuild mine")
     set exp_prepared = true
   endif
 endif
@@ -10846,7 +10847,7 @@ function OneBuildLoopAM takes nothing returns nothing
             call Trace("NO RESOURCES " + logtype + unitNames[id] + " " + Int2Str(id))
             set tracednoresources = id
           endif
-          exitwhen ret == NOT_ENOUGH_RES // Don't try and build anything else as thing we trying to buy is too expensive
+          exitwhen ret == NOT_ENOUGH_RES and tp != BUILD_ITEM and tp != BUILD_UPGRADE // Don't try and build anything else as thing we trying to buy is too expensive
           if ret == CANNOT_BUILD or ret == BUILT_SOME or ret == NOT_ENOUGH_RES or (ret == BUILT_ALL and qty < build_qty[index]) then
             set build_qty[index_free] = build_qty[index]
             set build_type[index_free] = build_type[index]
@@ -12281,29 +12282,30 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
       if needs_exp then
         if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
           call ChooseExpansion()
-          if current_expansion == null then
+        endif
+        if current_expansion == null then
+            call Trace("Need expansion but none found")
+        else
+          set creep = GetExpFoe(creep)
+          if creep != null and UnitAlive(creep) then
+            call Trace("Creep the Expansion")
+            set attacking_expansion = true
+            set battle_radius = creep_battle_radius
+            call SetAllianceTarget(creep)
+            call Chat(C_Expansion)
+            call FormGroupAM(3)
+            call AttackMoveKillCreep(creep)
+            if creep == null then
+              set take_exp = false
+            endif
+            call Sleep(10)
+            set attacking_expansion = false
+            set creep = null
+            call SetAllianceTarget(null)
             return
           endif
-        endif
-        set creep = GetExpFoe(creep)
-        if creep != null and UnitAlive(creep) then
-          call Trace("Creep the Expansion")
-          set attacking_expansion = true
-          set battle_radius = creep_battle_radius
-          call SetAllianceTarget(creep)
-          call Chat(C_Expansion)
-          call FormGroupAM(3)
-          call AttackMoveKillCreep(creep)
-          if creep == null then
-            set take_exp = false
-          endif
-          call Sleep(10)
-          set attacking_expansion = false
           set creep = null
-          call SetAllianceTarget(null)
-          return
         endif
-        set creep = null
       endif
     endif
 
