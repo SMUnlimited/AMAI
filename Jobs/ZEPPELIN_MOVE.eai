@@ -2,7 +2,7 @@
     constant integer ZTARGET_HOME = 0
     constant integer ZTARGET_FOUNTAIN = 1
     constant integer ZTARGET_MOONWELLS = 2
-    boolean zepdropping = false	// Currently ordering unit to exit zepplin
+    //boolean zepdropping = false	// Currently ordering unit to exit zepplin
 #ELSE
 function GetZTargetLocation takes integer target returns location
   if target == ZTARGET_HOME then
@@ -10,13 +10,14 @@ function GetZTargetLocation takes integer target returns location
   elseif target == ZTARGET_MOONWELLS then
     return Location(GetLocationX(home_location), GetLocationY(home_location))
   else
-    if nearest_neutral[NEUTRAL_POWER_FOUNTAIN] != null then
+    if nearest_neutral[NEUTRAL_POWER_FOUNTAIN] != null and UnitAlive(nearest_neutral[NEUTRAL_POWER_FOUNTAIN]) then
       return GetUnitLoc(nearest_neutral[NEUTRAL_POWER_FOUNTAIN])
-    elseif nearest_neutral[NEUTRAL_HEAL_WARD] != null then
+    elseif nearest_neutral[NEUTRAL_HEAL_WARD] != null and UnitAlive(nearest_neutral[NEUTRAL_HEAL_WARD]) then
       return GetUnitLoc(nearest_neutral[NEUTRAL_HEAL_WARD])
-    else
+    elseif UnitAlive(nearest_neutral[NEUTRAL_HEALING_FOUNTAIN]) then
       return GetUnitLoc(nearest_neutral[NEUTRAL_HEALING_FOUNTAIN])
     endif
+    return Location(GetLocationX(home_location), GetLocationY(home_location))
   endif
 endfunction
 
@@ -34,7 +35,7 @@ function ZeppelinMoveJob takes integer target, unit hu, group z returns nothing
   local location tl = null
   local unit zep = FirstOfGroup(z)
   local location zeploc = null
-  local location heroloc = null
+  local location unitloc = null
   local integer clearvars = 0  //=1.. Zepplin system can now finish so return
   if GetUnitState(hu, UNIT_STATE_LIFE) <= 0 then
     call GroupRemoveUnit(unit_rescueing, zep)
@@ -43,7 +44,7 @@ function ZeppelinMoveJob takes integer target, unit hu, group z returns nothing
     call TQAddUnitJob(2, RESET_GUARD_POSITION, 80, hu)
     call DestroyGroup(z)
     set zep = null
-    set zepdropping = false
+    //set zepdropping = false
     return
   endif
   if zep == null or not UnitAlive(zep) then
@@ -54,54 +55,56 @@ function ZeppelinMoveJob takes integer target, unit hu, group z returns nothing
     endif
     call AddZepFinishingJob(target, 1,hu)
     call DestroyGroup(z)
-    set zepdropping = false
+    //set zepdropping = false
     return
   endif
   call DisplayToAllJobDebug("ZEPPELIN_MOVE Start")
   set zeploc = GetUnitLoc(zep)
-  set heroloc = GetUnitLoc(hu)
+  set unitloc = GetUnitLoc(hu)
   set tl = GetZTargetLocation(target)
   if IsUnitInTransport(hu, zep) then
-    if DistanceBetweenPoints(zeploc, tl) > 1000 and not zepdropping then  // and DistanceBetweenPoints(zeploc, ally_loc) < 1500 then
+    if DistanceBetweenPoints(zeploc, tl) > 1000 then  // and not zepdropping and DistanceBetweenPoints(zeploc, ally_loc) < 1500 then
       call IssuePointOrderLoc(zep, "move", tl)
       call CreateDebugTag("Move to safe location", 10, zep, 3.00, 1.50)
     else
-      if not zepdropping then
-        call IssueImmediateOrder(zep, "stop")
-      endif
-      set zepdropping = true
+      //if not zepdropping then
+      call IssueImmediateOrder(zep, "stop")
+      //endif
+      //set zepdropping = true
       //call IssueTargetOrder(zep, "unload", hu)
       call IssuePointOrder(zep, "unloadall", GetLocationX(tl) + GetRandomReal(-200,200), GetLocationY(tl) + GetRandomReal(-200,200))
       call CreateDebugTag("unload unit", 10, zep, 3.00, 1.50)
       call AddZepFinishingJob(target, 1,hu)
       set clearvars = 1
     endif
-  elseif not IsUnitInTransport(hu,zep) and (zepdropping or GetUnitState(hu,UNIT_STATE_LIFE)>= GetUnitState(hu,UNIT_STATE_MAX_LIFE) * 0.8) then
-    call TQAddUnitJob(2, RESET_GUARD_POSITION, 80, hu)
-    set clearvars = 1
-  elseif not zepdropping then
-    if DistanceBetweenPoints(heroloc, tl) < 1500 then //or DistanceBetweenPoints(zeploc, ally_loc) > 1300 then
-      call AddZepFinishingJob(target, 1,hu)
+  else
+    if GetUnitState(hu,UNIT_STATE_LIFE) >= GetUnitState(hu,UNIT_STATE_MAX_LIFE) * 0.8 then
+      call TQAddUnitJob(2, RESET_GUARD_POSITION, 80, hu)
       set clearvars = 1
     else
-      call CreateDebugTag("Pick up unit", 10, zep, 3.00, 1.50)
-      call IssueTargetOrder(zep, "smart", hu)
-      call IssueTargetOrder(hu, "smart", zep)
+      if DistanceBetweenPoints(unitloc, tl) < 1500 then //or DistanceBetweenPoints(zeploc, ally_loc) > 1300 then
+        call AddZepFinishingJob(target, 1,hu)
+        set clearvars = 1
+      else
+        call CreateDebugTag("Pick up unit", 10, zep, 3.00, 1.50)
+        call IssueTargetOrder(zep, "smart", hu)
+        call IssueTargetOrder(hu, "smart", zep)
+      endif
     endif
   endif
   call RemoveLocation(tl)
   set tl = null
   call RemoveLocation(zeploc)
   set zeploc = null
-  call RemoveLocation(heroloc)
-  set heroloc = null
+  call RemoveLocation(unitloc)
+  set unitloc = null
   if clearvars == 1 then
     call GroupRemoveUnit(unit_rescueing, zep)
     call GroupRemoveUnit(unit_zepplin_move, zep)
     call RecycleGuardPosition(zep)
     set zep = null
     call DestroyGroup(z)
-    set zepdropping = false
+    //set zepdropping = false
     return
   endif
   set zep = null

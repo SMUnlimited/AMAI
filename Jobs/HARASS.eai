@@ -100,9 +100,8 @@ function GroupOrderWindWalkInstant_d takes group g returns nothing
 	call DestroyGroup(g)
 endfunction
 
-function HarassJob takes integer ht, unit targ, group harasser returns nothing
+function HarassRuning takes integer key, integer ht, unit targ, group harasser returns nothing
   local unit target = targ
-  local integer key = GetHandleId(harasser)
   local real strength_limit = LoadReal(additional_info, key, STRENGTH_LIMIT)
   local boolean state_attacking = LoadBoolean(additional_info, key, STATE_ATTACKING)
   local real flee_percent = LoadReal(additional_info, key, FLEE_PERCENT)
@@ -121,12 +120,12 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
   local integer hiddencount = LoadInteger(additional_info, key, INVISIBLE_COUNT)
   local integer timedelay = LoadInteger(additional_info, key, WINDWALK_COUNT) // Delay count so windwalkers show themselves after a period of waiting
   local boolean healing = false
-
   call DisplayToAllJobDebug("HARASS JOB START")
   if not UnitAliveInGroup(harasser) then
     call SaveBoolean(additional_info, key, STATE_RETREAT , false)
     call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
     call SaveInteger(additional_info, key, INVISIBLE_COUNT, 0)
+    call RemoveSavedHandle(additional_info, HARASS_COUNT, key)
     set target = null
     return
   endif
@@ -156,6 +155,7 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
       call SaveBoolean(additional_info, key, STATE_RETREAT , false)
       call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
       call SaveInteger(additional_info, key, INVISIBLE_COUNT , 0)
+      call RemoveSavedHandle(additional_info, HARASS_COUNT, key)
       //call GroupRecycleGuardPositionInstant(harasser)
       call GroupRecycleHarrassPositionInstant(harasser)
       set target = null
@@ -201,6 +201,7 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
       call SaveBoolean(additional_info, key, STATE_RETREAT , false)
       call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
       call SaveInteger(additional_info, key, INVISIBLE_COUNT , 0)
+      call RemoveSavedHandle(additional_info, HARASS_COUNT, key)
       call GroupRecycleHarrassPositionInstant(harasser)
       set target = null
       set hu = null
@@ -331,4 +332,20 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
   set target = null
   set hu = null
 endfunction
+
+function HarassJob takes integer ht, unit targ, group harasser returns nothing
+  local integer i = 0
+  local integer key = -1
+  loop
+    exitwhen key >= 0 or i >= 3
+    if LoadGroupHandle(additional_info, HARASS_COUNT, i) == harasser then  //  find key
+      set key = i
+    endif
+    set i = i + 1
+  endloop
+  if key >= 0 then
+    call HarassRuning(key, ht, targ, harasser)
+  endif
+endfunction
+
 #ENDIF

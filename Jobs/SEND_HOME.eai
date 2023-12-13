@@ -48,26 +48,34 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
   local group g = null
   local unit corpse = null
   local item it = null
-  local integer racial_healing_item = GetHeroHealingItem()
-  local integer racial_mana_item = GetHeroManaItem()
+  local integer racial_healing_item = 0
+  local integer racial_mana_item = 0
   local integer enemystrength = 0
   local unit otherhero = null
 
   call DisplayToAllJobDebug("SEND_HOME Job")
 
+  // set enemystrength = GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 800)
+  if GetUnitState(u, UNIT_STATE_LIFE) <= 0 then
+    call CreateDebugTag("SEND_HOME unit dead", 10, u, 3.00, 1.50)
+    call TQAddUnitJob(2, RESET_GUARD_POSITION, p, u)
+    return
+  endif
+  call DisplayToAllJobDebug("SEND_HOME Starting check")
   if IsUnitType(u, UNIT_TYPE_HERO) then
+    set racial_healing_item = GetHeroHealingItem()
+    set racial_mana_item = GetHeroManaItem()
     if racial_healing_item != 0 then
       set otherhero = SomeUnitHasHealingItem(otherhero, u, racial_healing_item)
-    endif
-    //set shop_wanted = 1
-    if buy_type[racial_healing_item] == BT_RACIAL_ITEM then
-      //set shop_unit = GetUnitOfTypeNearUnit(old_id[racial_shop], u, shop_unit)
-      set nearshopunit = GetUnitOfTypeNearUnit(old_id[racial_shop], u, nearshopunit)
-      //	set shop_distance_limit = raceshop_distance_limit
-    else
-      //	set shop_unit = nearest_neutral[NEUTRAL_MERCHANT]
-      if not (neutral_guarded[NEUTRAL_MERCHANT] and ((GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 5 and GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 18) or not neutral_night_buy[NEUTRAL_MERCHANT])) then
-        set nearshopunit = nearest_neutral[NEUTRAL_MERCHANT]
+      if buy_type[racial_healing_item] == BT_RACIAL_ITEM then
+        //set shop_unit = GetUnitOfTypeNearUnit(old_id[racial_shop], u, shop_unit)
+        set nearshopunit = GetUnitOfTypeNearUnit(old_id[racial_shop], u, nearshopunit)
+        //	set shop_distance_limit = raceshop_distance_limit
+      else
+        //	set shop_unit = nearest_neutral[NEUTRAL_MERCHANT]
+        if not (neutral_guarded[NEUTRAL_MERCHANT] and ((GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 5 and GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 18) or not neutral_night_buy[NEUTRAL_MERCHANT])) then
+          set nearshopunit = nearest_neutral[NEUTRAL_MERCHANT]
+        endif
       endif
       //	set shop_distance_limit = merchant_distance_limit
     endif
@@ -75,14 +83,7 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
     //call TQAddJob(0, BUY_ITEM, racial_healing_item)
     //set nearshopunit = shop_unit
   endif
-
-  call DisplayToAllJobDebug("SEND_HOME Starting check")
-
-  // set enemystrength = GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 800)
-  if GetUnitState(u, UNIT_STATE_LIFE) <= 0 then
-    call CreateDebugTag("SEND_HOME unit dead", 10, u, 3.00, 1.50)
-    call TQAddUnitJob(2, RESET_GUARD_POSITION, p, u)
-  elseif GetUnitState(u, UNIT_STATE_LIFE) >= GetUnitState(u, UNIT_STATE_MAX_LIFE) * (I2R(60)/100) and GetUnitCurrentOrder(u) != OrderId("cannibalize") then
+  if GetUnitState(u, UNIT_STATE_LIFE) >= GetUnitState(u, UNIT_STATE_MAX_LIFE) * (I2R(60)/100) and GetUnitCurrentOrder(u) != OrderId("cannibalize") then
     call CreateDebugTag("SEND_HOME Healed", 10, u, 3.00, 1.50)
     call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
   elseif racial_healing_item != 0 and GetItemNumberOnUnit(racial_healing_item, u) > 0 then
@@ -119,7 +120,7 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
       call CreateDebugTag("SEND_HOME Stop at Shop", 10, u, 3.00, 2.00)
       call IssueImmediateOrder(u, "stop")
       call IssueNeutralImmediateOrderById(ai_player, nearshopunit, old_id[racial_healing_item])
-      if GetUnitState(u, UNIT_STATE_MANA) < 100 and GetItemNumberOnUnit(racial_mana_item, u) <= 0 then
+      if GetUnitState(u, UNIT_STATE_MANA) < 100 and racial_mana_item != 0 and GetItemNumberOnUnit(racial_mana_item, u) <= 0 then
         call IssueNeutralImmediateOrderById(ai_player, nearshopunit, old_id[racial_mana_item])
       endif
       call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)  // end job

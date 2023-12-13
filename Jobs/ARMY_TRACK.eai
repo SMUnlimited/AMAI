@@ -8,9 +8,9 @@
     integer array army_count
     integer array army_ownhero
     integer army_num = 0
-    real army_radius = 1200
+    real army_radius = 1500
     real army_future_mult = 3
-    group array in_army_group
+    group in_army_group = CreateGroup()
     integer main_army = -1
 
 #ELSE
@@ -35,7 +35,7 @@ endfunction
 
 function TrackArmy takes integer num returns boolean
   local group g = CreateGroup()
-  local unit u = null
+  local unit u = FirstOfGroup(army_group[num])
   //local location l = null
   local real x = 0
   local real y = 0
@@ -43,8 +43,13 @@ function TrackArmy takes integer num returns boolean
   local boolean own = Player(p) == ai_player
   set army_strength[num] = 0
   set army_count[num] = 0
-
-  call GroupEnumUnitsInRangeOfLoc(g, army_loc[num], army_radius, null)
+  if u != null and UnitAlive(u) then
+    // If tracking existing army select range from current position not historic position
+    call GroupEnumUnitsInRange(g, GetUnitX(u), GetUnitY(u), army_radius, null)
+  else
+    call GroupEnumUnitsInRangeOfLoc(g, army_loc[num], army_radius, null)
+  endif
+  call GroupClear(army_group[num])
   set g = SelectByPlayer(g, Player(p), true)  //Use filtering to avoid running out of memory
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
@@ -59,7 +64,7 @@ function TrackArmy takes integer num returns boolean
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if not IsUnitInGroup(u, in_army_group[p]) then
+    if not IsUnitInGroup(u, in_army_group) then
       if own then
         if major_hero == u then
           set main_army = num
@@ -73,7 +78,7 @@ function TrackArmy takes integer num returns boolean
         endif
       endif
       call GroupAddUnit(army_group[num], u)
-      call GroupAddUnit(in_army_group[p], u)
+      call GroupAddUnit(in_army_group, u)
       set x = x + GetUnitX(u)  // Prevent loc exceeding map range
       set y = y + GetUnitY(u)
       //set l = GetSumLoc_dd(l, GetUnitLoc(u))
@@ -104,7 +109,9 @@ function TrackArmy takes integer num returns boolean
   set army_dir[num] = GetSubtractionLoc_dd(Location(x, y), army_loc[num])
   set army_loc[num] = Location(x, y)
   set army_future[num] = GetSumLoc_kd(army_loc[num], GetMultipleLoc(army_dir[num], army_future_mult))
-  call CreateDebugTagLoc("Tracked Army: " + Int2Str(num) + " Strength:" + Int2Str(R2I(army_strength[num])), 10, x, y, 3.00, 1.50)
+  if (Player(army_owner[num]) == ai_player) then 
+    call CreateDebugTagLoc("Tracked Army: " + Int2Str(num) + " Strength:" + Int2Str(R2I(army_strength[num])), 10, x, y, 8.00, 3.00)
+  endif
   // if army_strength[num] != 0 then
     // call PingMinimap(GetLocationX(l), GetLocationY(l), 4)
   // endif
@@ -117,7 +124,6 @@ function TrackExistingArmies takes nothing returns nothing
   local integer first_free = 0
   loop
     exitwhen i >= army_num
-    call GroupClear(army_group[i])
     if TrackArmy(i) then
       if i != first_free then
         call CopyArmy(i, first_free)
@@ -159,7 +165,7 @@ function SeedNewArmiesForPlayer takes integer p returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if (IsUnitType(u, UNIT_TYPE_HERO) or major_hero == u or GetRandomInt(0, x) == 1) and not IsUnitInGroup(u, in_army_group[p]) then
+    if (IsUnitType(u, UNIT_TYPE_HERO) or major_hero == u or GetRandomInt(0, x) == 1) and not IsUnitInGroup(u, in_army_group) then
       call SeedNewArmyAtLoc(GetUnitLoc(u), p)
     endif
     call GroupRemoveUnit(g, u)
@@ -178,7 +184,6 @@ function SeedNewArmies takes nothing returns nothing
     if GetPlayerSlotState(sp) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(sp) and GetPlayerUnitCount(sp, false) > 0 then
       call SeedNewArmiesForPlayer(p)
     endif
-    call DestroyGroup(in_army_group[p])
     set p = p + 1
   endloop
   set sp = null
@@ -253,15 +258,9 @@ function UpdateTownThreat takes nothing returns nothing
 endfunction
 
 function ArmyTrackJob takes nothing returns nothing
-  local integer i = 0
   //local unit alliance = null
   call DisplayToAllJobDebug("ARMY_TRACK JOB START")
-  loop
-    exitwhen i >= GetBJMaxPlayers()
-    set in_army_group[i] = CreateGroup()
-    set i = i + 1
-  endloop
-  //call GroupClear(in_army_group)
+  call GroupClear(in_army_group)
   set army_ownhero[1] = -1
   set army_ownhero[2] = -1
   set army_ownhero[3] = -1
@@ -273,6 +272,6 @@ function ArmyTrackJob takes nothing returns nothing
     //call CreateDebugTag("Alliance Target", 10, alliance, 3.00, 1.50)
   //endif
   call UpdateTownThreat()
-  call TQAddJob(4 + Max(0,c_ally_total - c_enemy_total + 1), ARMY_TRACK, 0)
+  call TQAddJob(15, ARMY_TRACK, 0)
 endfunction
 #ENDIF
