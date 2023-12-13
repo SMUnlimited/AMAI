@@ -12634,10 +12634,12 @@ function HealArmy takes nothing returns nothing
   local boolean global_heal = false
   local integer sleepLength = 10
   local real healthTrigger = 0.75
+  local integer sleepFrequency = 0
   loop
     set hs = GetArmyHealthState()
     set mass_healed = false
-    exitwhen (urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger) // and not shop_ordered	
+    exitwhen (sleepFrequency >= 3 and hs > healthTrigger) // Tried to heal but overall still strong so exit loop
+    exitwhen (urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger)
     exitwhen player_defeated or town_threatened or ver_heroes == false
     call Trace("function HealArmy: Army is badly damaged and needs healing " + Real2Str(hs))
     set mh_item = GetMassHealingItem()
@@ -12676,17 +12678,22 @@ function HealArmy takes nothing returns nothing
           endif
           if hs <= healthTrigger then
             call Sleep(sleepLength * sleep_multiplier) // Wait some time for item effects to work
+          else
+            call Sleep(2 * sleep_multiplier)          
           endif
         endif
       else
         call StartEmergencyItem(1, mh_item)
         if hs <= healthTrigger then
           call Sleep(8*sleep_multiplier) // Wait some time for item to be bought
+        else
+          call Sleep(2 * sleep_multiplier)
         endif
       endif
+    else
+        call Sleep(2 * sleep_multiplier)
     endif
-    call Sleep(2 * sleep_multiplier)
-    exitwhen hs > healthTrigger // Still a large proportion of army is strong so exit loop
+    set sleepFrequency = sleepFrequency + 1
   endloop
   set mh_i = null
   set u = null
