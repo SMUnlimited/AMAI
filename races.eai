@@ -230,7 +230,7 @@ function initRacialTraits takes nothing returns nothing
     call Trace("Ancient Expansion is true")
   endif
   set i = GetRandomInt(1, 100)
-  set race_towerrush_available = (race_towerrush_available and i <= race_towerrush_probability) //or (i <= race_towerrush_probability and game_is_1on1)  // total now is 0
+  set race_towerrush_available = (race_towerrush_available and i <= race_towerrush_probability)
   if race_towerrush_available then
     call Trace("Towerrush variable is true")
   endif
@@ -238,28 +238,23 @@ function initRacialTraits takes nothing returns nothing
 endfunction
 
 function CanTowerRush takes nothing returns nothing
+	local real distance = GetNearestEnemyDistance()
 	local integer i = GetRandomInt(1,100)
 
-	if c_ally_total - c_enemy_total < -1 or c_enemy_total + c_ally_total > 5 or mapSize > 3 then
-		set race_towerrush_available = false
-		return  // ffa no tower rush
+	if game_is_ffa then
+		set i = i + 40       // in ffa reduce likly hood of tower rush extremly
 	endif
-	//call StartTowerRush(10)
 
-	// if hero_rush_bonus[hero[1]] >= race_towerrush_hero_rush_level then
-		// if ai_time > 60 then     // 5 mins
-			// set towerrush = false
-			//call Trace("Tower Rush - Out of Time")
-		// elseif distance < 8000 then   // Total percentage to be choosen is 33%
-			// call StartTowerRush(180)
-		// elseif i <= 75 and distance < 11000 then // Total percentage to be choosen is 25%
-			// call StartTowerRush(160)
-		// elseif i <= 50 and distance < 14000 then // Total percentage to be choosen is 16%
-			// call StartTowerRush(140)
-		// elseif i <= 20 and distance < 16000 then // Total percentage to be choosen is 7%
-			// call StartTowerRush(120)
-		// endif
-	// endif
+	 if hero_rush_bonus[hero[1]] >= race_towerrush_hero_rush_level then
+		if distance < 8000 then   // Total percentage to be choosen is 33%
+			call StartTowerRush(180)
+		elseif i <= 75 and distance < 11000 then // Total percentage to be choosen is 25%
+			call StartTowerRush(160)
+		elseif i <= 50 and distance < 14000 then // Total percentage to be choosen is 16%
+			call StartTowerRush(140)
+		elseif i <= 20 and distance < 16000 then // Total percentage to be choosen is 7%
+		endif
+	  endif
 endfunction
 
 //===========================================================================
@@ -280,13 +275,13 @@ function chooseStrategyRP takes nothing returns nothing
       set rp_strat[STRAT_%1] = rp_strat[STRAT_%1] + %14
 #ENDINCLUDE
   endif
-  
+
   if game_is_1on1 then
 #INCLUDETABLE <$VER$\$RACE$\Strategy.txt> #EFR
       set rp_strat[STRAT_%1] = rp_strat[STRAT_%1] + %15
 #ENDINCLUDE
   endif
-  
+
   if game_is_ffa then
 #INCLUDETABLE <$VER$\$RACE$\Strategy.txt> #EFR
       set rp_strat[STRAT_%1] = rp_strat[STRAT_%1] + %16
@@ -331,7 +326,7 @@ endfunction
 //===========================================================================
 function StrategyChanger takes nothing returns nothing
   local real array rp
-  
+
   if not strat_change_allowed or strategy != chosen_strategy or debug_strategy > -1 or FoodUsed() >= 85 or GetMaximumEnemyStrength() < ver_strat_change_enemy_strength_min then
     return
   endif
@@ -392,7 +387,7 @@ function AMAI_PickMeleeHero takes nothing returns nothing
 
 
   loop
-    exitwhen i > hero_number
+  exitwhen i > hero_number
     set all_heroes_copy[i] = all_heroes[i]
     set i = i + 1
   endloop
@@ -455,7 +450,7 @@ function AMAI_PickMeleeHero takes nothing returns nothing
 #ENDINCLUDE
   // ------------------------------------------------------------------------------
 
-#INCLUDETABLE <$VER$\$RACE$\Heroes.txt> #EFR
+  #INCLUDETABLE <$VER$\$RACE$\Heroes.txt> #EFR
   set hero_rp[#EVAL{%row-1}] = hero_rp[#EVAL{%row-1}] + %#OEVAL{7 + 2 * $RACENUM$}
 #ENDINCLUDE
 
@@ -578,13 +573,9 @@ function setup_ghouls takes nothing returns nothing
   else
     //set harvesting_ghouls = Max(0,Min(5 - wood / R2I(maximum_peon_wood*1),gn) - (R2I(shredder_peon_count/2) * TownCountDone(neutral_shredder)))
     set harvesting_ghouls = Max(1,Min(5 - wood / R2I(maximum_peon_wood*1),gn) - (R2I(shredder_peon_count/2) * TownCountDone(neutral_shredder)))
-    set attacking_ghouls = gn - harvesting_ghouls
+    set attacking_ghouls = gn - harvesting_ghouls 
   endif
   set attacking_ghouls = Min(Max(attacking_ghouls, 0), gn)
-  if towerrush then  // towerrush compensate
-    set harvesting_ghouls = Max(2, harvesting_ghouls)
-    set attacking_ghouls = gn - harvesting_ghouls
-  endif
 endfunction
 
 #INCLUDE <$VER$\$RACE$\BuildSequence.ai>
@@ -608,20 +599,9 @@ endfunction
 function build_sequence takes nothing returns nothing
   call global_build_sequence()
   if towerrush then
-    if GetUnitCount(old_id[race_simple_melee]) <= 8 and TownCount(hero[1]) > 0 then
-      call BuildUnit(Max(difficulty * 2,4), race_simple_melee, 200)
-    endif
-    if TownCount(race_towerrush_requirement) == 0 and race_towerrush_requirement != 0 and TownCount(racial_altar) > 0 and TownCount(needed1[race_simple_melee]) > 0 then
-      call BuildUnit(1, race_towerrush_requirement, 180)
-    endif
-    if race_tower_item != 0 then
-      if TownCount(racial_shop) == 0 and TownCount(racial_altar) > 0 and race_tower_item_must == true then
-        call BuildUnit(1, racial_shop, 160)
-      endif
-      if builder[0] == null and tower_attack_run == false and TownCountDone(racial_shop) > 0 and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) > 0 then
-        call BuildItem(race_tower_item_quantity, race_tower_item, 220)
-      endif
-    endif
+    call AddBlock(2, GRUNT, true, 0, STRONGHOLD, 1000)
+    call BuildUnit(1, hero[1], 100)
+    call BuildUnit(1, race_towerrush_requirement, 98)
   endif
   if strategy >= rp_strat_length then
     call cmdBuild()
@@ -635,14 +615,14 @@ endfunction
 //============================================================================
 function attack_sequence_all takes nothing returns nothing
 
-  call Trace("Starting Attack Thread Loop")
+  call Trace("Starting Attack Thread Loop") 
 
   if ver_heroes then
-    loop
+  loop
       exitwhen TownCountDone(hero[1]) > 0 or desperation_assault
       call Sleep(2 * sleep_multiplier)
-      //    call Trace("Attack Loop1")
-    endloop
+  //    call Trace("Attack Loop1")
+  endloop
   endif
 
   call StaggerSleep(0,2)
@@ -731,11 +711,11 @@ function peon_assignment takes nothing returns nothing
     if TownHasMine(0) and first_town_mine == 0 then
       if FoodSpace() <= 0 and TownCount(racial_peon) == TownCountDone(racial_peon) and TownCount(racial_peon) <= 4 then  // Scenario A
         call HarvestGold(0, 2)  // no foodspace , no peon , need one harvest mine peon build Farms
-        call HarvestWood(0, Max(1,TownCountDone(racial_peon) - 2))  //seize a seat
+      call HarvestWood(0, Max(1,TownCountDone(racial_peon) - 2))  //seize a seat
         call HarvestGold(0, ver_optimal_gold - 2)                   //seize a seat
       elseif not hero_built[1] and TownCount(racial_peon) < 8 then  // Scenario B , game just started
         call HarvestGold(0, 3)  // need more wisp HarvestWood , avoidance no wood cannot build and AI stop construction
-        call HarvestWood(0, Max(1,TownCountDone(racial_peon) - 3))  //seize a seat
+      call HarvestWood(0, Max(1,TownCountDone(racial_peon) - 3))  //seize a seat
         call HarvestGold(0, ver_optimal_gold - 3)                   //seize a seat
       else  //Scenario C
         call HarvestGold(0, ver_optimal_gold)
@@ -744,7 +724,7 @@ function peon_assignment takes nothing returns nothing
       // if delete seize a seat , when AI From A or B to Scenario C ，will have one or two peon cannot harvest , because no vacancy in the mine , but the peon order is harvest gold , the peon not controlled by HarvestWood
     endif
   else
-    call harvest_gold(0)
+  call harvest_gold(0)
     call harvest_gold(1)
     call harvest_gold(2)
     call harvest_gold(3)
@@ -798,11 +778,11 @@ function build_sequence_all takes nothing returns nothing
   local boolean reset_counter = false
 
   call Trace("Starting Build Sequence Loop")
-  loop
-    exitwhen player_defeated
+    loop
+      exitwhen player_defeated
 
     if recalculate_heros then
-      call AMAI_PickMeleeHero()
+        call AMAI_PickMeleeHero()
       call set_skills()
       set recalculate_heros = false
     endif
@@ -815,10 +795,10 @@ function build_sequence_all takes nothing returns nothing
       //call Trace("BUILD SEQUENCE: StrategyChanger")
       call StrategyChanger()
       if strategy <= 49 then
-        set x = Min(Max(calculate_strat_timer() / 2, -120), -60) // If same strategy persists give more time
-        set counter_timer = 2
-        set reset_counter = true
-      endif
+          set x = Min(Max(calculate_strat_timer() / 2, -120), -60) // If same strategy persists give more time
+          set counter_timer = 2
+          set reset_counter = true
+    endif
     endif
 
     if last_strategy != strategy then
@@ -852,10 +832,10 @@ function build_sequence_all takes nothing returns nothing
         set counter_timer = 2 // Once fired don't change again until strategy changes
       endif
     endif
-    if debugging then
+   if debugging then
       call UpdateDebugTextTag(debugcountertag, "Counter:" + strengthtext[chosen_counter], 18, GetLocationX(home_location) - 600, GetLocationY(home_location) - 600)
       //call SetTextTagPermanent(debugcountertag, true)
-    endif
+   endif
 
     if reportStrategy then
       set reportStrategy = false
@@ -897,13 +877,13 @@ function build_sequence_all takes nothing returns nothing
     //call Trace("BUILD SEQUENCE: build_sequence")
     call Sleep(0.05)
     call build_sequence()
-    if set_counter == true then
+    if set_counter == true then 
       call DynamicStrategySelector()
       call StrengthDynamicDistribute()
       set set_counter = false
     endif
     call Sleep(3 * sleep_multiplier)
-    //call Trace("BUILD SEQUENCE: peon_assignment 2")
+    //call Trace("BUILD SEQUENCE: peon_assignment 2")	  
     call peon_assignment_all()
     call Sleep(3 * sleep_multiplier)
     set x = x + Max(R2I(6*sleep_multiplier), 1)
@@ -919,7 +899,7 @@ function main takes nothing returns nothing
   call InitAMAIGameCache()
   set IsAMAI = true
   set ai_player = Player(GetAiPlayer())
-  set home_location = GetPlayerStartLocationLoc(ai_player) // Moved from initAMAI
+  set home_location = GetPlayerStartLocationLoc(ai_player) // Moved from initAMAI	
   //call InitAiUnits()   // Not actually needed on amai scripts as of course its going to be AMAI
 
   // start
@@ -956,7 +936,7 @@ function main takes nothing returns nothing
   call removeNonBeginningStrats()
   call display_rp_strat()
   set chosen_counter = DetermineCounterForce()
-  if debugging then
+   if debugging then
     //set debugcountertag = CreateTextTag()
     call UpdateDebugTextTag(debugcountertag, "Counter:" + strengthtext[chosen_counter], 18, GetLocationX(home_location) - 600, GetLocationY(home_location) - 600)
     call SetTextTagPermanent(debugcountertag, true)
@@ -972,9 +952,9 @@ function main takes nothing returns nothing
   endif
   call Trace("Strategy chosen")
   call AMAI_PickMeleeHero()
-  // if race_towerrush_available then
-  //   call CanTowerRush()
-  // endif
+  if race_towerrush_available then
+    call CanTowerRush()
+  endif
   call Trace("Hero picked")
   call set_skills()
   call Trace("hero skills set")
