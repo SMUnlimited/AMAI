@@ -5,20 +5,23 @@
     constant integer HARASS_TARGET_MAIN_HALL = 3
     integer array harass_time
     integer array harass_size
+    integer harass_group_length = 0
+    hashtable array harass_groups
+    constant integer HARASS_STORE_QTY = 0
+    constant integer HARASS_STORE_UNITS = 1
     integer distraction_group = 0
 #ELSE
 function GetHarassPeonTarget takes unit ru, unit u returns unit
   local group g = CreateGroup()
   local location unitloc = GetUnitLoc(u)
   local player p = GetNearestEnemyToLoc_k(unitloc)
-  if p != null then
-    call GroupEnumUnitsOfPlayer(g, p, null)
-    set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
-    set g = SelectByAlive(g, true)
-    set g = SelectByLoaded(g, false)
-    set g = SelectByHidden(g, false) // Hopefully to get peons not currently building
-    set ru = GetNearestOfGroup(ru, g, unitloc)
-  endif
+
+  call GroupEnumUnitsOfPlayer(g, p, null)
+  set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
+  set g = SelectByAlive(g, true)
+  set g = SelectByLoaded(g, false)
+  set g = SelectByHidden(g, false) // Hopefully to get peons not currently building
+  set ru = GetNearestOfGroup(ru, g, unitloc)
   call RemoveLocation(unitloc)
   call DestroyGroup(g)
   set unitloc = null
@@ -30,16 +33,13 @@ endfunction
 function GetHarassExpansionTarget takes unit ru, unit u returns unit
   local group g = CreateGroup()
   local location unitloc = GetUnitLoc(u)
-  local player p = GetNearestEnemyToLoc_k(unitloc)
+  local player p = GetNearestEnemyToLoc_k(unitloc)  
   local location baseloc = GetPlayerStartLocationLoc(p)
-  if p != null then
-    call GroupEnumUnitsOfPlayer(g, p, null)
-    set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
-    set g = SelectByLocation(g, baseloc, 1000, false)
-    set g = SelectByAlive(g, true)
-    set g = SelectByHidden(g, false)
-    set ru = GetNearestOfGroup(ru, g, unitloc)
-  endif
+  call GroupEnumUnitsOfPlayer(g, p, null)
+  set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+  set g = SelectByLocation(g, baseloc, 1000, false)
+  set g = SelectByAlive(g, true)
+  set ru = GetNearestOfGroup(ru, g, unitloc)
   call RemoveLocation(unitloc)
   call RemoveLocation(baseloc)
   call DestroyGroup(g)
@@ -55,7 +55,6 @@ function GetHarassLocationTarget takes unit ru, real x, real y returns unit
   call GroupEnumUnitsInRange(g, x, y, 1000, null)
   set g = SelectByEnemy(g, ai_player, true)
   set g = SelectByAlive(g, true)
-  set g = SelectByHidden(g, false)
   set ru = GetLeastHPUnitOfGroup(ru,g)
   set g = null
   return ru
@@ -64,16 +63,14 @@ endfunction
 function GetHarassMainHallTarget takes unit ru, unit u returns unit
   local group g = CreateGroup()
   local location unitloc = GetUnitLoc(u)
-  local player p = GetNearestEnemyToLoc_k(unitloc)
+  local player p = GetNearestEnemyToLoc_k(unitloc)  
   local location baseloc = GetPlayerStartLocationLoc(p)
-  if p != null then
-    call GroupEnumUnitsOfPlayer(g, p, null)
-    set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
-    set g = SelectByAlive(g, true)
-    set g = SelectByHidden(g, false)
-    set g = SelectByLocation(g, baseloc, 1000, true)
-    set ru = GetNearestOfGroup(ru, g, unitloc)
-  endif
+
+  call GroupEnumUnitsOfPlayer(g, p, null)
+  set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+  set g = SelectByAlive(g, true)
+  set g = SelectByLocation(g, baseloc, 1000, true)
+  set ru = GetNearestOfGroup(ru, g, unitloc)
   call RemoveLocation(unitloc)
   call RemoveLocation(baseloc)
   call DestroyGroup(g)
@@ -100,32 +97,51 @@ function GroupOrderWindWalkInstant_d takes group g returns nothing
 	call DestroyGroup(g)
 endfunction
 
-function HarassRuning takes integer key, integer ht, unit targ, group harasser returns nothing
+function LoadHarassKey takes group harasser returns integer
+  local integer i = 0
+  loop
+    exitwhen i >= max_harass_groups
+    if LoadGroupHandle(additional_info, i, HARASS_GROUP) == harasser then  //  find key
+      return i
+    endif
+    set i = i + 1
+  endloop
+  return 0
+endfunction
+
+function HarassJob takes integer ht, unit targ, group harasser returns nothing
   local unit target = targ
-  local real strength_limit = LoadReal(additional_info, key, STRENGTH_LIMIT)
-  local boolean state_attacking = LoadBoolean(additional_info, key, STATE_ATTACKING)
-  local real flee_percent = LoadReal(additional_info, key, FLEE_PERCENT)
-  local boolean avoiding_towers = LoadBoolean(additional_info, key, AVOID_TOWERS)
-  local boolean state_retreat = LoadBoolean(additional_info, key, STATE_RETREAT)
-  local real start_strength = LoadReal(additional_info, key, START_STRENGTH)
-  local group g = null
+  local integer key = -1
+  local real strength_limit = 0
+  local boolean state_attacking = false
+  local real flee_percent = 0
+  local boolean avoiding_towers = false
+  local boolean state_retreat = false
+  local real start_strength = 0
   local unit u = null
   local unit hu = null
   local player p = null
+  local group g = null
   local real strength_sum = 0
   local real player_sum = 0
   local integer harass_num = 0
   local boolean towersdetected = false
   local boolean hero_harass = false
-  local integer hiddencount = LoadInteger(additional_info, key, INVISIBLE_COUNT)
-  local integer timedelay = LoadInteger(additional_info, key, WINDWALK_COUNT) // Delay count so windwalkers show themselves after a period of waiting
-  local boolean healing = false
+  local integer hiddencount = 0
+  local integer timedelay = 0
+
+  set key = LoadHarassKey(harasser)
+  set strength_limit = LoadReal(additional_info, key, STRENGTH_LIMIT)
+  set state_attacking = LoadBoolean(additional_info, key, STATE_ATTACKING)
+  set flee_percent = LoadReal(additional_info, key, FLEE_PERCENT)
+  set  avoiding_towers = LoadBoolean(additional_info, key, AVOID_TOWERS)
+  set  state_retreat = LoadBoolean(additional_info, key, STATE_RETREAT)
+  set start_strength = LoadReal(additional_info, key, START_STRENGTH)
+  set hiddencount = LoadInteger(additional_info, key, INVISIBLE_COUNT)
+  set timedelay = LoadInteger(additional_info, key, WINDWALK_COUNT) // Delay count so windwalkers show themselves after a period of waiting
+
   call DisplayToAllJobDebug("HARASS JOB START")
   if not UnitAliveInGroup(harasser) then
-    call SaveBoolean(additional_info, key, STATE_RETREAT , false)
-    call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
-    call SaveInteger(additional_info, key, INVISIBLE_COUNT, 0)
-    call RemoveSavedHandle(additional_info, HARASS_COUNT, key)
     set target = null
     return
   endif
@@ -152,9 +168,6 @@ function HarassRuning takes integer key, integer ht, unit targ, group harasser r
       return
     else
       call SaveBoolean(additional_info, key, STATE_RETREAT , false)
-      call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
-      call SaveInteger(additional_info, key, INVISIBLE_COUNT , 0)
-      call RemoveSavedHandle(additional_info, HARASS_COUNT, key)
       //call GroupRecycleGuardPositionInstant(harasser)
       call GroupRecycleHarrassPositionInstant(harasser)
       set target = null
@@ -165,15 +178,15 @@ function HarassRuning takes integer key, integer ht, unit targ, group harasser r
 
   if target != null and (IsUnitHidden(target) or IsUnitLoaded(target) or IsUnitInvisible(target, ai_player)) then	// Checks to see if unit is not targetable and after small period will change to target it can hit
     set hiddencount = hiddencount + 1
+    call SaveInteger(additional_info, key, INVISIBLE_COUNT , hiddencount)
   else
     set hiddencount = 0
+    call SaveInteger(additional_info, key, INVISIBLE_COUNT , hiddencount)
   endif
-  call SaveInteger(additional_info, key, INVISIBLE_COUNT , hiddencount)
 
   if target == null or not UnitAlive(target) or hiddencount > 2 then
     if target != null then
       call GroupOrderWindWalkInstant_d(CopyGroup(harasser))
-      set target = null
     endif
     if ht == HARASS_TARGET_PEONS then
       set target = GetHarassPeonTarget(target, hu)
@@ -195,16 +208,6 @@ function HarassRuning takes integer key, integer ht, unit targ, group harasser r
   //endif
 
   if target != null and UnitAlive(target) then
-    if (major_hero != null and UnitAlive(major_hero) and DistanceBetweenUnits(target,major_hero) <= 1800) or (main_army >= 0 and army_loc[main_army] != null and DistanceBetweenPoints_kd(army_loc[main_army],GetUnitLoc(target)) <= 1800) then
-      call SaveBoolean(additional_info, key, STATE_RETREAT , false)
-      call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
-      call SaveInteger(additional_info, key, INVISIBLE_COUNT , 0)
-      call RemoveSavedHandle(additional_info, HARASS_COUNT, key)
-      call GroupRecycleHarrassPositionInstant(harasser)
-      set target = null
-      set hu = null
-      return  // major army target , no need harass , just attack or harass
-    endif
     set g = CreateGroup()
     //if state_attacking then
     //  call GroupEnumUnitsInRange(g,GetUnitX(hu),GetUnitY(hu),harass_radius_attack_melee,null)
@@ -228,33 +231,32 @@ function HarassRuning takes integer key, integer ht, unit targ, group harasser r
     else
       call GroupEnumUnitsInRange(g,GetUnitX(hu),GetUnitY(hu),harass_radius_flee_ranged,null)
     endif
+    set g = SelectByAlive(g, true)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if UnitAlive(u) and not IsUnitHidden(u) then
+      if not IsUnitHidden(u) then
         set p = GetOwningPlayer(u)
-        if IsPlayerEnemy(ai_player, p) then
-          if IsUnitTower(u) and avoiding_towers then
-            set towersdetected = true
-          endif
-          if p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) and IsUnitType(u, UNIT_TYPE_PEON) == false then
-            set strength_sum = strength_sum + GetUnitStrength(u)
-          endif
-        elseif p == ai_player and IsUnitInGroup(u, harasser) then
+        if IsPlayerEnemy(ai_player, p) and IsUnitTower(u) and avoiding_towers then
+          set towersdetected = true
+        endif
+        if IsPlayerEnemy(ai_player, p) and IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsUnitType(u, UNIT_TYPE_PEON) == false then
+          set strength_sum = strength_sum + GetUnitStrength(u)
+        elseif IsUnitInGroup(u, harasser) then
           if ht == HARASS_TARGET_LOCATION then
             call CreateDebugTag("Distraction: Harrasing Opponent Location", 10, u, 3.00, 1.50)
           else
             call CreateDebugTag("Harassing Opponent", 10, u, 3.00, 1.50)
           endif
           //if GetUnitState(u, UNIT_STATE_LIFE) <= GetUnitState(u, UNIT_STATE_MAX_LIFE) * flee_percent then
-          set healing = IsUnitInGroup(u, unit_healing)
-          if GetUnitState(u, UNIT_STATE_LIFE) <= RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) and not healing and IsUnitType(u, UNIT_TYPE_HERO) == false then // Not used on heroes as micro hero is in control of that
+
+          if GetUnitState(u, UNIT_STATE_LIFE) <= RMax(flee_health_percentage * GetUnitState(u, UNIT_STATE_MAX_LIFE), flee_minimum_health) and not IsUnitInGroup(u, unit_healing) and IsUnitType(u, UNIT_TYPE_HERO) == false then // Not used on heroes as micro hero is in control of that
             call GroupAddUnit(unit_healing, u)
             call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
             call TQAddUnitJob(0.5, SEND_HOME, 0, u)  // 0 is home_location
             call GroupRemoveUnit(harasser, u)
             call GroupRemoveUnit(unit_harassing, u)
-          elseif healing then // Another system moved unit to healing
+          elseif IsUnitInGroup(u, unit_healing) then // Another system moved unit to healing
             call GroupRemoveUnit(harasser, u)
             call GroupRemoveUnit(unit_harassing, u)
           else
@@ -297,7 +299,7 @@ function HarassRuning takes integer key, integer ht, unit targ, group harasser r
       else
         if timedelay >= 5 or timedelay == -1 or (hu != null and IsUnitDetected(hu, GetOwningPlayer(target))) then
           call GroupTargetOrder(harasser, "attack", target)
-          //call IssueTargetOrder(hu, "attack", target)
+          call IssueTargetOrder(hu, "attack", target)
         endif
         call CreateDebugTag("HARASS: Attack Target", 10, target, 3.00, 1.50)
         //call CreateDebugTag("HARASS: Changing Target", 10, hu, 3.00, 1.50)
@@ -307,7 +309,7 @@ function HarassRuning takes integer key, integer ht, unit targ, group harasser r
     elseif strength_sum >= strength_limit*2 then
       call SaveBoolean(additional_info, key, STATE_RETREAT, true)
       call GroupPointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
-      call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
+      call SaveBoolean(additional_info, key, STATE_ATTACKING, false)	
       //call GroupRecycleGuardPosition(harasser)
     else
       call SaveBoolean(additional_info, key, STATE_RETREAT, true)
@@ -321,7 +323,6 @@ function HarassRuning takes integer key, integer ht, unit targ, group harasser r
     call GroupPointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
     call SaveBoolean(additional_info, key, STATE_RETREAT, true)
     call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
-    call SaveInteger(additional_info, key, INVISIBLE_COUNT , 0)
     //call GroupRecycleGuardPositionDelay(harasser,GetTimeToReachLoc(u, home_location) + 1)
     //return
   endif
@@ -329,20 +330,4 @@ function HarassRuning takes integer key, integer ht, unit targ, group harasser r
   set target = null
   set hu = null
 endfunction
-
-function HarassJob takes integer ht, unit targ, group harasser returns nothing
-  local integer i = 0
-  local integer key = -1
-  loop
-    exitwhen key >= 0 or i >= 3
-    if LoadGroupHandle(additional_info, HARASS_COUNT, i) == harasser then  //  find key
-      set key = i
-    endif
-    set i = i + 1
-  endloop
-  if key >= 0 then
-    call HarassRuning(key, ht, targ, harasser)
-  endif
-endfunction
-
 #ENDIF

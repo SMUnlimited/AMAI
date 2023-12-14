@@ -3,7 +3,7 @@
 
 function SendHomeMoveUnitToLoc takes unit u, location l returns nothing
 	local integer enemystrength = GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 800)
-	if (GetUnitAbilityLevel(u, 'AOwk') > 0 or GetUnitAbilityLevel(u, 'ANwk') > 0) then
+	if GetUnitAbilityLevel(u, 'AOwk') > 0 or GetUnitAbilityLevel(u, 'ANwk') > 0 then
 		if enemystrength > 0 and not UnitInvis(u) then
 			call IssueImmediateOrder(u, "windwalk")
 		endif
@@ -29,7 +29,7 @@ function SomeUnitHasHealingItem takes unit ru, unit u, integer rhi returns unit
 	loop
 		set ru = FirstOfGroup(g)
 		exitwhen ru == null
-		if GetItemNumberOnUnit(rhi, ru) > 0 then
+		if GetUnitAbilityLevel(u, 'AInv') > 0 and GetItemNumberOnUnit(rhi, ru) > 0 then
 			call DestroyGroup(g)
 			set g = null
 			return ru
@@ -47,30 +47,36 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
   local unit nearshopunit = null 
   local group g = null
   local unit corpse = null
-  local integer racial_healing_item = GetHeroHealingItem()
-  local integer racial_mana_item = GetHeroManaItem()
+  local integer racial_healing_item = 0
+  local integer racial_mana_item = 0
   local integer enemystrength = 0
   local unit otherhero = null
   local item it = null
 
   call DisplayToAllJobDebug("SEND_HOME Job")
 
+  if GetUnitState(u, UNIT_STATE_LIFE) <= 0 then
+    call CreateDebugTag("SEND_HOME unit dead", 10, u, 3.00, 1.50)
+    call TQAddUnitJob(2, RESET_GUARD_POSITION, p, u)
+    return
+  endif
   if IsUnitType(u, UNIT_TYPE_HERO) then
+    set racial_healing_item = GetHeroHealingItem()
+    set racial_mana_item = GetHeroManaItem()
     if racial_healing_item != 0 then
       set otherhero = SomeUnitHasHealingItem(otherhero, u, racial_healing_item)
-    endif
-    //set shop_wanted = 1
-    if buy_type[racial_healing_item] == BT_RACIAL_ITEM then
-      //set shop_unit = GetUnitOfTypeNearUnit(old_id[racial_shop], u, shop_unit)
-      set nearshopunit = GetUnitOfTypeNearUnit(old_id[racial_shop], u, nearshopunit)
-      //	set shop_distance_limit = raceshop_distance_limit
-    else
-      //	set shop_unit = nearest_neutral[NEUTRAL_MERCHANT]
-      if not (neutral_guarded[NEUTRAL_MERCHANT] and ((GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 5 and GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 18) or not neutral_night_buy[NEUTRAL_MERCHANT])) then
-        set nearshopunit = nearest_neutral[NEUTRAL_MERCHANT]
+      if buy_type[racial_healing_item] == BT_RACIAL_ITEM then
+        //set shop_unit = GetUnitOfTypeNearUnit(old_id[racial_shop], u, shop_unit)
+        set nearshopunit = GetUnitOfTypeNearUnit(old_id[racial_shop], u, nearshopunit)
+        //	set shop_distance_limit = raceshop_distance_limit
+      else
+        //	set shop_unit = nearest_neutral[NEUTRAL_MERCHANT]
+        if not (neutral_guarded[NEUTRAL_MERCHANT] and ((GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 5 and GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 18) or not neutral_night_buy[NEUTRAL_MERCHANT])) then
+          set nearshopunit = nearest_neutral[NEUTRAL_MERCHANT]
+        endif      
       endif
       //	set shop_distance_limit = merchant_distance_limit
-    endif
+    endif     
     //set shop_sent = u
     //call TQAddJob(0, BUY_ITEM, racial_healing_item)
     //set nearshopunit = shop_unit
@@ -78,11 +84,7 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
 
   call DisplayToAllJobDebug("SEND_HOME Starting check")
 
-  // set enemystrength = GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 800)
-  if GetUnitState(u, UNIT_STATE_LIFE) <= 0 then
-    call CreateDebugTag("SEND_HOME unit dead", 10, u, 3.00, 1.50)
-    call TQAddUnitJob(2, RESET_GUARD_POSITION, p, u)  
-  elseif GetUnitState(u, UNIT_STATE_LIFE) >= GetUnitState(u, UNIT_STATE_MAX_LIFE) * (I2R(60)/100) and GetUnitCurrentOrder(u) != OrderId("cannibalize") then
+  if GetUnitState(u, UNIT_STATE_LIFE) >= GetUnitState(u, UNIT_STATE_MAX_LIFE) * (I2R(60)/100) and GetUnitCurrentOrder(u) != OrderId("cannibalize") then
     call CreateDebugTag("SEND_HOME Healed", 10, u, 3.00, 1.50)	
     call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
   elseif racial_healing_item != 0 and GetItemNumberOnUnit(racial_healing_item, u) > 0 then
@@ -93,7 +95,7 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
     else
       call CreateDebugTag("Hero: Use healing item", 10, u, 3.00, 1.50)
       set it = GetItemOfTypeOnUnit(racial_healing_item, u)
-      call UnitUseItem(u, it )
+      call UnitUseItem(u, it)
       call UnitUseItemTarget(u, it, u)
       if racial_mana_item != 0 and GetUnitState(u, UNIT_STATE_MANA) < 100 and GetItemNumberOnUnit(racial_mana_item, u) > 0 then
         call UnitUseItem(u, GetItemOfTypeOnUnit(racial_mana_item, u))
@@ -119,38 +121,48 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
         call CreateDebugTag("SEND_HOME Stop at Shop", 10, u, 3.00, 2.00)	
         call IssueImmediateOrder(u, "stop")
         call IssueNeutralImmediateOrderById(ai_player, nearshopunit, old_id[racial_healing_item])
-        if GetUnitState(u, UNIT_STATE_MANA) < 100 and GetItemNumberOnUnit(racial_mana_item, u) <= 0 then
+        if GetUnitState(u, UNIT_STATE_MANA) < 100 and racial_mana_item != 0 and GetItemNumberOnUnit(racial_mana_item, u) <= 0 then
           call IssueNeutralImmediateOrderById(ai_player, nearshopunit, old_id[racial_mana_item])
         endif
         call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)  // end job
-        //call RecycleGuardPosition(u)
       endif
   else
       if DistanceBetweenPoints_dk(GetUnitLoc(u), exist_town[p]) >= 1200 then
+       call RemoveGuardPosition(u)  // prevent town_threatened give control , but not restore , causing hesitation                                                                   
        call SendHomeMoveUnitToLoc(u,exist_town[p])
       else
-        set g = CreateGroup()
-        call GroupEnumUnitsInRangeOfLoc(g, exist_town[p], 1000, null)
-        set g = SelectByAlive(g, false)
-        set g = SelectUnittype(g,UNIT_TYPE_STRUCTURE,false)
-        set g = SelectUnittype(g,UNIT_TYPE_DEAD,true)
-        set corpse = FirstOfGroup(g)
-        call DestroyGroup(g)
-        set g = null
-        if town_threatened then
+        if town_threatened and GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 1500) > 0 then  // only need to control the unit if it is attacked nearby, otherwise will be killed
           call CreateDebugTag("SEND_HOME town_threatened", 10, u, 3.00, 1.50)
           call RecycleGuardPosition(u)   // Gives unit control for only a little bit but dosn't remove from healing group
         elseif GetUnitAbilityLevel(u, 'Ashm') > 0 and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6) and not IsUnitType(u, UNIT_TYPE_HERO) then
+          call RemoveGuardPosition(u)
           call IssueImmediateOrder(u, "ambush")
           call CreateDebugTag("SEND_HOME hide", 10, u, 3.00, 1.50)
-        elseif GetUnitCurrentOrder(u) != OrderId("cannibalize") and (GetUnitAbilityLevel(u, 'Acn2') > 0 or GetUnitAbilityLevel(u, 'Acan') > 0 or GetUnitAbilityLevel(u, 'ACcn') > 0)  and corpse != null then
-          call IssueTargetOrder(u, "move" , corpse)
-          call IssueImmediateOrder(u, "cannibalize")
-          call CreateDebugTag("SEND_HOME cannibalize", 10, u, 3.00, 1.50)
-        elseif GetUnitAbilityLevel(u, 'Ahrl') > 0 and GetUnitCurrentOrder(u) != OrderId("cannibalize") then   // 'Ahrl' Ghoul Harvest lumber ability
-          call IssueImmediateOrder(u, "autoharvestlumber")
-          call CreateDebugTag("SEND_HOME harvest lumber", 10, u, 3.00, 1.50)
-        endif
+        elseif GetUnitCurrentOrder(u) != OrderId("cannibalize") and (GetUnitAbilityLevel(u, 'Acn2') > 0 or GetUnitAbilityLevel(u, 'Acan') > 0 or GetUnitAbilityLevel(u, 'ACcn') > 0) then
+          set g = CreateGroup()
+          call GroupEnumUnitsInRangeOfLoc(g, exist_town[p], 1000, null)
+          loop
+              set corpse = FirstOfGroup(g)
+              exitwhen corpse == null
+              exitwhen not UnitAlive(corpse) and IsUnitType(corpse, UNIT_TYPE_DEAD) and not IsUnitType(corpse, UNIT_TYPE_STRUCTURE)
+          endloop                             
+          call DestroyGroup(g)
+          set g = null
+          if corpse != null then
+            call RemoveGuardPosition(u)
+            call IssueTargetOrder(u, "move" , corpse)
+            call IssueImmediateOrder(u, "cannibalize")
+            call CreateDebugTag("SEND_HOME cannibalize", 10, u, 3.00, 1.50)
+            set corpse = null
+          elseif GetUnitAbilityLevel(u, 'Ahrl') > 0 and GetUnitCurrentOrder(u) != OrderId("cannibalize") then   // 'Ahrl' Ghoul Harvest lumber ability
+            call RemoveGuardPosition(u)
+            if GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == OrderId("resumeharvesting") then
+            else
+              call IssueImmediateOrder(u, "autoharvestlumber")
+            endif
+            call CreateDebugTag("SEND_HOME harvest lumber", 10, u, 3.00, 1.50)
+          endif
+        endif  
       endif
       call TQAddUnitJob(4, SEND_HOME, p, u)
       //call DisplayToAllJobDebug("SEND_HOME: JOB Finished!!!! ")
