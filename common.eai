@@ -744,10 +744,11 @@ integer array gold_mines_ids
     integer expansion_target_bonus = 7
     integer comp_chosen_target_bonus = 5
     real comp_chosen_target_rate = 0.5
+
+    boolean balancing = false
     texttag debugstrattag = CreateTextTag()
     texttag debugcountertag = CreateTextTag()
     texttag debugjobtag = CreateTextTag()
-    boolean balancing = false
 
 //==============================================================
 // (AMAI)  Healing System Globals
@@ -3042,7 +3043,6 @@ function GetStrategyTxt takes integer stratnum, string txt returns string
   endif
 endfunction
 
-//============================================================================
 function GetStrategyName takes integer stratnum returns string
   return GetStrategyTxt(stratnum, "Name")
 endfunction
@@ -10323,7 +10323,6 @@ endfunction
 
 //============================================================================
 function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
-  // Disabled just in case
   if IsUnitInTransport(peon, build_zeppelin) then
     if DistanceBetweenUnits(build_zeppelin, target) > 300 then
       call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + GetRandomReal(-200,200), GetUnitY(target) + GetRandomReal(-200,200))
@@ -10377,6 +10376,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     endif
   endif
   if CheckExpansionTaken(current_expansion) or current_expansion == not_taken_expansion then  // not taken used in the MultipleMinefix , militai expansion , ancient expansion and item expansion system then
+  call Trace("AMAIStartexpa: Expansion Taken by someone else")
     set current_expansion = null
     return BUILT_ALL
   endif
@@ -10421,7 +10421,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion rescources sorted")
   if expansion_peon == null or not UnitAlive(expansion_peon) then
     set expansion_peon = GetExpansionPeon()
-    if expansion_peon == null or not UnitAlive(expansion_peon) then
+    if expansion_peon == null then
       set expansion_peon = GetExpansionPeon2(expansion_peon)
     endif
   endif
@@ -10437,18 +10437,20 @@ function StartExpansionAM takes integer qty, integer hall returns integer
         endif
         set build_zeppelin = GetUnusedZeppelinNearUnit(build_zeppelin, expansion_peon)
         if build_zeppelin == null then
-          call Trace("No Zeppelin found for transporting peon")
+          call Trace("AMAIStartexpa: No Zeppelin found for transporting peon")
         else
           call GroupAddUnit(unit_zepplin_move, build_zeppelin)
         endif
       endif
-      call Trace("AMAIStartexpa: Is a water or far expansion so using zeppelin")
-      if (w and build_zeppelin == null) or (build_zeppelin != null and not BuildMovePeonZeppelin(expansion_peon, current_expansion)) then
-        call Trace("AMAIStartexpa: zeppelin cannot expand")
+      if (w and build_zeppelin == null) then
+        call Trace("AMAIStartexpa: Water expansion required waiting to create a zeppelin")
+        return BUILT_SOME
+      endif
+      if (build_zeppelin != null and not BuildMovePeonZeppelin(expansion_peon, current_expansion)) then
+        call Trace("AMAIStartexpa: Expanding via a zeppelin")
         return BUILT_SOME
       endif
     endif
-    set exp_time_count = ai_time	// This sets time to next expansion to current time so it waits enough time before starting another expansion 
     if race_uses_mine_expansion then
       call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, expansion_peon)
       call IssueTargetOrderById(expansion_peon, old_id[hall], current_expansion)
@@ -12332,7 +12334,6 @@ function Militia_Expansion takes integer m returns nothing
   call Trace("===Attack Fully Finished===")
   //call GroupPointOrder(g, "move", GetLocationX(home_location), GetLocationY(home_location))  //no need
   call GroupImmediateOrder(g, "militiaoff")
-  call DestroyGroup(g)
   set attack_running = false
   //call SetCaptainHome(ATTACK_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
   set militia_check_enabled = true
@@ -12340,7 +12341,7 @@ function Militia_Expansion takes integer m returns nothing
   //set captain_flee = true
   //set militia = false
   set take_exp = false
-  //call DestroyGroup(g)
+  call DestroyGroup(g)
   set g = null
   set cg = null
   set efoe = null
@@ -12868,7 +12869,7 @@ function GetArmyHealthState takes nothing returns real
     if id == 'ohwd' then
       set ward_cast = true
     endif
-    if UnitAlive(u) and not IsUnitHidden(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitIllusion(u) then
+    if UnitAlive(u) and not (IsUnitHidden(u) or IsUnitType(u, UNIT_TYPE_PEON) or IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitIllusion(u)) then
       if IsUnitType(u, UNIT_TYPE_MECHANICAL) or IsUnitType(u, UNIT_TYPE_SUMMONED) then
         set health_sum = health_sum + 1 // Because is not currently handled by healing and we don't want army to run away if only 1 human unit is hurt
         set uhs = 1
@@ -13002,7 +13003,7 @@ function HealArmy takes nothing returns nothing
   loop
     set hs = GetArmyHealthState()
     exitwhen (sleepFrequency >= 3 and hs > healthTrigger) // Tried to heal but overall still strong so exit loop
-    exitwhen urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger // and not shop_ordered
+    exitwhen urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger
     exitwhen player_defeated or town_threatened or ver_heroes == false
     set mass_healed = false  // Still a large proportion of army is strong so exit loop
     call Trace("function HealArmy: Army is badly damaged and needs healing " + Real2Str(hs))
