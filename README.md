@@ -18,7 +18,8 @@ You can opt to download a map pack containing a selection with AMAI preinstalled
 For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.html to extract a copy of the official blizzard maps to install AMAI onto.
 
 On windows make sure the maps to install onto are not in a protected UAC location. 
-- This may mean you have to copy into your Maps folder afterwards or run as an administrator
+- This may mean you have to install to maps in a different directory then copy into your Maps folder afterwards 
+- Or run installer as an administrator
 
 ## AMAI installer
 - The installer has to be downloaded separately as its much larger compared to the AI package.
