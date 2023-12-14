@@ -7897,7 +7897,7 @@ function ApplyUpkeepSaving takes nothing returns nothing
         endif
       elseif use_linear_upkeep_saving then
         set total_gold = total_gold - R2I(LinearInterpolation(upkeep_time[i], upkeep_time[i] + upkeep_save_time[i], 0, upkeep_resistance[i], ai_time))
-      elseif ai_time >= upkeep_time[i] + upkeep_save_time[i] then
+      elseif ai_time <= upkeep_time[i] + upkeep_save_time[i] then
 //        call DisplayToAll("Saving "+Int2Str(upkeep_resistance[i])+" from "+Int2Str(total_gold))
         set total_gold = total_gold - upkeep_resistance[i]
       endif
@@ -10538,6 +10538,7 @@ local integer i = racial_expansion
 local boolean exp_prepared = false
 local boolean rebuild = false
 local unit u = null
+local boolean upkeepboost = false
 
 if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
   call ChooseExpansion()
@@ -10594,11 +10595,22 @@ if not exp_prepared and u == null then
   endif
 endif
 set u = null
-if mines < 1 or gold_left < 2000 or exp_prepared then
+
+set i = 0
+loop
+    exitwhen i >= UPKEEP_NUM or upkeepboost
+    // If near on in an upkeep level that needs more mines then boost expansion priority
+    if mines < upkeep_mines_needed[i] and FoodUsed() > upkeep_border[i] - 10 then
+      set upkeepboost = true
+    endif
+    set i = i + 1
+endloop
+
+if mines < 1 or gold_left < 2500 or exp_prepared then
   call Trace("ExpansionBuilder: Putting mine on build list")
-  if mines < 1 or gold_left < 2000 then
+  if mines < 1 or gold_left < 2500 then
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_emergency_prio)
-  elseif rebuild then
+  elseif rebuild or upkeepboost then
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_rebuild_prio)
   else
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_prio)
