@@ -11,6 +11,9 @@
     real army_future_mult = 3
     group in_army_group = CreateGroup()
     integer main_army = -1
+    integer lastArmyNum = 0
+    integer lastFreeNum = 0
+    integer mode = 0
       
 #ELSE
 // Army Tracker
@@ -23,6 +26,7 @@ function CopyArmy takes integer from, integer to returns nothing
   set army_strength[to] = army_strength[from]
   set army_group[to] = army_group[from]
   set army_count[to] = army_count[from]
+  set town_threat_army[to] = town_threat_army[from] 
 endfunction
 
 function TrackArmy takes integer num returns boolean
@@ -99,10 +103,11 @@ function TrackArmy takes integer num returns boolean
 endfunction
 
 function TrackExistingArmies takes nothing returns nothing
-  local integer i = 0
-  local integer first_free = 0
+  local integer i = lastArmyNum
+  local integer first_free = lastFreeNum
   loop
     exitwhen i >= army_num
+    exitwhen i != lastArmyNum and ModuloInteger(i,50) == 0 // Sleep every 50 armies to avoid infinite loops
     if TrackArmy(i) then
       if (i != first_free) then
         call CopyArmy(i, first_free)
@@ -111,7 +116,16 @@ function TrackExistingArmies takes nothing returns nothing
     endif
     set i = i + 1
   endloop
-  set army_num = first_free
+  if i >= army_num then
+    set army_num = first_free
+    set mode = 1
+    set lastArmyNum = 0
+    set lastFreeNum = 0
+  else
+    set lastArmyNum = army_num
+    set lastFreeNum = first_free
+    call TQAddJob(1, ARMY_TRACK, 0)
+  endif
 endfunction
 
 function SeedNewArmyAtLoc takes location l, integer p returns nothing
@@ -128,31 +142,37 @@ endfunction
 function SeedNewArmiesForPlayer takes integer p returns nothing
   local group g = CreateGroup()
   local unit u = null
-  if army_num <= 100 then
-    call GroupEnumUnitsOfPlayer(g, Player(p), null)
+  call GroupEnumUnitsOfPlayer(g, Player(p), null)
 
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null
-      if UnitAlive(u) and not IsUnitInGroup(u, in_army_group) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) then
-        call SeedNewArmyAtLoc(GetUnitLoc(u), p)
-      endif
-      call GroupRemoveUnit(g, u)
-    endloop
-    call DestroyGroup(g)
-    set g = null
-  endif
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if UnitAlive(u) and not IsUnitInGroup(u, in_army_group) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) then
+      call SeedNewArmyAtLoc(GetUnitLoc(u), p)
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
 endfunction
 
 function SeedNewArmies takes nothing returns nothing
-  local integer p = 0
+  local integer p = lastFreeNum
   loop
     exitwhen p >= GetBJMaxPlayers()
+    exitwhen p != lastFreeNum and ModuloInteger(p, 10) == 0 // Sleep every 10 players
     if GetPlayerSlotState(Player(p)) == PLAYER_SLOT_STATE_PLAYING then
       call SeedNewArmiesForPlayer(p)
     endif
     set p = p + 1
   endloop
+  if p >= GetBJMaxPlayers() then
+    set mode = 2
+    set lastFreeNum = 0
+  else
+    set lastFreeNum = p
+    call TQAddJob(1, ARMY_TRACK, 0)
+  endif
 endfunction
 
 function UpdateSpecificTownThreat takes integer num returns nothing
@@ -228,13 +248,16 @@ function ArmyTrackJob takes nothing returns nothing
   local unit alliance
   call DisplayToAllJobDebug("ARMY_TRACK JOB START")
   call GroupClear(in_army_group)
-  call TrackExistingArmies()
-  call SeedNewArmies()
-  //set alliance = GetAllianceTarget()
-  //if alliance != null then
-  //call CreateDebugTag("Alliance Target", 10, alliance, 3.00, 1.50)
-  //endif
-  call UpdateTownThreat()
-  call TQAddJob(15, ARMY_TRACK, 0)
+  if (mode == 0) then
+    call TrackExistingArmies()
+  endif
+  if (mode == 1) then
+    call SeedNewArmies()
+  endif
+  if (mode == 2) then
+    call UpdateTownThreat()
+    set mode = 0
+    call TQAddJob(15, TOWN_TRACK, 0)
+  endif  
 endfunction
 #ENDIF
