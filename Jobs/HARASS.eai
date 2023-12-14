@@ -5,6 +5,10 @@
     constant integer HARASS_TARGET_MAIN_HALL = 3
     integer array harass_time
     integer array harass_size
+    integer harass_group_length = 0
+    hashtable array harass_groups
+    constant integer HARASS_STORE_QTY = 0
+    constant integer HARASS_STORE_UNITS = 1
     integer distraction_group = 0
 #ELSE
 function GetHarassPeonTarget takes unit ru, unit u returns unit
@@ -93,15 +97,27 @@ function GroupOrderWindWalkInstant_d takes group g returns nothing
 	call DestroyGroup(g)
 endfunction
 
+function LoadHarassKey takes group harasser returns integer
+  local integer i = 0
+  loop
+    exitwhen i >= max_harass_groups
+    if LoadGroupHandle(additional_info, i, HARASS_GROUP) == harasser then  //  find key
+      return i
+    endif
+    set i = i + 1
+  endloop
+  return 0
+endfunction
+
 function HarassJob takes integer ht, unit targ, group harasser returns nothing
   local unit target = targ
-  local integer key = GetHandleId(harasser)
-  local real strength_limit = LoadReal(additional_info, key, STRENGTH_LIMIT)
-  local boolean state_attacking = LoadBoolean(additional_info, key, STATE_ATTACKING)
-  local real flee_percent = LoadReal(additional_info, key, FLEE_PERCENT)
-  local boolean avoiding_towers = LoadBoolean(additional_info, key, AVOID_TOWERS)
-  local boolean state_retreat = LoadBoolean(additional_info, key, STATE_RETREAT)
-  local real start_strength = LoadReal(additional_info, key, START_STRENGTH)
+  local integer key = -1
+  local real strength_limit = 0
+  local boolean state_attacking = false
+  local real flee_percent = 0
+  local boolean avoiding_towers = false
+  local boolean state_retreat = false
+  local real start_strength = 0
   local unit u = null
   local unit hu = null
   local player p = null
@@ -111,8 +127,18 @@ function HarassJob takes integer ht, unit targ, group harasser returns nothing
   local integer harass_num = 0
   local boolean towersdetected = false
   local boolean hero_harass = false
-  local integer hiddencount = LoadInteger(additional_info, key, INVISIBLE_COUNT)
-  local integer timedelay = LoadInteger(additional_info, key, WINDWALK_COUNT) // Delay count so windwalkers show themselves after a period of waiting
+  local integer hiddencount = 0
+  local integer timedelay = 0
+
+  set key = LoadHarassKey(harasser)
+  set strength_limit = LoadReal(additional_info, key, STRENGTH_LIMIT)
+  set state_attacking = LoadBoolean(additional_info, key, STATE_ATTACKING)
+  set flee_percent = LoadReal(additional_info, key, FLEE_PERCENT)
+  set  avoiding_towers = LoadBoolean(additional_info, key, AVOID_TOWERS)
+  set  state_retreat = LoadBoolean(additional_info, key, STATE_RETREAT)
+  set start_strength = LoadReal(additional_info, key, START_STRENGTH)
+  set hiddencount = LoadInteger(additional_info, key, INVISIBLE_COUNT)
+  set timedelay = LoadInteger(additional_info, key, WINDWALK_COUNT) // Delay count so windwalkers show themselves after a period of waiting
 
   call DisplayToAllJobDebug("HARASS JOB START")
   if not UnitAliveInGroup(harasser) then

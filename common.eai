@@ -281,7 +281,7 @@ globals
     boolean add_tag = true // Add the [AMAI] tag in front of name
     boolean add_skill = true // Add the current skill after the name    
     integer fav_hero_add = 20  // priority added to heroes to be picked if they are favorites of the used profile       
-    integer max_harass_groups = 10  // how many different harass groups you can use    
+    integer max_harass_groups = 10  // how many different harass groups you can use
     integer attacking_aggression = -12  // the base agression value for all computers, higher value and they will play more agressive. Recomended -5 to 5   
     real expansion_radius = 650  // the radius araound a mine computers check for creeps before expanding there
     real harass_radius_attack_ranged = 800  // how far away from ranged enemy units harassing units attack a inferior enemy unit
@@ -848,7 +848,7 @@ globals
 
     //gamecache additional_info = InitGameCache("AMAI_AI.w3v") // Used for harrass data
     //gamecache com = InitGameCache("AMAI_Com.w3v")
-	hashtable additional_info = InitHashtable()
+	hashtable additional_info = InitHashtable() // For harass logic
 	constant integer START_STRENGTH = 0
 	constant integer AVOID_TOWERS = 1
 	constant integer STRENGTH_LIMIT = 2
@@ -860,6 +860,7 @@ globals
 	constant integer LOCY = 8
 	constant integer STATE_RETREAT = 9
 	constant integer WINDWALK_COUNT = 10
+  constant integer HARASS_GROUP = 11
 	hashtable com = InitHashtable()
 	constant integer PROFILE_USED = 0
 	constant integer TEAM_STATEGY_INUSE = 1
@@ -9316,26 +9317,34 @@ function InitHarass takes nothing returns nothing
     exitwhen i > max_harass_groups
     set harass_size[i] = 0
     set harass_time[i] = -1000000
+    if harass_groups[i] == null then
+      set harass_groups[i] = InitHashtable()
+    else
+      call FlushChildHashtable(additional_info,i)
+      call FlushParentHashtable(harass_groups[i])
+      set harass_groups[i] = InitHashtable()
+    endif  
     set i = i + 1
   endloop
+  set harass_group_length = 0
   set distraction_group = 0
 endfunction
 
 function AddHarass takes integer groupnum, integer qty, integer unitid returns nothing
-  if (harass_size[groupnum] < max_harass_groups ) then
-    set harass_qty[harass_size[groupnum]] = qty
-    set harass_units[harass_size[groupnum]] = unitid
-    set harass_size[groupnum] = harass_size[groupnum] + 1
-  else
-    call Trace("ERROR: Too many harass unit groups added to harass group")
+  if (groupnum >= max_harass_groups) then
+    call Trace("ERROR: Harass group is set over max allowed:" + Int2Str(groupnum))
   endif
+    call SaveInteger(harass_groups[groupnum], harass_size[groupnum], HARASS_STORE_QTY, qty)
+    call SaveInteger(harass_groups[groupnum], harass_size[groupnum], HARASS_STORE_UNITS, unitid)
+    set harass_size[groupnum] = harass_size[groupnum] + 1
+    set harass_group_length = harass_group_length + 1
 endfunction
 
-function AddHarassUnittype takes integer groupnum, integer harassnum, group g, group harasser, integer key returns group
+function AddHarassUnittype takes integer groupnum, integer harassnum, group g, group harasser, integer qty, integer uid, integer key returns group
   local group cg = CopyGroup(g)
   local unit u = null
   local real player_sum = 0
-  set cg = SelectNumberOfId(cg, harass_qty[harassnum], old_id[harass_units[harassnum]])
+  set cg = SelectNumberOfId(cg, qty, old_id[uid])
   loop
     set u = FirstOfGroup(cg)
     exitwhen u == null
@@ -9357,8 +9366,10 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   local integer t = 0
   local group harasser = CreateGroup()
   local group g = CreateGroup()
-  local integer key = GetHandleId(harasser)
+  local integer key = groupnum
   local real strength = 0
+  local integer qty = 0
+  local integer uid = 0
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
@@ -9367,13 +9378,16 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   set g = SelectByUnitFree(g, true)
   loop
     exitwhen i >= harass_size[groupnum] or FirstOfGroup(g) == null or t >= 12
-    set t = t + harass_qty[i]
-    if t > 12 then  // Group Order max control 12 unit
-      set harass_qty[i] = t - 12
+    set qty = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_QTY)
+    set uid = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_UNITS)
+    if t + qty > 12 then  // Group Order max control 12 unit
+      set qty = 12 - t
       set t = 12
+    else
+      set t = t + qty
     endif
-    if harass_qty[i] > 0 then
-      set harasser = AddHarassUnittype(groupnum, i , g, harasser, key)
+    if qty > 0 then
+      set harasser = AddHarassUnittype(groupnum, i , g, harasser, qty, uid, key)
       set strength = strength + LoadReal(additional_info, key, START_STRENGTH)
     endif
     set i = i + 1
@@ -9386,6 +9400,7 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     return
   endif
   set harass_time[groupnum] = ai_time
+  call SaveGroupHandle(additional_info, key, HARASS_GROUP, harasser)
   call SaveReal(additional_info, key, START_STRENGTH, strength)
   call SaveBoolean(additional_info, key, AVOID_TOWERS, avoid_towers)
   //if avoid_towers and GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_tower_check_radius) > 0
@@ -9406,10 +9421,20 @@ function GetHarassGroupStrength takes integer groupnum returns real
   local integer id = 0
   local unit u = null
   local integer i = 0
+  local integer qty = 0
+  local integer t = 0
   loop
-    exitwhen i >= harass_size[groupnum]
-    set id = harass_units[i]
-    set sum = sum + Min(harass_qty[i], TownCountDone(id)) * GetFoodUsed(old_id[id]) * p
+    exitwhen i >= harass_size[groupnum] or t >= 12
+    set id = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_UNITS)
+    set qty = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_QTY)
+    set t = t + qty 
+    if (t + qty > 12) then
+      set qty = 12 - t
+      set t = 12
+    else
+      set t = t + qty
+    endif  
+    set sum = sum + Min(qty, TownCountDone(id)) * GetFoodUsed(old_id[id]) * p
     set i = i + 1
   endloop
   return sum

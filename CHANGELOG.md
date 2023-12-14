@@ -82,6 +82,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed night elf worpal blades upgrade had the wrong code (jzy-chitong56)
 - Fixed an issue where the AMAI cache was not saving any data (jzy-chitong56)
 - Fixed handling of shredder priority to not overtake priority or standard peons.
+- Multiple harass groups with different units within each group can now run instead of limited to just 1.
 
 ## [3.2.2] - 2022-10-05
 
