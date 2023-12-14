@@ -6,34 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## [Unreleased]
 
 ### Added
-- Older versions of war3 are still popular so now you can install scripts to the older editions of warcraft from within this version.
+- Older versions of war3 are still popular so now you can install scripts to the older editions of warcraft.
+  - New features and fixes can be automatically available for older versions.
+  - AMAI version `REFORGED/RFG` is now for the latest warcraft version while `ROC` and `TFT` are for the classic versions of warcraft.
   - (DevTools) AI Versions now maintain there own copy of warcraft API's and generated blizzard.j files. This allows a single copy of AMAI to build previous versions of AMAI.
 - Installer will now check to make sure AMAI scripts are in the correct location instead of just continuing to appear to work.
 - New English taunts and messages created from generated AI.
-- Ability to perform expansions using items (jzy-chitong56)
+- Ability to expand using the tiny great hall (jzy-chitong56)
 - Heroes will attempt to avoid/swap specific items from their inventory or when they already have a specific skill (jzy-chitong56)
   - (DevTools) Can be modified via the ItemCheck.txt
 - New commander mode "Joint Control" which allows the human players to control their AI allies units at the same time as AMAI.
   - This is like the "Computers Only" option where all human players units and buildings are removed at the start of the game but you have direct control.
-- (DevTools) Debug mode will give observers more visibility into the AI's units and hero abilities. (jzy-chitong56)
 - Commander Change strategy dialog now displays the strategy name you can pick for the AI where applicable instead of just a number.
 - Zepplins can now make use of fountains of power (jzy-chitong56)
 - New Gargoyle and Ghouls Strategy for undead (jzy-chitong56)
 - Added ability to commander to control the zoom level when you type into the chat window '-zoom3000' without the quotes. (jzy-chitong56)
 - (Classic editions) Zoom level can be controlled by the UP and DOWN keys and observers start zoomed out due to no built in controls in classic versions.
-- Added opportunities to attempt extreme save behaviour when the AI is struggling e.g Do a militia expansion or ancient expansion (jzy-chitong56)
-- Some improvements to handle multiple mines at the same base  (jzy-chitong56)
+- Added emergency actions where AI is struggling to try and recover e.g Do a militia expansion or ancient expansion (jzy-chitong56)
 - Use the cloak of shadows ability in micro actions (jzy-chitong56)
 - Maps with multiple mines at the starting location can now be handled. (jzy-chitong56)
-- Some expansions when far away or impossible to get to will be attempted with a zeppelin. (jzy-chitong56)
+- Some expansions when far away or impossible to get to will be attempted with a zeppelin, but only if there are no creeps (jzy-chitong56)
+- (DevTools) Debug mode will give observers more visibility into the AI's units and hero abilities. (jzy-chitong56)
 
 ### Changed
-- Latest version install scripts are now called REFORGED/RFG instead of TFT.
+- Installer now includes the latest scripts so you do not have to build or copy the scripts in yourself.
 - Bat scripts to install to a single map have more power to control install of commander by passing argument 1 or 0 to the script. No argument provided will install commander by default.
   - No Commander `./InstallROCToMap.bat "E:\Files\Documents\Warcraft III\Maps\AMAI\frozenthrone\community\(24)BrokenCity.w3x" 0`
 - Install to directory power script must now be passed the version to install `InstallToDir.pl REFORGED dir true`
 - Chinese Translation improvements. (jzy-chitong56)
-- (DevTools) Updated MPQEditor to 4.0.0.894 (jzy-chitong56)
 - Language dialog will be available on game start even when the commander is disabled (jzy-chitong56)
 - Updates for latest war3 1.36 version (jzy-chitong56)
 - Hero Skill Adjustments
@@ -46,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - To reduce chat spam for players, chat messages from the AI are now rate limited to reduce screen spam especially in large player maps.
 - Team games ai's that are defeated will no longer destroy its base or do a desperation attack and instead will share control with its human allies.
   - When there is no human allies and two AI shares the same race it will give its units to that AI.
+- (DevTools) Updated MPQEditor to 4.0.0.894 (jzy-chitong56)  
 
 ### Removed
 - (DevTools) Old non-working installer has now been removed now we have new version in place.
@@ -54,7 +55,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Spirit Walkers key building should be the Tauren Totem (Slayer95)
 - Fix Goblin Tinker not learning abilities after picking the engineering skill. (jzy-chitong56)
 - Fix VSAI more than 12 players support (jzy-chitong56)
-- Various memory leak and optimization fixes. (jzy-chitong56)
+- Various memory leak and optimization fixes to reduce lag on large maps (jzy-chitong56)
 - Various protection against division by 0 (jzy-chitong56)
 - Changing language more than once may not apply the english backup correctly. (jzy-chitong56)
 - More unicode fixes to languages (jzy-chitong56)

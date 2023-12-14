@@ -9,10 +9,8 @@ Official Release Links available from: https://www.hiveworkshop.com/threads/adva
 As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601
 
 # Warcraft Requirements
-| AMAI Version    | War3 Support                   | Comments |
-| -----------|--------------------------------|---------------|
-| 3.3        | Min 1.36, Min 1.24 - 1.31 classic |  |
-| 2.5.4      | Min 1.24+ - Max 1.28 | Classic edition from 2008 |
+Min 1.36
+Min 1.24 - 1.31 for classic AMAI versions
 
 * Avoid v1.29 of Warcraft 3 as it breaks various things and prevents AMAI from chatting. This is just an issue with this version and you can downgrade or upgrade.
 
@@ -30,8 +28,6 @@ For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.htm
 ## AMAI installer
 - The installer has to be downloaded separately as its much larger compared to the AI package.
 - Unzip the contents of the installer to a folder of your choice.
-- After unzip, download the newest version of AMAI and unzip it in the folder `{your-amai-installer}/resources/AMAI`
-  - Minimum needed is the `Scripts` folder and `MPQEditor.exe` placed in the AMAI directory.
 - Double-click amai-electron-manager.exe to open the installer.
 - You can install to a single map or a whole directory.
 ![installer](installer.jpg)
@@ -66,18 +62,20 @@ Tested with strawbery perl 5.30 and Tk 804.034
 
 *You may need to run as an administrator if you have issues with maps not displaying any teams.
 
-## Build Requirements for Electron
+## Build Requirements for AMAI Installer (Via Electron)
 - node 14 or greater...
 - npm 6 or greater...
-- angular-cli 14 or greater...
+- angular-cli 16 or greater...
 
-## Running electron locally:
+### Running electron locally:
 - Go to the Electron folder inside the project and open the IDE of your choice.
 - first run `npm i` to install project dependencies
 - run `npm start` to open in development environment
 
-## Deploying the Electron Installer:
+### Deploying the Electron Installer:
 - run `npm run electron:build` inside Electron folder
+- You must have a built or downloaded copy of AMAI and unzip it in the folder `{your-amai-installer}/resources/AMAI`
+  - You only need to include the `Scripts` folder and `MPQEditor.exe` within the AMAI directory.
 - zip the contents of the release/win-unpacked folder and deploy this zipped file
 
 ### Notes about Electron Installer build process:
@@ -85,14 +83,16 @@ Tested with strawbery perl 5.30 and Tk 804.034
 - The build process creates the executable for the current operating system only. To create other executables, the process must be run on the corresponding operating system.
 - I will be working on the possibility of building the linux executable on windows.
 
-## Build Scripts
-- You need to use the various `make` bat files to create the AI scripts for various versions
+## Building Scripts
+- You need to use the various `make` bat files to create the AI scripts for various versions.
 - Run/double click *makeRFG.bat* to create the reforged scripts.
 - Then install like normal e.g from a command prompt type *InstallRFGToMap.bat "C:\mymap.w3m"* and press enter.
+- To use the installer you must copy the `Scripts` folder and `MPQEditor.exe` to the folder `{your-amai-installer}/resources/AMAI`
 - Run up a custom game and select the map to play.
 
 ## VS AI Build
-- This special version will make *odd* teams run with AMAI and *even* teams run with the standard blizzard AI.
+- This special version that must be built to use, will make *odd* teams run with AMAI and *even* teams run with the standard blizzard AI.
+- Useful for testing how much better AMAI is against the original AI.
 - Run/double click one of the `makeVAI` bat files e.g *makeVAITFT.bat* to create the AMAI vs AI scripts for the classic TFT version.
 - Then install like normal e.g from a command prompt type *InstallTFTToMap.bat "C:\mymap.w3m"* and press enter.
 
