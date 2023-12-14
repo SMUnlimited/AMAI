@@ -497,6 +497,8 @@ globals
     integer array racial_hall
     integer array racial_goldmine
     integer minearray = 0
+integer array gold_mines_ids
+    integer gold_mine_ids_size = 0
     integer array racial_zigg
     integer ziggarray = 0
     integer racial_expansion = 0
@@ -872,7 +874,7 @@ globals
 
     //gamecache additional_info = InitGameCache("AMAI_AI.w3v") // Used for harrass data
     //gamecache com = InitGameCache("AMAI_Com.w3v")
-    hashtable additional_info = InitHashtable()
+    hashtable additional_info = InitHashtable() // For harass logic
     constant integer START_STRENGTH = 0
     constant integer AVOID_TOWERS = 1
     constant integer STRENGTH_LIMIT = 2
@@ -884,7 +886,7 @@ globals
     constant integer LOCY = 8
     constant integer STATE_RETREAT = 9
     constant integer WINDWALK_COUNT = 10
-    constant integer HARASS_COUNT = 11
+    constant integer HARASS_GROUP = 11
     hashtable com = InitHashtable()
     constant integer PROFILE_USED = 0
     constant integer TEAM_STATEGY_INUSE = 1
@@ -4352,7 +4354,7 @@ function GetNearestNeutralQuick takes unit ru, integer id returns unit
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitTypeId(u) == id then
+    if GetUnitTypeId(u) == id and UnitAlive(u) then
       set newdistance = DistanceBetweenPoints_kd(home_location, GetUnitLoc(u))
       if newdistance < distance then
         set distance = newdistance
@@ -5834,6 +5836,18 @@ function MultipleMinefix takes nothing returns boolean
   return b
 endfunction
 
+function IsUnitGoldMine takes unit u returns boolean
+  local integer i = 0
+  loop
+    exitwhen i >= gold_mine_ids_size
+    if GetUnitTypeId(u) == gold_mines_ids[i] then
+      return true
+    endif
+    set i = i + 1
+  endloop
+  return false
+endfunction
+
 //============================================================================
 function CheckExpansionTaken takes unit expa returns boolean
   local group g = null
@@ -5848,7 +5862,7 @@ function CheckExpansionTaken takes unit expa returns boolean
       exitwhen u == null
       set p = GetOwningPlayer(u)
       if p != Player(PLAYER_NEUTRAL_PASSIVE) and IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 then
-        if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
+        if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitGoldMine(u) or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
           call DestroyGroup(g)
           set g = null
           set u = null
@@ -5919,6 +5933,9 @@ function AddExpansion takes unit u, real d returns nothing
   set expansion_creeps[expansion_list_length] = GetExpFoeGroup(expansion_creeps[expansion_list_length],u)  // group of the the creeps that guard this mine
   if first_expansion_chosen == false then
     set first_expansion_chosen = expansion_creeps[expansion_list_length] != null
+  endif
+  if expansion_dist[expansion_list_length] > 6000/512 then
+    call GroupAddUnit(far_expansion, expansion_list[expansion_list_length])
   endif
   set expansion_list_length = expansion_list_length + 1
 endfunction
@@ -6679,7 +6696,9 @@ function PingFrontPoints takes nothing returns nothing
   local integer i = 0
   loop
     exitwhen i >= front_loc_num
-    call PingMinimap(GetLocationX(front_loc[i]), GetLocationY(front_loc[i]), 20)
+    if front_loc[i] != null then
+      call PingMinimap(GetLocationX(front_loc[i]), GetLocationY(front_loc[i]), 20)
+    endif
     set i = i + 1
   endloop
 endfunction
@@ -8013,7 +8032,7 @@ function ApplyUpkeepSaving takes nothing returns nothing
         endif
       elseif use_linear_upkeep_saving then
         set total_gold = total_gold - R2I(LinearInterpolation(upkeep_time[i], upkeep_time[i] + upkeep_save_time[i], 0, upkeep_resistance[i], ai_time))
-      elseif ai_time >= upkeep_time[i] + upkeep_save_time[i] then
+      elseif ai_time <= upkeep_time[i] + upkeep_save_time[i] then
 //        call DisplayToAll("Saving "+Int2Str(upkeep_resistance[i])+" from "+Int2Str(total_gold))
         set total_gold = total_gold - upkeep_resistance[i]
       endif
@@ -9497,27 +9516,35 @@ function InitHarass takes nothing returns nothing
     exitwhen i > max_harass_groups
     set harass_size[i] = 0
     set harass_time[i] = -1000000
+    if harass_groups[i] == null then
+      set harass_groups[i] = InitHashtable()
+    else
+      call FlushChildHashtable(additional_info,i)
+      call FlushParentHashtable(harass_groups[i])
+      set harass_groups[i] = InitHashtable()
+    endif  
     set i = i + 1
   endloop
+  set harass_group_length = 0
   set distraction_group = 0
 endfunction
 
 function AddHarass takes integer groupnum, integer qty, integer unitid returns nothing
-  if harass_size[groupnum] < max_harass_groups then
-    set harass_qty[harass_size[groupnum]] = qty
-    set harass_units[harass_size[groupnum]] = unitid
-    set harass_size[groupnum] = harass_size[groupnum] + 1
-  else
-    call Trace("ERROR: Too many harass unit groups added to harass group")
+  if groupnum >= max_harass_groups then
+    call Trace("ERROR: Harass group is set over max allowed:" + Int2Str(groupnum))
   endif
+  call SaveInteger(harass_groups[groupnum], harass_size[groupnum], HARASS_STORE_QTY, qty)
+  call SaveInteger(harass_groups[groupnum], harass_size[groupnum], HARASS_STORE_UNITS, unitid)
+  set harass_size[groupnum] = harass_size[groupnum] + 1
+  set harass_group_length = harass_group_length + 1
 endfunction
 
-function AddHarassUnittype takes integer groupnum, integer harassnum, group g, group harasser, integer key returns group
+function AddHarassUnittype takes integer groupnum, integer harassnum, group g, group harasser, integer qty, integer uid, integer key returns group
   local group cg = null
   local unit u = null
   local real player_sum = 0
   set cg = CopyGroup(g,cg)
-  set cg = SelectNumberOfId(cg, harass_qty[harassnum], old_id[harass_units[harassnum]])
+  set cg = SelectNumberOfId(cg, qty, old_id[uid])
   set cg = SelectByUnitFree(cg, true)
   set cg = SelectByUnitStandard(cg, true)  //Reduce usage IsUnitInGroup
   loop
@@ -9539,36 +9566,28 @@ endfunction
 function StartHarass takes integer groupnum, integer harass_target, boolean avoid_towers, real strength_limit, real flee_percent, integer flee_number, real lx, real ly returns nothing
   local integer i = 0
   local integer t = 0
-  local group harasser = null
-  local group g = null
-  local integer key = -1
+  local group harasser = CreateGroup()
+  local group g = CreateGroup()
+  local integer key = groupnum
   local real strength = 0
-  loop
-    exitwhen key >= 0 or i >= 3
-    if LoadGroupHandle(additional_info, HARASS_COUNT, i) == null then
-      set key = i
-    endif
-    set i = i + 1
-  endloop
-  if key < 0 then
-    return  //  In operation harass group too much
-  endif
-  set i = 0
-  set harasser = CreateGroup()
-  set g = CreateGroup()
+  local integer qty = 0
+  local integer uid = 0
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectByHidden(g, false)
   set g = SelectByFullHealth(g, true)
   call BlzGroupRemoveGroupFast(unit_harassing, g)  // not take harassing unit
   loop
     exitwhen i >= harass_size[groupnum] or FirstOfGroup(g) == null or t >= 12
-    set t = t + harass_qty[i]
-    if t > 12 then  // Group Order max control 12 unit
-      set harass_qty[i] = t - 12
+    set qty = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_QTY)
+    set uid = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_UNITS)
+    if t + qty > 12 then  // Group Order max control 12 unit
+      set qty = 12 - t
       set t = 12
+    else
+      set t = t + qty
     endif
-    if harass_qty[i] > 0 then
-      set harasser = AddHarassUnittype(groupnum, i , g, harasser, key)
+    if qty > 0 then
+      set harasser = AddHarassUnittype(groupnum, i , g, harasser, qty, uid, key)
       set strength = strength + LoadReal(additional_info, key, START_STRENGTH)
     endif
     set i = i + 1
@@ -9580,8 +9599,8 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     set harasser = null
     return
   endif
-  call SaveGroupHandle(additional_info, HARASS_COUNT, key, g)
   set harass_time[groupnum] = ai_time
+  call SaveGroupHandle(additional_info, key, HARASS_GROUP, harasser)
   call SaveReal(additional_info, key, START_STRENGTH, strength)
   call SaveBoolean(additional_info, key, AVOID_TOWERS, avoid_towers)
   //if avoid_towers and GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_tower_check_radius) > 0
@@ -9600,12 +9619,21 @@ function GetHarassGroupStrength takes integer groupnum returns real
   local real sum = 0
   local real p = GetPlayerHandicap(ai_player)
   local integer id = 0
-  local unit u = null
   local integer i = 0
+  local integer qty = 0
+  local integer t = 0
   loop
-    exitwhen i >= harass_size[groupnum]
-    set id = harass_units[i]
-    set sum = sum + Min(harass_qty[i], TownCountDone(id)) * GetFoodUsed(old_id[id]) * p
+    exitwhen i >= harass_size[groupnum] or t >= 12
+    set id = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_UNITS)
+    set qty = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_QTY)
+    set t = t + qty 
+    if t + qty > 12 then
+      set qty = 12 - t
+      set t = 12
+    else
+      set t = t + qty
+    endif
+    set sum = sum + Min(qty, TownCountDone(id)) * GetFoodUsed(old_id[id]) * p
     set i = i + 1
   endloop
   return sum
@@ -10400,10 +10428,6 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   //  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Peon Got")
   set f = IsUnitInGroup(current_expansion, far_expansion)
   set w = IsWaterExpansion(current_expansion)
-  if not w and DistanceBetweenUnits(expansion_peon,current_expansion) > 6000 and not f then
-    call GroupAddUnit(far_expansion, current_expansion)
-    set f = true
-  endif
 
   if expansion_peon != null and UnitAlive(expansion_peon) then
     if (w or f) and TownCountDone(ZEPPELIN) > 0 then
@@ -10796,9 +10820,11 @@ function ExpansionBuilder takes nothing returns nothing
 local integer mines = GetMinesOwned()
 local integer gold_left = GetGoldOwned()
 local integer i = racial_expansion
+local integer f = 0
 local boolean exp_prepared = false
 local boolean rebuild = false
 local unit u = null
+local boolean upkeepboost = false
 
 if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
   call ChooseExpansion()
@@ -10808,6 +10834,7 @@ if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(
   endif
 endif
 if CheckExpansionTaken(current_expansion) then
+  call Trace("ExpansionBuilder: Expansion taken by someone else")
   set current_expansion = null
   return
 endif
@@ -10819,14 +10846,11 @@ if first_town_mine > 0 and (race_uses_mine_expansion or race_manual_loading) the
   set mines = Min(TownCount(i),mines)  // check actual number of gold mines
 endif
 
-set i = 2
-if active_expansion == true then
-  set i = 3
-endif
 set u = GetExpFoe(u)
-if mines < i and ai_time - exp_time_count > exp_first_time then
+if mines < 2 and ai_time - exp_time_count > exp_first_time then
   if u != null then
     set take_exp = true
+    call Trace("ExpansionBuilder:Need to Creep Mine 2")
     //if attacking_expansion then
     //  set exp_prepared = true
     //  call Trace("ExpansionBuilder: Ready to expand to mine 2 - odd")
@@ -10838,9 +10862,10 @@ if mines < i and ai_time - exp_time_count > exp_first_time then
   endif
 endif
 
-if mines < 3 and ai_time - exp_time_count > exp_second_time then
+if mines < 3 and ai_time - exp_time_count > exp_second_time or (active_expansion and ai_time - exp_time_count > exp_first_time) then
   if u != null then
     set take_exp = true
+    call Trace("ExpansionBuilder:Need to Creep Mine 3")
   else
     set take_exp = false
     set exp_prepared = true
@@ -10851,15 +10876,28 @@ endif
 if not exp_prepared and u == null then
   set rebuild = CheckExpansionRebuild()
   if rebuild then
+    call Trace("ExpansionBuilder:Ready to rebuild mine")
     set exp_prepared = true
   endif
 endif
 set u = null
-if mines < 1 or gold_left < 2000 or exp_prepared then
+
+set i = 0
+set f = FoodUsed()
+loop
+  exitwhen i >= UPKEEP_NUM or upkeepboost
+  // If near on in an upkeep level that needs more mines then boost expansion priority
+  if mines < upkeep_mines_needed[i] and f > upkeep_border[i] - 10 then
+    set upkeepboost = true
+  endif
+  set i = i + 1
+endloop
+
+if mines < 1 or gold_left < 2500 or exp_prepared then
   call Trace("ExpansionBuilder: Putting mine on build list")
-  if mines < 1 or gold_left < 2000 then
+  if mines < 1 or gold_left < 2500 then
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_emergency_prio)
-  elseif rebuild then
+  elseif rebuild or upkeepboost then
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_rebuild_prio)
   else
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_prio)
@@ -11108,7 +11146,7 @@ function OneBuildLoopAM takes nothing returns nothing
           call Trace("NO RESOURCES " + logtype + unitNames[id] + " " + Int2Str(id))
           set tracednoresources = id
         endif
-        exitwhen ret == NOT_ENOUGH_RES // Don't try and build anything else as thing we trying to buy is too expensive
+        exitwhen ret == NOT_ENOUGH_RES and tp != BUILD_ITEM and tp != BUILD_UPGRADE // Don't try and build anything else as thing we trying to buy is too expensive
         if ret == CANNOT_BUILD or ret == BUILT_SOME or ret == NOT_ENOUGH_RES or (ret == BUILT_ALL and qty < build_qty[index]) then
           set build_qty[index_free] = build_qty[index]
           set build_type[index_free] = build_type[index]
@@ -11472,7 +11510,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     set attack_length_counter = 5000  // Force army to regroup to try and get ghouls to go along
   endif
   loop
-    exitwhen town_threat_break and town_threatened and town_threat[most_threatened_town] >= teleport_low_threat and not desperation_assault
+    exitwhen town_threat_break and town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat and not desperation_assault
     exitwhen break_attack and not desperation_assault
     //exitwhen captain_flee and CaptainRetreating()
     exitwhen isfleeing and CaptainRetreating() and not desperation_assault
@@ -11564,7 +11602,7 @@ endfunction
 function SleepUntilAtGoalAM takes nothing returns nothing
   local integer lcount = 0
   loop
-    exitwhen town_threatened and town_threat[most_threatened_town] >= teleport_low_threat
+    exitwhen town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat
     set lcount = lcount + 1
     call Sleep(sleep_multiplier)
     exitwhen break_attack
