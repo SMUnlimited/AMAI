@@ -84,6 +84,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed handling of shredder priority to not overtake priority of standard peons.
 - Multiple harass groups with different units within each group can now run instead of limited to just 1.
 - Fixed an issue where upkeep save money effects were not working correctly.
+- Fixed correct detection of double expansions and handling multiple mine cases.
 
 ## [3.2.2] - 2022-10-05
 
