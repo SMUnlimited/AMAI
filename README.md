@@ -8,12 +8,6 @@ Official Release Links available from: https://www.hiveworkshop.com/threads/adva
 
 As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601
 
-# Warcraft Requirements
-Min 1.36
-Min 1.24 - 1.31 for classic AMAI versions
-
-* Avoid v1.29 of Warcraft 3 as it breaks various things and prevents AMAI from chatting. This is just an issue with this version and you can downgrade or upgrade.
-
 # How to Play
 AMAI release comes with the standard AI scripts pre-built for you.
 
@@ -32,12 +26,14 @@ For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.htm
 - You can install to a single map or a whole directory.
 ![installer](installer.jpg)
 
-## Versions
+## Warcraft Requirements and Versions
 There are multiple editions of AMAI available to install based on your warcraft 3 version you run with. You must use the correct abrievation to install the correct scripts.
 Improvements and fixes to the core AI engine will improve the older scripts as well.
 - **REFORGED(RFG)** : The AI scripts intended for the latest version of warcraft 3 1.36+ (regardless if you own **Reforged** or not)
 - **TFT** : The classic Frozen Throne AI scripts intended for TFT 1.24 version of warcraft 3. Has some forwards compatability support up to 1.31 including 24 player support although tech tree changes in later versions will not be available to the AI.
 - **ROC** : The classic Reign of Chaos AI scripts intended for ROC 1.24 version of warcraft 3. Has some forwards compatability support up to 1.31 including 24 player support although tech tree changes in later versions will not be available to the AI.
+
+* Avoid v1.29 of Warcraft 3 as it breaks various things and prevents AMAI from chatting. This is just an issue with this version and you can downgrade or upgrade.
 
 ## Commandline install
 - From a windows commandline or powershell type `InstallRFGToMap.bat "C:\mymap.w3m" 1` and press enter to install AMAI to maps
