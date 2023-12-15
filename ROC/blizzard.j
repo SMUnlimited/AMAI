@@ -1387,10 +1387,11 @@ endfunction
 //===========================================================================
 function SmartCameraPanBJ takes player whichPlayer, location loc, real duration returns nothing
     local real dist
+    local location cameraLoc = null
     if (GetLocalPlayer() == whichPlayer) then
         // Use only local code (no net traffic) within this block to avoid desyncs.
-
-        set dist = DistanceBetweenPoints(loc, GetCameraTargetPositionLoc())
+        set cameraLoc = GetCameraTargetPositionLoc()
+        set dist = DistanceBetweenPoints(loc, cameraLoc)
         if (dist >= bj_SMARTPAN_TRESHOLD_SNAP) then
             // If the user is too far away, snap the camera.
             call PanCameraToTimed(GetLocationX(loc), GetLocationY(loc), 0)
@@ -1400,7 +1401,9 @@ function SmartCameraPanBJ takes player whichPlayer, location loc, real duration 
         else
             // User is close enough, so don't touch the camera.
         endif
+        call RemoveLocation(cameraLoc)
     endif
+    set cameraLoc = null
 endfunction
 
 //===========================================================================
@@ -5000,7 +5003,7 @@ endfunction
 function ConfigureNeutralVictim takes nothing returns nothing
     local integer index
     local player indexPlayer
-    local player neutralVictim = Player(bj_PLAYER_NEUTRAL_VICTIM)
+    local player neutralVictim = Player(bj_PLAYER_NEUTRAL_VICTIM_AMAI)
 
     set index = 0
     loop
@@ -5024,7 +5027,7 @@ endfunction
 
 //===========================================================================
 function MakeUnitsPassiveForPlayerEnum takes nothing returns nothing
-    call SetUnitOwner(GetEnumUnit(), Player(bj_PLAYER_NEUTRAL_VICTIM), false)
+    call SetUnitOwner(GetEnumUnit(), Player(bj_PLAYER_NEUTRAL_VICTIM_AMAI), false)
 endfunction
 
 //===========================================================================
@@ -8553,7 +8556,7 @@ function MeleeStartingUnitsUnknownRace takes player whichPlayer, location startL
     loop
         call CreateUnit(whichPlayer, 'nshe', GetLocationX(startLoc) + GetRandomReal(-256, 256), GetLocationY(startLoc) + GetRandomReal(-256, 256), GetRandomReal(0, 360))
         set index = index + 1
-        exitwhen index == 12
+        exitwhen index == bj_MAX_PLAYERS_AMAI
     endloop
 
     if (doHeroes) then
@@ -9705,7 +9708,7 @@ endfunction
 //===========================================================================
 function InitGenericPlayerSlots takes nothing returns nothing
     local gametype gType = GetGameTypeSelected()
-
+    call VersionCheck()
     if (gType == GAME_TYPE_MELEE) then
         call MeleeInitPlayerSlots()
     elseif (gType == GAME_TYPE_FFA) then
@@ -10077,7 +10080,7 @@ function InitBlizzard takes nothing returns nothing
     // Set up the Neutral Victim player slot, to torture the abandoned units
     // of defeated players.  Since some triggers expect this player slot to
     // exist, this is performed for all maps.
-    call VersionCheck()
+
     call ConfigureNeutralVictim()
 
     call InitBlizzardGlobals()

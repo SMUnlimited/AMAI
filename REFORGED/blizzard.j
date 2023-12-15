@@ -1430,10 +1430,10 @@ endfunction
 //===========================================================================
 function SmartCameraPanBJ takes player whichPlayer, location loc, real duration returns nothing
     local real dist
-	local location cameraLoc = GetCameraTargetPositionLoc()
+    local location cameraLoc = null
     if (GetLocalPlayer() == whichPlayer) then
         // Use only local code (no net traffic) within this block to avoid desyncs.
-
+        set cameraLoc = GetCameraTargetPositionLoc()
         set dist = DistanceBetweenPoints(loc, cameraLoc)
         if (dist >= bj_SMARTPAN_TRESHOLD_SNAP) then
             // If the user is too far away, snap the camera.
@@ -1444,8 +1444,9 @@ function SmartCameraPanBJ takes player whichPlayer, location loc, real duration 
         else
             // User is close enough, so don't touch the camera.
         endif
-    endif
 	call RemoveLocation(cameraLoc)
+    endif
+    set cameraLoc = null
 endfunction
 
 //===========================================================================
@@ -8946,7 +8947,7 @@ function MeleeStartingUnitsUnknownRace takes player whichPlayer, location startL
     loop
         call CreateUnit(whichPlayer, 'nshe', GetLocationX(startLoc) + GetRandomReal(-256, 256), GetLocationY(startLoc) + GetRandomReal(-256, 256), GetRandomReal(0, 360))
         set index = index + 1
-        exitwhen index == 12
+        exitwhen index == bj_MAX_PLAYERS_AMAI
     endloop
 
     if (doHeroes) then

@@ -62,21 +62,47 @@ function global_init_strategy takes nothing returns nothing
 
 endfunction
 function global_build_sequence takes nothing returns nothing
-    call DefendTownsDone(2, ANCIENT_PROTECT, 75)
-    call BuildFront(2, ANCIENT_PROTECT, 35)
+    // Anti rush
     if GetRushFactor() < 5000 or GetPlayerRace(nearest_enemy) == RACE_UNDEAD then
-      call BuildFront(1, ANCIENT_PROTECT, 51)
+      call BuildFront(2, ANCIENT_PROTECT, 51)
     endif
-    if tier == 3 and GetGold() > 2000 then
-        call DefendTownsDone(2, ANCIENT_PROTECT, 75)
+    // home_location tower
+    if tier < 3 and GetGold() > 500 then
+      call BuildFront(2, ANCIENT_PROTECT, 45)
+    endif
+    // exp tower
+    if GetMinesOwned() > 1 or (TownCount(TREE_LIFE) > 1 and GetMinesOwned() > 0) then
+      call DefendTownsDone(2, ANCIENT_PROTECT, 75)
+      if tier == 3 and GetGold() > 2000 then
         call DefendTownsDone(4, ANCIENT_PROTECT, 35)
-        call BuildFront(3, ANCIENT_PROTECT, 35)
         if TownCount(ANCIENT_PROTECT) >= 4 and TownCount(DEN_OF_WONDERS) < 2 then
-            call DefendTownsDone(1, DEN_OF_WONDERS, 40)
+          call DefendTownsDone(1, DEN_OF_WONDERS, 40)
         endif
         if TownCount(MOON_WELL) >= 8 and GetGold() > 2500 then
-            call DefendTownsDone(2, MOON_WELL, 35)
-        endif    
+          call DefendTownsDone(2, MOON_WELL, 35)
+        endif
+      endif
+    endif
+    // routine build
+    if GetGold() > 800 then
+      call BuildFront(3, ANCIENT_PROTECT, 36)  // ELF not run BuildUnit 
+    endif
+
+    // transition train , sequence should be at the beginning
+    if tier == 2 and racial_highbuild_lv2_total < 2 and GetGold() > 600 then
+      call BuildUnit(TownCountDone(HUNTRESS) + difficulty, HUNTRESS, 46)
+      call BuildUnit(TownCountDone(ARCHER) + difficulty, ARCHER, 40)
+      call BuildUnit(1, BALLISTA, 10)
+    elseif tier == 3 and racial_highbuild_lv3_total < 2 and GetGold() > 800 then
+      call BuildUnit(TownCountDone(DRUID_CLAW)+difficulty, DRUID_CLAW, 42+racial_highbuild_lv2_total*5)
+      call BuildUnit(TownCountDone(DRYAD)+1, DRYAD, 40+racial_highbuild_lv2_total*5)
+      call BuildUnit(TownCountDone(DRUID_TALON)+1, DRUID_TALON, 30+racial_highbuild_lv2_total*5)
+      call BuildUnit(TownCountDone(FAERIE_DRAGON)+1, FAERIE_DRAGON, 28+racial_highbuild_lv2_total*5)
+      call BuildUnit(TownCountDone(HUNTRESS) + difficulty, HUNTRESS, 26+racial_highbuild_lv2_total*5)
+      call BuildUnit(TownCountDone(ARCHER) + difficulty, ARCHER, 20+racial_highbuild_lv2_total*5)
+      call BuildUnit(1, HIPPO, 18+racial_highbuild_lv2_total*5)
+      call BuildUnit(1, HIPPO_RIDER, 13+racial_highbuild_lv2_total*5)
+      call BuildUnit(1, BALLISTA, 11+racial_highbuild_lv2_total*5)
     endif
 
     // Global Items
@@ -89,21 +115,29 @@ function global_build_sequence takes nothing returns nothing
     if tier > 1 then
       call BuildItem(1, HEALING_POTION, 80)
       call BuildItem(1, TOWN_PORTAL, 180)
-      call BuildItem(1, STAFF_OF_PRESERVATION, 40)
+      call BuildItem(1, LESSER_CLARITY_POTION, 40)
+      call BuildItem(1, STAFF_OF_PRESERVATION, 80)
     endif
     if hero[1] == WARDEN or hero[1] == DEMON_HUNTER then
       call BuildItem(1, BOOTS_OF_SPEED, 50)
     endif
-    if tier >= 2 then
-        call BuildItem(1, LESSER_CLARITY_POTION, 40)
+    if tier == 3 then
+      if c_ally_total > 0 then
+        call BuildItem(1, STAFF_OF_SANCTUARY, 30)
+      endif
+      //call BuildItem(1, ORB_OF_VENOM, 70)
+      //call BuildItem(2, M_SCROLL_OF_HEALING, 30)
+    endif
+    if GetGold() > 1000 then
+      call BuildItem(1, STAFF_OF_TELEPORTATION, 35)
     endif
 
-    //if tier == 3 then
-        //call BuildItem(1, ORB_OF_VENOM, 70)
-        //call BuildItem(2, M_SCROLL_OF_HEALING, 30)
-    //endif
     call BuildUnit(1, DEN_OF_WONDERS, 45+30*(tier-1))
-    // DYNAMIC
+
+    // DYNAMIC and Global Mercenaries
+    if GetGold() > 600 and GetWood() > 360 then
+      call BuildUnit(1, ZEPPELIN, 50)
+    endif
     call ResetDynamicSystem()
     if tier == 1 then
       call AddUnitToAntiair(ARCHER,29)
@@ -120,8 +154,7 @@ function global_build_sequence takes nothing returns nothing
       call AddUnitToAntimediumarmor(HUNTRESS,29)
       call AddUnitToAntiheavyarmor(HUNTRESS,29)
       call DynamicBuildUnit(33, 38)
-      call BuildUnit(1, merc_range, 65)
-      call BuildUnit(1, merc_stopper, 65)
+      call MercBuilder(merc_range,merc_stopper)
     elseif tier == 2 then
       call AddUnitToAntiair(ARCHER,15)
       call AddUnitToAntiair(HIPPO,10)
@@ -157,8 +190,7 @@ function global_build_sequence takes nothing returns nothing
       call AddUnitToAntiheavyarmor(DRUID_TALON,1)
       call AddUnitToAntiheavyarmor(DRUID_CLAW,5)
       call DynamicBuildUnit(64, 40)
-      call BuildUnit(1, dragons[3], 65)
-      call BuildUnit(1, merc_range, 65)
+      call MercBuilder(merc_rush,merc_stopper)
     else
       call AddUnitToAntiair(ARCHER,15)
       call AddUnitToAntiair(HIPPO,10)
@@ -196,52 +228,46 @@ function global_build_sequence takes nothing returns nothing
       call AddUnitToAntiheavyarmor(CHIMAERA,3)
       call AddUnitToAntiheavyarmor(DRUID_CLAW,5)
       call DynamicBuildUnit(100, 40)
-      call BuildUnit(1, dragons[3], 65)
+      call DragonAndMercBuilder()
     endif
 
-    // TIER 1 UPGRADES
-    //--------------------------------------------------------
-    if tier >= 1 then
-    endif
-    call BuildAdvUpgr2(1, UPG_ULTRAVISION, 1, TownCountDone(ARCHER) + TownCountDone(HUNTRESS), 5, 3, 10)
-    call BuildAdvUpgr2(1, UPG_SCOUT, 1,TownCountDone(HUNTRESS),1,10,15)
+    // GLOBAL UPGRADES
     call BuildAdvUpgr2(3, UPG_STR_MOON, 1,TownCountDone(ARCHER) + TownCountDone(HUNTRESS) + TownCountDone(HIPPO_RIDER),5,5,40)
     call BuildAdvUpgr2(3, UPG_MOON_ARMOR, 1,TownCountDone(ARCHER) + TownCountDone(HUNTRESS) + TownCountDone(HIPPO_RIDER),5,5,40)
     call BuildAdvUpgr2(3, UPG_STR_WILD, 1,TownCountDone(DRYAD) + TownCountDone(DRUID_CLAW) + TownCountDone(MOUNTAIN_GIANT) + TownCountDone(DRUID_TALON) + TownCountDone(CHIMAERA) + TownCountDone(FAERIE_DRAGON),3,5,40 )
     call BuildAdvUpgr2(3, UPG_HIDES, 1,TownCountDone(DRYAD) + TownCountDone(DRUID_CLAW) + TownCountDone(MOUNTAIN_GIANT) + TownCountDone(DRUID_TALON) + TownCountDone(CHIMAERA) + TownCountDone(FAERIE_DRAGON),3,5,40 )
 
+    // TIER 1 UPGRADES
+    //--------------------------------------------------------
+    if tier >= 1 then
+    endif
+    call BuildAdvUpgr2(1, UPG_SCOUT, 1,TownCountDone(HUNTRESS),1,10,15)
 
     // TIER 2 UPGRADES
     //--------------------------------------------------------
     if tier >= 2 then
+      call BuildUpgr(1, UPG_BLESSING, 50)
     endif
-    call BuildAdvUpgr2(1, UPG_BOWS,2,TownCountDone(ARCHER),1,10,70)
-    call BuildAdvUpgr2(1, UPG_GLAIVE, 2,TownCountDone(HUNTRESS),0.5,15,70)
-    call BuildAdvUpgr2(1, UPG_BOLT, 2,TownCountDone(BALLISTA),0.25,10,50)
-    call BuildAdvUpgr2(1, UPG_ABOLISH, 2, TownCountDone(DRYAD),0.33,15,75)
+    call BuildAdvUpgr2(1, UPG_ULTRAVISION, 2, TownCountDone(ARCHER) + TownCountDone(HUNTRESS), 5, 3, 10)
+    call BuildAdvUpgr2(1, UPG_BOWS,2,TownCountDone(ARCHER),1,10,40)
+    call BuildAdvUpgr2(1, UPG_GLAIVE, 2,TownCountDone(HUNTRESS),0.5,10,70)
+    call BuildAdvUpgr2(1, UPG_BOLT, 2,TownCountDone(BALLISTA),0.25,10,40)
+    call BuildAdvUpgr2(1, UPG_ABOLISH, 2, TownCountDone(DRYAD),0.33,15,80)
     call BuildAdvUpgr2(2, UPG_DRUID_CLAW, 2, TownCountDone(DRUID_CLAW),0.33,15,80)
     call BuildAdvUpgr2(2, UPG_DRUID_TALON, 2, TownCountDone(DRUID_TALON),0.33,15,80)
-
+    call BuildAdvUpgr2(1, UPG_MARK_TALON,2,TownCountDone(DRUID_TALON),1,10, 10)
 
     // TIER 3 UPGRADES
     //--------------------------------------------------------
-  if tier == 3 then
-    call BuildUpgr(1, UPG_BLESSING, 50)
-    if c_ally_total > 1 then
-      call BuildUpgr(1, UPG_WELL_SPRING,50)
-    else
-      call BuildUpgr(1, UPG_WELL_SPRING,35)
-    endif  
-  endif
-	call BuildAdvUpgr2(1, UPG_MARKSMAN, 3,TownCountDone(ARCHER),0.5, 15,80)
-	call BuildAdvUpgr2(1, UPG_HARD_SKIN,3,TownCountDone(MOUNTAIN_GIANT),0.25,15,80)
-	call BuildAdvUpgr2(1, UPG_RESIST_SKIN,3,TownCountDone(MOUNTAIN_GIANT),0.25,15,60)
-	call BuildAdvUpgr2(1, UPG_CHIM_ACID,3, TownCountDone(CHIMAERA),0.25,15,60)
-	call BuildAdvUpgr2(1, UPG_MARK_CLAW,3,TownCountDone(DRUID_CLAW),1,10,80)
-	call BuildAdvUpgr2(1, UPG_MARK_TALON,3,TownCountDone(DRUID_TALON),1,10, 10)
+    if tier == 3 then
+    endif
+    call BuildUpgr(1, UPG_WELL_SPRING,30 + c_ally_total * 3)
+    call BuildAdvUpgr2(1, UPG_MARKSMAN, 3,TownCountDone(ARCHER),0.5, 15,80)
+    call BuildAdvUpgr2(1, UPG_HARD_SKIN,3,TownCountDone(MOUNTAIN_GIANT),0.25,15,80)
+    call BuildAdvUpgr2(1, UPG_RESIST_SKIN,3,TownCountDone(MOUNTAIN_GIANT),0.25,15,60)
+    call BuildAdvUpgr2(1, UPG_CHIM_ACID,3, TownCountDone(CHIMAERA),0.25,15,60)
+    call BuildAdvUpgr2(1, UPG_MARK_CLAW,3,TownCountDone(DRUID_CLAW),1,10,80)
 
-    // Global Mercenaries
-    call BuildUnit(1, SHREDDER, 70)
 
     // Harassing
     if not towerrush and not town_threatened then
@@ -251,8 +277,6 @@ function global_build_sequence takes nothing returns nothing
         call Harass(4, HARASS_TARGET_PEONS, true, 4, 0.75, 0, GetPlayerRace(nearest_enemy) != RACE_UNDEAD , 50, 80)
       endif
     endif
-
-
 
 
 
@@ -353,12 +377,12 @@ if tier == 3 then
       call BuildUnit(1, FAERIE_DRAGON, 64)
       call BuildUnit(1, DRUID_TALON, 64)
       call BuildUnit(2, CHIMAERA, 62)
+
       call BuildUpgr(2, UPG_DRUID_CLAW, 40)
       call BuildUpgr(3, UPG_MOON_ARMOR, 40)
       call BuildUpgr(3, UPG_STR_MOON, 41)
       call BuildUpgr(3, UPG_HIDES, 35)
       call BuildUpgr(3, UPG_STR_WILD, 36)
-      call BuildUnit(1, ZEPPELIN, 50)
 
 
 
@@ -705,7 +729,7 @@ elseif tier == 2 then
       call BuildUpgr(1, UPG_DRUID_CLAW, 65)
       call BuildUpgr(1, UPG_ABOLISH, 60)
       call BuildUpgr(1, UPG_DRUID_TALON, 65)
-
+      call BuildUpgr(1, UPG_MARK_TALON, 62)
 
 
 
@@ -969,7 +993,6 @@ if tier == 3 then
       call BuildUnit(1, hero[1], 140)
       call BuildUnit(1, hero[2], 130)
       call BuildUnit(1, hero[3], 120)
-      call BuildUnit(1, ZEPPELIN, 50)
 
       call BuildUpgr(1, UPG_BOLT, 72)
       call BuildUpgr(1, UPG_ABOLISH, 79)
@@ -999,7 +1022,6 @@ elseif tier == 2 then
       call BuildUnit(1, TREE_ETERNITY, 50)
       call BuildUnit(1, hero[1], 140)
       call BuildUnit(1, hero[2], 130)
-      call BuildUnit(1, ZEPPELIN, 50)
 
       call BuildUpgr(1, UPG_BOLT, 70)
       call BuildUpgr(1, UPG_ABOLISH, 67)
@@ -1139,7 +1161,7 @@ elseif tier == 2 then
       call BuildUnit(1, hero[1], 140)
       call BuildUnit(1, hero[2], 130)
       call BuildUpgr(1, UPG_DRUID_TALON, 65)
-
+      call BuildUpgr(1, UPG_MARK_TALON, 62)
 
 
 
@@ -1719,7 +1741,7 @@ if tier == 3 then
       call BuildUnit(1, hero[1], 140)
       call BuildUnit(1, hero[2], 130)
       call BuildUnit(1, hero[3], 120)
-      call BuildUnit(1, ZEPPELIN, 50)
+
       call BuildUpgr(2, UPG_DRUID_CLAW, 75)
       call BuildUpgr(1, UPG_MARK_CLAW, 60)
       call BuildUpgr(1, UPG_ABOLISH, 70)
@@ -2231,7 +2253,7 @@ elseif tier == 2 then
       call BuildUpgr(Min((((TownCountDone(ARCHER) + TownCountDone(HUNTRESS))/3)-2),2), UPG_STR_MOON, 35)
       call BuildUpgr(Min(((TownCountDone(ARCHER)/2)-2),1), UPG_BOWS, 50)
       call BuildUpgr(Min((TownCountDone(BALLISTA)/2),1), UPG_BOLT, 50)
-
+      call BuildUpgr(Min(((TownCountDone(HUNTRESS)/2)-2),1), UPG_GLAIVE, 50)
 
 
 
@@ -2635,7 +2657,6 @@ else
       call BuildUnit(8, BALLISTA, 20)
       call BuildUnit(1, TREE_AGES, 50)
       call BuildUnit(1, hero[1], 150)
-      call BuildUpgr(Min((TownCountDone(BALLISTA)/2),1), UPG_BOLT, 50)
 
 
 
