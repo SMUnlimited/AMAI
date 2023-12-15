@@ -4856,6 +4856,17 @@ function GetNeutralNumber takes integer id returns integer
   endif
 endfunction
 
+// To run a sleep within the job thread, will delay all other jobs as well
+function TQSleep takes real time returns nothing
+  local integer i = 0
+  loop
+    exitwhen i >= tq_length
+    set tq_time[i] = tq_time[i] + time
+    set i = i + 1
+  endloop
+  call Sleep(time)
+endfunction
+
 //==========================================================================
 // (AMAI)	GetDensities
 //==========================================================================
@@ -4869,6 +4880,7 @@ function GetDensities takes location l, player p, real r returns nothing
   local real ya = 0
   local location ul = null
   local location loc = null
+  local integer i = 0
 
   set enemy_density = 0
   set ally_density = 0
@@ -4876,6 +4888,9 @@ function GetDensities takes location l, player p, real r returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
+    if (ModuloInteger(i, 200) == 0) then
+      call TQSleep(0.1)
+    endif
     if UnitAlive(u) then
       set ul = GetUnitLoc(u)
       set ur = 1 - (DistanceBetweenPoints(ul, l) / r)
@@ -4896,6 +4911,7 @@ function GetDensities takes location l, player p, real r returns nothing
       call RemoveLocation(ul)
     endif
     call GroupRemoveUnit(g, u)
+    set i = i + 1
   endloop
 
   if ally_density > 0 then
@@ -5483,17 +5499,6 @@ function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, gr
   set tq_group_par[tq_length] = group_par
   call TQUpHeap(tq_length)
   call ReleaseTQLock()
-endfunction
-
-// To run a sleep within the job thread, will delay all other jobs as well
-function TQSleep takes real time returns nothing
-  local integer i = 0
-  loop
-    exitwhen i >= tq_length
-    set tq_time[i] = tq_time[i] + time
-    set i = i + 1
-  endloop
-  call Sleep(time)
 endfunction
 
 //============================================================================
