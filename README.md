@@ -8,14 +8,6 @@ Official Release Links available from: https://www.hiveworkshop.com/threads/adva
 
 As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601
 
-# Warcraft Requirements
-| AMAI Version    | War3 Support                   | Comments |
-| -----------|--------------------------------|---------------|
-| 3.3        | Min 1.36, Min 1.24 - 1.31 classic |  |
-| 2.5.4      | Min 1.24+ - Max 1.28 | Classic edition from 2008 |
-
-* Avoid v1.29 of Warcraft 3 as it breaks various things and prevents AMAI from chatting. This is just an issue with this version and you can downgrade or upgrade.
-
 # How to Play
 AMAI release comes with the standard AI scripts pre-built for you.
 
@@ -25,23 +17,25 @@ You can opt to download a map pack containing a selection with AMAI preinstalled
 
 For Warcraft 1.30 onwards you need to use http://www.zezula.net/en/casc/main.html to extract a copy of the official blizzard maps to install AMAI onto.
 
-- On windows make sure the maps to install on are not in a protected UAC location. This may mean you have to copy into your Maps folder afterwards.
+On windows make sure the maps to install onto are not in a protected UAC location. 
+- This may mean you have to install to maps in a different directory then copy into your Maps folder afterwards 
+- Or run installer as an administrator
 
 ## AMAI installer
 - The installer has to be downloaded separately as its much larger compared to the AI package.
 - Unzip the contents of the installer to a folder of your choice.
-- After unzip, download the newest version of AMAI and unzip it in the folder `{your-amai-installer}/resources/AMAI`
-  - Minimum needed is the `Scripts` folder and `MPQEditor.exe` placed in the AMAI directory.
 - Double-click amai-electron-manager.exe to open the installer.
 - You can install to a single map or a whole directory.
 ![installer](installer.jpg)
 
-## Versions
+## Warcraft Requirements and Versions
 There are multiple editions of AMAI available to install based on your warcraft 3 version you run with. You must use the correct abrievation to install the correct scripts.
 Improvements and fixes to the core AI engine will improve the older scripts as well.
-- **REFORGED(RFG)** : The AI scripts intended for the latest version of warcraft 3 1.36+ (regardless if you own **Reforged** or not)
-- **TFT** : The classic Frozen Throne AI scripts intended for TFT 1.24 version of warcraft 3. Has some forwards compatability support up to 1.31 including 24 player support although tech tree changes in later versions will not be available to the AI.
-- **ROC** : The classic Reign of Chaos AI scripts intended for ROC 1.24 version of warcraft 3. Has some forwards compatability support up to 1.31 including 24 player support although tech tree changes in later versions will not be available to the AI.
+- **REFORGED(RFG)** : The AI scripts intended for the latest version of warcraft 3 **1.36+** (regardless if its **reforged** or not)
+- **TFT** : The classic Frozen Throne AI scripts intended for TFT **1.24+** version of warcraft 3. Has some forwards compatability support up to **1.31** including 24 player support although tech tree changes in later versions will not be available to the AI.
+- **ROC** : The classic Reign of Chaos AI scripts intended for ROC **1.24+** version of warcraft 3. Has some forwards compatability support up to **1.31** including 24 player support although tech tree changes in later versions will not be available to the AI.
+
+* Avoid v1.29 of Warcraft 3 as it breaks various things and prevents AMAI from chatting. This is just an issue with this version and you can downgrade or upgrade.
 
 ## Commandline install
 - From a windows commandline or powershell type `InstallRFGToMap.bat "C:\mymap.w3m" 1` and press enter to install AMAI to maps
@@ -66,18 +60,20 @@ Tested with strawbery perl 5.30 and Tk 804.034
 
 *You may need to run as an administrator if you have issues with maps not displaying any teams.
 
-## Build Requirements for Electron
+## Build Requirements for AMAI Installer (Via Electron)
 - node 14 or greater...
 - npm 6 or greater...
-- angular-cli 14 or greater...
+- angular-cli 16 or greater...
 
-## Running electron locally:
+### Running electron locally:
 - Go to the Electron folder inside the project and open the IDE of your choice.
 - first run `npm i` to install project dependencies
 - run `npm start` to open in development environment
 
-## Deploying the Electron Installer:
+### Deploying the Electron Installer:
 - run `npm run electron:build` inside Electron folder
+- You must have a built or downloaded copy of AMAI and unzip it in the folder `{your-amai-installer}/resources/AMAI`
+  - You only need to include the `Scripts` folder and `MPQEditor.exe` within the AMAI directory.
 - zip the contents of the release/win-unpacked folder and deploy this zipped file
 
 ### Notes about Electron Installer build process:
@@ -85,14 +81,16 @@ Tested with strawbery perl 5.30 and Tk 804.034
 - The build process creates the executable for the current operating system only. To create other executables, the process must be run on the corresponding operating system.
 - I will be working on the possibility of building the linux executable on windows.
 
-## Build Scripts
-- You need to use the various `make` bat files to create the AI scripts for various versions
+## Building Scripts
+- You need to use the various `make` bat files to create the AI scripts for various versions.
 - Run/double click *makeRFG.bat* to create the reforged scripts.
 - Then install like normal e.g from a command prompt type *InstallRFGToMap.bat "C:\mymap.w3m"* and press enter.
+- To use the installer you must copy the `Scripts` folder and `MPQEditor.exe` to the folder `{your-amai-installer}/resources/AMAI`
 - Run up a custom game and select the map to play.
 
 ## VS AI Build
-- This special version will make *odd* teams run with AMAI and *even* teams run with the standard blizzard AI.
+- This special version that must be built to use, will make *odd* teams run with AMAI and *even* teams run with the standard blizzard AI.
+- Useful for testing how much better AMAI is against the original AI.
 - Run/double click one of the `makeVAI` bat files e.g *makeVAITFT.bat* to create the AMAI vs AI scripts for the classic TFT version.
 - Then install like normal e.g from a command prompt type *InstallTFTToMap.bat "C:\mymap.w3m"* and press enter.
 
