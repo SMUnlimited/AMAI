@@ -108,7 +108,7 @@ function TrackExistingArmies takes nothing returns nothing
   local integer i = lastArmyNum
   local integer first_free = lastFreeNum
   loop
-    exitwhen i != lastArmyNum and ModuloInteger(i,50) == 0 // Sleep every 50 armies to avoid infinite loops
+    exitwhen i != lastArmyNum and ModuloInteger(i,30) == 0 // Sleep every 30 armies to avoid infinite loops
     if TrackArmy(i) then
       if i != first_free then
         call CopyArmy(i, first_free)
@@ -187,11 +187,9 @@ function UpdateSpecificTownThreat takes integer num returns nothing
   local real threat = 0
   local real max_threat = 0
   local location loc = null
+  local player p = Player(town_owner[num])
   set town_threat[num] = 0
   loop
-    if Player(army_owner[i]) == ai_player or Player(army_owner[i]) == Player(town_owner[num]) then
-      set i = i + 1
-    endif
     exitwhen i >= army_num
     set dist = RMax(DistanceBetweenPoints(army_future[i], town_loc[num]), full_threat_distance)
     if dist <= no_threat_distance then
@@ -201,7 +199,7 @@ function UpdateSpecificTownThreat takes integer num returns nothing
       endif
       call RemoveLocation(loc)
       set threat = distance_threat_mult * army_strength[i] / Pow(dist, distance_threat_exponent)
-      if IsPlayerAlly(Player(town_owner[num]), Player(army_owner[i])) then
+      if IsPlayerAlly(p, Player(army_owner[i])) or p == ai_player then
         set town_threat[num] = town_threat[num] - threat
       else
         set town_threat[num] = town_threat[num] + threat
@@ -215,11 +213,11 @@ function UpdateSpecificTownThreat takes integer num returns nothing
   endloop
   set loc = null
   if town_count[num] > 0 then
-    if IsPlayerAlly(Player(town_owner[num]), ai_player) then
+    if IsPlayerAlly(p, ai_player) or p == ai_player then
       if most_threatened_town == -1 or town_threat[most_threatened_town] < town_threat[num] then
         set most_threatened_town = num
       endif
-    elseif IsPlayerEnemy(Player(town_owner[num]), ai_player) then
+    elseif IsPlayerEnemy(p, ai_player) then
       if most_threatened_enemy_town == -1 or town_threat[most_threatened_enemy_town] < town_threat[num] then
         set most_threatened_enemy_town = num
       endif
@@ -227,25 +225,35 @@ function UpdateSpecificTownThreat takes integer num returns nothing
     // call DisplayToAll("Town threatened "+Int2Str(num)+" Threat: "+Int2Str(R2I(town_threat[num])))
     // call PingMinimapEx(GetLocationX(town_loc[num]), GetLocationY(town_loc[num]), 4, 255, 0, 0, true)
   endif
+  set p = null
 endfunction
 
 function UpdateTownThreat takes nothing returns nothing
-  local integer i = 0
+  local integer i = lastFreeNum
   local real accepted_threat_level = LinearInterpolation(atl_time_start, atl_time_end, atl_time_start_val, atl_time_end_val, TimerGetElapsed(tq_timer)) * LinearInterpolation(atl_enemy_start, atl_enemy_end, atl_enemy_start_mult, atl_enemy_end_mult, c_enemy_total)
-  set town_threatened = false
-  //call Trace("ARMY_TRACK: Town threat update")
-  set most_threatened_town = -1
-  set most_threatened_enemy_town = -1
+  if i == 0 then
+    set town_threatened = false
+    //call Trace("ARMY_TRACK: Town threat update")
+    set most_threatened_town = -1
+    set most_threatened_enemy_town = -1
+  endif
   loop
-    exitwhen i >= town_num
+    exitwhen i != lastFreeNum and ModuloInteger(i, 10) == 0
     call UpdateSpecificTownThreat(i)
     set i = i + 1
   endloop
-  if most_threatened_town >= 0 and most_threatened_enemy_town >= 0 and town_threat[most_threatened_town] > accepted_threat_level and town_threat[most_threatened_town] > (I2R(c_ally_total + 1) / c_enemy_total) * town_threat[most_threatened_enemy_town] then
-    set town_threatened = true
-  endif
-  if town_threatened and town_num != 0 then
-    call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
+  if i >= town_num then
+    set mode = 3
+    set lastFreeNum = 0
+    if most_threatened_town >= 0 and most_threatened_enemy_town >= 0 and town_threat[most_threatened_town] > accepted_threat_level and town_threat[most_threatened_town] > (I2R(c_ally_total + 1) / Max(c_enemy_total,1)) * town_threat[most_threatened_enemy_town] then
+      set town_threatened = true
+    endif
+    if town_threatened and most_threatened_town >= 0 then
+      call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
+    endif
+  else
+    set lastFreeNum = i
+    call TQAddJob(1, ARMY_TRACK, 0)
   endif
 endfunction
 
@@ -261,8 +269,10 @@ function ArmyTrackJob takes nothing returns nothing
   endif
   if mode == 2 then
     call UpdateTownThreat()
+  endif
+  if (mode == 3) then
     set mode = 0
-    call TQAddJob(15, TOWN_TRACK, 0)
+    call TQAddJob(14 + 1 * sleep_multiplier, TOWN_TRACK, 0)
   endif
 endfunction
 #ENDIF
