@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## Unreleased
+
+### Added
+
+### Changed
+
+### Removed
+
+### Fixed
+- Performance Optimisations.
+- Fixed issue with the pathing checks where night elf would spend a long time checking gold mines.
+- Fixed issue with the pathing check that meant some pathable locations were deemed to be impassable.
+
 ## [3.3.0] - 2023-12-14
 
 ### Added
