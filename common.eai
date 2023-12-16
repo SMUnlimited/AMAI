@@ -4223,6 +4223,7 @@ function CreatePathingUnitFull takes unit u, player p, integer id, real x, real 
     call ShowUnit(u, false)
   endif
   call UnitShareVision(u, ai_player, false)
+  call UnitRemoveAbility(u, 'Adtn') // Remove detonate to avoid any automatic deaths
   call SetUnitInvulnerable(u, true)
   call SetUnitUseFood(u, false)
   call SetUnitMoveSpeed(u, 522)
@@ -4351,7 +4352,6 @@ endfunction
 // (AMAI) Finds nearest neutral that is passable
 //==========================================================================
 function CalcNearestNeutrals takes nothing returns nothing
-/// NOT IN USE just for testing
   local group g = CreateGroup()
   local unit u = null
   local real distance = 0
@@ -4361,6 +4361,10 @@ function CalcNearestNeutrals takes nothing returns nothing
   local integer neutral_i = 0
   local integer array checks
   local boolean pathingdone = true
+  local real array LOCX
+  local real array LOCY
+  //local boolean isneutral = false
+  
   call GroupEnumUnitsOfPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), null)
   set tempg = CopyGroup(g)
   loop
@@ -4371,15 +4375,16 @@ function CalcNearestNeutrals takes nothing returns nothing
       loop
         exitwhen neutral_i >= NEUTRAL_COUNT
         if GetUnitTypeId(u) == neutral_id[neutral_i] then
+          set nearest_neutral[neutral_i] = null
           set pather[i] = CreatePathingUnit(pather[i])
           set checks[i] = 0
           call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
           if (ModuloInteger(i,10) == 0) then
-            call Sleep(0.3 * sleep_multiplier)
+            call Sleep((GetRandomReal(0.30, 0.50)) * sleep_multiplier)
           endif
           set i = i + 1
         endif
-        exitwhen GetUnitTypeId(u) == neutral_id[i]
+        exitwhen GetUnitTypeId(u) == neutral_id[neutral_i]
         set neutral_i = neutral_i + 1
       endloop
       if neutral_i >= NEUTRAL_COUNT then
@@ -4392,6 +4397,75 @@ function CalcNearestNeutrals takes nothing returns nothing
 
     call GroupRemoveUnit(tempg, u)
   endloop
+  
+  call Trace("Total Neutrals to path to:" + Int2Str(i))
+  call DestroyGroup(tempg)
+
+  
+  loop
+    set pathingdone = true
+    set tempg = CopyGroup(g)
+    set i = 0
+    loop
+      set u = FirstOfGroup(tempg)
+      exitwhen u == null
+      if pather[i] != null then
+        set distance = DistanceBetweenUnits(pather[i],u)
+        set neutral_i = 0
+        loop
+          exitwhen neutral_i >= NEUTRAL_COUNT
+          exitwhen pather[i] == null
+          if GetUnitTypeId(u) == neutral_id[neutral_i] then
+            if nearest_neutral[neutral_i] != null then
+              call RemoveUnit(pather[i])
+              set pather[i] = null
+            elseif distance <= buy_distance then
+              call CreateDebugTag("Target Destination is pathable", 10, pather[i], 10.00, 8.00)
+              call RemoveUnit(pather[i])
+              set pather[i] = null
+              if nearest_neutral[neutral_i] == null then
+                set nearest_neutral[neutral_i] = u
+              endif
+            elseif GetUnitState(pather[i], UNIT_STATE_LIFE) <= 0 then
+              call RemoveUnit(pather[i])
+              set pather[i] = null  
+            elseif GetUnitCurrentOrder(pather[i]) == OrderId("stop") or GetUnitCurrentOrder(pather[i]) != OrderId("move") then
+              set checks[i] = checks[i] + 1
+              if checks[i] > 2 then
+                call CreateDebugTag("Target Destination was not reached", 10, pather[i], 10.00, 8.00)
+                call RemoveUnit(pather[i])
+                set pather[i] = null
+              else
+                call CreateDebugTag("Invisible Path unit has stopped", 10, pather[i], 10.00, 8.00)
+                call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
+              endif
+            else
+              call CreateDebugTag("Invisible Path Unit Here and Moving", 10, pather[i], 10.00, 8.00)
+              if (LOCX[i] != 0 and LOCY[i] != 0) then
+                if GetUnitX(pather[i]) == LOCX[i] and GetUnitY(pather[i]) == LOCY[i] then
+                  // Actually stuck
+                  call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
+                endif
+              endif
+              set LOCX[i] = GetUnitX(pather[i])
+              set LOCY[i] = GetUnitY(pather[i])
+            endif
+          endif
+          exitwhen GetUnitTypeId(u) == neutral_id[neutral_i]
+          set neutral_i = neutral_i + 1
+        endloop
+        set pathingdone = false
+      endif
+      call GroupRemoveUnit(tempg, u)
+      set i = i + 1
+    endloop
+    call DestroyGroup(tempg)
+    exitwhen pathingdone
+    call Sleep(1 * sleep_multiplier)
+  endloop
+  set tempg = null
+  call DestroyGroup(g)
+  set g = null
 
 endfunction
 
@@ -7159,7 +7233,7 @@ function CheckNeutral takes integer nn returns nothing
     set buy_time_small[nn] = -1
 
     //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "checkneutral")
-    set nearest_neutral[nn] = GetNearestNeutral(nearest_neutral[nn],neutral_id[nn])
+    //set nearest_neutral[nn] = GetNearestNeutral(nearest_neutral[nn],neutral_id[nn])
     //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "finished check")
     set neutral_guards[nn] = GetCreepGuardGroup(neutral_guards[nn],nn)
     set neutral_guarded[nn] = GetNeutralGuard(nn)
@@ -7320,6 +7394,7 @@ endfunction
 function CheckAllNeutrals takes nothing returns nothing
   local integer i = 0
 
+  call CalcNearestNeutrals()
   loop
     exitwhen i >= NEUTRAL_COUNT
     call CheckNeutral(i)
