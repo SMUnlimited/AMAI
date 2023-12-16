@@ -20,6 +20,82 @@
 
 #ELSE
 
+
+//==========================================================================
+// (AMAI)	GetDensities
+//==========================================================================
+function GetDensities takes location l, player p, real r returns nothing
+  local group g = CreateGroup()
+  local unit u = null
+  local real ur = 0
+  local real xe = 0
+  local real ye = 0
+  local real xa = 0
+  local real ya = 0
+  local location ul = null
+  local location loc = null
+  local player up = null
+  local integer i = 0
+  set enemy_density = 0
+  set ally_density = 0
+  call GroupEnumUnitsInRangeOfLoc(g, l, r, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if (ModuloInteger(i, 200) == 0) then
+      call TQSleep(0.1)
+    endif
+    if UnitAlive(u) and not IsUnitHidden(u) then
+      set ul = GetUnitLoc(u)
+      set ur = 1 - (DistanceBetweenPoints(ul, l) / r)
+      set loc = GetMultipleLoc(ul, ur)
+      //if ur == 1 then
+      set up = GetOwningPlayer(u)
+      if IsPlayerEnemy(p, up) then
+        set enemy_density = enemy_density + ur
+        set xe = xe + GetLocationX(loc)  // Prevent loc exceeding map range
+        set ye = ye + GetLocationY(loc)
+        //set enemy_density_loc = GetSumLoc_dd(enemy_density_loc, GetMultipleLoc(ul, ur))
+      elseif IsPlayerAlly(p, up) then
+        set ally_density = ally_density + ur
+        set xa = xa + GetLocationX(loc)
+        set ya = ya + GetLocationY(loc)
+        //set ally_density_loc = GetSumLoc_dd(ally_density_loc, GetMultipleLoc(ul, ur))
+      endif
+      call RemoveLocation(loc)
+      call RemoveLocation(ul)
+    endif
+    call GroupRemoveUnit(g, u)
+    set i = i + 1
+  endloop
+
+  if ally_density > 0 then
+    set xa = xa / ally_density
+    set ya = ya / ally_density
+    //set ally_density_loc = GetDivisionLoc_d(ally_density_loc, ally_density)
+  else
+    set xa = 0
+    set ya = 0
+  endif
+  call RemoveLocation(ally_density_loc)
+  set ally_density_loc = Location(xa,ya)
+  if enemy_density > 0 then
+    set xe = xe / enemy_density
+    set ye = ye / enemy_density
+    //set enemy_density_loc = GetDivisionLoc_d(enemy_density_loc, enemy_density)
+  else
+    set xe = 0
+    set ye = 0
+  endif
+  call RemoveLocation(enemy_density_loc)
+  set enemy_density_loc = Location(xe,ye)
+  call DestroyGroup(g)
+  set g = null
+  set ul = null
+  set loc = null
+  set up = null
+endfunction
+
 function TeleportHome takes integer hn returns nothing
 // Team Game improvements Added by Strategy Master 12/03/05
   local integer i = 0
@@ -62,12 +138,10 @@ function TeleportHome takes integer hn returns nothing
     call CaptainGoHome()
     set teleport_loc = GetTeleportLandPoint(home_location)
   endif
-  if teleport_loc != null then
-    call ClearCaptainTargets()
-    call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(teleport_loc), GetLocationY(teleport_loc))
-    call RemoveLocation(teleport_loc)
-    set teleport_loc = null
-  endif
+  call ClearCaptainTargets()
+  call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(teleport_loc), GetLocationY(teleport_loc))
+  call RemoveLocation(teleport_loc)
+  set teleport_loc = null
   set start_loc = null
   //if hero_loc != null then
   //call RemoveLocation( hero_loc )
@@ -173,7 +247,7 @@ function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothin
 
   if a != ACTION_DO_NOTHING and a != ACTION_TP then
     if GetUnitAbilityLevel(hero_unit[hn], 'AOwk') > 0 or GetUnitAbilityLevel(hero_unit[hn], 'ANwk') > 0 then
-      if not IsUnitInvisible(hero_unit[hn], Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+      if not IsUnitInvisible(hero_unit[hn], Player(PLAYERAGGRESSIVE)) then
         call IssueImmediateOrder(hero_unit[hn], "windwalk")
       endif
     endif
