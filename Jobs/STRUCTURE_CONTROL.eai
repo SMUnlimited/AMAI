@@ -32,7 +32,6 @@ endfunction
 
 function CheckShredderLoc takes nothing returns nothing
   local real d = 0
-  local integer id = 0
   local location l = null
   local unit u = null
   local group g = CreateGroup()
@@ -41,8 +40,8 @@ function CheckShredderLoc takes nothing returns nothing
   set g = SelectByAlive(g, true)
   set u = FirstOfGroup(g)
   if u != null then
-    set id = GetUnitCurrentOrder(u)
-    if id == OrderId("harvest") or id == OrderId("resumeharvesting") then
+    set d = GetUnitCurrentOrder(u)
+    if d == OrderId("harvest") or d == OrderId("resumeharvesting") then
       set l = GetUnitLoc(u)
       set d = DistanceBetweenPoints(home_location, l)
       if d >= 1000 and d <= 2000 then  //Ensure to be near home_location
@@ -65,30 +64,29 @@ endfunction
 
 function CheckRallyPoint takes location l, real range returns nothing
   local group g = null
-  if rally_point == null then
-    if front_loc[0] != null and GetLocationX(front_loc[0]) !=0 and GetLocationY(front_loc[0]) !=0 then
-      set rally_point = AIGetProjectedLoc(front_loc[0], home_location, -1200, 0)
-    endif
+  if l != null then
+    set g = CreateGroup()
+    call GroupEnumUnitsInRangeOfLoc(g, home_location, range, null)  // ohter town no need set
+    set g = SelectByPlayer(g, ai_player, true)
+    set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+    set g = SelectByAlive(g, true)
+    set g = SelectByHidden(g, false)
+    call GroupPointOrderLoc(g, "setrally",l)
+    call DestroyGroup(g)
+    set g = null
   endif
-  if l == null then
-    return
-  endif
-  set g = CreateGroup()
-  call GroupEnumUnitsInRangeOfLoc(g, home_location, range, null)  // ohter town no need set
-  set g = SelectByPlayer(g, ai_player, true)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, false)  //avoid peon go to rallypoint
-  set g = SelectByAlive(g, true)
-  set g = SelectByHidden(g, false)
-  call GroupPointOrderLoc(g, "setrally",l)
-  call DestroyGroup(g)
-  set g = null
 endfunction
 
 function StructureControlJob takes nothing returns nothing
   if not town_threatened then
     call DisplayToAllJobDebug("STRUCTURE_CONTROL JOB START")
-    call CheckRallyPoint(rally_point,1600)
+    if rally_point == null then
+      if front_loc[0] != null and GetLocationX(front_loc[0]) !=0 and GetLocationY(front_loc[0]) !=0 then
+        set rally_point = AIGetProjectedLoc(front_loc[0], home_location, -1200, 0)
+      endif
+    else
+      call CheckRallyPoint(rally_point,1600)
+    endif
     call CheckRallyPoint(home_location,1100)  //avoid being blocked by front_loc build
     if racial_lumber == 0 or race_no_wood_harvest then  //help fix ELF build blocking , ture is build may be dismantled after being attacked
       set homebuild = CheckBuildLoc(home_location,800) < 5

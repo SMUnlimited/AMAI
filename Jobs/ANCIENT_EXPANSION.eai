@@ -10,7 +10,7 @@
 
 #ELSE
 
-function ResettingAncientExpansion takes nothing returns nothing
+function AncientExpansionReset takes nothing returns nothing
 	set ancient_exp_state = 0
 	call RemoveLocation(ancient_exp_loc)
 	set ancient_exp_loc = null
@@ -54,7 +54,7 @@ if current_expansion == null then
 	// Found out so no point trying ancient expansion again
 	call SetCaptainHome(BOTH_CAPTAINS,GetLocationX(front_loc[0]),GetLocationY(front_loc[0]))
 	call GroupRecycleGuardPositionInstant(CopyGroup(ancient_exp_group,g))
-	call ResettingAncientExpansion()
+	call AncientExpansionReset()
 	set gold_buffer = 0
 	set wood_buffer = 0
 	set g = null
@@ -92,7 +92,7 @@ if ancient_exp_state == 0 then
 			return
 		endif
 		call Trace("Expansion State 0 - no resources expansion and no tree , end job")
-		call ResettingAncientExpansion()
+		call AncientExpansionReset()
 		set gold_buffer = 0
 		set wood_buffer = 0
 		return
@@ -138,24 +138,19 @@ elseif ancient_exp_state == 1 then
 	endif
 	if ancient_exp_unit == null then
 		call Trace("Expansion State 1 - cannot expansion , no tree")
-		call ResettingAncientExpansion()
+		call AncientExpansionReset()
 		set u = null
 		return
-	elseif GetLocationNonCreepStrength(GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit), 1500) <= 0 then
-		call CreateDebugTag("Expansion State 1 - move tree", 10, ancient_exp_unit, 3.00, 1.50)
-		set ancient_exp_state = 2
-		call RemoveGuardPosition(ancient_exp_unit)
-		call IssueImmediateOrderById(ancient_exp_unit, OrderIdCancel)
-		call IssueImmediateOrder(ancient_exp_unit, "unroot")
-		call GroupAddUnit(ancient_exp_group, ancient_exp_unit)
-	else
-		call Trace("Expansion State 1 - cannot move tree , wait next run job")
 	endif
+	set ancient_exp_state = 2
+	call Trace("Expansion State 1 to 2")
 	call TQAddJob(1, ANCIENT_EXPANSION, 0)
 elseif ancient_exp_state == 2 then
 	call CreateDebugTag("Expansion State 2: Uproot Tree", 10, ancient_exp_unit, 3.00, 1.50)
+	call RemoveGuardPosition(ancient_exp_unit)
 	call IssueImmediateOrderById(ancient_exp_unit, OrderIdCancel)
 	call IssueImmediateOrder(ancient_exp_unit, "unroot")
+	call GroupAddUnit(ancient_exp_group, ancient_exp_unit)
 	//if hero_built[1] then
 		//call RemoveGuardPosition(hero_unit[1])
 		//call IssuePointOrder(hero_unit[1], "move", GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))
@@ -178,7 +173,7 @@ elseif ancient_exp_state == 2 then
 		loop
 			set u = FirstOfGroup(g)
 			exitwhen u == null
-			if IsUnitType(u, UNIT_TYPE_ANCIENT) then  // take other tree , guardians ancient_exp_unit or get way to ancient_exp_unit
+			if IsUnitType(u, UNIT_TYPE_ANCIENT) then  // take other tree , guardians ancient_exp_unit or blocking ancient_exp_unit
 				call RemoveGuardPosition(u)
 				call GroupAddUnit(ancient_exp_group, u)
 				call IssueImmediateOrder(u, "unroot")
@@ -196,40 +191,31 @@ elseif ancient_exp_state == 2 then
 	call TQAddJob(3, ANCIENT_EXPANSION, 0)
 elseif ancient_exp_state == 3 then
 	call CreateDebugTag("Expansion State 3: Awaiting Hero", 10, ancient_exp_unit, 3.00, 1.50)
-	set isstrong = GetOwnStrength() > GetExpansionStrength()
+	//set isstrong = GetOwnStrength() > GetExpansionStrength()
 	call SetCaptainHome(BOTH_CAPTAINS,R2I(GetUnitX(ancient_exp_unit)),R2I(GetUnitY(ancient_exp_unit)))
-	if DistanceBetweenUnits(ancient_exp_unit, hero_unit[1]) <= 750 or u == null or isstrong or ancient_exp_maintree then
-		if ancient_exp_count > 0 then
-			if ancient_exp_maintree then
-				set g = CreateGroup()
-				call GroupEnumUnitsInRange(g, GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit), 2000, null)
-				set g = SelectUnittype(g, UNIT_TYPE_ANCIENT, true)
-				set g = SelectByAlive(g, true)
-				call GroupPointOrder(g, "attack", GetUnitX(current_expansion), GetUnitY(current_expansion))
-				call DestroyGroup(g)
-				set g = null
-			endif
-			call GroupClear(ancient_exp_group)
-			call GroupEnumUnitsInRange(ancient_exp_group, GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit), 1000, null)
-			set ancient_exp_group = SelectByPlayer(ancient_exp_group, ai_player, true)
-			set ancient_exp_group = SelectByAlive(ancient_exp_group, true)
-			set ancient_exp_group = SelectUnittype(ancient_exp_group, UNIT_TYPE_STRUCTURE, false)
-			set ancient_exp_group = SelectUnittype(ancient_exp_group, UNIT_TYPE_PEON, false)
-			set ancient_exp_group = SelectByUnitStandard(ancient_exp_group, true)
-			if not isstrong then
-				call GroupAddUnit(ancient_exp_group, ancient_exp_unit)
-				call IssueTargetOrder(ancient_exp_unit, "move", current_expansion)
-			endif
-			////call GroupAddTypeAndRemoveGuard(ancient_exp_group, race_ancient_expansion_help_id, ai_player)
-			//call GroupPointOrder(ancient_exp_group, "smart", GetUnitX(u), GetUnitY(u))
-			set ancient_exp_state = 4
-		else
-			set ancient_exp_count = ancient_exp_count + 1
+	if IsUnitInRange(hero_unit[1],ancient_exp_unit,750) or IsUnitInRange(hero_unit[2],ancient_exp_unit,750) or IsUnitInRange(hero_unit[3],ancient_exp_unit,750) then
+		if ancient_exp_maintree then
+			set g = CreateGroup()
+			call GroupEnumUnitsInRange(g, GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit), 2000, null)
+			set g = SelectUnittype(g, UNIT_TYPE_ANCIENT, true)
+			set g = SelectByAlive(g, true)
+			call GroupPointOrder(g, "move", GetUnitX(current_expansion), GetUnitY(current_expansion))
+			call DestroyGroup(g)
+			set g = null
 		endif
-	else
-		if ancient_exp_count > 0 then
-			set ancient_exp_count = ancient_exp_count - 1
-		endif
+		call GroupClear(ancient_exp_group)
+		call GroupEnumUnitsInRange(ancient_exp_group, GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit), 1000, null)
+		set ancient_exp_group = SelectByPlayer(ancient_exp_group, ai_player, true)
+		set ancient_exp_group = SelectByAlive(ancient_exp_group, true)
+		set ancient_exp_group = SelectUnittype(ancient_exp_group, UNIT_TYPE_STRUCTURE, false)
+		set ancient_exp_group = SelectUnittype(ancient_exp_group, UNIT_TYPE_PEON, false)
+		set ancient_exp_group = SelectByUnitStandard(ancient_exp_group, true)
+		call GroupAddUnit(ancient_exp_group, ancient_exp_unit)
+		call IssueTargetOrder(ancient_exp_unit, "move", current_expansion)
+		////call GroupAddTypeAndRemoveGuard(ancient_exp_group, race_ancient_expansion_help_id, ai_player)
+		//call GroupPointOrder(ancient_exp_group, "smart", GetUnitX(u), GetUnitY(u))
+		set ancient_exp_state = 4
+	//else
 		//call GroupEnumUnitsOfPlayer(ancient_exp_group, ai_player, null)
 		//set ancient_exp_group = SelectByAlive(ancient_exp_group, true)
 		//set ancient_exp_group = SelectUnittype(ancient_exp_group, UNIT_TYPE_STRUCTURE, false)
@@ -244,12 +230,21 @@ elseif ancient_exp_state == 4 then
 	call SetCaptainHome(BOTH_CAPTAINS,R2I(GetUnitX(ancient_exp_unit)),R2I(GetUnitY(ancient_exp_unit)))
 	if u == null then
 		call CreateDebugTag("Expansion State 4: expansion done", 10, ancient_exp_unit, 3.00, 1.50)
+		if ancient_exp_maintree then  //  Prevent blocking ancient_exp_unit
+			set g = CreateGroup()
+			call GroupEnumUnitsInRange(g, GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit), 2000, null)
+			set g = SelectUnittype(g, UNIT_TYPE_ANCIENT, true)
+			set g = SelectByAlive(g, true)
+			call GroupPointOrder(g, "move", GetUnitX(home_location), GetUnitY(home_location))
+			call GroupRecycleGuardPositionDelay(g, 10)
+			set g = null
+		endif
 		call GroupRemoveUnit(ancient_exp_group, ancient_exp_unit)
 		call IssueTargetOrder(ancient_exp_unit, "entangle", current_expansion)
 		call TQAddUnitJob(R2I(GetTimeToReachUnit(ancient_exp_unit, current_expansion)*2 + 5), RESET_GUARD_POSITION, 0, ancient_exp_unit)
 		call GroupRecycleGuardPositionInstant(CopyGroup(ancient_exp_group,g))
 		//set no_attack_allowed = false
-		call ResettingAncientExpansion()
+		call AncientExpansionReset()
 		call SetCaptainHome(BOTH_CAPTAINS,GetLocationX(front_loc[0]),GetLocationY(front_loc[0]))
 		set g = null
 		return
@@ -262,6 +257,15 @@ elseif ancient_exp_state == 4 then
 				call GroupTargetOrder(ancient_exp_group, "attack", u)
 			else
 				call GroupPointOrder(ancient_exp_group, "attack", GetUnitX(u), GetUnitY(u))
+			endif
+			if ancient_exp_maintree then
+				set g = CreateGroup()
+				call GroupEnumUnitsInRange(g, GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit), 2000, null)
+				set g = SelectUnittype(g, UNIT_TYPE_ANCIENT, true)
+				set g = SelectByAlive(g, true)
+				call GroupPointOrder(g, "attack", GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))
+				call DestroyGroup(g)
+				set g = null
 			endif
 		endif
 		call TQAddJob(2, ANCIENT_EXPANSION, 0)
@@ -276,7 +280,7 @@ elseif ancient_exp_state == 5 then
 	else
 		call Trace("Expansion State 5: end")
 		call GroupRecycleGuardPositionInstant(CopyGroup(ancient_exp_group,g))
-		call ResettingAncientExpansion()
+		call AncientExpansionReset()
 		set gold_buffer = 0
 		set wood_buffer = 0
 		set g = null

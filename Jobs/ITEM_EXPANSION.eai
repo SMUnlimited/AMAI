@@ -7,34 +7,43 @@
   location item_exp_guard_loc = Location(0,0)
 #ELSE
 
-function UseExpansionItem takes unit u, item t returns location
+function ItemExpansionReset takes nothing returns nothing
+  call RecycleGuardPosition(itemhero)
+  set item_expanding = false
+  set expitem_buy = false
+  set item_exp_state = 0
+  set item_exp_but_count = 0
+  set not_taken_expansion = null
+  set itemhero = null
+endfunction
+
+function UseExpansionItem takes item t returns nothing
   local unit tempu = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
   local real x = GetUnitX(tempu)
   local real y = GetUnitY(tempu)
+  local l = GetUnitLoc(current_expansion)
+  local loc = Location(x, y)
   call RemoveUnit(tempu)
   set tempu = null
-  call RemoveGuardPosition(u)
-  call UnitUseItemPoint(u, t, x, y)
-  return Location(x, y)
+  call RemoveGuardPosition(itemhero)
+  call UnitUseItemPoint(itemhero, t, x, y)
+  call RemoveLocation(item_exp_guard_loc)
+  set item_exp_guard_loc = AIGetProjectedLoc(l, loc, 850, 0)  //Guarding position
+  set item_attack_ruard = true
+  call RemoveLocation(loc)
+  set loc = null
+  call RemoveLocation(l)
+  set l = null
 endfunction
 
 function ItemExpansionJob takes nothing returns nothing
   local unit u = null
-  local unit temp = null
-  local location l = null
-  local location loc = null
   local item exp_item = null
   local integer time_next_try = 5
   call DisplayToAllJobDebug("ITEM_EXPANSION JOB STARTED")
   if (itemhero != null and GetUnitState(itemhero, UNIT_STATE_LIFE) <= 0) or town_threatened or current_expansion == null then
-    call RecycleGuardPosition(itemhero)
     call Trace("Item expansion : Cannot Expansion or no expansion")  // no call ChooseExpansion() , this is passive expansion , avoidance buy repeat item
-    set item_expanding = false
-    set expitem_buy = false
-    set item_exp_state = 0
-    set item_exp_but_count = 0
-    set not_taken_expansion = null
-    set itemhero = null
+    call ItemExpansionReset()
     return
   endif
   set exp_time_count = ai_time
@@ -72,48 +81,39 @@ function ItemExpansionJob takes nothing returns nothing
     set not_taken_expansion = current_expansion
     if u == null and not CheckExpansionTaken(current_expansion) then
       call CreateDebugTag("Item expansion state 0 - use item", 10, itemhero, 3.00, 1.50)
-      set loc = UseExpansionItem(itemhero, exp_item)
-      set l = GetUnitLoc(current_expansion)
-      call RemoveLocation(item_exp_guard_loc)
-      set item_exp_guard_loc = AIGetProjectedLoc(l, loc, 850, 0)  //Guarding position
-      set item_attack_ruard = true
-      call RemoveLocation(loc)
-      set loc = null
-      call RemoveLocation(l)
-      set l = null
-      set item_exp_state = 2
+      call UseExpansionItem(exp_item)
+      call ItemExpansionReset()
+      set exp_item = null
+      return
     else
+      set item_exp_but_count = 0
       set item_exp_state = 1
     endif
   elseif item_exp_state == 1 then
-    call Trace("Item expansion state 1 - Rush Expansion")
     if u == null then
+      call Trace("Item expansion state 2 - Rush Expansion done")
       set item_exp_state = 2
       set time_next_try = 1
+    elseif item_exp_but_count > 3 then
+      call Trace("Item expansion state 1 - Wait rush end , not rush")
+      call ItemExpansionReset()
+      set u = null
+      return
+    else
+      call Trace("Item expansion state 1 - Wait rush Expansion")
+      set item_exp_but_count = item_exp_but_count + 1
+      set time_next_try = 40
     endif
   elseif item_exp_state == 2 then
     set exp_item = GetItemOfType(exp_item,race_item_expansion_item_id)
     set itemhero = GetItemHero(exp_item)  //prevent hero not item
     if itemhero != null and exp_item != null and not CheckExpansionTaken(current_expansion) then
       call CreateDebugTag("Item expansion state 2 - use item", 10, itemhero, 3.00, 1.50)
-      set loc = UseExpansionItem(itemhero, exp_item)
-      set l = GetUnitLoc(current_expansion)
-      call RemoveLocation(item_exp_guard_loc)
-      set item_exp_guard_loc = AIGetProjectedLoc(l, loc, 850, 0)  //Guarding position
-      set item_attack_ruard = true
-      call RemoveLocation(loc)
-      set loc = null
-      call RemoveLocation(l)
-      set l = null
+      call UseExpansionItem(exp_item)
       set time_next_try = 1
     else
       call Trace("Item expansion state 2 - End")
-      call RecycleGuardPosition(itemhero)
-      set item_expanding = false
-      set expitem_buy = false
-      set item_exp_state = 0
-      set item_exp_but_count = 0
-      set not_taken_expansion = null
+      call ItemExpansionReset()
       if exp_item != null then
         call Trace("Item expansion state 2 - End , not use item")
         call SetItemDroppable(exp_item, true)  //can droppable
