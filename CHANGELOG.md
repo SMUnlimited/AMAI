@@ -8,7 +8,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Added
 
 ### Changed
-- Tower rushes are now available to all races. (jzy-chitong56)
 - Balance tweaks to harvesting logic. (jzy-chitong56)
 - (Classic) Balance tweaks to hero ability picks. (jzy-chitong56)
 
