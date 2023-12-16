@@ -4361,9 +4361,8 @@ function CalcNearestNeutrals takes nothing returns nothing
   local integer neutral_i = 0
   local integer array checks
   local boolean pathingdone = true
-  local real array LOCX
-  local real array LOCY
-  //local boolean isneutral = false
+  local real array lx
+  local real array ly
   
   call GroupEnumUnitsOfPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), null)
   set tempg = CopyGroup(g)
@@ -4380,7 +4379,7 @@ function CalcNearestNeutrals takes nothing returns nothing
           set checks[i] = 0
           call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
           if (ModuloInteger(i,10) == 0) then
-            call Sleep((GetRandomReal(0.30, 0.50)) * sleep_multiplier)
+            call Sleep(GetRandomReal(0.2, 0.4) * sleep_multiplier)
           endif
           set i = i + 1
         endif
@@ -4441,14 +4440,14 @@ function CalcNearestNeutrals takes nothing returns nothing
               endif
             else
               call CreateDebugTag("Invisible Path Unit Here and Moving", 10, pather[i], 10.00, 8.00)
-              if (LOCX[i] != 0 and LOCY[i] != 0) then
-                if GetUnitX(pather[i]) == LOCX[i] and GetUnitY(pather[i]) == LOCY[i] then
+              if (lx[i] != 0 and ly[i] != 0) then
+                if GetUnitX(pather[i]) == lx[i] and GetUnitY(pather[i]) == ly[i] then
                   // Actually stuck
                   call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
                 endif
               endif
-              set LOCX[i] = GetUnitX(pather[i])
-              set LOCY[i] = GetUnitY(pather[i])
+              set lx[i] = GetUnitX(pather[i])
+              set ly[i] = GetUnitY(pather[i])
             endif
           endif
           exitwhen GetUnitTypeId(u) == neutral_id[neutral_i]
@@ -6053,6 +6052,8 @@ function MakeExpansionList takes nothing returns nothing
   local integer array checks // Number of times unit has stayed at same position  
   local boolean pathingdone = true
   local real totaltime = 0
+  local real array lx
+  local real array ly
 
   call GroupEnumUnitsOfType(g, "goldmine", null)
 //  call GroupRemoveUnit(g, current_expansion) // because quick expansion adds mine already
@@ -6067,7 +6068,7 @@ function MakeExpansionList takes nothing returns nothing
     call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))	
     call GroupRemoveUnit(tempg, u)
     if (ModuloInteger(i,10) == 0) then
-      call Sleep(0.3 * sleep_multiplier) // help spread start lag
+      call Sleep(GetRandomReal(0.2, 0.4) * sleep_multiplier) // help spread start lag
     endif
     set i = i + 1
   endloop
@@ -6084,7 +6085,7 @@ function MakeExpansionList takes nothing returns nothing
       if pather[i] != null then
         if DistanceBetweenUnits(pather[i],u) <= buy_distance then
           //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Tavern is pathable")
-          call CreateDebugTag("Target Destination is pathable", 10, pather[i], 3.00, 3.00)
+          call CreateDebugTag("Target Destination is pathable", 10, pather[i], 5.00, 3.00)
           call RemoveUnit(pather[i])
           set pather[i] = null
           set patherdone[i] = true
@@ -6097,9 +6098,9 @@ function MakeExpansionList takes nothing returns nothing
           set patherdone[i] = true
         elseif GetUnitCurrentOrder(pather[i]) == OrderId("stop") or GetUnitCurrentOrder(pather[i]) != OrderId("move") then
           set checks[i] = checks[i] + 1
-          call CreateDebugTag("Invisible Path unit has stopped", 10, pather[i], 3.00, 3.00)
+          call CreateDebugTag("Invisible Path unit has stopped", 10, pather[i], 5.00, 3.00)
           if checks[i] > 3 then
-            call CreateDebugTag("Target Destination was not reached", 10, pather[i], 3.00, 3.00)
+            call CreateDebugTag("Target Destination was not reached", 10, pather[i], 5.00, 3.00)
             call RemoveUnit(pather[i])
             set pather[i] = null
             set patherdone[i] = true
@@ -6108,9 +6109,15 @@ function MakeExpansionList takes nothing returns nothing
             call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u)) // Try again?
           endif
         else
-          //set checks[i] = 0	// means unit is moving and not standing still
-          call CreateDebugTag("Invisible Path Unit Here", 10, pather[i], 3.00, 3.00)
-          //call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
+          call CreateDebugTag("Invisible Path Unit Here", 10, pather[i], 5.00, 3.00)
+          if (lx[i] != 0 and ly[i] != 0) then
+            if GetUnitX(pather[i]) == lx[i] and GetUnitY(pather[i]) == ly[i] then
+              // Actually stuck
+              call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
+            endif
+          endif
+          set lx[i] = GetUnitX(pather[i])
+          set ly[i] = GetUnitY(pather[i])
         endif
         set pathingdone = false
       endif
@@ -7152,10 +7159,10 @@ function TQHandleOnce takes nothing returns boolean
   if TimerGetElapsed(tq_timer) >= tq_time[1] then
     set jobtimings = TimerGetElapsed(tq_timer)
     call TQRemoveRoot()
-    call TQDoJob(jid, par, unit_par, group_par)
     if debugging then
       call UpdateDebugTextTag(debugjobtag, Int2Str(jid), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
     endif
+    call TQDoJob(jid, par, unit_par, group_par)
     if jobtimings - TimerGetElapsed(tq_timer) >= 1 then
       call Trace("WARN: Job " + Int2Str(jid) + " took a long time " + Real2Str(jobtimings - TimerGetElapsed(tq_timer)) + "s")
     endif

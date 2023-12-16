@@ -15,8 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 - More Performance optimisations especially for large maps.
-- Fixed issue with the pathing checks where night elf would spend a long time checking gold mines.
+- Fixed issue with the pathing checks where night elf would spend an extremly long time checking gold mines so was delayed in using neutral buildings.
 - Fixed issue with the pathing check that meant some pathable locations were deemed to be impassable.
+- Optimised pathing check for neutral buildings so its faster, what would take ~10 mins on larger maps takes ~1 minute now. 
 - Fixed missing dependencies for various units and upgrades. (jzy-chitong56)
    - Mark of the talon only needs tier 2 not tier 3.
    - Gyphon Ryder needs Castle.
