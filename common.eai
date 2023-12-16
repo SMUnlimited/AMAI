@@ -726,6 +726,7 @@ globals
     boolean balancing = false
     texttag debugstrattag = CreateTextTag()
     texttag debugcountertag = CreateTextTag()
+    texttag debugjobtag = CreateTextTag()
     
 //==============================================================
 // (AMAI)  Healing System Globals
@@ -1588,8 +1589,8 @@ function UpdateDebugPlayer takes nothing returns nothing
 		if GetPlayerSlotState(Player(debug_player)) != PLAYER_SLOT_STATE_PLAYING then
 			set debug_player = debug_player + 1
 		endif
-		if debug_player > 24 then
-			set debug_player = 24 // Do not go above 24
+		if debug_player > GetBJMaxPlayers() then
+			set debug_player = GetBJMaxPlayers() // Do not go above 24
 		endif
 endfunction
 
@@ -4340,7 +4341,7 @@ function GetNearestNeutralQuick takes unit ru, integer id returns unit
   endloop
   call DestroyGroup(g)
   set g = null
-  if GetUnitTypeId(u) == neutral_id[NEUTRAL_HEAL_WARD] and ru != null and IsUnitType(ru, UNIT_TYPE_SUMMONED) then
+  if ru != null and GetUnitTypeId(ru) == neutral_id[NEUTRAL_HEAL_WARD] and IsUnitType(ru, UNIT_TYPE_SUMMONED) then
     set ru = null
   endif
   return ru
@@ -4349,6 +4350,52 @@ endfunction
 //==========================================================================
 // (AMAI) Finds nearest neutral that is passable
 //==========================================================================
+function CalcNearestNeutrals takes nothing returns nothing
+/// NOT IN USE just for testing
+  local group g = CreateGroup()
+  local unit u = null
+  local real distance = 0
+  local group tempg = null
+  local unit array pather
+  local integer i = 0
+  local integer neutral_i = 0
+  local integer array checks
+  local boolean pathingdone = true
+  call GroupEnumUnitsOfPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), null)
+  set tempg = CopyGroup(g)
+  loop
+    set u = FirstOfGroup(tempg)
+    exitwhen u == null
+    if UnitAlive(u) and not IsUnitType(u, UNIT_TYPE_SUMMONED) then  //prevent neutral_id[NEUTRAL_HEAL_WARD]
+      set neutral_i = 0
+      loop
+        exitwhen neutral_i >= NEUTRAL_COUNT
+        if GetUnitTypeId(u) == neutral_id[neutral_i] then
+          set pather[i] = CreatePathingUnit(pather[i])
+          set checks[i] = 0
+          call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
+          if (ModuloInteger(i,10) == 0) then
+            call Sleep(0.3 * sleep_multiplier)
+          endif
+          set i = i + 1
+        endif
+        exitwhen GetUnitTypeId(u) == neutral_id[i]
+        set neutral_i = neutral_i + 1
+      endloop
+      if neutral_i >= NEUTRAL_COUNT then
+      // Not a valid unit to track
+        call GroupRemoveUnit(g, u)
+      endif
+    else
+      call GroupRemoveUnit(g, u)
+    endif
+
+    call GroupRemoveUnit(tempg, u)
+  endloop
+
+endfunction
+
+
 function GetNearestNeutral takes unit ru, integer id returns unit
   local group g = CreateGroup()
   local unit u = null
@@ -6662,7 +6709,19 @@ function ComputeFrontPoints takes nothing returns nothing
     exitwhen pathingdone
     call Sleep(0.1)
   endloop
-
+  if front_loc[0] == null or front_loc_num == 0 then
+    call Trace("fix front_loc[0]" )
+    if Player(0) != ai_player then
+      set l = GetPlayerStartLocationLoc(Player(0))
+    else
+      set l = GetPlayerStartLocationLoc(Player(1))
+    endif
+    set front_loc[0] = GetLocationInDistanceFromBaseToLoc(l, front_base_distance)
+    if front_loc_num == 0 then
+      set front_loc_num = front_loc_num + 1
+    endif
+    call RemoveLocation(l)
+  endif
   set front_locs_computed = true
   set l = null
   set loc = null
@@ -6674,14 +6733,13 @@ endfunction
 //============================================================================
 function PingFrontPoints takes nothing returns nothing
   local integer i = 0
-  local location l = null
   loop
     exitwhen i >= front_loc_num
-    set l = front_loc[i]
-    call PingMinimap(GetLocationX(l), GetLocationY(l), 20)
+    if front_loc[i] != null then
+      call PingMinimap(GetLocationX(front_loc[i]), GetLocationY(front_loc[i]), 20)
+    endif
     set i = i + 1
   endloop
-  set l = null
 endfunction
 
 //==========================================================================
@@ -7094,6 +7152,9 @@ function TQHandleOnce takes nothing returns boolean
     set jobtimings = TimerGetElapsed(tq_timer)
     call TQRemoveRoot()
     call TQDoJob(jid, par, unit_par, group_par)
+    if debugging then
+      call UpdateDebugTextTag(debugjobtag, Int2Str(jid), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
+    endif
     if jobtimings - TimerGetElapsed(tq_timer) >= 1 then
       call Trace("WARN: Job " + Int2Str(jid) + " took a long time " + Real2Str(jobtimings - TimerGetElapsed(tq_timer)) + "s")
     endif
@@ -7124,11 +7185,8 @@ endfunction
 //============================================================================
 function TQLoop takes nothing returns nothing
   local real i = 0
-  local texttag t = null
   if debugging then
-    set t = CreateTextTag()
-    call UpdateDebugTextTag(t, null, 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
-    call SetTextTagPermanent(t, true)
+    call SetTextTagPermanent(debugjobtag, true)
   endif
   set tq_time[0] = 0
   call TimerStart(tq_timer, 1000000, false, null)
@@ -7139,9 +7197,6 @@ function TQLoop takes nothing returns nothing
     exitwhen player_defeated
     if tq_length > 0 then
       if not TQHandleOnce() then
-        if debugging then
-          call UpdateDebugTextTag(t, Int2Str(tq_jid[1]), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
-        endif
         set i = tq_time[1] - TimerGetElapsed(tq_timer)
         if i > 0 then
           call Sleep(RMax(0.05, RMin(i ,1)))
@@ -7157,9 +7212,9 @@ function TQLoop takes nothing returns nothing
     endif
   endloop
   if debugging then
-    call SetTextTagText(t, "Shutting down Job Thread", 0.1)
+    call SetTextTagText(debugjobtag, "Shutting down Job Thread", 0.1)
   endif
-  call Trace("Shutting down Job Thread")
+  //call Trace("Shutting down Job Thread")
   loop
     call ExchangeOnce()
     call Sleep(30)
@@ -10245,9 +10300,9 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   set w = IsWaterExpansion(current_expansion)
 
   if expansion_peon != null and UnitAlive(expansion_peon) then
-    if (w or f) and neutral_available[NEUTRAL_OBSERVATORY] then
+    if (w or f) and TownCountDone(ZEPPELIN) > 0 then
       if build_zeppelin == null or not UnitAlive(build_zeppelin) then
-        if not UnitAlive(build_zeppelin) then
+        if build_zeppelin != null then
           call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
         endif
         set build_zeppelin = GetUnusedZeppelinNearUnit(build_zeppelin, expansion_peon)
@@ -12474,6 +12529,12 @@ function SkillArraysAM takes nothing returns integer
   if level > max_hero_level then
     set max_hero_level = level
   endif
+  if skillfix == true then    //Assisted Hero Learning Skills , for war3 1.31 bug
+    if hero_unit[hn] == null then
+      set hero_unit[hn] = GetOneOfId(hero_unit[hn], ai_player, old_id[hero[hn]])
+    endif
+    call SelectHeroSkill(hero_unit[hn], skills[(hn - 1) * HERO_LEVEL_NUMBER + level])
+  endif
   return skills[(hn - 1) * HERO_LEVEL_NUMBER + level]
 endfunction
 
@@ -12914,18 +12975,27 @@ function universal_peon_assignment takes nothing returns nothing
   call HarvestWood(0,pwh)
   call HarvestWood(0,swh)
 
-  loop
-    //set i = i + 1
-    exitwhen i > Max(T + 3,TownCountDone(racial_expansion))
-    if T != i and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then
-      if gdivw < 3.0 or g < 300 then
-        call HarvestGold(i,ver_optimal_gold)
-      else
-        call HarvestGold(i,ver_optimal_gold - 2)
+  set T = Max(T + 3,TownCountDone(racial_expansion))
+  if FoodUsed() <= 20 and FoodCap() >= 90 then  // later stages of the game, AI may not be harvest
+    loop
+      exitwhen i > T
+      call HarvestGold(i,ver_optimal_gold)
+      set i = i + 1
+    endloop
+  else
+    loop
+      //set i = i + 1
+      exitwhen i > T
+      if T != i and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then
+        if gdivw < 3.0 or g < 300 then
+          call HarvestGold(i,ver_optimal_gold)
+        else
+          call HarvestGold(i,ver_optimal_gold - 2)
+        endif
       endif
-    endif
-    set i = i + 1
-  endloop
+      set i = i + 1
+    endloop
+  endif
 
   call HarvestWood(0,20)
 endfunction

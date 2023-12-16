@@ -8,13 +8,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Added
 
 ### Changed
+- Tower rushes are now available to all races. (jzy-chitong56)
+- Balance tweaks to harvesting logic. (jzy-chitong56)
+- (Classic) Balance tweaks to hero ability picks. (jzy-chitong56)
 
 ### Removed
 
 ### Fixed
-- Performance Optimisations.
+- More Performance optimisations especially for large maps.
 - Fixed issue with the pathing checks where night elf would spend a long time checking gold mines.
 - Fixed issue with the pathing check that meant some pathable locations were deemed to be impassable.
+- Fixed missing dependencies for various units and upgrades. (jzy-chitong56)
+   - Mark of the talon only needs tier 2 not tier 3.
+   - Gyphon Ryder needs Castle.
+   - Dragonhawk needs Arcane Vault.
+   - Temple of the damned needs a Graveyard.
+   - Spellbreaker needs Keep if base is destroyed.
+   - Mountain giant needs Tree of Ages if base is destroyed.
+- Fix handling if front location is not calculated. (jzy-chitong56)
+- (Classic) Fix heroes not learning any skills in 1.29-1.31 war3 versions. (jzy-chitong56)
+- (Classic) Corrected upkeep handling. 
+- (Classic) Brought classic edition settings in line with recent settings. (jzy-chitong56)
+- (Classic) Fixed some issues where neutral players were not set to the correct player in 24 player formats.
+- (DevTools) Fixed debugging mode to work with classic editions on old war3. (jzy-chitong56)
+
 
 ## [3.3.0] - 2023-12-14
 

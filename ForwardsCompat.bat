@@ -51,6 +51,12 @@ perl -i -pe"s/PLAYER_COLOR_EMERALD/PLAYER_COLOR_EMERALDAMAI/g" Scripts/Blizzard_
 perl -i -pe"s/PLAYER_COLOR_PEANUT/PLAYER_COLOR_PEANUTAMAI/g" Scripts/%VER%/common.ai
 perl -i -pe"s/PLAYER_COLOR_PEANUT/PLAYER_COLOR_PEANUTAMAI/g" Scripts/Blizzard_%VER%.j
 
+perl -i -pe"s/PLAYER_NEUTRAL_PASSIVE/PLAYER_AMAI_NEUTRAL_PASSIVE/g" Scripts/%VER%/common.ai
+perl -i -pe"s/PLAYER_NEUTRAL_PASSIVE/PLAYER_AMAI_NEUTRAL_PASSIVE/g" Scripts/Blizzard_%VER%.j
+
+perl -i -pe"s/PLAYER_NEUTRAL_AGGRESSIVE/PLAYER_AMAI_NEUTRAL_AGGRESSIVE/g" Scripts/%VER%/common.ai
+perl -i -pe"s/PLAYER_NEUTRAL_AGGRESSIVE/PLAYER_AMAI_NEUTRAL_AGGRESSIVE/g" Scripts/Blizzard_%VER%.j
+
 pjass %VER%\common.j Scripts\%VER%\common.ai
 jassparser %VER%\common.j Scripts\%VER%\common.ai
 pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\elf.ai
