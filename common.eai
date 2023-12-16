@@ -4892,81 +4892,6 @@ function TQSleep takes real time returns nothing
 endfunction
 
 //==========================================================================
-// (AMAI)	GetDensities
-//==========================================================================
-function GetDensities takes location l, player p, real r returns nothing
-  local group g = CreateGroup()
-  local unit u = null
-  local real ur = 0
-  local real xe = 0
-  local real ye = 0
-  local real xa = 0
-  local real ya = 0
-  local location ul = null
-  local location loc = null
-  local player up = null
-  local integer i = 0
-  set enemy_density = 0
-  set ally_density = 0
-  call GroupEnumUnitsInRangeOfLoc(g, l, r, null)
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    if (ModuloInteger(i, 200) == 0) then
-      call TQSleep(0.1)
-    endif
-    if UnitAlive(u) and not IsUnitHidden(u) then
-      set ul = GetUnitLoc(u)
-      set ur = 1 - (DistanceBetweenPoints(ul, l) / r)
-      set loc = GetMultipleLoc(ul, ur)
-      //if ur == 1 then
-      set up = GetOwningPlayer(u)
-      if IsPlayerEnemy(p, up) then
-        set enemy_density = enemy_density + ur
-        set xe = xe + GetLocationX(loc)  // Prevent loc exceeding map range
-        set ye = ye + GetLocationY(loc)
-        //set enemy_density_loc = GetSumLoc_dd(enemy_density_loc, GetMultipleLoc(ul, ur))
-      elseif IsPlayerAlly(p, up) then
-        set ally_density = ally_density + ur
-        set xa = xa + GetLocationX(loc)
-        set ya = ya + GetLocationY(loc)
-        //set ally_density_loc = GetSumLoc_dd(ally_density_loc, GetMultipleLoc(ul, ur))
-      endif
-      call RemoveLocation(loc)
-      call RemoveLocation(ul)
-    endif
-    call GroupRemoveUnit(g, u)
-    set i = i + 1
-  endloop
-
-  if ally_density > 0 then
-    set xa = xa / ally_density
-    set ya = ya / ally_density
-    //set ally_density_loc = GetDivisionLoc_d(ally_density_loc, ally_density)
-  else
-    set xa = 0
-    set ya = 0
-  endif
-  call RemoveLocation(ally_density_loc)
-  set ally_density_loc = Location(xa,ya)
-  if enemy_density > 0 then
-    set xe = xe / enemy_density
-    set ye = ye / enemy_density
-    //set enemy_density_loc = GetDivisionLoc_d(enemy_density_loc, enemy_density)
-  else
-    set xe = 0
-    set ye = 0
-  endif
-  call RemoveLocation(enemy_density_loc)
-  set enemy_density_loc = Location(xe,ye)
-  call DestroyGroup(g)
-  set g = null
-  set ul = null
-  set loc = null
-  set up = null
-endfunction
-
-//==========================================================================
 // (AMAI)	Action List Utility functions
 //==========================================================================
 function ActionListInit takes integer an returns nothing
@@ -7219,7 +7144,7 @@ function TQLoop takes nothing returns nothing
   if debugging then
     call SetTextTagText(debugjobtag, "Shutting down Job Thread", 0.1)
   endif
-  call Trace("Shutting down Job Thread")
+  //call Trace("Shutting down Job Thread")
   loop
     call ExchangeOnce()
     call Sleep(30)
@@ -7233,6 +7158,10 @@ function CheckNeutral takes integer nn returns nothing
   if neutral_available[nn] == true then
     //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "checkneutral")
     set nearest_neutral[nn] = GetNearestNeutral(nearest_neutral[nn],neutral_id[nn])
+    if nearest_neutral[nn] == null then
+      set neutral_available[nn] = false
+      return  // SUMMONED or water path
+    endif
     //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "finished check")
     call DestroyGroup(neutral_guards[nn])
     set neutral_guards[nn] = GetCreepGuardGroup(neutral_guards[nn],nn)
@@ -7411,6 +7340,9 @@ set buy_time_small[nn] = -1
 if neutral_available[nn] == true then
 //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "checkneutral")
   set nearest_neutral[nn] = GetNearestNeutralQuick(nearest_neutral[nn],neutral_id[nn])
+  if nearest_neutral[nn] == null then
+    return  // let CheckAllNeutrals check
+  endif
   set neutral_guards[nn] = GetCreepGuardGroup(neutral_guards[nn],nn)
 //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "finished check")
   set neutral_guarded[nn] = GetNeutralGuard(nn)
@@ -10348,7 +10280,15 @@ function IsWaterExpansion takes unit u returns boolean
 endfunction
 
 //============================================================================
-function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
+function BuildMovePeonZeppelin takes unit peon, unit target, boolean exptake returns boolean
+  if exptake then
+    call IssueTargetOrder(build_zeppelin, "unload", peon)
+    call Sleep(0.5)  //unload time
+    call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
+    call RecycleGuardPosition(build_zeppelin)
+    call RecycleGuardPosition(peon)
+    return
+  endif
   if IsUnitInTransport(peon, build_zeppelin) then
     if DistanceBetweenUnits(build_zeppelin, target) > 300 then
       call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + GetRandomReal(-200,200), GetUnitY(target) + GetRandomReal(-200,200))
@@ -10402,7 +10342,10 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     endif
   endif
   if CheckExpansionTaken(current_expansion) or current_expansion == not_taken_expansion then  // not taken used in the MultipleMinefix , militai expansion , ancient expansion and item expansion system then
-  call Trace("AMAIStartexpa: Expansion Taken by someone else")
+    call Trace("AMAIStartexpa: Expansion Taken by someone else")
+      if expansion_peon != null and UnitAlive(expansion_peon) and IsUnitLoaded(expansion_peon) then
+      call BuildMovePeonZeppelin(expansion_peon, current_expansion, true)  //Prevent Zeppelin from being idle indefinitely
+    endif
     set current_expansion = null
     return BUILT_ALL
   endif
@@ -10472,7 +10415,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
         call Trace("AMAIStartexpa: Water expansion required waiting to create a zeppelin")
         return BUILT_SOME
       endif
-      if (build_zeppelin != null and not BuildMovePeonZeppelin(expansion_peon, current_expansion)) then
+      if (build_zeppelin != null and not BuildMovePeonZeppelin(expansion_peon, current_expansion, false)) then
         call Trace("AMAIStartexpa: Expanding via a zeppelin")
         return BUILT_SOME
       endif
