@@ -22,7 +22,7 @@ perl -i -pe"s/PLAYER_COLOR_NAVY/PLAYER_COLOR_NAVYAMAI/g" Scripts/Blizzard_%VER%.
 perl -i -pe"s/PLAYER_COLOR_TURQUOISE/PLAYER_COLOR_TURQUOISEAMAI/g" Scripts/%VER%/common.ai
 perl -i -pe"s/PLAYER_COLOR_TURQUOISE/PLAYER_COLOR_TURQUOISEAMAI/g" Scripts/Blizzard_%VER%.j
 
-perl -i -pe"s/PLAYER_COLOR_VIOLET/BPLAYER_COLOR_VIOLETAMAI/g" Scripts/%VER%/common.ai
+perl -i -pe"s/PLAYER_COLOR_VIOLET/PLAYER_COLOR_VIOLETAMAI/g" Scripts/%VER%/common.ai
 perl -i -pe"s/PLAYER_COLOR_VIOLET/PLAYER_COLOR_VIOLETAMAI/g" Scripts/Blizzard_%VER%.j
 
 perl -i -pe"s/PLAYER_COLOR_WHEAT/PLAYER_COLOR_WHEATAMAI/g" Scripts/%VER%/common.ai
