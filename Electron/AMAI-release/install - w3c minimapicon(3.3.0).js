@@ -49,6 +49,10 @@ const installOnDirectory = async () => {
     process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\common.ai`)
     return
   }
+  if (!fs.existsSync(`MPQEditor.exe`)) {
+    process.send(`ERROR: Cannot find ${process.cwd()}\\MPQEditor.exe`)
+    return
+  }
   if (installCommander && !fs.existsSync(`Scripts\\Blizzard_${ver}.j`)) {
     process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\blizzard_${ver}.j`)
     return
@@ -65,6 +69,13 @@ const installOnDirectory = async () => {
         process.send(`#### Installing ${ver} into file: ${file} ####`);
       } else {
         process.send(`skip file: ${file}`);
+        continue;
+      }
+
+      try {
+        fs.accessSync(file, fs.constants.W_OK)
+      } catch (e) {
+        process.send(`WARN: ${file} does not have write permissions so unable to install`);
         continue;
       }
 
@@ -120,143 +131,143 @@ const installOnDirectory = async () => {
           );
 
           /** uncomment to debbug */
-         // console.log('f2AddToMPQ', f2AddToMPQ.error);
+          // console.log('f2AddToMPQ', f2AddToMPQ.error);
 
           // spawnSync(`echo`, [`running AddToMPQ 2 ${file}`]);
           f2AddToMPQ.error ?
             process.send(f2AddToMPQ.error.message)
               : process.send(`Add commander script ${file}`);
 
-              if (icon) {
-                const f3AddToMPQ =  spawnSync(
-                  `MPQEditor.exe`,
-                  [
-                    'a',
-                    file,
-                    `Icons\\Reforged\\MiniMap\\`,
-                    `UI\\MiniMap`,
-                  ],
-                );
-                f3AddToMPQ.error ?
-                  process.send(f3AddToMPQ.error.message)
-                    : process.send(`Add minimap icon ${file}`);
-              }
+          if (icon) {
+            const f3AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+                'a',
+                file,
+                `Icons\\Reforged\\MiniMap\\`,
+                `UI\\MiniMap`,
+              ],
+            );
+            f3AddToMPQ.error ?
+              process.send(f3AddToMPQ.error.message)
+                : process.send(`Add minimap icon ${file}`);
+          }
 
-              if (icon) {
-                const f4AddToMPQ =  spawnSync(
-                  `MPQEditor.exe`,
-                  [
-                  'a',
-                  file,
-                  `Icons\\Reforged\\CommandButtons\\*.dds`,
-                  `ReplaceableTextures\\CommandButtons`,
-                   ],
-                );
-                f4AddToMPQ.error ?
-                process.send(f4AddToMPQ.error.message)
-                  : process.send(`Add Reforged item icon ${file}`);
-              }else {
-                const f4AddToMPQ =  spawnSync(
-                    `MPQEditor.exe`,
-                    [
-                    'a',
-                    file,
-                    `Icons\\Class\\CommandButtons\\*.blp`,
-                    `ReplaceableTextures\\CommandButtons`,
-                    ],
-                );
-                f4AddToMPQ.error ?
-                process.send(f4AddToMPQ.error.message)
-                  : process.send(`Add Class item icon ${file}`);
-              }
+          if (icon) {
+            const f4AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+              'a',
+              file,
+              `Icons\\Reforged\\CommandButtons\\*.dds`,
+              `ReplaceableTextures\\CommandButtons`,
+                ],
+            );
+            f4AddToMPQ.error ?
+            process.send(f4AddToMPQ.error.message)
+              : process.send(`Add Reforged item icon ${file}`);
+          }else {
+            const f4AddToMPQ =  spawnSync(
+                `MPQEditor.exe`,
+                [
+                'a',
+                file,
+                `Icons\\Class\\CommandButtons\\*.blp`,
+                `ReplaceableTextures\\CommandButtons`,
+                ],
+            );
+            f4AddToMPQ.error ?
+            process.send(f4AddToMPQ.error.message)
+              : process.send(`Add Class item icon ${file}`);
+          }
 
-              if (icon) {
-                const f5AddToMPQ =  spawnSync(
-                  `MPQEditor.exe`,
-                  [
-                    'a',
-                    file,
-                    `Icons\\Reforged\\CommandButtonsDisabled\\*.dds`,
-                    `ReplaceableTextures\\CommandButtonsDisabled`,
-                  ],
-                );
-                f5AddToMPQ.error ?
-                process.send(f5AddToMPQ.error.message)
-                  : process.send(`Add Reforged item disabled icon ${file}`);
-              }else {
-                const f5AddToMPQ =  spawnSync(
-                  `MPQEditor.exe`,
-                  [
-                    'a',
-                    file,
-                    `Icons\\Class\\CommandButtonsDisabled\\*.blp`,
-                    `ReplaceableTextures\\CommandButtonsDisabled`,
-                  ],
-                );
-                f5AddToMPQ.error ?
-                process.send(f5AddToMPQ.error.message)
-                  : process.send(`Add Class item disabled icon ${file}`);
-              }
+          if (icon) {
+            const f5AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+                'a',
+                file,
+                `Icons\\Reforged\\CommandButtonsDisabled\\*.dds`,
+                `ReplaceableTextures\\CommandButtonsDisabled`,
+              ],
+            );
+            f5AddToMPQ.error ?
+            process.send(f5AddToMPQ.error.message)
+              : process.send(`Add Reforged item disabled icon ${file}`);
+          }else {
+            const f5AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+                'a',
+                file,
+                `Icons\\Class\\CommandButtonsDisabled\\*.blp`,
+                `ReplaceableTextures\\CommandButtonsDisabled`,
+              ],
+            );
+            f5AddToMPQ.error ?
+            process.send(f5AddToMPQ.error.message)
+              : process.send(`Add Class item disabled icon ${file}`);
+          }
 
-              if (icon) {
-                const f6AddToMPQ =  spawnSync(
-                  `MPQEditor.exe`,
-                  [
-                    'a',
-                    file,
-                    `Icons\\Reforged\\war3map.imp`,
-                    `war3map.imp`,
-                  ],
-                  { encoding : `utf8` }
-                );
-                f6AddToMPQ.error ?
-                  process.send(f6AddToMPQ.error.message)
-                    : process.send(`Add Reforged icon list file ${file}`);
-              }else {
-                const f6AddToMPQ =  spawnSync(
-                  `MPQEditor.exe`,
-                  [
-                    'a',
-                    file,
-                    `Icons\\Class\\war3map.imp`,
-                    `war3map.imp`,
-                  ],
-                  { encoding : `utf8` }
-                );
-                f6AddToMPQ.error ?
-                  process.send(f6AddToMPQ.error.message)
-                    : process.send(`Add Class icon list file ${file}`);
-              }
+          if (icon) {
+            const f6AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+                'a',
+                file,
+                `Icons\\Reforged\\war3map.imp`,
+                `war3map.imp`,
+              ],
+              { encoding : `utf8` }
+            );
+            f6AddToMPQ.error ?
+              process.send(f6AddToMPQ.error.message)
+                : process.send(`Add Reforged icon list file ${file}`);
+          }else {
+            const f6AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+                'a',
+                file,
+                `Icons\\Class\\war3map.imp`,
+                `war3map.imp`,
+              ],
+              { encoding : `utf8` }
+            );
+            f6AddToMPQ.error ?
+              process.send(f6AddToMPQ.error.message)
+                : process.send(`Add Class icon list file ${file}`);
+          }
 
-              if (icon) {
-                const f7AddToMPQ =  spawnSync(
-                  `MPQEditor.exe`,
-                  [
-                    'a',
-                    file,
-                    `Icons\\Reforged\\war3map.w3t`,
-                    `war3map.w3t`,
-                  ],
-                  { encoding : `utf8` }
-                );
-                f7AddToMPQ.error ?
-                  process.send(f7AddToMPQ.error.message)
-                    : process.send(`Add Reforged item index file ${file}`);
-              }else {
-                const f7AddToMPQ =  spawnSync(
-                  `MPQEditor.exe`,
-                  [
-                    'a',
-                    file,
-                    `Icons\\Class\\war3map.w3t`,
-                    `war3map.w3t`,
-                  ],
-                  { encoding : `utf8` }
-                );
-                f7AddToMPQ.error ?
-                  process.send(f7AddToMPQ.error.message)
-                    : process.send(`Add Class item index file ${file}`);
-               }
+          if (icon) {
+            const f7AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+                'a',
+                file,
+                `Icons\\Reforged\\war3map.w3t`,
+                `war3map.w3t`,
+              ],
+              { encoding : `utf8` }
+            );
+            f7AddToMPQ.error ?
+              process.send(f7AddToMPQ.error.message)
+                : process.send(`Add Reforged item index file ${file}`);
+          }else {
+            const f7AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+                'a',
+                file,
+                `Icons\\Class\\war3map.w3t`,
+                `war3map.w3t`,
+              ],
+              { encoding : `utf8` }
+            );
+            f7AddToMPQ.error ?
+              process.send(f7AddToMPQ.error.message)
+                : process.send(`Add Class item index file ${file}`);
+            }
 
         }
 
