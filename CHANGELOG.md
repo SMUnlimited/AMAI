@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Removed
 
 ### Fixed
+- Fixed critical infinite loop thread crash with undead players.
 - More Performance optimisations especially for large maps.
 - Fixed issue with the pathing checks where night elf would spend an extremly long time checking gold mines so was delayed in using neutral buildings.
 - Fixed issue with the pathing check that meant some pathable locations were deemed to be impassable.
