@@ -1,14 +1,24 @@
-SET VER=%1
-if "%~2" == "" (
+SET VER=%~1
+SET RESULTMAKEVER=0
+if not exist "%~2" (
 	ECHO %2 Map cannot be found
-	exit 1
+	exit /b 1
 )
-MPQEditor htsize %2 64
-MPQEditor a %2 Scripts\%VER%\*.ai Scripts
+MPQEditor htsize %~2 64
+if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
+MPQEditor a %~2 "%~dp0Scripts\%VER%\*.ai" Scripts
+if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
 if "%~3" == "1" (
   ECHO Installed Commander to Map
-  MPQEditor a %2 Scripts\Blizzard_%VER%.j Scripts\Blizzard.j
+  MPQEditor a "%~2" "%~dp0Scripts\Blizzard_%VER%.j" Scripts\Blizzard.j
+  if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
 )
-MPQEditor f %2
-ECHO Installed %VER% AMAI to Map %2
-pause
+if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
+MPQEditor f "%~2"
+if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
+if "%RESULTMAKEVER%"=="5" (
+  ECHO Failed to install to map %2, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location
+  exit /b %RESULTMAKEVER%
+) else (
+  ECHO Installed %VER% AMAI to Map %2
+)

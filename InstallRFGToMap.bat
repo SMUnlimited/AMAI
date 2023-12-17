@@ -1,1 +1,1 @@
-call InstallVERToMap REFORGED %1 %2
+call InstallVERToMap REFORGED "%~1" "%~2"

@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 - More installer validation checks for map write access and MPQEditor presence.
+- Installer and command line will detect when MPQEditor fails to add files to a map usually due to UAC protection.
 
 ### Changed
 - Balance tweaks to harvesting logic. (jzy-chitong56)
@@ -34,6 +35,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (Classic) Fixed some issues where neutral players were not set to the correct player in 24 player formats.
 - (Classic) Fixed issue where map team assignment would not auto increment above 13.
 - (DevTools) Fixed debugging mode to work with classic editions on old war3. (jzy-chitong56)
+- (DevTools) CmdLine Tool Fixes (IceSandslash)
+  - Install AMAI into maps in folders even with spaces, such as "Warcraft III".
+  - Call AMAI install scripts from any folder, which means that you can put the AMAI folder in your Windows PATH environment variable.
+  - Call AMAI batch scripts from external scripts without dealing with so many pauses. Also fixes a recent regression that causes AMAI to close the console window.
+  - Report on program exit code when AMAI compiles files for both local running and for CI environments.
+
 
 
 ## [3.3.0] - 2023-12-14

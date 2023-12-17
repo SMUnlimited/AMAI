@@ -1,1 +1,1 @@
-call InstallVERToMap ROC %1 %2
+call InstallVERToMap ROC "%~1" "%~2"

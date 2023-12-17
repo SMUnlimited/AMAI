@@ -1,5 +1,6 @@
 ECHO Apply forwards compatability scripts
-SET VER=%1
+SET VER=%~1
+SET RESULTFWCOMPAT=0
 perl -i -pe"s/GetBJMaxPlayers/GetBJMaxPlayersAMAI/g" Scripts/%VER%/common.ai
 perl -i -pe"s/GetBJMaxPlayers/GetBJMaxPlayersAMAI/g" Scripts/Blizzard_%VER%.j
 
@@ -58,14 +59,31 @@ perl -i -pe"s/PLAYER_NEUTRAL_AGGRESSIVE/PLAYER_AMAI_NEUTRAL_AGGRESSIVE/g" Script
 perl -i -pe"s/PLAYER_NEUTRAL_AGGRESSIVE/PLAYER_AMAI_NEUTRAL_AGGRESSIVE/g" Scripts/Blizzard_%VER%.j
 
 pjass %VER%\common.j Scripts\%VER%\common.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 jassparser %VER%\common.j Scripts\%VER%\common.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\elf.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 jassparser %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\elf.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\human.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 jassparser %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\human.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\orc.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 jassparser %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\orc.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\undead.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 jassparser %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\undead.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 pjass %VER%\common.j Scripts\Blizzard_%VER%.j
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 jassparser %VER%\common.j Scripts\Blizzard_%VER%.j
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
+
+if "%RESULTFWCOMPAT%"=="1" (
+  ECHO Compilation error
+  exit /b %RESULTFWCOMPAT%
+)

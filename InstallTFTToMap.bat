@@ -1,1 +1,1 @@
-call InstallVERToMap TFT %1 %2
+call InstallVERToMap TFT "%~1" "%~2"

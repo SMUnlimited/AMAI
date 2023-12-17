@@ -92,6 +92,10 @@ const installOnDirectory = async () => {
        // console.log('mpqEditor', mpqEditor.error);
 
         // spawnSync(`echo`, [`running execuMPQEditor ${file}`]);
+        if (mpqEditor.status == 5) {
+          process.send(`WARN: ${file} Failed to run mpqeditor htsize, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+          continue;
+        }
         mpqEditor.error ?
           process.send(mpqEditor.error.message)
             : process.send(`Resize map hashtable size ${file}`);
@@ -112,7 +116,10 @@ const installOnDirectory = async () => {
 
         // spawnSync(`echo`, [`running AddToMPQ 1 ${file}`]);
         // process.send(`running AddToMPQ 1 ${file}`);
-
+        if (f1AddToMPQ.status == 5) {
+          process.send(`WARN: ${file} Failed to add ai scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+          continue;
+        }
         f1AddToMPQ.error ?
           process.send(f1AddToMPQ.error.message)
             : process.send(`Add ai scripts ${file}`);
@@ -134,6 +141,10 @@ const installOnDirectory = async () => {
          // console.log('f2AddToMPQ', f2AddToMPQ.error);
 
           // spawnSync(`echo`, [`running AddToMPQ 2 ${file}`]);
+          if (f2AddToMPQ.status == 5) {
+            process.send(`WARN: ${file} Failed to add blizzard.j script, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+            continue;
+          }
           f2AddToMPQ.error ?
             process.send(f2AddToMPQ.error.message)
               : process.send(`Add commander script ${file}`);
@@ -153,6 +164,10 @@ const installOnDirectory = async () => {
        // console.log('f3AddToMPQ', f3AddToMPQ.error);
 
         // spawnSync(`echo`, [`running AddToMPQ 3 ${file}`]);
+        if (f3AddToMPQ.status == 5) {
+          process.send(`WARN: ${file} Failed to flush scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+          continue;
+        }
         f3AddToMPQ.error ?
           process.send(f3AddToMPQ.error.message)
             : process.send(`Optimize map MPQ ${file}`);
