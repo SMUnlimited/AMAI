@@ -10207,13 +10207,13 @@ function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
     else
       call IssueImmediateOrder(build_zeppelin, "stop")
       call IssueTargetOrder(build_zeppelin, "unload", peon)
-      call Sleep(0.5)  //unload time
-      call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
+      call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, build_zeppelin)
       call IssueImmediateOrder(peon, "stop")
       return true
     endif
   else
     if DistanceBetweenUnits(peon, target) < race_max_expa_mine_distance then
+      call RecycleGuardPosition(build_zeppelin)
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       call IssueImmediateOrder(peon, "stop")
       return true
@@ -10256,6 +10256,11 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   if CheckExpansionTaken(current_expansion) then
     call Trace("AMAIStartexpa: Expansion Taken by someone else")
     set current_expansion = null
+    if expansion_peon != null and UnitAlive(expansion_peon) and IsUnitLoaded(expansion_peon) then
+      call IssueTargetOrder(build_zeppelin, "unload", peon)
+      call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, build_zeppelin)
+      call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, peon)
+    endif
     return BUILT_ALL
   endif
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Taken Checked")
@@ -10319,6 +10324,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
           call Trace("AMAIStartexpa: No Zeppelin found for transporting peon")
         else
           call GroupAddUnit(unit_zepplin_move, build_zeppelin)
+          call RemoveGuardPosition(build_zeppelin)
         endif
       endif
       if (w and build_zeppelin == null) then
