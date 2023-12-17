@@ -16,7 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Fixed
 - Fixed performance issue caused by a critical infinite loop crash with undead players.
 - More performance optimisations especially for large maps.
-- Fixed issue with the pathing checks where night elf would spend an extremly long time checking gold mines so was delayed in using neutral buildings.
+- Fixed issue with the pathing checks where night elf would spend an extremely long time checking gold mines so was delayed in using neutral buildings.
 - Fixed issue with the pathing check that meant some pathable locations were deemed to be impassable.
 - Optimised pathing check for neutral buildings so its faster, what would take over 10 mins on larger maps takes ~1 minute now. 
 - Fixed missing dependencies for various units and upgrades. (jzy-chitong56)

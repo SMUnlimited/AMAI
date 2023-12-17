@@ -88,6 +88,11 @@ Tested with strawbery perl 5.30 and Tk 804.034
 - To use the installer you must copy the `Scripts` folder and `MPQEditor.exe` to the folder `{your-amai-installer}/resources/AMAI`
 - Run up a custom game and select the map to play.
 
+## Optimise Build
+- This will optimise previously built AI scripts to make them a little bit faster and leaner. Only useful if you are having performance issues.
+- Run/double click one of the `makeOpt` bat files.
+- Then install like normal.
+
 ## VS AI Build
 - This special version that must be built to use, will make *odd* teams run with AMAI and *even* teams run with the standard blizzard AI.
 - Useful for testing how much better AMAI is against the original AI.
