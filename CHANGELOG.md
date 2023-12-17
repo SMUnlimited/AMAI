@@ -34,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (Classic) Brought classic edition settings in line with recent settings. (jzy-chitong56)
 - (Classic) Fixed some issues where neutral players were not set to the correct player in 24 player formats.
 - (Classic) Fixed issue where map team assignment would not auto increment above 13.
+- (Classic) Missing ritual dagger use and moonstone time of day fixes.
 - (DevTools) Fixed debugging mode to work with classic editions on old war3. (jzy-chitong56)
 - (DevTools) CmdLine Tool Fixes (IceSandslash)
   - Install AMAI into maps in folders even with spaces, such as "Warcraft III".
