@@ -254,7 +254,7 @@ globals
     integer slm_start = 4  // how many computer players is needed tor the sleep multiplier to start increasing
     integer slm_end = 10 // how many computer players is needed tor the sleep multiplier to stop increasing
     real slm_start_mult = 1 // how much is the sleep multiplied when it's below the slm_start codition
-    real slm_end_mult = 3.2  // how much is the sleep multiplied when it's above the slm_end codition
+    real slm_end_mult = 2  // how much is the sleep multiplied when it's above the slm_end codition
     real hero_radius = 200  // scanning this small area around hero to detect if the hero gets surrounded by enemy or is in danger of becoming that so it should move
     boolean use_linear_upkeep_saving = false  // should the computers save the upkeep threshold gold over the time above or save it all at once when it get's to the upkeep border?
     integer repair_threshold = 6  // computers only repair buildings if they have more than this many workers
@@ -4247,6 +4247,7 @@ function CreatePathingUnitFull takes unit u, player p, integer id, real x, real 
     call ShowUnit(u, false)
   endif
   call UnitShareVision(u, ai_player, false)
+  call UnitRemoveAbility(u, 'Adtn') // Remove detonate to avoid any automatic deaths
   call SetUnitInvulnerable(u, true)
   call SetUnitUseFood(u, false)
   call SetUnitMoveSpeed(u, 522)
@@ -4374,6 +4375,120 @@ endfunction
 //==========================================================================
 // (AMAI) Finds nearest neutral that is passable
 //==========================================================================
+function CalcNearestNeutrals takes nothing returns nothing
+  local group g = CreateGroup()
+  local unit u = null
+  local real distance = 0
+  local group tempg = null
+  local unit array pather
+  local integer i = 0
+  local integer neutral_i = 0
+  local integer array checks
+  local boolean pathingdone = true
+  local real array lx
+  local real array ly
+
+  call GroupEnumUnitsOfPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), null)
+  set tempg = CopyGroup(g, tempg)
+  loop
+    set u = FirstOfGroup(tempg)
+    exitwhen u == null
+    if UnitAlive(u) and not IsUnitType(u, UNIT_TYPE_SUMMONED) then  //prevent neutral_id[NEUTRAL_HEAL_WARD]
+      set neutral_i = 0
+      loop
+        exitwhen neutral_i >= NEUTRAL_COUNT
+        if GetUnitTypeId(u) == neutral_id[neutral_i] then
+          set nearest_neutral[neutral_i] = null
+          set pather[i] = CreatePathingUnit(pather[i])
+          set checks[i] = 0
+          call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
+          if (ModuloInteger(i,10) == 0) then
+            call Sleep(GetRandomReal(0.2, 0.4) * sleep_multiplier)
+          endif
+          set i = i + 1
+        endif
+        exitwhen GetUnitTypeId(u) == neutral_id[neutral_i]
+        set neutral_i = neutral_i + 1
+      endloop
+      if neutral_i >= NEUTRAL_COUNT then
+        // Not a valid unit to track
+        call GroupRemoveUnit(g, u)
+      endif
+    else
+      call GroupRemoveUnit(g, u)
+    endif
+    call GroupRemoveUnit(tempg, u)
+  endloop
+
+  call Trace("Total Neutrals to path to:" + Int2Str(i))
+
+  loop
+    set pathingdone = true
+    call DestroyGroup(tempg)
+    set tempg = CopyGroup(g, tempg)
+    set i = 0
+    loop
+      set u = FirstOfGroup(tempg)
+      exitwhen u == null
+      if pather[i] != null then
+        set distance = DistanceBetweenUnits(pather[i],u)
+        set neutral_i = 0
+        loop
+          exitwhen neutral_i >= NEUTRAL_COUNT
+          exitwhen pather[i] == null
+          if GetUnitTypeId(u) == neutral_id[neutral_i] then
+            if nearest_neutral[neutral_i] != null then
+              call RemoveUnit(pather[i])
+              set pather[i] = null
+            elseif distance <= buy_distance then
+              call CreateDebugTag("Target Destination is pathable", 10, pather[i], 10.00, 8.00)
+              call RemoveUnit(pather[i])
+              set pather[i] = null
+              if nearest_neutral[neutral_i] == null then
+                set nearest_neutral[neutral_i] = u
+              endif
+            elseif GetUnitState(pather[i], UNIT_STATE_LIFE) <= 0 then
+              call RemoveUnit(pather[i])
+              set pather[i] = null
+            elseif GetUnitCurrentOrder(pather[i]) == OrderId("stop") or GetUnitCurrentOrder(pather[i]) != OrderId("move") then
+              set checks[i] = checks[i] + 1
+              if checks[i] > 2 then
+                call CreateDebugTag("Target Destination was not reached", 10, pather[i], 10.00, 8.00)
+                call RemoveUnit(pather[i])
+                set pather[i] = null
+              else
+                call CreateDebugTag("Invisible Path unit has stopped", 10, pather[i], 10.00, 8.00)
+                call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
+              endif
+            else
+              call CreateDebugTag("Invisible Path Unit Here and Moving", 10, pather[i], 10.00, 8.00)
+              if (lx[i] != 0 and ly[i] != 0) then
+                if GetUnitX(pather[i]) == lx[i] and GetUnitY(pather[i]) == ly[i] then
+                  // Actually stuck
+                  call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
+                endif
+              endif
+              set lx[i] = GetUnitX(pather[i])
+              set ly[i] = GetUnitY(pather[i])
+            endif
+          endif
+          exitwhen GetUnitTypeId(u) == neutral_id[neutral_i]
+          set neutral_i = neutral_i + 1
+        endloop
+        set pathingdone = false
+      endif
+      call GroupRemoveUnit(tempg, u)
+      set i = i + 1
+    endloop
+    exitwhen pathingdone
+    call Sleep(1 * sleep_multiplier)
+  endloop
+  call DestroyGroup(tempg)
+  set tempg = null
+  call DestroyGroup(g)
+  set g = null
+endfunction
+
 function GetNearestNeutral takes unit ru, integer id returns unit
   local group g = CreateGroup()
   local unit u = null
@@ -4423,13 +4538,13 @@ function GetNearestNeutral takes unit ru, integer id returns unit
     endif
     call GroupRemoveUnit(tempg, u)
   endloop
-  call DestroyGroup(tempg)
   call Trace("Total Neutrals to path to:" + Int2Str(i))
   //set distance = 10000000
 
   loop
     //set totaltime = totaltime + 3
     set pathingdone = true
+    call DestroyGroup(tempg)
     set tempg = CopyGroup(g,tempg)
     set i = 0
     loop
@@ -4458,7 +4573,6 @@ function GetNearestNeutral takes unit ru, integer id returns unit
           call CreateDebugTag("Invisible Path unit has stopped", 10, pather[i], 3.00, 3.00)
           if checks[i] > 2 then
             call CreateDebugTag("Target Destination was not reached", 10, pather[i], 3.00, 3.00)
-            //call Trace("GOT STUCK")
             call RemoveUnit(pather[i])
             set pather[i] = null
           else
@@ -4473,10 +4587,10 @@ function GetNearestNeutral takes unit ru, integer id returns unit
       call GroupRemoveUnit(tempg, u)
       set i = i + 1
     endloop
-    call DestroyGroup(tempg)
     exitwhen pathingdone
     call Sleep(1 * sleep_multiplier)
   endloop
+  call DestroyGroup(tempg)
   set tempg = null
   call DestroyGroup(g)
   set g = null
@@ -5494,11 +5608,6 @@ function GetLocationInDistanceFromLoc takes location loc, real dist, boolean inj
   if loc == null then
     return null
   endif
-  if injob then
-    call TQSleep(0.2)
-  else
-    call Sleep(0.2)
-  endif  
   set u = CreatePathingUnitFull(u,Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(loc),GetLocationY(loc))
   call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
   //set checktime = GetTimeToReachLoc(u, home_location)
@@ -5516,7 +5625,11 @@ function GetLocationInDistanceFromLoc takes location loc, real dist, boolean inj
       set exitloop = true
       //return null
     endif
-    call Sleep(0.2)
+    if injob then
+      call TQSleep(0.2)
+    else
+      call Sleep(0.2)
+    endif
   endloop
   call RemoveUnit(u)
   set u = null
@@ -5816,9 +5929,9 @@ function CheckExpansionTaken takes unit expa returns boolean
           set g = null
           set u = null
           set p = null
-          if not IsUnitHidden(u) then
-            call GroupRemoveUnit(far_expansion, expa)
-          endif
+          // if not IsUnitHidden(u) then
+            //call GroupRemoveUnit(far_expansion, expa)
+          // endif
           return true
         elseif p != ai_player and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) then  // Creeps dosn't mean expansion is taken
           call DestroyGroup(g)
@@ -5963,6 +6076,8 @@ function MakeExpansionList takes nothing returns nothing
   local integer array checks // Number of times unit has stayed at same position  
   local boolean pathingdone = true
   local real totaltime = 0
+  local real array lx
+  local real array ly
 
   call GroupEnumUnitsOfType(g, "goldmine", null)
 //  call GroupRemoveUnit(g, current_expansion) // because quick expansion adds mine already
@@ -5977,7 +6092,7 @@ function MakeExpansionList takes nothing returns nothing
     call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
     call GroupRemoveUnit(tempg, u)
     if (ModuloInteger(i,10) == 0) then
-      call Sleep(0.3 * sleep_multiplier) // help spread start lag
+      call Sleep(GetRandomReal(0.2, 0.4) * sleep_multiplier) // help spread start lag
     endif
     set i = i + 1
   endloop
@@ -5994,7 +6109,7 @@ function MakeExpansionList takes nothing returns nothing
       if pather[i] != null then
         if DistanceBetweenUnits(pather[i],u) <= buy_distance then
           //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Tavern is pathable")
-          call CreateDebugTag("Target Destination is pathable", 10, pather[i], 3.00, 3.00)
+          call CreateDebugTag("Target Destination is pathable", 10, pather[i], 5.00, 3.00)
           call RemoveUnit(pather[i])
           set pather[i] = null
           set patherdone[i] = true
@@ -6007,9 +6122,9 @@ function MakeExpansionList takes nothing returns nothing
           set patherdone[i] = true
         elseif GetUnitCurrentOrder(pather[i]) == OrderId("stop") or GetUnitCurrentOrder(pather[i]) != OrderId("move") then
           set checks[i] = checks[i] + 1
-          call CreateDebugTag("Invisible Path unit has stopped", 10, pather[i], 3.00, 3.00)
+          call CreateDebugTag("Invisible Path unit has stopped", 10, pather[i], 5.00, 3.00)
           if checks[i] > 3 then
-            call CreateDebugTag("Target Destination was not reached", 10, pather[i], 3.00, 3.00)
+            call CreateDebugTag("Target Destination was not reached", 10, pather[i], 5.00, 3.00)
             call RemoveUnit(pather[i])
             set pather[i] = null
             set patherdone[i] = true
@@ -6018,9 +6133,15 @@ function MakeExpansionList takes nothing returns nothing
             call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u)) // Try again?
           endif
         else
-          //set checks[i] = 0	// means unit is moving and not standing still
-          call CreateDebugTag("Invisible Path Unit Here", 10, pather[i], 3.00, 3.00)
-          //call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
+          call CreateDebugTag("Invisible Path Unit Here", 10, pather[i], 5.00, 3.00)
+          if (lx[i] != 0 and ly[i] != 0) then
+            if GetUnitX(pather[i]) == lx[i] and GetUnitY(pather[i]) == ly[i] then
+              // Actually stuck
+              call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
+            endif
+          endif
+          set lx[i] = GetUnitX(pather[i])
+          set ly[i] = GetUnitY(pather[i])
         endif
         set pathingdone = false
       endif
@@ -6482,11 +6603,8 @@ endfunction
 function CanCreepGuardsSleep takes integer nn returns boolean
   local group g = null
   local unit u = null
-  local boolean b = false
-  if nearest_neutral[nn] != null then
-    if FirstOfGroup(neutral_guards[nn]) == null then
-      return true
-    endif
+  local boolean b = true
+  if nearest_neutral[nn] != null and FirstOfGroup(neutral_guards[nn]) != null then
     set g = CopyGroup(neutral_guards[nn],g)
     loop
       set u = FirstOfGroup(g)
@@ -7081,12 +7199,12 @@ function TQHandleOnce takes nothing returns boolean
   if TimerGetElapsed(tq_timer) >= tq_time[1] then
     set jobtimings = TimerGetElapsed(tq_timer)
     call TQRemoveRoot()
+    if debugging then
+      call UpdateDebugTextTag(debugjobtag, Int2Str(jid), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
+    endif
     call TQDoJob(jid, par, unit_par, group_par)
     if jobtimings - TimerGetElapsed(tq_timer) >= 1 then
       call Trace("WARN: Job " + Int2Str(jid) + " took a long time " + Real2Str(jobtimings - TimerGetElapsed(tq_timer)) + "s")
-    endif
-    if debugging then
-      call UpdateDebugTextTag(debugjobtag, Int2Str(jid), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
     endif
     set unit_par = null
     set group_par = null
@@ -7155,13 +7273,13 @@ endfunction
 // (AMAI)	CheckNeutral
 //==========================================================================
 function CheckNeutral takes integer nn returns nothing
+  if nearest_neutral[nn] == null then
+    set neutral_available[nn] = false
+    return  // SUMMONED or water path
+  endif
   if neutral_available[nn] == true then
     //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "checkneutral")
-    set nearest_neutral[nn] = GetNearestNeutral(nearest_neutral[nn],neutral_id[nn])
-    if nearest_neutral[nn] == null then
-      set neutral_available[nn] = false
-      return  // SUMMONED or water path
-    endif
+    //set nearest_neutral[nn] = GetNearestNeutral(nearest_neutral[nn],neutral_id[nn])
     //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "finished check")
     call DestroyGroup(neutral_guards[nn])
     set neutral_guards[nn] = GetCreepGuardGroup(neutral_guards[nn],nn)
@@ -7320,7 +7438,7 @@ endfunction
 //==========================================================================
 function CheckAllNeutrals takes nothing returns nothing
   local integer i = 0
-
+  call CalcNearestNeutrals()
   loop
     exitwhen i >= NEUTRAL_COUNT
     call CheckNeutral(i)
@@ -7408,11 +7526,11 @@ function PathingThread takes nothing returns nothing
     return
   endif
   call Trace("pathing thread run job" )
+  call StaggerSleep(1,5)
   set pathing_done = true
   loop // this job no need run on job system , help job system more focused on combat
+    set t = t + 1
     exitwhen player_defeated
-    call Sleep(1)
-    // All job will be run once during initialization to prevent waiting for too long
     if ModuloInteger(t, 6) == 0 then
       call ChatVarsJob()
     endif
@@ -7479,10 +7597,9 @@ function PathingThread takes nothing returns nothing
       endloop
     endif
     if t >= 1000 then // initialization , prevent excessive size , computational complexity
-      set t = 1
-    else
-      set t = t + 1
+      set t = 0
     endif
+    call Sleep(1)
   endloop
 endfunction
 
@@ -7657,7 +7774,6 @@ function cmd_attack takes integer cmd, integer data returns nothing
     if race_towerrush_available and not towerrush then
       call TowerRushCheck(1)
       //call DisplayToAllies(chat_towerrush)
-      return
     else
       call DisplayToAllies(chat_no_towerrush)
       call DisplayToObserversImportant( chat_no_towerrush )
@@ -10287,7 +10403,7 @@ function BuildMovePeonZeppelin takes unit peon, unit target, boolean exptake ret
     call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
     call RecycleGuardPosition(build_zeppelin)
     call RecycleGuardPosition(peon)
-    return
+    return true
   endif
   if IsUnitInTransport(peon, build_zeppelin) then
     if DistanceBetweenUnits(build_zeppelin, target) > 300 then
@@ -10390,7 +10506,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion rescources sorted")
   if expansion_peon == null or not UnitAlive(expansion_peon) then
     set expansion_peon = GetExpansionPeon()
-    if expansion_peon == null then
+    if expansion_peon == null or not UnitAlive(expansion_peon) then
       set expansion_peon = GetExpansionPeon2(expansion_peon)
     endif
   endif
@@ -10455,7 +10571,7 @@ function BuyItem takes integer qty, integer id returns boolean
   endif
   set shop_wanted = qty
   if buy_type[id] == BT_RACIAL_ITEM then
-    if shop_unit == null or GetOwningPlayer(shop_unit) != ai_player then
+    if shop_unit == null or not UnitAlive(shop_unit) or GetOwningPlayer(shop_unit) != ai_player then
       set shop_unit = GetOneOfId(shop_unit, ai_player, old_id[racial_shop])
     endif
     set shop_distance_limit = raceshop_distance_limit
@@ -11404,7 +11520,7 @@ function GetNearAlliedStrength takes unit target returns real
   loop
     exitwhen i >= army_num
     if Player(army_owner[i]) != ai_player and IsPlayerAlly(ai_player, Player(army_owner[i])) then
-      if army_loc[i] != null and DistanceBetweenPoints(unitloc, army_loc[i]) > dist and army_future[i] != null and DistanceBetweenPoints(unitloc, army_future[i]) < 1300 then
+      if army_loc[i] != null and army_future[i] != null and DistanceBetweenPoints(unitloc, army_loc[i]) > dist and DistanceBetweenPoints(unitloc, army_future[i]) < 1300 then
         set sum = sum + army_strength[i]
       endif
     endif
@@ -11424,7 +11540,7 @@ function GetNearerAlliedStrength takes unit target returns real
   loop
     exitwhen i >= army_num
     if Player(army_owner[i]) != ai_player and IsPlayerAlly(ai_player, Player(army_owner[i])) then
-      if army_loc[i] != null and DistanceBetweenPoints(unitloc, army_loc[i]) <= dist and army_future[i] != null and DistanceBetweenPoints(unitloc, army_future[i]) < 1600 then
+      if army_loc[i] != null and army_future[i] != null and DistanceBetweenPoints(unitloc, army_loc[i]) <= dist and DistanceBetweenPoints(unitloc, army_future[i]) < 1600 then
         set sum = sum + army_strength[i]
       endif
     endif
@@ -12607,9 +12723,10 @@ if not creeping_only then	// Do the normal attack sequence
     if needs_exp then
       if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
         call ChooseExpansion()
-        if current_expansion == null then
-          return
-        endif
+      endif
+      if current_expansion == null then
+        call Trace("Need expansion but none found")
+        return
       endif
       set creep = GetExpFoe(creep)
       if creep != null and UnitAlive(creep) then
