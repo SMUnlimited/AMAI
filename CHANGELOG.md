@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## Unreleased
+## [3.3.1] - 2023-12-17
 
 ### Added
 - More installer validation checks for map write access and MPQEditor presence.
@@ -13,14 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Balance tweaks to harvesting logic. (jzy-chitong56)
 - (Classic) Balance tweaks to hero ability picks. (jzy-chitong56)
 
-### Removed
-
 ### Fixed
-- Fixed critical infinite loop thread crash with undead players.
-- More Performance optimisations especially for large maps.
+- Fixed performance issue caused by a critical infinite loop crash with undead players.
+- More performance optimisations especially for large maps.
 - Fixed issue with the pathing checks where night elf would spend an extremly long time checking gold mines so was delayed in using neutral buildings.
 - Fixed issue with the pathing check that meant some pathable locations were deemed to be impassable.
-- Optimised pathing check for neutral buildings so its faster, what would take ~10 mins on larger maps takes ~1 minute now. 
+- Optimised pathing check for neutral buildings so its faster, what would take over 10 mins on larger maps takes ~1 minute now. 
 - Fixed missing dependencies for various units and upgrades. (jzy-chitong56)
    - Mark of the talon only needs tier 2 not tier 3.
    - Gyphon Ryder needs Castle.
@@ -41,8 +39,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Call AMAI install scripts from any folder, which means that you can put the AMAI folder in your Windows PATH environment variable.
   - Call AMAI batch scripts from external scripts without dealing with so many pauses. Also fixes a recent regression that causes AMAI to close the console window.
   - Report on program exit code when AMAI compiles files for both local running and for CI environments.
-
-
 
 ## [3.3.0] - 2023-12-14
 
