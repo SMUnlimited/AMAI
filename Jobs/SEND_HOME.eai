@@ -139,10 +139,14 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
       elseif GetUnitCurrentOrder(u) != OrderId("cannibalize") and (GetUnitAbilityLevel(u, 'Acn2') > 0 or GetUnitAbilityLevel(u, 'Acan') > 0 or GetUnitAbilityLevel(u, 'ACcn') > 0) then
         set g = CreateGroup()
         call GroupEnumUnitsInRangeOfLoc(g, exist_town[p], 1000, null)
-        set g = SelectByAlive(g, false)
-        set g = SelectUnittype(g,UNIT_TYPE_DEAD,true)
-        set g = SelectUnittype(g,UNIT_TYPE_STRUCTURE,false)
-        set corpse = FirstOfGroup(g)
+        loop
+          set corpse = FirstOfGroup(g)
+          exitwhen corpse == null
+          exitwhen not UnitAlive(corpse) and IsUnitType(corpse, UNIT_TYPE_DEAD) and not IsUnitType(corpse, UNIT_TYPE_STRUCTURE)
+          call GroupRemoveUnit(g, corpse)
+        endloop
+        call DestroyGroup(g)
+        set g = null
         if corpse != null then
           call IssueTargetOrder(u, "move" , corpse)
           call IssueImmediateOrder(u, "cannibalize")
@@ -155,8 +159,6 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
           endif
           call CreateDebugTag("SEND_HOME harvest lumber", 10, u, 3.00, 1.50)
         endif
-        call DestroyGroup(g)
-        set g = null
       endif
     endif
     call TQAddUnitJob(4, SEND_HOME, p, u)
