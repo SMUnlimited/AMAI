@@ -9706,6 +9706,8 @@ endfunction
 function InitGenericPlayerSlots takes nothing returns nothing
     local gametype gType = GetGameTypeSelected()
 
+    call VersionCheck()
+
     if (gType == GAME_TYPE_MELEE) then
         call MeleeInitPlayerSlots()
     elseif (gType == GAME_TYPE_FFA) then
