@@ -1210,7 +1210,7 @@ function SetDebugTagColor takes texttag tt returns nothing
   elseif c == PLAYER_COLOR_GREEN then
     call SetTextTagColor(tt, 32, 191, 0, AMAIPercentTo255(100-0))
   elseif c == PLAYER_COLOR_PINK then
-    call SetTextTagColor(tt, 228, 92, 0, AMAIPercentTo255(100-0))
+    call SetTextTagColor(tt, 228, 92, 175, AMAIPercentTo255(100-0))
   elseif c == PLAYER_COLOR_LIGHT_GRAY then
     call SetTextTagColor(tt, 148, 150, 150, AMAIPercentTo255(100-0))
   elseif c == PLAYER_COLOR_LIGHT_BLUE then
@@ -7246,13 +7246,13 @@ function TQLoop takes nothing returns nothing
     if tq_length > 0 then
       if not TQHandleOnce() then
         set i = tq_time[1] - TimerGetElapsed(tq_timer)
-        if i > 0 then
-          call Sleep(RMax(0.05, RMin(i ,1)))
+        if i >= 0.3 then
+          call Sleep(i+0.05)
         else
-          call Sleep(RMax(0.05, 1 * GetRandomReal(0, 1)))
+          call Sleep(RMax(0.05, GetRandomReal(0, 0.3)))
         endif
       else
-        call Sleep(RMax(0.05, 1 * GetRandomReal(0, 1)))
+        call Sleep(RMax(0.05, GetRandomReal(0, 0.3)))
       endif
     else
       call Trace("TQLOOP: No job is ready to fire")
@@ -7274,6 +7274,7 @@ endfunction
 //==========================================================================
 function CheckNeutral takes integer nn returns nothing
   if nearest_neutral[nn] == null then
+    call Trace("Neutral Pathing ID done (no pathable neutral): " + Int2Str(nn))
     set neutral_available[nn] = false
     return  // SUMMONED or water path
   endif
@@ -7287,11 +7288,7 @@ function CheckNeutral takes integer nn returns nothing
     set neutral_night_buy[nn] = CanCreepGuardsSleep(nn)
     // set neutral_night_buy[nn] = not no_sleep
 
-    if nearest_neutral[nn] != null then
-      call Trace("Neutral Pathing ID done: " + Int2Str(nn))
-    else
-      call Trace("Neutral Pathing ID done (no pathable neutral): " + Int2Str(nn))
-    endif
+    call Trace("Neutral Pathing ID done: " + Int2Str(nn)) 
   endif
 
 endfunction
@@ -7443,7 +7440,6 @@ function CheckAllNeutrals takes nothing returns nothing
     exitwhen i >= NEUTRAL_COUNT
     call CheckNeutral(i)
     set i = i + 1
-    call Sleep(0.1)
   endloop
 
 endfunction
@@ -7771,12 +7767,16 @@ function cmd_attack takes integer cmd, integer data returns nothing
     call DisplayToAllies(chat_confirm_attack_unit)
 
   elseif cmd == 17 then // Towerrush
-    if race_towerrush_available and not towerrush then
-      call TowerRushCheck(1)
-      //call DisplayToAllies(chat_towerrush)
+    if race_towerrush_available then
+      if not towerrush then
+        call TowerRushCheck(1)
+      else  // rushing
+        call DisplayToAllies(chat_towerrush)
+        call DisplayToObserversImportant(chat_towerrush)
+      endif
     else
       call DisplayToAllies(chat_no_towerrush)
-      call DisplayToObserversImportant( chat_no_towerrush )
+      call DisplayToObserversImportant(chat_no_towerrush)
     endif
 
   endif
@@ -10396,28 +10396,21 @@ function IsWaterExpansion takes unit u returns boolean
 endfunction
 
 //============================================================================
-function BuildMovePeonZeppelin takes unit peon, unit target, boolean exptake returns boolean
-  if exptake then
-    call IssueTargetOrder(build_zeppelin, "unload", peon)
-    call Sleep(0.5)  //unload time
-    call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
-    call RecycleGuardPosition(build_zeppelin)
-    call RecycleGuardPosition(peon)
-    return true
-  endif
+function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
   if IsUnitInTransport(peon, build_zeppelin) then
-    if DistanceBetweenUnits(build_zeppelin, target) > 300 then
+    if DistanceBetweenUnits(build_zeppelin, target) > race_max_expa_mine_distance then
       call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + GetRandomReal(-200,200), GetUnitY(target) + GetRandomReal(-200,200))
     else
       call IssueImmediateOrder(build_zeppelin, "stop")
       call IssueTargetOrder(build_zeppelin, "unload", peon)
-      call Sleep(0.5)  //unload time
-      call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
+      call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, build_zeppelin)
+      call Sleep(0.5)
       call IssueImmediateOrder(peon, "stop")
       return true
     endif
   else
-    if DistanceBetweenUnits(peon, target) < RMin(400,race_max_expa_mine_distance) then
+    if DistanceBetweenUnits(peon, target) < race_max_expa_mine_distance then
+      call RecycleGuardPosition(build_zeppelin)
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       call IssueImmediateOrder(peon, "stop")
       return true
@@ -10459,10 +10452,12 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   endif
   if CheckExpansionTaken(current_expansion) or current_expansion == not_taken_expansion then  // not taken used in the MultipleMinefix , militai expansion , ancient expansion and item expansion system then
     call Trace("AMAIStartexpa: Expansion Taken by someone else")
-      if expansion_peon != null and UnitAlive(expansion_peon) and IsUnitLoaded(expansion_peon) then
-      call BuildMovePeonZeppelin(expansion_peon, current_expansion, true)  //Prevent Zeppelin from being idle indefinitely
+      set current_expansion = null
+    if expansion_peon != null and build_zeppelin != null and UnitAlive(expansion_peon) and IsUnitLoaded(expansion_peon) then
+      call IssueTargetOrder(build_zeppelin, "unload", expansion_peon)
+      call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, build_zeppelin)
+      call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, expansion_peon)
     endif
-    set current_expansion = null
     return BUILT_ALL
   endif
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Taken Checked")
@@ -10525,13 +10520,14 @@ function StartExpansionAM takes integer qty, integer hall returns integer
           call Trace("AMAIStartexpa: No Zeppelin found for transporting peon")
         else
           call GroupAddUnit(unit_zepplin_move, build_zeppelin)
+          call RemoveGuardPosition(build_zeppelin)
         endif
       endif
       if (w and build_zeppelin == null) then
         call Trace("AMAIStartexpa: Water expansion required waiting to create a zeppelin")
         return BUILT_SOME
       endif
-      if (build_zeppelin != null and not BuildMovePeonZeppelin(expansion_peon, current_expansion, false)) then
+      if (build_zeppelin != null and not BuildMovePeonZeppelin(expansion_peon, current_expansion)) then
         call Trace("AMAIStartexpa: Expanding via a zeppelin")
         return BUILT_SOME
       endif
