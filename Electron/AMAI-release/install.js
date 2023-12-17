@@ -49,6 +49,10 @@ const installOnDirectory = async () => {
     process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\common.ai`)
     return
   }
+  if (!fs.existsSync(`MPQEditor.exe`)) {
+    process.send(`ERROR: Cannot find ${process.cwd()}\\MPQEditor.exe`)
+    return
+  }
   if (installCommander && !fs.existsSync(`Scripts\\Blizzard_${ver}.j`)) {
     process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\blizzard_${ver}.j`)
     return
@@ -65,6 +69,13 @@ const installOnDirectory = async () => {
         process.send(`#### Installing ${ver} into file: ${file} ####`);
       } else {
         process.send(`skip file: ${file}`);
+        continue;
+      }
+
+      try {
+        fs.accessSync(file, fs.constants.W_OK)
+      } catch (e) {
+        process.send(`WARN: ${file} does not have write permissions so unable to install`);
         continue;
       }
 
