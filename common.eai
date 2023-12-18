@@ -4421,10 +4421,9 @@ function CalcNearestNeutrals takes nothing returns nothing
   endloop
 
   call Trace("Total Neutrals to path to:" + Int2Str(i))
-
+  call DestroyGroup(tempg)
   loop
     set pathingdone = true
-    call DestroyGroup(tempg)
     set tempg = CopyGroup(g, tempg)
     set i = 0
     loop
@@ -4480,10 +4479,10 @@ function CalcNearestNeutrals takes nothing returns nothing
       call GroupRemoveUnit(tempg, u)
       set i = i + 1
     endloop
+    call DestroyGroup(tempg)
     exitwhen pathingdone
     call Sleep(1 * sleep_multiplier)
   endloop
-  call DestroyGroup(tempg)
   set tempg = null
   call DestroyGroup(g)
   set g = null
@@ -4540,11 +4539,10 @@ function GetNearestNeutral takes unit ru, integer id returns unit
   endloop
   call Trace("Total Neutrals to path to:" + Int2Str(i))
   //set distance = 10000000
-
+  call DestroyGroup(tempg)
   loop
     //set totaltime = totaltime + 3
     set pathingdone = true
-    call DestroyGroup(tempg)
     set tempg = CopyGroup(g,tempg)
     set i = 0
     loop
@@ -4587,10 +4585,10 @@ function GetNearestNeutral takes unit ru, integer id returns unit
       call GroupRemoveUnit(tempg, u)
       set i = i + 1
     endloop
+    call DestroyGroup(tempg)
     exitwhen pathingdone
     call Sleep(1 * sleep_multiplier)
   endloop
-  call DestroyGroup(tempg)
   set tempg = null
   call DestroyGroup(g)
   set g = null
@@ -7246,13 +7244,15 @@ function TQLoop takes nothing returns nothing
     if tq_length > 0 then
       if not TQHandleOnce() then
         set i = tq_time[1] - TimerGetElapsed(tq_timer)
-        if i >= 0.3 then
-          call Sleep(i+0.05)
+        if i >= 1 then
+          call Sleep(1)
+        elseif i >= 0.3 then
+          call Sleep(i+(0.05*sleep_multiplier))
         else
-          call Sleep(RMax(0.05, GetRandomReal(0, 0.3)))
+          call Sleep(RMax(0.05, GetRandomReal(0, 0.3)*sleep_multiplier))
         endif
       else
-        call Sleep(RMax(0.05, GetRandomReal(0, 0.3)))
+        call Sleep(RMax(0.05, GetRandomReal(0, 0.3)*sleep_multiplier))
       endif
     else
       call Trace("TQLOOP: No job is ready to fire")
@@ -12720,28 +12720,27 @@ if not creeping_only then	// Do the normal attack sequence
       if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
         call ChooseExpansion()
       endif
-      if current_expansion == null then
-        call Trace("Need expansion but none found")
-        return
-      endif
-      set creep = GetExpFoe(creep)
-      if creep != null and UnitAlive(creep) then
-        call Trace("Creep the Expansion")
-        set attacking_expansion = true
-        set battle_radius = creep_battle_radius
-        call SetAllianceTarget(creep)
-        call Chat(C_Expansion)
-        call FormGroupAM(3)
-        call AttackMoveKillCreep(creep)
-        if creep == null then
-          set take_exp = false
+      if current_expansion != null then
+        set creep = GetExpFoe(creep)
+        if creep != null and UnitAlive(creep) then
+          call Trace("Creep the Expansion")
+          set attacking_expansion = true
+          set battle_radius = creep_battle_radius
+          call SetAllianceTarget(creep)
+          call Chat(C_Expansion)
+          call FormGroupAM(3)
+          call AttackMoveKillCreep(creep)
+          if creep == null then
+            set take_exp = false
+          endif
+          call Sleep(10)
+          set attacking_expansion = false
+          set creep = null
+          return
         endif
-        call Sleep(10)
-        set attacking_expansion = false
         set creep = null
-        return
       endif
-      set creep = null
+      call Trace("Need expansion but none found")
     endif
   endif
 
