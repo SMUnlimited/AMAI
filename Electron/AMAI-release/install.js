@@ -32,8 +32,8 @@ const installOnDirectory = async () => {
   const args = process.argv.slice(2);
   const installCommander = (args[1] == 'true');
   const response = args[0];
-  const ver = args[2]
-
+  const ver = args[2];
+  const icon = (args[2] == "REFORGED")
   process.send(`#### Installing AMAI for ${ver} ####`);
 
   // TODO: change to receive array of maps
@@ -92,6 +92,10 @@ const installOnDirectory = async () => {
        // console.log('mpqEditor', mpqEditor.error);
 
         // spawnSync(`echo`, [`running execuMPQEditor ${file}`]);
+        if (mpqEditor.status == 5) {
+          process.send(`WARN: ${file} Failed to run mpqeditor htsize, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+          continue;
+        }
         mpqEditor.error ?
           process.send(mpqEditor.error.message)
             : process.send(`Resize map hashtable size ${file}`);
@@ -112,7 +116,10 @@ const installOnDirectory = async () => {
 
         // spawnSync(`echo`, [`running AddToMPQ 1 ${file}`]);
         // process.send(`running AddToMPQ 1 ${file}`);
-
+        if (f1AddToMPQ.status == 5) {
+          process.send(`WARN: ${file} Failed to add ai scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+          continue;
+        }
         f1AddToMPQ.error ?
           process.send(f1AddToMPQ.error.message)
             : process.send(`Add ai scripts ${file}`);
@@ -131,16 +138,187 @@ const installOnDirectory = async () => {
           );
 
           /** uncomment to debbug */
-         // console.log('f2AddToMPQ', f2AddToMPQ.error);
+          // console.log('f2AddToMPQ', f2AddToMPQ.error);
 
           // spawnSync(`echo`, [`running AddToMPQ 2 ${file}`]);
+          if (f2AddToMPQ.status == 5) {
+            process.send(`WARN: ${file} Failed to add blizzard.j script, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+            continue;
+          }
           f2AddToMPQ.error ?
             process.send(f2AddToMPQ.error.message)
               : process.send(`Add commander script ${file}`);
 
+          if (icon) {
+            const f3AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+                'a',
+                file,
+                `Icons\\Reforged\\MiniMap\\`,
+                `UI\\MiniMap`,
+              ],
+            );
+            if (f3AddToMPQ.status == 5) {
+              process.send(`WARN: ${file} Failed to add minimap icon, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+              continue;
+            }
+            f3AddToMPQ.error ?
+              process.send(f3AddToMPQ.error.message)
+                : process.send(`Add minimap icon ${file}`);
+          }
+
+          if (icon) {
+            const f4AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+              'a',
+              file,
+              `Icons\\Reforged\\CommandButtons\\*.dds`,
+              `ReplaceableTextures\\CommandButtons`,
+                ],
+            );
+            if (f4AddToMPQ.status == 5) {
+              process.send(`WARN: ${file} Failed to add Reforged item icon, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+              continue;
+            }
+            f4AddToMPQ.error ?
+            process.send(f4AddToMPQ.error.message)
+              : process.send(`Add Reforged item icon ${file}`);
+          }else {
+            const f4AddToMPQ =  spawnSync(
+                `MPQEditor.exe`,
+                [
+                'a',
+                file,
+                `Icons\\Class\\CommandButtons\\*.blp`,
+                `ReplaceableTextures\\CommandButtons`,
+                ],
+            );
+            if (f4AddToMPQ.status == 5) {
+              process.send(`WARN: ${file} Failed to add Class item icon, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+              continue;
+            }
+            f4AddToMPQ.error ?
+            process.send(f4AddToMPQ.error.message)
+              : process.send(`Add Class item icon ${file}`);
+          }
+
+          if (icon) {
+            const f5AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+                'a',
+                file,
+                `Icons\\Reforged\\CommandButtonsDisabled\\*.dds`,
+                `ReplaceableTextures\\CommandButtonsDisabled`,
+              ],
+            );
+            if (f5AddToMPQ.status == 5) {
+              process.send(`WARN: ${file} Failed to add Reforged item disabled icon, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+              continue;
+            }
+            f5AddToMPQ.error ?
+            process.send(f5AddToMPQ.error.message)
+              : process.send(`Add Reforged item disabled icon ${file}`);
+          }else {
+            const f5AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+                'a',
+                file,
+                `Icons\\Class\\CommandButtonsDisabled\\*.blp`,
+                `ReplaceableTextures\\CommandButtonsDisabled`,
+              ],
+            );
+            if (f5AddToMPQ.status == 5) {
+              process.send(`WARN: ${file} Failed to add Class item disabled icon, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+              continue;
+            }
+            f5AddToMPQ.error ?
+            process.send(f5AddToMPQ.error.message)
+              : process.send(`Add Class item disabled icon ${file}`);
+          }
+
+          if (icon) {
+            const f6AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+                'a',
+                file,
+                `Icons\\Reforged\\war3map.imp`,
+                `war3map.imp`,
+              ],
+              { encoding : `utf8` }
+            );
+            if (f6AddToMPQ.status == 5) {
+              process.send(`WARN: ${file} Failed to add Reforged icon list file, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+              continue;
+            }
+            f6AddToMPQ.error ?
+              process.send(f6AddToMPQ.error.message)
+                : process.send(`Add Reforged icon list file ${file}`);
+          }else {
+            const f6AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+                'a',
+                file,
+                `Icons\\Class\\war3map.imp`,
+                `war3map.imp`,
+              ],
+              { encoding : `utf8` }
+            );
+            if (f6AddToMPQ.status == 5) {
+              process.send(`WARN: ${file} Failed to add Class icon list file, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+              continue;
+            }
+            f6AddToMPQ.error ?
+              process.send(f6AddToMPQ.error.message)
+                : process.send(`Add Class icon list file ${file}`);
+          }
+
+          if (icon) {
+            const f7AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+                'a',
+                file,
+                `Icons\\Reforged\\war3map.w3t`,
+                `war3map.w3t`,
+              ],
+              { encoding : `utf8` }
+            );
+            if (f7AddToMPQ.status == 5) {
+              process.send(`WARN: ${file} Failed to add Reforged item index file, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+              continue;
+            }
+            f7AddToMPQ.error ?
+              process.send(f7AddToMPQ.error.message)
+                : process.send(`Add Reforged item index file ${file}`);
+          }else {
+            const f7AddToMPQ =  spawnSync(
+              `MPQEditor.exe`,
+              [
+                'a',
+                file,
+                `Icons\\Class\\war3map.w3t`,
+                `war3map.w3t`,
+              ],
+              { encoding : `utf8` }
+            );
+            if (f7AddToMPQ.status == 5) {
+              process.send(`WARN: ${file} Failed to add Class item index file, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+              continue;
+            }
+            f7AddToMPQ.error ?
+              process.send(f7AddToMPQ.error.message)
+                : process.send(`Add Class item index file ${file}`);
+            }
+
         }
 
-        const f3AddToMPQ =  spawnSync(
+        const f8AddToMPQ =  spawnSync(
           `MPQEditor.exe`,
           [
             'f',
@@ -150,11 +328,15 @@ const installOnDirectory = async () => {
         );
 
         /** uncomment to debbug */
-       // console.log('f3AddToMPQ', f3AddToMPQ.error);
+       // console.log('f8AddToMPQ', f8AddToMPQ.error);
 
         // spawnSync(`echo`, [`running AddToMPQ 3 ${file}`]);
-        f3AddToMPQ.error ?
-          process.send(f3AddToMPQ.error.message)
+        if (f8AddToMPQ.status == 5) {
+          process.send(`WARN: ${file} Failed to flush scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+          continue;
+        }
+        f8AddToMPQ.error ?
+          process.send(f8AddToMPQ.error.message)
             : process.send(`Optimize map MPQ ${file}`);
       } catch(error) {
         console.log(error);
