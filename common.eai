@@ -1821,8 +1821,8 @@ function GetRandomDiff takes integer maxdiff returns integer
 endfunction
 
 //============================================================================
-function GetRandomPlusMinus takes nothing returns integer
-  if GetRandomInt(0,1) == 1 then
+function ISign takes nothing returns integer
+  if GetRandomInt(-1,1) >= 0 then
     return 1
   else
     return -1
@@ -4538,8 +4538,8 @@ function GetNearestNeutral takes unit ru, integer id returns unit
     call GroupRemoveUnit(tempg, u)
   endloop
   call Trace("Total Neutrals to path to:" + Int2Str(i))
-  //set distance = 10000000
   call DestroyGroup(tempg)
+  //set distance = 10000000
   loop
     //set totaltime = totaltime + 3
     set pathingdone = true
@@ -5705,7 +5705,7 @@ function GetLumberLocationAtBase takes nothing returns location
   endif
   set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), ground_id, GetLocationX(home_location), GetLocationY(home_location))
   if not IssueImmediateOrder(u, "autoharvestlumber") then  // home_location near no tree , so move unit , random x y coordinates
-    call IssuePointOrder(u, "move", GetLocationX(home_location) + GetRandomInt(1000,1100)*GetRandomPlusMinus(), GetLocationY(home_location) + GetRandomInt(1000,1100)*GetRandomPlusMinus())
+    call IssuePointOrder(u, "move", GetLocationX(home_location) + GetRandomInt(1000,1100)*ISign(), GetLocationY(home_location) + GetRandomInt(1000,1100)*ISign())
     call Sleep(2.00)
     call IssueImmediateOrder(u, "autoharvestlumber")
   endif
@@ -5989,7 +5989,7 @@ function AddExpansion takes unit u, real d returns nothing
   set expansion_dist[expansion_list_length] = d
   set expansion_creeps[expansion_list_length] = GetExpFoeGroup(expansion_creeps[expansion_list_length],u)  // group of the the creeps that guard this mine
   if first_expansion_chosen == false then
-    set first_expansion_chosen = expansion_creeps[expansion_list_length] != null
+    set first_expansion_chosen = expansion_creeps[expansion_list_length] != null or CheckExpansionTaken(u) == false
   endif
   if expansion_dist[expansion_list_length] > 6000/512 then
     call GroupAddUnit(far_expansion, expansion_list[expansion_list_length])
@@ -6522,7 +6522,7 @@ function GetRacialBuildHallLV takes integer id returns integer
       set i = i + 1
     endloop
   endif
-  return 1  // hall , base BARRACKS , tower , farm , altar , shop , expansion , lumber , goldmine , UPGRADED
+  return 1  // hall 1 , base BARRACKS , tower , farm , altar , shop , expansion , lumber , goldmine , UPGRADED
 endfunction
 
 //============================================================================
@@ -6601,7 +6601,7 @@ endfunction
 function CanCreepGuardsSleep takes integer nn returns boolean
   local group g = null
   local unit u = null
-  local boolean b = true
+  local boolean b = false
   if nearest_neutral[nn] != null and FirstOfGroup(neutral_guards[nn]) != null then
     set g = CopyGroup(neutral_guards[nn],g)
     loop
@@ -6894,13 +6894,13 @@ function GetSlotsFree takes nothing returns integer
 endfunction
 
 //============================================================================
-function GetHeroToBuyItem takes unit shop, real limit, boolean is_healing_included, boolean is_repeatbuy returns unit
+function GetHeroToBuyItem takes unit shop, real limit, boolean is_healing_included, boolean can_repeatbuy returns unit
   local integer i = 1
   loop
     exitwhen i > 3
     if hero_built[i] and UnitAlive(hero_unit[i]) then
      if GetSlotsFreeOnUnit(hero_unit[i]) > 0 and DistanceBetweenUnits(hero_unit[i], shop) < limit and not IsUnitInGroup(hero_unit[i], unit_buying_tavern) and not IsUnitInGroup(hero_unit[i], unit_buying_merc) and not IsUnitInGroup(hero_unit[i], unit_harassing) then
-       if (is_healing_included == true and IsUnitInGroup(hero_unit[i], unit_healing)) or is_repeatbuy != true then
+       if (is_healing_included == true and IsUnitInGroup(hero_unit[i], unit_healing)) or can_repeatbuy != true then
        else
           return hero_unit[i]
        endif
@@ -7273,12 +7273,12 @@ endfunction
 // (AMAI)	CheckNeutral
 //==========================================================================
 function CheckNeutral takes integer nn returns nothing
-  if nearest_neutral[nn] == null then
-    call Trace("Neutral Pathing ID done (no pathable neutral): " + Int2Str(nn))
-    set neutral_available[nn] = false
-    return  // SUMMONED or water path
-  endif
   if neutral_available[nn] == true then
+    if nearest_neutral[nn] == null then
+      call Trace("Neutral Pathing ID done (no pathable neutral): " + Int2Str(nn))
+      set neutral_available[nn] = false
+      return  // SUMMONED or water path
+    endif
     //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "checkneutral")
     //set nearest_neutral[nn] = GetNearestNeutral(nearest_neutral[nn],neutral_id[nn])
     //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "finished check")
@@ -7560,16 +7560,16 @@ function PathingThread takes nothing returns nothing
       call StructureControlJob()
     endif
     if ModuloInteger(t, 6*w) == 0 then
-      if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null then
+      if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null and UnitAlive(nearest_neutral[NEUTRAL_HEALING_FOUNTAIN]) then
         call NeutralEnemyCheckJob(NEUTRAL_HEALING_FOUNTAIN)
       endif
-      if nearest_neutral[NEUTRAL_MANA_FOUNTAIN] != null then
+      if nearest_neutral[NEUTRAL_MANA_FOUNTAIN] != null and UnitAlive(nearest_neutral[NEUTRAL_MANA_FOUNTAIN]) then
         call NeutralEnemyCheckJob(NEUTRAL_MANA_FOUNTAIN)
       endif
-      if nearest_neutral[NEUTRAL_POWER_FOUNTAIN] != null then
+      if nearest_neutral[NEUTRAL_POWER_FOUNTAIN] != null and UnitAlive(nearest_neutral[NEUTRAL_POWER_FOUNTAIN]) then
         call NeutralEnemyCheckJob(NEUTRAL_POWER_FOUNTAIN)
       endif
-      if nearest_neutral[NEUTRAL_HEAL_WARD] != null then
+      if nearest_neutral[NEUTRAL_HEAL_WARD] != null and UnitAlive(nearest_neutral[NEUTRAL_HEAL_WARD]) then
         call NeutralEnemyCheckJob(NEUTRAL_HEAL_WARD)
       endif
     endif
@@ -9596,7 +9596,7 @@ function InitHarass takes nothing returns nothing
       call FlushChildHashtable(additional_info,i)
       call FlushParentHashtable(harass_groups[i])
       set harass_groups[i] = InitHashtable()
-    endif  
+    endif
     set i = i + 1
   endloop
   set harass_group_length = 0
@@ -10452,7 +10452,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   endif
   if CheckExpansionTaken(current_expansion) or current_expansion == not_taken_expansion then  // not taken used in the MultipleMinefix , militai expansion , ancient expansion and item expansion system then
     call Trace("AMAIStartexpa: Expansion Taken by someone else")
-      set current_expansion = null
+    set current_expansion = null
     if expansion_peon != null and build_zeppelin != null and UnitAlive(expansion_peon) and IsUnitLoaded(expansion_peon) then
       call IssueTargetOrder(build_zeppelin, "unload", expansion_peon)
       call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, build_zeppelin)
@@ -13079,7 +13079,7 @@ function HealArmy takes nothing returns nothing
   local integer sleepFrequency = 0
   loop
     set hs = GetArmyHealthState()
-    exitwhen (sleepFrequency >= 3 and hs > healthTrigger) // Tried to heal but overall still strong so exit loop
+    exitwhen sleepFrequency >= 3 and hs > healthTrigger // Tried to heal but overall still strong so exit loop
     exitwhen urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger
     exitwhen player_defeated or town_threatened or ver_heroes == false
     set mass_healed = false
