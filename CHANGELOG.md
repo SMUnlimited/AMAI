@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
-## [3.2.2-cn] - 2023-4-24
+## [3.3.1-cn] - 2023-4-24
 
 ### Added
 - Adaptation war3 1.36
@@ -91,6 +91,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Add new attack mode , on maps with more than 10 players , or big map , or small map and human player only 2 or 1 , AI will first attack human players hall , to avoid china call 【内卷】 , like AI internal conflict , no attack human player
 - Add CheckCreepsByRadius search creep too far ，Test findings , if creep and mine distance exceeds expansion_radius ，all race will build EXPANSION , some map like (4)Avalanche_LV , the creep and gold distance > 650 , neutral build check too
 - Add Ally Shopping , when BuyItem() return false , if item is HealingItem and buy_type is RACIAL_ITEM and AI have 1000 gold , then will go Random Ally's Random Shop Shopping
+- Buy item can check repeat , if can not repeat , will change buy unit
 - New job Item Expansion
    - Now can configuration Item Expansion , like ORC can buy TINY_GREAT_HALL
    - This is not proactive expansion , but rather passive(no call ChooseExpansion())
