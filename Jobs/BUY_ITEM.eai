@@ -29,6 +29,13 @@ function IsHealingItem takes integer id returns boolean
 	return false
 endfunction
 
+function CanRepeatItem takes integer id returns boolean
+  if race_tower_item == id and race_tower_item_quantity > 1 then
+    return true
+  endif
+  return false  // record not heal but can repeat buy item
+endfunction
+
 function DropNonHealingItem takes unit u returns nothing
 	local integer i = 0
 	local item t = null
@@ -51,9 +58,9 @@ function BuyItemJob takes integer id returns nothing
   local real current_time = TimerGetElapsed(tq_timer)
   local real time_next_try = 0
   local real dist = 0
-  local boolean healing = false
+  local boolean healing = IsHealingItem(old_id[id])
   local integer detectedenemies = 0
-
+  local boolean repeatbuy = healing == true or CanRepeatItem == true  // heal item can repeat buy
   call DisplayToAllJobDebug("BUY_ITEM JOB START")
 
   if shop_ordered == false then
@@ -71,7 +78,7 @@ function BuyItemJob takes integer id returns nothing
   endif
 
   // moved here to prevent a job crash
-  if shop_sent == null or not UnitAlive(shop_sent) then
+  if shop_sent == null or not UnitAlive(shop_sent) or (not healing and GetItemNumberOnUnit(id, shop_sent) > 0) then
     if shop_sent != null then
       call GroupRemoveUnit(unit_buying_item, shop_sent)
       if IsUnitInGroup(shop_sent, going_home_group) then
@@ -88,9 +95,9 @@ function BuyItemJob takes integer id returns nothing
       return
     endif
     if buy_type[id] == BT_RACIAL_ITEM then
-      set shop_sent = GetHeroToBuyItem(shop_unit, shop_distance_limit,false)
+      set shop_sent = GetHeroToBuyItem(shop_unit, shop_distance_limit, false, repeatbuy)
     else
-      set shop_sent = GetHeroToBuyItem(shop_unit, shop_distance_limit,true)
+      set shop_sent = GetHeroToBuyItem(shop_unit, shop_distance_limit, true, repeatbuy)
     endif
     if shop_sent == null then
       call Trace("No unit to buy item so end job")
@@ -173,8 +180,6 @@ function BuyItemJob takes integer id returns nothing
     set shop_buy_time_small = -1
     return
   endif
-
-  set healing = IsHealingItem(old_id[id])
 
   if GetItemNumber(id) >= shop_wanted or shop_unit == null or not UnitAlive(shop_unit) or (GetSlotsFreeOnUnit(shop_sent) <= 0 and not healing) then
     call RecycleGuardPosition(shop_sent)
