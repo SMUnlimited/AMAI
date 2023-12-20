@@ -17,6 +17,7 @@
   location array hero_enemy_loc
   real array hero_ally_density
   location array hero_ally_loc
+  boolean array hero_singetping
 
 #ELSE
 
@@ -197,6 +198,7 @@ function ItemSingetp takes integer hn, boolean retreat returns boolean
           call RemoveGuardPosition(hero_unit[hn])
           set b = UnitUseItemTarget(hero_unit[hn],t, u)
           set u = null
+          set hero_singetping[hn] = true
         endif
         call RemoveLocation(l)
         set l = null
@@ -368,7 +370,9 @@ function MicroHeroJob takes integer hn returns nothing
       call RecycleGuardPosition(hero_unit[hn])
       call GroupRemoveUnit(unit_healing, hero_unit[hn])
       if not retreat_controlled and not town_threatened and not teleporting and major_hero != null and UnitAlive(major_hero) and DistanceBetweenUnits(major_hero,hero_unit[hn]) > 2000 and ItemSingetp(hn,false) then
-        call TQAddUnitJob(2.8, RESET_HEALTH, 80, hero_unit[hn])  //Reduce latency
+        call TQAddJob(2.8, MICRO_HERO, hn)
+        set hero_singetping[hn] = false
+        return
       endif
     else
       set healing = IsUnitInGroup(hero_unit[hn], unit_healing)
@@ -407,6 +411,11 @@ function MicroHeroJob takes integer hn returns nothing
     if not teleporting and GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) < RMax(flee_health_percentage * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE), flee_minimum_health) and healing == false then
       call SaveHero(hn,armyOfHero)
       set healing = IsUnitInGroup(hero_unit[hn], unit_healing)
+      if hero_singetping[hn] then
+        call TQAddJob(1, MICRO_HERO, hn)
+        set hero_singetping[hn] = false
+        return
+      endif
     endif
 
     if armyOfHero >= 0 and not teleporting and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 then
