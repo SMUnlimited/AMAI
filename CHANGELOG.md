@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [3.3.2] - 2023-12-21
+## [3.3.1a] - 2023-12-21
 
 ### Fixed
 - (Classic) Fixed another case where compatibility logic wasn't fully active for 24 player games.
