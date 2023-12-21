@@ -6,7 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## Unreleased
 
 ### Fixed
-- In theory improved support for AMAI playing against custom AI from editor or in campaign.
 - (Classic) Fixed another case where compatibility logic wasn't fully active for 24 player games.
 
 ## [3.3.1] - 2023-12-17
