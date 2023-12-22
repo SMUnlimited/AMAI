@@ -45,7 +45,7 @@ function PeonMineCheck takes unit mine, boolean unloadpeon returns boolean
       //call GroupTargetOrder(g, "harvest", mine)
       loop  //use accurate quantity control , prevent any wips harvestmine , but mine no vacancies
         set u = FirstOfGroup(tempg)
-        exitwhen u == null or i == delaywisps
+        exitwhen u == null or i >= delaywisps
         call IssueTargetOrder(u, "harvest", mine)
         set i = i + 1
         call GroupRemoveUnit(tempg, u)
@@ -62,7 +62,7 @@ function PeonMineCheck takes unit mine, boolean unloadpeon returns boolean
     set tempg = CreateGroup()
     loop
       set u = FirstOfGroup(g)
-      exitwhen u == null or i == delaywisps
+      exitwhen u == null or i >= delaywisps
       if GetUnitCurrentOrder(u) == OrderId("harvest") and DistanceBetweenUnits(u,mine) < 225 then  // UD harvest gold max Distance is 221
         set i = i + 1
       elseif GetUnitCurrentOrder(u) == 0 and not IsUnitBuying(u) and not IsUnitInGroup(u, unit_zepplin_move) then
@@ -73,7 +73,7 @@ function PeonMineCheck takes unit mine, boolean unloadpeon returns boolean
     if i < delaywisps then
       loop
         set u = FirstOfGroup(tempg)
-        exitwhen u == null or i == delaywisps
+        exitwhen u == null or i >= delaywisps
         call IssueTargetOrder(u, "harvest", mine)
         set i = i + 1
         call GroupRemoveUnit(tempg, u)
@@ -89,7 +89,7 @@ function PeonMineCheck takes unit mine, boolean unloadpeon returns boolean
     set g = GetNearestSubGroupOfGroup(g, home_location, 10)
     loop
       set u = FirstOfGroup(g)
-      exitwhen u == null or i == delaywisps
+      exitwhen u == null or i >= delaywisps
       if (GetUnitCurrentOrder(u) == 0 or GetUnitCurrentOrder(u) == OrderId("harvest")) and not IsUnitBuying(u) and not IsUnitInGroup(u, unit_zepplin_move) then  // no get other order peon , maybe the peon go buy unit or build some
         call IssueTargetOrder(u, "harvest", mine)
       endif
@@ -142,16 +142,19 @@ function HarvestCheckJob takes nothing returns nothing
       call GroupAddUnit(g, secondmine)  // only first take secondmine run PeonMineCheck , Prevention have more peon harvest
     endif
   endif
+  set i = 0
   loop
     set u = FirstOfGroup(g)
-    exitwhen u == null
+    exitwhen u == null or i >= 3
     if UnitAlive(u) then
-      set mines_not_full = PeonMineCheck(u,unloadpeon) and mines_not_full
+      set mines_not_full = PeonMineCheck(u,unloadpeon == true) and mines_not_full
+      set i = i + 1  //prevent all peon harvest mine , not peon harvest wood
     endif
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
   set g = null
+  set u = null
   if mines_not_full then
     call TQAddJob(4, HARVEST_CHECK, 0)
   else

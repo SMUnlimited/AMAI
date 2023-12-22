@@ -107,62 +107,63 @@ function TeleportHome takes integer hn returns nothing
   //local real dy = 0
   local real actual_diff = 0
   local location start_loc = null
-
+  if GetItemNumberOnUnit(tp_item, hero_unit[hn]) <= 0 then
+    return
+  endif
   //set hero_loc = GetUnitLoc(hero_unit[hn])
-  set break_attack = attack_running
-  set attack_running = false
-  call ClearCaptainTargets()
-  set teleporting = true
-  if c_ally_total > 0 and major_hero != null and UnitAlive(major_hero) then
-    loop
-      exitwhen i >= c_ally_total
-      set p = ally_force[i]
-      if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
-        set start_loc = GetPlayerStartLocationLoc(p)
-        //set dx = GetLocationX(start_loc) - GetLocationX(hero_loc)
-        //set dy = GetLocationY(start_loc) - GetLocationY(hero_loc)
-        //set actual_diff = SquareRoot(dx * dx + dy * dy)
-        set actual_diff = DistanceBetweenPoints(start_loc, hero_loc[hn])
-        if actual_diff < distance then
-          set distance = actual_diff
-          if teleport_loc != null then
-            call RemoveLocation(teleport_loc)
-          endif
-          set teleport_loc = GetTeleportLandPoint(start_loc)
+  loop
+    exitwhen i >= c_ally_total
+    set p = ally_force[i]
+    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
+      set start_loc = GetPlayerStartLocationLoc(p)
+      //set dx = GetLocationX(start_loc) - GetLocationX(hero_loc)
+      //set dy = GetLocationY(start_loc) - GetLocationY(hero_loc)
+      //set actual_diff = SquareRoot(dx * dx + dy * dy)
+      set actual_diff = DistanceBetweenPoints(start_loc, hero_loc[hn])
+      if actual_diff < distance then
+        set distance = actual_diff
+        if teleport_loc != null then
+          call RemoveLocation(teleport_loc)
         endif
-        call RemoveLocation(start_loc)
+        set teleport_loc = GetTeleportLandPoint(start_loc)
       endif
-      set i = i + 1
-    endloop
+      call RemoveLocation(start_loc)
+    endif
+    set i = i + 1
+  endloop
+  call ClearCaptainTargets()
+  if teleport_loc != null then
     call CaptainAttack(GetLocationX(teleport_loc), GetLocationY(teleport_loc))
   else
     call CaptainGoHome()
     set teleport_loc = GetTeleportLandPoint(home_location)
   endif
-  if teleport_loc != null then 
-    call ClearCaptainTargets()
-    call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(teleport_loc), GetLocationY(teleport_loc))
-    call RemoveLocation(teleport_loc)
-    set teleport_loc = null
-    call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
-  endif
+  call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(teleport_loc), GetLocationY(teleport_loc))
+  set break_attack = attack_running
+  set attack_running = false
+  set teleporting = true
+  call RemoveLocation(teleport_loc)
+  set teleport_loc = null
+  call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
   set start_loc = null
+  set p = null
   //if hero_loc != null then
   //call RemoveLocation( hero_loc )
   //set hero_loc = null
   //endif
-  set p = null
 endfunction
 
 function TeleportToLoc takes unit u, location l returns nothing
   local location loc = GetTeleportLandPoint(l)
-  set break_attack = attack_running
-  set attack_running = false
-  set teleporting = true
-  call ClearCaptainTargets()
-  call CaptainAttack(GetLocationX(loc), GetLocationY(loc))
-  call UnitUseItemPoint(u, GetItemOfTypeOnUnit(tp_item, u), GetLocationX(loc), GetLocationY(loc))
-  call TQAddUnitJob(0.5, TELEPORT, 0, u)
+  if GetItemNumberOnUnit(tp_item, u) > 0 then
+    set break_attack = attack_running
+    set attack_running = false
+    set teleporting = true
+    call ClearCaptainTargets()
+    call CaptainAttack(GetLocationX(loc), GetLocationY(loc))
+    call UnitUseItemPoint(u, GetItemOfTypeOnUnit(tp_item, u), GetLocationX(loc), GetLocationY(loc))
+    call TQAddUnitJob(0.5, TELEPORT, 0, u)
+  endif
   call RemoveLocation(loc)
   set loc = null
 endfunction
@@ -177,7 +178,7 @@ function ItemSingetp takes integer hn, boolean retreat returns boolean
   if GetUnitAbilityLevel(hero_unit[hn], 'AImt') > 0 then  // check life preventing control skills
     set t = GetItemOfTypeOnUnit(singe_tp_item,hero_unit[hn])
     if t != null then
-      if not retreat then  // teleport to battle , hope don't interrupt casting
+      if retreat == false then  // teleport to battle , hope don't interrupt casting
         set l = GetUnitLoc(major_hero)
       elseif GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) / GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE) >= 0.4 then
         set i = GetRandomInt(0,Max(exist_town_num-1,0))
@@ -186,7 +187,7 @@ function ItemSingetp takes integer hn, boolean retreat returns boolean
       if l != null then
         set g = CreateGroup()
         call GroupEnumUnitsInRangeOfLoc(g, l, 300, null)
-        set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, retreat)
+        set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, retreat == true)
         loop
           set u = FirstOfGroup(g)
           exitwhen u == null or (not IsUnitLoaded(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitType(u, UNIT_TYPE_HERO) and GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE) >= 0.5 and not IsUnitHidden(u))
@@ -203,8 +204,8 @@ function ItemSingetp takes integer hn, boolean retreat returns boolean
         call RemoveLocation(l)
         set l = null
       endif
+      set t = null
     endif
-    set t = null
   endif
   return b
 endfunction
@@ -216,7 +217,7 @@ function ItemSaveHero takes integer hn returns boolean
   if not UnitInvis(hero_unit[hn]) then
     loop
       exitwhen i > 3
-      if i != hn and hero_built[i] and UnitAlive(hero_unit[i]) and DistanceBetweenUnits(hero_unit[i],hero_unit[hn]) < 700 and CheckUseSaveItem(i) then
+      if i != hn and CheckUseSaveItem(i) and DistanceBetweenUnits(hero_unit[i],hero_unit[hn]) < 700 then
         set id = GetUnitCurrentOrder(hero_unit[i])
         if id == 0 or id == OrderId("attack") or id == OrderId("stop") or id == OrderId("move") then
           if GetUnitAbilityLevel(hero_unit[i], 'ANsa') > 0 and GetPlayerStructureCount(ai_player, true) > 0 then
@@ -369,10 +370,8 @@ function MicroHeroJob takes integer hn returns nothing
       call CreateDebugTag("HERO: Healing Bug Fix Job", 10, hero_unit[hn], 4.00, 2.00)
       call RecycleGuardPosition(hero_unit[hn])
       call GroupRemoveUnit(unit_healing, hero_unit[hn])
-      if not retreat_controlled and not town_threatened and not teleporting and major_hero != null and UnitAlive(major_hero) and DistanceBetweenUnits(major_hero,hero_unit[hn]) > 2000 and ItemSingetp(hn,false) then
-        call TQAddJob(2.8, MICRO_HERO, hn)
-        set hero_singetping[hn] = false
-        return
+      if not retreat_controlled and not town_threatened and not teleporting and major_hero != null and UnitAlive(major_hero) and DistanceBetweenUnits(major_hero,hero_unit[hn]) > 2000 then
+        call ItemSingetp(hn,false)
       endif
     else
       set healing = IsUnitInGroup(hero_unit[hn], unit_healing)
@@ -411,14 +410,14 @@ function MicroHeroJob takes integer hn returns nothing
     if not teleporting and GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) < RMax(flee_health_percentage * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE), flee_minimum_health) and healing == false then
       call SaveHero(hn,armyOfHero)
       set healing = IsUnitInGroup(hero_unit[hn], unit_healing)
-      if hero_singetping[hn] then
-        call TQAddJob(1, MICRO_HERO, hn)
-        set hero_singetping[hn] = false
-        return
-      endif
+    endif
+    if hero_singetping[hn] then
+      call TQAddJob(2.5, MICRO_HERO, hn)
+      set hero_singetping[hn] = false
+      return
     endif
 
-    if armyOfHero >= 0 and not teleporting and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 then
+    if armyOfHero >= 0 and not teleporting then
       if most_threatened_town >= 0 then
         set teleportdistance = DistanceBetweenPoints(hero_loc[hn], town_loc[most_threatened_town])
       endif
