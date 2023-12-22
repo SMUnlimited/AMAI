@@ -5921,7 +5921,7 @@ function CheckExpansionTaken takes unit expa returns boolean
       set u = FirstOfGroup(g)
       exitwhen u == null
       set p = GetOwningPlayer(u)
-      if p != Player(PLAYER_NEUTRAL_PASSIVE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 then
+      if p != Player(PLAYER_NEUTRAL_PASSIVE) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 then  // Creeps dosn't mean expansion is taken
         if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitGoldMine(u) or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
           call DestroyGroup(g)
           set g = null
@@ -5931,7 +5931,7 @@ function CheckExpansionTaken takes unit expa returns boolean
             //call GroupRemoveUnit(far_expansion, expa)
           // endif
           return true
-        elseif p != ai_player and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsUnitType(u, UNIT_TYPE_STRUCTURE) then  // Creeps dosn't mean expansion is taken
+        elseif p != ai_player and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
           call DestroyGroup(g)
           set g = null
           set u = null
@@ -5989,7 +5989,7 @@ function AddExpansion takes unit u, real d returns nothing
   set expansion_dist[expansion_list_length] = d
   set expansion_creeps[expansion_list_length] = GetExpFoeGroup(expansion_creeps[expansion_list_length],u)  // group of the the creeps that guard this mine
   if first_expansion_chosen == false then
-    set first_expansion_chosen = FirstOfGroup(expansion_creeps[expansion_list_length]) == null or CheckExpansionTaken(u) == false
+    set first_expansion_chosen = FirstOfGroup(expansion_creeps[expansion_list_length]) != null or CheckExpansionTaken(u) == false
   endif
   if expansion_dist[expansion_list_length] > 6000/512 then
     call GroupAddUnit(far_expansion, expansion_list[expansion_list_length])
@@ -6601,7 +6601,7 @@ endfunction
 function CanCreepGuardsSleep takes integer nn returns boolean
   local group g = null
   local unit u = null
-  local boolean b = false
+  local boolean b = true
   if nearest_neutral[nn] != null and FirstOfGroup(neutral_guards[nn]) != null then
     set g = CopyGroup(neutral_guards[nn],g)
     loop
@@ -6930,7 +6930,7 @@ endfunction
 
 //============================================================================
 function CheckUseSaveItem takes integer i returns boolean
-  set herocanuse[i] = not UnitInvis(hero_unit[i]) and not IsUnitBuying(hero_unit[i]) and IsStandardUnit(hero_unit[i]) 
+  set herocanuse[i] = hero_built[i] and UnitAlive(hero_unit[i]) and not UnitInvis(hero_unit[i]) and not IsUnitBuying(hero_unit[i]) and IsStandardUnit(hero_unit[i]) 
   return herocanuse[i]
 endfunction
 
@@ -9672,18 +9672,30 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     set harasser = null
     return
   endif
-  set harass_time[groupnum] = ai_time
-  call SaveGroupHandle(additional_info, key, HARASS_GROUP, harasser)
-  call SaveReal(additional_info, key, START_STRENGTH, strength)
-  call SaveBoolean(additional_info, key, AVOID_TOWERS, avoid_towers)
-  //if avoid_towers and GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_tower_check_radius) > 0
-  call SaveReal(additional_info, key, STRENGTH_LIMIT, strength_limit)
-  call SaveBoolean(additional_info, key, STATE_ATTACKING, true)
-  call SaveReal(additional_info, key, FLEE_PERCENT, flee_percent)
-  call SaveInteger(additional_info, key, FLEE_NUMBER, flee_number)
-  call SaveInteger(additional_info, key, INVISIBLE_COUNT, 0)
-  call SaveReal(additional_info, key, LOCX, lx)
-  call SaveReal(additional_info, key, LOCY, ly)
+  set g = LoadGroupHandle(additional_info, key, HARASS_GROUP)
+  if g == null then
+    set harass_time[groupnum] = ai_time
+    call SaveGroupHandle(additional_info, key, HARASS_GROUP, harasser)
+    call SaveReal(additional_info, key, START_STRENGTH, strength)
+    call SaveBoolean(additional_info, key, AVOID_TOWERS, avoid_towers)
+    //if avoid_towers and GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_tower_check_radius) > 0
+    call SaveReal(additional_info, key, STRENGTH_LIMIT, strength_limit)
+    call SaveBoolean(additional_info, key, STATE_ATTACKING, true)
+    call SaveReal(additional_info, key, FLEE_PERCENT, flee_percent)
+    call SaveInteger(additional_info, key, FLEE_NUMBER, flee_number)
+    call SaveInteger(additional_info, key, INVISIBLE_COUNT, 0)
+    call SaveReal(additional_info, key, LOCX, lx)
+    call SaveReal(additional_info, key, LOCY, ly)
+  else  //The group still working and cannot be disrupted
+    call GroupAddGroup(g,harasser)
+    call SaveReal(additional_info, key, START_STRENGTH, LoadReal(additional_info, key, START_STRENGTH) + strength)
+    call SaveReal(additional_info, key, STRENGTH_LIMIT, LoadReal(additional_info, key, STRENGTH_LIMIT) + strength_limit)
+    call SaveReal(additional_info, key, FLEE_PERCENT, LoadReal(additional_info, key, FLEE_PERCENT) + flee_percent)
+    call SaveInteger(additional_info, key, FLEE_NUMBER, LoadInteger(additional_info, key, FLEE_NUMBER) + flee_number)
+    call DestroyGroup(harasser)
+    set harasser = g
+    set g = null
+  endif
   call TQAddGroupJob(0, HARASS, harass_target, null, harasser)
   set harasser = null
 endfunction
@@ -10442,7 +10454,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     return BUILT_ALL
   endif
 
-  if current_expansion == null or CheckExpansionTaken(current_expansion) then
+  if current_expansion == null or CheckExpansionTaken(current_expansion) or current_expansion == not_taken_expansion then
     call ChooseExpansion()
     if current_expansion == null then
       call Trace("AMAIStartexpa: Expansion Not Found")
@@ -11089,6 +11101,11 @@ function CheckTownBuilt takes nothing returns nothing
     set i = i + 1
   endloop
   set exist_town_num = c
+  loop
+    exitwhen c >= max_towns
+    set exist_town[c] = null
+    set c = c + 1
+  endloop
   if exist_town_num == 0 then
     set exist_town[0] = home_location  // home_location and other town destroyed , but need save unit loc
     set exist_town_num = 1
@@ -13272,7 +13289,7 @@ function universal_peon_assignment takes nothing returns nothing
   call HarvestWood(0,pwh)
   call HarvestWood(0,swh)
   set T = Max(T + 3,TownCountDone(racial_expansion))
-  if FoodUsed() <= 20 and FoodCap() >= 90 then  // later stages of the game, AI may not be harvest
+  if FoodUsed() <= 20 and hero_built[3] then  // later stages of the game, AI may not be harvest
     loop
       exitwhen i > T
       call HarvestGold(i,ver_optimal_gold)
