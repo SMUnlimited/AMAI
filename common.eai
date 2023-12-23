@@ -931,6 +931,9 @@ globals
     integer queue_t_x		= 0
     integer queue_t_y		= 0
     unit	queue_t_u = null
+    
+    real lastcaptainx = 0
+    real lastcaptainy = 0
 
 //==============================================================
 // (AMAI)  Profile system globals
@@ -4439,7 +4442,7 @@ function CalcNearestNeutrals takes nothing returns nothing
                 call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
               endif
             else
-              call CreateDebugTag("Invisible Path Unit Here and Moving", 10, pather[i], 10.00, 8.00)
+              //call CreateDebugTag("Invisible Path Unit Here and Moving", 10, pather[i], 10.00, 8.00)
               if (lx[i] != 0 and ly[i] != 0) then
                 if GetUnitX(pather[i]) == lx[i] and GetUnitY(pather[i]) == ly[i] then
                   // Actually stuck
@@ -4560,7 +4563,7 @@ function GetNearestNeutral takes unit ru, integer id returns unit
           endif
         else
           //set checks = 0	// means unit is moving and not standing still
-          call CreateDebugTag("Invisible Path Unit Here", 10, pather[i], 3.00, 3.00)
+          //call CreateDebugTag("Invisible Path Unit Here", 10, pather[i], 3.00, 3.00)
         endif
         set pathingdone = false
       endif
@@ -6109,7 +6112,7 @@ function MakeExpansionList takes nothing returns nothing
             call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u)) // Try again?
           endif
         else
-          call CreateDebugTag("Invisible Path Unit Here", 10, pather[i], 5.00, 3.00)
+          //call CreateDebugTag("Invisible Path Unit Here", 10, pather[i], 5.00, 3.00)
           if (lx[i] != 0 and ly[i] != 0) then
             if GetUnitX(pather[i]) == lx[i] and GetUnitY(pather[i]) == ly[i] then
               // Actually stuck
@@ -11250,6 +11253,7 @@ endfunction
 //============================================================================
 function SleepInCombatAM takes nothing returns nothing
     local integer count = 0
+    local real sleep = 0.1
     //local integer attack_length_counter = 0
     call Trace("SleepInCombat")
     loop
@@ -11258,7 +11262,7 @@ function SleepInCombatAM takes nothing returns nothing
       exitwhen not CaptainInCombat(true)  // goal is cleared
       exitwhen CaptainIsEmpty()// duh
       exitwhen town_threat_break
-      exitwhen R2I(count/sleep_multiplier) >= 900 // Took longer than 15 mins to attack something is wrong
+      exitwhen R2I(count) >= 900 // Took longer than 15 mins to attack something is wrong
       //loop
         //exitwhen captain_flee and CaptainRetreating()
         //exitwhen isfleeing and CaptainRetreating()
@@ -11272,14 +11276,24 @@ function SleepInCombatAM takes nothing returns nothing
       //endloop
       //call Sleep(1)
       set count = count + 1
-      call Sleep(1 * sleep_multiplier)
+      call Sleep(1)
     endloop
     set count = 0
     loop
-      exitwhen count >= 8 or town_threatened
+      exitwhen count >= (8.0/sleep) or town_threatened
+      if (lastcaptainx != 0 and lastcaptainy != 0 and not CaptainIsEmpty()) then
+        call TeleportCaptain(lastcaptainx, lastcaptainy)
+      endif
+      //if (lastcaptainx != 0 and lastcaptainy != 0 and not CaptainIsEmpty() and (CaptainAtGoal() or CaptainIsHome())) and not CaptainInCombat(true) then
+      //  call CreateDebugTagLoc("SleepInCombat", 10, lastcaptainx, lastcaptainy, 1.00, 0.80)
+      //  call AttackMoveXY(R2I(lastcaptainx), R2I(lastcaptainy)) // Keep units around killed unit/target to help collect any loot
+      //endif
       set count = count + 1
-      call Sleep(1)
+      call Sleep(sleep)
     endloop
+    if (not CaptainIsHome()) then
+      call CaptainGoHome()
+    endif
     call Trace("exit SleepInCombat")
 endfunction
 
@@ -11366,11 +11380,15 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     set attack_length_counter = 5000  // Force army to regroup to try and get ghouls to go along
   endif
   loop
+    
     exitwhen town_threat_break and town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat and not desperation_assault
     exitwhen break_attack and not desperation_assault
     //exitwhen captain_flee and CaptainRetreating()
-    exitwhen isfleeing and CaptainRetreating() and not desperation_assault
+    exitwhen isfleeing and (CaptainRetreating() or CaptainIsHome()) and not desperation_assault
     exitwhen CaptainIsEmpty() and not desperation_assault
+    if (GetAllianceTarget() != null) then // If alliance target exists this overrides hardcoded attack controls regardless of unit you pass, so reconfigure attack to be aware of this
+      set target = GetAllianceTarget()
+    endif
     //exitwhen not UnitAlive(target) and CaptainIsHome()  // A fail safe mechanism if getlocationnoncreepstrength malfunctions: not needed as issue now fixed
     if GetOwningPlayer(target) == ai_player or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player)) then
       set g = CreateGroup()
@@ -11396,16 +11414,34 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     set dist = DistanceBetweenPoints_kd(ally_loc, GetUnitLoc(target))
     if c_ally_total > 0 and dist > 1300 and dist < 2500 then
       if CheckAttackWait(target) then
+        set lastcaptainx = GetLocationX(ally_loc)
+        set lastcaptainy = GetLocationY(ally_loc)
+        //call SetCaptainHome(, lastcaptainx, lastcaptainy)
         call AttackMoveXY(R2I(GetLocationX(ally_loc)), R2I(GetLocationY(ally_loc)))
+        call CreateDebugTagLoc("Reform until ally target dead", 10, GetLocationX(ally_loc), GetLocationY(ally_loc), 1.00, 0.80)
       else
         call AttackMoveKill(target)
+        set lastcaptainx = GetUnitX(target)
+        set lastcaptainy = GetUnitY(target)
+        if (GetAllianceTarget() == target) then
+          call CreateDebugTag("Reform until ally dead", 10, target, 1.00, 0.80)
+        else
+          call CreateDebugTag("Reform until target dead", 10, target, 1.00, 0.80)
+        endif
       endif
     else
       call AttackMoveKill(target)
+      set lastcaptainx = GetUnitX(target)
+      set lastcaptainy = GetUnitY(target)
+      if (GetAllianceTarget() == target) then
+        call CreateDebugTag("Reform until ally dead", 10, target, 1.00, 0.80)
+      else
+        call CreateDebugTag("Reform until target dead", 10, target, 1.00, 0.80)
+      endif
     endif
 
     call Sleep(2 * sleep_multiplier)
-    call CreateDebugTag("Reform until target dead", 10, target, 1.00, 0.80)
+
     //set attack_length_counter = attack_length_counter + 1
         //if reform and attack_length_counter > attack_reform_length then
     //  if CaptainInCombat(true) then
@@ -11456,6 +11492,7 @@ endfunction
 //============================================================================
 function SleepUntilAtGoalAM takes nothing returns nothing
   local integer lcount = 0
+  call Trace("SleepUntilGoal")
   loop
     exitwhen town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat
     set lcount = lcount + 1
@@ -11470,6 +11507,13 @@ function SleepUntilAtGoalAM takes nothing returns nothing
     //call Trace("Sleeping until target reached")
     call Sleep(2 * sleep_multiplier)
   endloop
+  call Trace("SleepUntilGoal exit")
+endfunction
+
+function SetAllianceTargetIfLead takes unit u returns nothing
+  if (GetAllianceTarget() == null or u == null) then // if leadally
+    call SetAllianceTarget(u)
+  endif
 endfunction
 
 //============================================================================
@@ -11586,6 +11630,8 @@ function AttackMoveKillXYAAM takes integer x, integer y returns nothing
     set zep_next_wave = false
   endif
   call AttackMoveXY(x,y)
+  set lastcaptainx = x
+  set lastcaptainy = y
   call SleepUntilAtGoalAM()
   call SleepInCombatAM()
   set attack_running = false
@@ -11602,7 +11648,7 @@ function AttackMoveTowerRush takes nothing returns nothing
 		//exitwhen CaptainIsEmpty()       // all units died
 		if first_tower_point_x == 0 and first_tower_point_y == 0 then
 			call CreateDebugTag("Reform protect peon", 10, builder[1], 2.00, 1.50)
-			call SetAllianceTarget(builder[1])		
+			call SetAllianceTargetIfLead(builder[1])
   		call AttackMoveKill(builder[1])
 		else
 			//call SetCaptainHome(BOTH_CAPTAINS,R2I(((enemy_point_x - first_tower_point_x)/ 4) + first_tower_point_x),R2I(((enemy_point_y - first_tower_point_y)/ 4) + first_tower_point_y))
@@ -11712,11 +11758,11 @@ function CreepAttack takes integer str returns nothing
   endif
   call Chat(C_Creep)
   if air_strength > 15 then
-    call SetAllianceTarget(target)
+    call SetAllianceTargetIfLead(target)
   endif
   call FormGroupAM(3)
   call AttackMoveKillCreep(target)
-  call SetAllianceTarget(null)
+  call SetAllianceTargetIfLead(null)
   set target = null
 endfunction
 
@@ -12150,40 +12196,44 @@ endfunction
 // (AMAI) Defending
 //============================================================================
 function SleepUntilTownDefended takes integer ai_strength returns nothing
-	local integer defense_length_counter = 0
-	set own_strength = ai_strength
-	call Trace("==Sleep Defend Town==" )
-	loop
-		exitwhen not town_threatened
-		exitwhen player_defeated
-		if town_loc[most_threatened_town] != null and LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] then
-			if town_threat[most_threatened_town] >= teleport_low_threat then
-				if not teleporting then
-					call AttackMoveXY(R2I(GetLocationX(town_loc[most_threatened_town])), R2I(GetLocationY(town_loc[most_threatened_town])))
-				endif
-			endif
-			call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
-		else
-			//call Trace("Town threatened - retreat" )
-			//if town_threat[most_threatened_town] >= teleport_low_threat then
-				if not teleporting then
-					call AttackMoveXY(R2I(GetLocationX(home_location)), R2I(GetLocationY(home_location)))
-				endif
-				set defense_length_counter = defense_length_counter + 1
-				if defense_length_counter > attack_reform_length then
-					set defense_length_counter = 0
-					call FormGroupAM(2)
-				endif
-			//endif
-			call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
-			//call ClearCaptainTargets()
-			//call CaptainGoHome()
-		endif
-		call Sleep(2*sleep_multiplier)
-		set own_strength = GetOwnStrength()
-	endloop
-	call Trace("==exit Sleep Defend Town==")
-	call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))	
+  local integer defense_length_counter = 0
+  set own_strength = ai_strength
+  call Trace("==Sleep Defend Town==" )
+  loop
+    if town_loc[most_threatened_town] != null and LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] then
+      if town_threat[most_threatened_town] >= teleport_low_threat then
+        if not teleporting then
+          //call AttackMoveXY(R2I(GetLocationX(town_loc[most_threatened_town])), R2I(GetLocationY(town_loc[most_threatened_town])))
+        endif
+      endif
+      call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
+    else
+      //call Trace("Town threatened - retreat" )
+      //if town_threat[most_threatened_town] >= teleport_low_threat then
+        if not teleporting then
+          //call AttackMoveXY(R2I(GetLocationX(home_location)), R2I(GetLocationY(home_location)))
+        endif
+        set defense_length_counter = defense_length_counter + 1
+        if defense_length_counter > attack_reform_length then
+          set defense_length_counter = 0
+          call FormGroupAM(2)
+        endif
+      //endif
+      call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
+      //call ClearCaptainTargets()
+      //call CaptainGoHome()
+    endif
+    if CaptainInCombat(true) then
+      call CaptainGoHome()
+    endif
+    exitwhen not town_threatened
+    exitwhen player_defeated
+    exitwhen not CaptainInCombat(false)
+    call Sleep(2*sleep_multiplier)
+    set own_strength = GetOwnStrength()
+  endloop
+  call Trace("==exit Sleep Defend Town==")
+  call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
 endfunction
 
 function SetLeadAlly takes nothing returns nothing
@@ -12191,9 +12241,9 @@ function SetLeadAlly takes nothing returns nothing
   local boolean checkdone = false
   local player p = null
   loop
-    exitwhen i >= c_ally_total or checkdone
-    set p = ally_force[i]
-    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
+    exitwhen i >= GetBJMaxPlayers() or checkdone
+    set p = Player(i)
+    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and (IsPlayerAlly(p, ai_player) or p == ai_player) and GetPlayerController(p) == MAP_CONTROL_COMPUTER then
       if p != ai_player then
         set leadally = false
         set checkdone = true
@@ -12229,7 +12279,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
           call FormGroupAM(3)
           call DesperationAssault()
           call AttackMoveKillAAM(common)
-          call SetAllianceTarget(null)
+          call SetAllianceTargetIfLead(null)
           set common = null
           return
         endif
@@ -12239,11 +12289,11 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
     set common = ChooseAnEnemyTarget(common)
     if (common != null) then
       call Trace("===Desperation Attack Random Enemy Target===")
-      call SetAllianceTarget(common)
+      call SetAllianceTargetIfLead(common)
       call FormGroupAM(3)
       call DesperationAssault()
       call AttackMoveKillAAM(common)
-      call SetAllianceTarget(null)
+      call SetAllianceTargetIfLead(null)
       set common = null
       return
     endif
@@ -12421,12 +12471,12 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
     //
     if double_expansion_target != null and IsTargetGood(double_expansion_target, 10) then
       call Trace("Double Expansion Attack")
-      call SetAllianceTarget(double_expansion_target)
+      call SetAllianceTargetIfLead(double_expansion_target)
       call FormGroupAM(3)
       call AttackMoveKillAAM(double_expansion_target)
       if not UnitAlive(double_expansion_target) then
         set double_expansion_target = null
-        call SetAllianceTarget(null)
+        call SetAllianceTargetIfLead(null)
       endif
       return
     endif
@@ -12447,7 +12497,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
             call Trace("Creep the Expansion")
             set attacking_expansion = true
             set battle_radius = creep_battle_radius
-            call SetAllianceTarget(creep)
+            call SetAllianceTargetIfLead(creep)
             call Chat(C_Expansion)
             call FormGroupAM(3)
             call AttackMoveKillCreep(creep)
@@ -12457,7 +12507,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
             call Sleep(10)
             set attacking_expansion = false
             set creep = null
-            call SetAllianceTarget(null)
+            call SetAllianceTargetIfLead(null)
             return
           endif
           set creep = null
@@ -12468,16 +12518,16 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
     // coordinate with allies
     //
     if c_ally_total > 0 then
-    call SetLeadAlly()
+      call SetLeadAlly()
       if difficulty != EASY then
         set common = GetAllianceTarget()
         if common != null then
-        call Trace("Attack Alliance Target")
+          call Trace("Attack Alliance Target")
           call Chat(C_Ally)
           call FormGroupAM(3)
           call AttackMoveKillAAM(common)
           call Trace("Attack complete")
-          call SetAllianceTarget(null)
+          call SetAllianceTargetIfLead(null)
           set common = null
           return
         endif
@@ -12492,13 +12542,13 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
         set mega = GetMegaTarget()
         if mega != null and UnitAlive(mega) then
           call Trace("Mega Attack Target")
-          call SetAllianceTarget(mega)
+          call SetAllianceTargetIfLead(mega)
           call SetChatVarsAttack(mega)
           call Chat(C_Mega)
           call Chat(C_Megatarget)
           call FormGroupAM(3)
           call AttackMoveKillAAM(mega)
-          call SetAllianceTarget(null)
+          call SetAllianceTargetIfLead(null)
           set mega = null
           return
         endif
@@ -12511,11 +12561,11 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
         if hall != null and UnitAlive(hall) then
           call SetChatVarsAttack(hall)
           call Chat(C_Attack)
-          call SetAllianceTarget(alli_target)
+          call SetAllianceTargetIfLead(alli_target)
           //set alli_target = null
           call FormGroupAM(3)
           call AttackMoveKillAAM(hall)
-          call SetAllianceTarget(null)
+          call SetAllianceTargetIfLead(null)
           set hall = null
           return
         endif
