@@ -12,6 +12,7 @@
 
 function AncientExpansionReset takes nothing returns nothing
 	set ancient_exp_state = 0
+	set ancient_exp_count = 0
 	call RemoveLocation(ancient_exp_loc)
 	set ancient_exp_loc = null
 	set ancient_exp_unit = null
@@ -151,17 +152,6 @@ elseif ancient_exp_state == 2 then
 	call IssueImmediateOrderById(ancient_exp_unit, OrderIdCancel)
 	call IssueImmediateOrder(ancient_exp_unit, "unroot")
 	call GroupAddUnit(ancient_exp_group, ancient_exp_unit)
-	//if hero_built[1] then
-		//call RemoveGuardPosition(hero_unit[1])
-		//call IssuePointOrder(hero_unit[1], "move", GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))
-		//call GroupClear(ancient_exp_group)
-		//call GroupEnumUnitsOfPlayer(ancient_exp_group, ai_player, null)
-		//set ancient_exp_group = SelectByAlive(ancient_exp_group, true)
-		//set ancient_exp_group = SelectUnittype(ancient_exp_group, UNIT_TYPE_STRUCTURE, false)
-		//set ancient_exp_group = SelectUnittype(ancient_exp_group, UNIT_TYPE_PEON, false)
-		//set ancient_exp_group = SelectByUnitStandard(ancient_exp_group, true)
-		//call GroupRemoveGuardPositionInstant(ancient_exp_group)
-		//call GroupPointOrder(ancient_exp_group, "smart", GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))
 	set l = GetUnitLoc(ancient_exp_unit)
 	if FoodUsed() < 20 or DistanceBetweenPoints(l, home_location) < 800 then
 		set g = CreateGroup()
@@ -192,6 +182,7 @@ elseif ancient_exp_state == 2 then
 elseif ancient_exp_state == 3 then
 	call CreateDebugTag("Expansion State 3: Awaiting Hero", 10, ancient_exp_unit, 3.00, 1.50)
 	//set isstrong = GetOwnStrength() > GetExpansionStrength()
+	call ClearCaptainTargets()
 	call SetCaptainHome(BOTH_CAPTAINS,R2I(GetUnitX(ancient_exp_unit)),R2I(GetUnitY(ancient_exp_unit)))
 	if IsUnitInRange(hero_unit[1],ancient_exp_unit,750) or IsUnitInRange(hero_unit[2],ancient_exp_unit,750) or IsUnitInRange(hero_unit[3],ancient_exp_unit,750) then
 		if ancient_exp_maintree then
@@ -212,17 +203,20 @@ elseif ancient_exp_state == 3 then
 		set ancient_exp_group = SelectByUnitStandard(ancient_exp_group, true)
 		call GroupAddUnit(ancient_exp_group, ancient_exp_unit)
 		call IssueTargetOrder(ancient_exp_unit, "move", current_expansion)
-		////call GroupAddTypeAndRemoveGuard(ancient_exp_group, race_ancient_expansion_help_id, ai_player)
-		//call GroupPointOrder(ancient_exp_group, "smart", GetUnitX(u), GetUnitY(u))
+		set ancient_exp_count = 0
 		set ancient_exp_state = 4
-	//else
-		//call GroupEnumUnitsOfPlayer(ancient_exp_group, ai_player, null)
-		//set ancient_exp_group = SelectByAlive(ancient_exp_group, true)
-		//set ancient_exp_group = SelectUnittype(ancient_exp_group, UNIT_TYPE_STRUCTURE, false)
-		//set ancient_exp_group = SelectUnittype(ancient_exp_group, UNIT_TYPE_PEON, false)
-		//set ancient_exp_group = SelectByUnitStandard(ancient_exp_group, true)
-		//call GroupRemoveGuardPositionInstant(ancient_exp_group)
-		//call GroupPointOrder(ancient_exp_group, "smart", GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))
+	else
+		if ancient_exp_count < 4 then
+			set ancient_exp_count = ancient_exp_count + 1
+			call TQAddJob(25, ANCIENT_EXPANSION, 0)
+			return
+		else
+			call Trace("Expansion State 3: maybe not Hero")
+			call AncientExpansionReset()
+			call GroupRecycleGuardPositionInstant(CopyGroup(ancient_exp_group,g))
+			set g = null
+			return
+		endif
 	endif
 	call TQAddJob(5, ANCIENT_EXPANSION, 0)
 elseif ancient_exp_state == 4 then
