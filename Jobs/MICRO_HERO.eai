@@ -139,6 +139,10 @@ function TeleportHome takes integer hn returns nothing
   set break_attack = attack_running
   set attack_running = false
   set teleporting = true
+  if teleportloc != null then
+    call RemoveLocation(teleportloc)
+  endif
+  set teleportloc = Location(GetLocationX(teleport_loc),GetLocationY(teleport_loc))  //  set new teleport job move loc
   call RemoveLocation(teleport_loc)
   set teleport_loc = null
   call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
@@ -182,12 +186,10 @@ function ItemSingetp takes integer hn, boolean retreat returns boolean
       if l != null then
         set g = CreateGroup()
         call GroupEnumUnitsInRangeOfLoc(g, l, 300, null)
-        set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
-        set g = SelectByEnemy(g, ai_player, false)
-        set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, retreat == true)
+        set g = SelectByPlayer(g, ai_player, true)
         loop
           set u = FirstOfGroup(g)
-          exitwhen u == null or (not IsUnitLoaded(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitType(u, UNIT_TYPE_HERO) and GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE) >= 0.5 and not IsUnitHidden(u))
+          exitwhen u == null or (not IsUnitLoaded(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitType(u, UNIT_TYPE_HERO) and not UnitInvis(u) and GetUnitState(u, UNIT_STATE_MAX_LIFE) > 0 and GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE) >= 0.5 and not IsUnitHidden(u))
           call GroupRemoveUnit(g, u)
         endloop
         call DestroyGroup(g)
@@ -211,31 +213,29 @@ function ItemSaveHero takes integer hn returns boolean
   local integer i = 1  // only supports three heroes
   local integer id = 0
   local item t = null
-  if not UnitInvis(hero_unit[hn]) then
-    loop
-      exitwhen i > 3
-      if i != hn and CheckUseSaveItem(i) and DistanceBetweenUnits(hero_unit[i],hero_unit[hn]) < 700 then
-        set id = GetUnitCurrentOrder(hero_unit[i])
-        if id == 0 or id == OrderId("attack") or id == OrderId("stop") or id == OrderId("move") then
-          if GetUnitAbilityLevel(hero_unit[i], 'ANsa') > 0 and GetPlayerStructureCount(ai_player, true) > 0 then
-            set t = GetItemOfTypeOnUnit(sanctuary_item,hero_unit[i])
-            if t != null and UnitUseItemTarget(hero_unit[i],t,hero_unit[hn]) then
-              set t = null
-              return true
-            endif
-          elseif GetUnitAbilityLevel(hero_unit[i], 'ANpr') > 0 and TownCountDone(racial_hall[1]) > 0 then
-            set t = GetItemOfTypeOnUnit(preservation_item,hero_unit[i])
-            if t != null and UnitUseItemTarget(hero_unit[i],t,hero_unit[hn]) then
-              set t = null
-              return true
-            endif
+  loop
+    exitwhen i > 3
+    if i != hn and CheckUseSaveItem(i) and DistanceBetweenUnits(hero_unit[i],hero_unit[hn]) < 700 then
+      set id = GetUnitCurrentOrder(hero_unit[i])
+      if id == 0 or id == OrderId("attack") or id == OrderId("stop") or id == OrderId("move") then
+        if GetUnitAbilityLevel(hero_unit[i], 'ANsa') > 0 and GetPlayerStructureCount(ai_player, true) > 0 then
+          set t = GetItemOfTypeOnUnit(sanctuary_item,hero_unit[i])
+          if t != null and UnitUseItemTarget(hero_unit[i],t,hero_unit[hn]) then
+            set t = null
+            return true
+          endif
+        elseif GetUnitAbilityLevel(hero_unit[i], 'ANpr') > 0 and TownCountDone(racial_hall[1]) > 0 then
+          set t = GetItemOfTypeOnUnit(preservation_item,hero_unit[i])
+          if t != null and UnitUseItemTarget(hero_unit[i],t,hero_unit[hn]) then
+            set t = null
+            return true
           endif
         endif
       endif
-      set i = i + 1
-    endloop
-    set t = null
-  endif
+    endif
+    set i = i + 1
+  endloop
+  set t = null
   return ItemSingetp(hn,true)
 endfunction
 
@@ -281,7 +281,7 @@ function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothin
     call HealUnit(healer, hero_unit[hn], false)
     return
   endif
-  if a != ACTION_TP and not teleporting and not town_threatened and ItemSaveHero(hn) then
+  if a != ACTION_TP and not teleporting and not town_threatened and not UnitInvis(hero_unit[hn]) and ItemSaveHero(hn) then
     call CreateDebugTag("HERO: Item Save", 10, hero_unit[hn], 4.00, 2.00)
     call GroupAddUnit(unit_healing,hero_unit[hn])
     if a == ACTION_MOONWELLS then
