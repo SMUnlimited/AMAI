@@ -76,16 +76,14 @@ function GroupOrderFocusWindInstant takes group g returns nothing
   loop
     set u = FirstOfGroup(cg)
     exitwhen u == null
-    if (GetUnitAbilityLevel(u, 'AOwk') > 0 or GetUnitAbilityLevel(u, 'ANwk') > 0) then
-      if not IsUnitInGroup(u, windwalk_group) then
-        call GroupAddUnit(windwalk_group, u)
-      endif
+    if GetUnitAbilityLevel(u, 'AOwk') > 0 or GetUnitAbilityLevel(u, 'ANwk') > 0 then
+      call GroupAddUnit(windwalk_group, u)
       if not UnitInvis(u) then
         call CreateDebugTag("FF: windwalk", 10, u, 1.00, 0.80)
         call IssueImmediateOrder(u, "windwalk")
-        call TQAddUnitJob(8, RESET_WINDWALKER, 0, u)
+        //call TQAddUnitJob(8, RESET_WINDWALKER, 0, u)
       endif
-      call GroupRemoveUnit(g, u)  // use windwalk_group controls
+      call GroupRemoveUnit(g, u)  // use windwalk_group attack controls
     endif
     call GroupRemoveUnit(cg, u)
   endloop
@@ -192,14 +190,14 @@ function FocusFire takes unit u returns nothing
   // call DestroyGroup(t)
   // set t = CreateGroup()
   call GroupEnumUnitsInRange(t, GetUnitX(u), GetUnitY(u), normal_battle_radius, null)
-  if u == deny_unit then
-    set t = SelectByInvisible(t, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
-  else
-    set t = SelectByInvisible(t, GetOwningPlayer(u), true)
-  endif
   set temp_focus = GroupAddGroup(temp_focus, t)
   call GroupRemoveUnit(temp_focus,deny_unit)  // cannot control deny_unit
   set temp_focus = SelectByPlayer(temp_focus, ai_player, true)
+  if u == deny_unit then
+    set temp_focus = SelectByInvisible(temp_focus, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
+  else
+    set temp_focus = SelectByInvisible(temp_focus, GetOwningPlayer(u), true)
+  endif
   if IsUnitType(u, UNIT_TYPE_FLYING) == true then
     set temp_focus = SelectUnittype(temp_focus, UNIT_TYPE_ATTACKS_FLYING, true)
   endif
@@ -417,6 +415,9 @@ function FocusFireJob takes nothing returns nothing
       set i = i + 1
     endloop
     if deny_unit != null and UnitAlive(deny_unit) and GetUnitState(deny_unit, UNIT_STATE_LIFE) < 24 and (GetUnitState(deny_unit, UNIT_STATE_LIFE)/GetUnitState(deny_unit, UNIT_STATE_MAX_LIFE)) < 0.10 then
+      call GroupClear(focus_fire_group)
+      call GroupClear(micro_ranged_group)
+      call GroupClear(micro_enemymelee_group)
       call FocusFire(deny_unit)
       set deny_unit = null
     endif
