@@ -49,17 +49,11 @@ function TrackArmy takes integer num returns boolean
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
   set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
   set g = SelectByHidden(g, false)
-  set g = SelectByAlive(g, true)
-  if Player(p) == ai_player then
-    set g = SelectByUnitStandard(g, true)  // check other player Standard will let FirstOfGroup is null
-  elseif IsPlayerEnemy(Player(army_owner[num]), ai_player) then
-    set g = SelectByInvisible(g, ai_player, false)  // Fix using invisible units to exploit amai to force defend its town
-  endif
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if not IsUnitInGroup(u, in_army_group) then
-      if major_hero == u then
+    if UnitAlive(u) and not IsUnitInGroup(u, in_army_group) then
+      if u == major_hero then
         set main_army = num
       endif
       call GroupAddUnit(army_group[num], u)
@@ -68,7 +62,11 @@ function TrackArmy takes integer num returns boolean
       set y = y + GetUnitY(u)
       //set l = GetSumLoc_dd(l, GetUnitLoc(u))
       set army_count[num] = army_count[num] + 1
-      set army_strength[num] = army_strength[num] + GetUnitStrength(u)
+      if (GetOwningPlayer(u) != ai_player and IsUnitInvisible(u, ai_player)) or (GetOwningPlayer(u) == ai_player and not IsStandardUnit(u)) then 
+        // Fix using invisible units to exploit amai to force defend its town
+      else
+          set army_strength[num] = army_strength[num] + GetUnitStrength(u)
+      endif
     endif
     call GroupRemoveUnit(g, u)
   endloop
