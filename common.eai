@@ -5804,28 +5804,26 @@ function BuildBRAtCreep takes nothing returns nothing
     set uc[i] = null
     set i = i + 1
   endloop
-  if s == ru or loc == null then  // fail , not found creep
+  if s >= ru then  // fail , not found creep
     return
   endif
   set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_rushcreep], loc, 600, false)
-  if loc != null and DistanceBetweenPoints(loc, home_location) < distance then  //Prevent some islands/shallow water terrain from creating u on the other side of the map
-    if GetLocationEnemyStrength(GetLocationX(loc), GetLocationY(loc), 510, false) <= 0 then  //if have enemy , cannot build
-      set u = GetExpansionPeon2(u)
-      if u == null and own_town_mine[0] != null then
-        set g = CreateGroup()
-        call GroupEnumUnitsOfPlayer(g, ai_player, null)
-        set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
-        set g = SelectByLoaded(g, true)
-        set u = FirstOfGroup(g)
-        call DestroyGroup(g)
-        set g = null
-        call IssueTargetOrder(own_town_mine[0], "unload", u)
-        call Sleep(0.01)
-      endif
-      call RemoveGuardPosition(u)  // no need reset guard , the tree can train
-      call IssuePointOrderByIdLoc(u, old_id[racial_rushcreep], loc)
-      set u = null
+  if loc != null and DistanceBetweenPoints(loc, home_location) < distance and GetLocationEnemyStrength(GetLocationX(loc), GetLocationY(loc), 510, false) <= 0 then  //Prevent some islands/shallow water terrain from creating u on the other side of the map or have enemy
+    set u = GetExpansionPeon2(u)
+    if (u == null or GetUnitCurrentOrder(u) != OrderId("harvest")) and own_town_mine[0] != null then
+      set g = CreateGroup()
+      call GroupEnumUnitsOfPlayer(g, ai_player, null)
+      set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
+      set g = SelectByLoaded(g, true)
+      set u = FirstOfGroup(g)
+      call DestroyGroup(g)
+      set g = null
+      call IssueTargetOrder(own_town_mine[0], "unload", u)
+      call Sleep(0.01)
     endif
+    call RemoveGuardPosition(u)  // no need reset guard , the tree can train
+    call IssuePointOrderByIdLoc(u, old_id[racial_rushcreep], loc)
+    set u = null
   endif
   call RemoveLocation(loc)
   set loc = null
@@ -5894,9 +5892,10 @@ endfunction
 
 function IsUnitGoldMine takes unit u returns boolean
   local integer i = 0
+  local integer id = GetUnitTypeId(u)
   loop
     exitwhen i >= gold_mine_ids_size
-    if GetUnitTypeId(u) == gold_mines_ids[i] then
+    if id == gold_mines_ids[i] then
       return true
     endif
     set i = i + 1
@@ -6483,9 +6482,10 @@ endfunction
 //============================================================================
 function IsRacialHall takes unit u, integer min_tier returns boolean
   local integer i = Max(min_tier, 1)
+  local integer id = GetUnitTypeId(u)
   loop
     exitwhen i > tiernum
-    if GetUnitTypeId(u) == old_id[racial_hall[i]] then
+    if id == old_id[racial_hall[i]] then
       return true
     endif
     set i = i + 1
@@ -7275,9 +7275,6 @@ function CheckNeutral takes integer nn returns nothing
       set neutral_available[nn] = false
       return  // SUMMONED or water path
     endif
-    //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "checkneutral")
-    //set nearest_neutral[nn] = GetNearestNeutral(nearest_neutral[nn],neutral_id[nn])
-    //call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "finished check")
     call DestroyGroup(neutral_guards[nn])
     set neutral_guards[nn] = GetCreepGuardGroup(neutral_guards[nn],nn)
     set neutral_guarded[nn] = GetNeutralGuard(nn)
@@ -7526,7 +7523,7 @@ function PathingThread takes nothing returns nothing
     if ModuloInteger(t, 6) == 0 then
       call ChatVarsJob()
     endif
-    if ModuloInteger(t, 10) == 0 then
+    if ModuloInteger(t, 12) == 0 then
       call RepairControlJob()
       if race_has_power_build then
         call FastBuild()
@@ -7549,7 +7546,7 @@ function PathingThread takes nothing returns nothing
     if ModuloInteger(t, 60) == 0 then
       call CleanupBlocksJob()
     endif
-    if ModuloInteger(t, 120) == 0 then
+    if ModuloInteger(t, 160) == 0 then
       call ItemRepeatCheck()
     endif
     if ModuloInteger(t, 5*w) == 0 then
