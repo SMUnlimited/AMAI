@@ -47,7 +47,7 @@ function GroupMicroSystem takes group g, group meleeg, group temp_focus returns 
       set unitloc = GetUnitLoc(u)
       set copy = CopyGroup(meleeg,copy)
       set melee = GetNearestOfGroup(melee, copy, unitloc)
-      if melee != null and DistanceBetweenUnits(u, melee) < 150 and UnitAlive(melee) and IsUnitFacingUnit(melee, u) and GetUnitMoveSpeed(melee) <= GetUnitMoveSpeed(u) and (not IsUnitType(u, UNIT_TYPE_FLYING) or (IsUnitType(u, UNIT_TYPE_FLYING) and IsUnitType(melee, UNIT_TYPE_ATTACKS_FLYING))) and (GetOwningPlayer(u) != ai_player or not IsUnitInGroup(u, focus_fire_group)) then // 220 is the smallest ranged unit in warcraft 3.
+      if melee != null and DistanceBetweenUnits(u, melee) < 150 and UnitAlive(melee) and IsUnitFacingUnit(melee, u) and GetUnitMoveSpeed(melee) <= GetUnitMoveSpeed(u) and (not IsUnitType(u, UNIT_TYPE_FLYING) or (IsUnitType(u, UNIT_TYPE_FLYING) and IsUnitType(melee, UNIT_TYPE_ATTACKS_FLYING))) and not IsUnitInGroup(u, focus_fire_group) then // 220 is the smallest ranged unit in warcraft 3.
         set l = GetSubtractionLoc_kd(unitloc, GetUnitLoc(melee))
         set l = GetProjectedLoc_dd(unitloc, l, 400)
         call RemoveGuardPosition(u)
@@ -81,7 +81,7 @@ function GroupOrderFocusWindInstant takes group g returns nothing
       if not UnitInvis(u) then
         call CreateDebugTag("FF: windwalk", 10, u, 1.00, 0.80)
         call IssueImmediateOrder(u, "windwalk")
-        //call TQAddUnitJob(8, RESET_WINDWALKER, 0, u)
+        call TQAddUnitJob(8, RESET_WINDWALKER, 0, u)
       endif
       call GroupRemoveUnit(g, u)  // use windwalk_group attack controls
     endif
@@ -190,14 +190,14 @@ function FocusFire takes unit u returns nothing
   // call DestroyGroup(t)
   // set t = CreateGroup()
   call GroupEnumUnitsInRange(t, GetUnitX(u), GetUnitY(u), normal_battle_radius, null)
+  if u == deny_unit then
+    set t = SelectByInvisible(t, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
+  else
+    set t = SelectByInvisible(t, GetOwningPlayer(u), true)
+  endif
   set temp_focus = GroupAddGroup(temp_focus, t)
   call GroupRemoveUnit(temp_focus,deny_unit)  // cannot control deny_unit
   set temp_focus = SelectByPlayer(temp_focus, ai_player, true)
-  if u == deny_unit then
-    set temp_focus = SelectByInvisible(temp_focus, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
-  else
-    set temp_focus = SelectByInvisible(temp_focus, GetOwningPlayer(u), true)
-  endif
   if IsUnitType(u, UNIT_TYPE_FLYING) == true then
     set temp_focus = SelectUnittype(temp_focus, UNIT_TYPE_ATTACKS_FLYING, true)
   endif
@@ -205,7 +205,9 @@ function FocusFire takes unit u returns nothing
   set temp_focus = SelectUnittype(temp_focus, UNIT_TYPE_STRUCTURE, false)
   set temp_focus = SelectByHidden(temp_focus, false)
   set temp_focus = SelectByAlive(temp_focus, true)
-  call BlzGroupRemoveGroupFast(focus_fire_group, temp_focus)  // Remove units that have already focus fired this iteration (intentionally wrong way round)
+  if u != deny_unit then
+    call BlzGroupRemoveGroupFast(focus_fire_group, temp_focus)  // Remove units that have already focus fired this iteration (intentionally wrong way round)
+  endif
   //set temp_focus = SelectByOrderOr2(focus_fire_group,OrderId("move"),OrderId("attack"),OrderId("stop"), true)
   set temp_focus = SelectByOrder(temp_focus, OrderId("blizzard"), false)
   set temp_focus = SelectByOrder(temp_focus, OrderId("flamestrike"), false)
@@ -232,7 +234,6 @@ function FocusFire takes unit u returns nothing
   set temp_focus = SelectByUnitStandard(temp_focus, true)  //Reduce usage IsUnitInGroup
   if u != deny_unit and GetUnitState(u, UNIT_STATE_LIFE) > 0 then  //Insurance
     if FirstOfGroup(micro_enemymelee_group) != null then
-      call BlzGroupRemoveGroupFast(focus_fire_group, micro_ranged_group)
       call GroupMicroSystem(micro_ranged_group, micro_enemymelee_group, temp_focus)  // Move ranged units away from melee units, if moved here they will not focus fire
     endif
   endif
@@ -415,9 +416,6 @@ function FocusFireJob takes nothing returns nothing
       set i = i + 1
     endloop
     if deny_unit != null and UnitAlive(deny_unit) and GetUnitState(deny_unit, UNIT_STATE_LIFE) < 24 and (GetUnitState(deny_unit, UNIT_STATE_LIFE)/GetUnitState(deny_unit, UNIT_STATE_MAX_LIFE)) < 0.10 then
-      call GroupClear(focus_fire_group)
-      call GroupClear(micro_ranged_group)
-      call GroupClear(micro_enemymelee_group)
       call FocusFire(deny_unit)
       set deny_unit = null
     endif
