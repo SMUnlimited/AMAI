@@ -2,31 +2,43 @@
 
 boolean militia_expanding = false
 //boolean militia = true
-integer militia_time_count = 0
-integer militia_time_out = 100  // value * 3 seconds
+boolean militia_exp_attack = false
+integer militia_time_out = 0
 integer militia_state = 0
 unit militia_builder = null
-unit militia_fastb1 = null
-unit militia_fastb2 = null
-unit militia_fastb3 = null
+//unit militia_fastb1 = null
+//unit militia_fastb2 = null
+//unit militia_fastb3 = null
 //unit militia_expansion = null
-location militia_loc = null
+//location militia_loc = null
 
 #ELSE
 
-function GetMilitiaExpansionLoc takes integer unitid returns nothing
-  local unit u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), unitid, GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
+function BuildMilitiaExpansion takes nothing returns boolean
+  local unit u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
+  local location l = null
+  local boolean b = false
   if DistanceBetweenUnits(u, current_expansion) <= race_max_expa_mine_distance then
-    set militia_loc = GetUnitLoc(u)
+    set l = GetUnitLoc(u)
+    set b = IssuePointOrderByIdLoc(militia_builder, old_id[racial_expansion], l)
+    call TQAddUnitJob(200, RESET_GUARD_POSITION_ONLY, 80, militia_builder)
+    call RemoveLocation(l)
+    set l = null
+    if b and race_has_power_build then
+      call FastBuildCheck()
+    endif
+  else
+    call RecycleGuardPosition(militia_builder)
   endif
   call RemoveUnit(u)
   set u = null
+  return b
 endfunction
 
 function MilitiaExpansionReset takes nothing returns nothing
 	set gold_buffer = 0
 	set wood_buffer = 0
-	set militia_time_count = 0
+	set militia_time_out = 0
 	set militia_state = 0
 	set militia_expanding = false
 	set not_taken_expansion = null
@@ -60,7 +72,6 @@ local location l = null
 	if militia_state == 0 then
 		call Trace("Expansion Distance: " + Int2Str(R2I(GetExpansionDistance())))
 		set expansionstrength = GetExpansionStrength()
-		//if GetExpansionDistance() <= 6600 and expansionstrength < 20 then //and militia_time_count < militia_time_out then //and expansionstrength < 36 then // and hero[1] == racial_militiahero then
 		if GetExpansionDistance() <= 5800 and expansionstrength < 20 then
 			call Trace("Our Strength:" + Int2Str(ownstrength) + " Expansion Strength:" + Int2Str(expansionstrength))
 			if TownCountDone(hero[1]) > 0 and not town_threatened and ownstrength >= minimum_attack_strength and TownCountDone(racial_peon) > 6 and ownstrength + 6 >= expansionstrength then
@@ -72,32 +83,30 @@ local location l = null
 					else
 						call Trace("Militia state 0 to 1")
 						set militia_state = 1
+						set militia_exp_attack = true
 					endif
 					set militia_expanding = true
 					call TQAddJob(7, MILITIA_EXPAND, 0)
 					return
 				endif
 			endif
-		else
-			call MilitiaExpansionReset()
-			call Trace("Militia state 0 Ended , expansion too far or creep too weak ")
 		endif
+		call MilitiaExpansionReset()
+		call Trace("Militia state 0 Ended , expansion too far or own too weak")
 	elseif militia_state == 1 then
 		call Trace("Militia state 1 rush expansion")
 		set expansionstrength = GetExpansionStrength()
-		if ownstrength + 6 < expansionstrength or militia_time_count > 3 then
+		if ownstrength + 6 < expansionstrength or (not militia_exp_attack and expansionstrength > 0) then
 			call MilitiaExpansionReset()
 			call Trace("Militia state 1 creep too powerful or cannot rush , stop trying to expand")
 		elseif expansionstrength <= 0 then
 			set militia_state = 2
-			set militia_time_count = 0
 			call Trace("Militia state 1 to 2")
 			call TQAddJob(2, MILITIA_EXPAND, 0)
 			return
 		else
-			call Trace("Militia state 1 wait rush")
-			set militia_time_count = militia_time_count + 1
-			call TQAddJob(15, MILITIA_EXPAND, 0)
+			call Trace("Militia state 1 wait rush creep")
+			call TQAddJob(20, MILITIA_EXPAND, 0)
 			return
 		endif
 	elseif militia_state == 2 then
@@ -132,38 +141,30 @@ local location l = null
 			call Trace("Militia state 2 to 3")
 			call TQAddJob(2, MILITIA_EXPAND, 0)
 			return
-		elseif militia_time_count < 3 then
+		elseif militia_time_out < 1 then
 			call Trace("Militia state 2 wait get peon")
-			set militia_time_count = militia_time_count + 1
+			set militia_time_out = militia_time_out + 1
 			call TQAddJob(2, MILITIA_EXPAND, 0)
 			return
-		else
-			call MilitiaExpansionReset()
-			call Trace("Militia state 2 Ended , not peon")
 		endif
+		call MilitiaExpansionReset()
+		call Trace("Militia state 2 Ended , not peon")
 	elseif militia_state == 3 then
 		if militia_builder == null or GetUnitState(militia_builder, UNIT_STATE_LIFE) <= 0 or CheckExpansionTaken(current_expansion) or GetGold() < GetUnitGoldCost2(racial_expansion) or GetWood() < GetUnitWoodCost2(racial_expansion) then
 			call MilitiaExpansionReset()
-			call RecycleGuardPosition(militia_builder)
-			set militia_builder = null
+			if militia_builder != null then
+				call RecycleGuardPosition(militia_builder)
+				set militia_builder = null
+			endif
 			call Trace("Militia state 3 Ended , lost peon or expansion by other player take or no gold or no wood")
 		else
 			call RemoveGuardPosition(militia_builder)  // has to be here or peasant comes off construction
 			if DistanceBetweenUnits(militia_builder, current_expansion) < 800 then
 				//call IssueTargetOrder(militia_fastb1, "stop", current_expansion)
 				//call IssueTargetOrder(militia_fastb2, "stop", current_expansion)
-				if militia_loc == null then
-					call GetMilitiaExpansionLoc(old_id[racial_expansion])
-				endif
-				if militia_loc != null then
-					call IssuePointOrderByIdLoc(militia_builder, old_id[racial_expansion], militia_loc)
-					if race_has_power_build then
-						call FastBuildCheck()
-					endif
-					call TQAddUnitJob(200, RESET_GUARD_POSITION_ONLY, 80, militia_builder)
+				if BuildMilitiaExpansion() then
 					call Trace("Militia state 3 , Build Success")
 				else
-					call RecycleGuardPosition(militia_builder)
 					call Trace("Militia state 3 , Build Fail")
 				endif
 				call MilitiaExpansionReset()
@@ -173,10 +174,6 @@ local location l = null
 				call TQAddJob(3, MILITIA_EXPAND, 0)
 				return
 			endif
-		endif
-		if militia_loc != null then
-			call RemoveLocation(militia_loc)
-			set militia_loc = null
 		endif
 	endif
 	if not pathing_done then
