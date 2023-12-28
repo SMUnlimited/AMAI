@@ -54,15 +54,21 @@ function ItemExpansionJob takes nothing returns nothing
     if exp_item == null then
       set u = null
       if expitem_buy == false then
-        if GetGold() < gold_price[race_item_expansion_item_id] + 120 or GetWood() < wood_price[race_item_expansion_item_id] + 80 then
-          call Trace("Item expansion state 0 - No gold or wood")
+        if shop_ordered or GetGold() < gold_price[race_item_expansion_item_id] + 120 or GetWood() < wood_price[race_item_expansion_item_id] + 80 then
+          call Trace("Item expansion state 0 - No gold or wood or buy item job is runing for other item")
           set item_expanding = false
+          set expitem_buy = false
+          set item_exp_count = 0
           set not_taken_expansion = null
           return
         endif
+        set shop_unit = GetOneOfId(shop_unit, ai_player, old_id[racial_shop])
+        set shop_wanted = 1
+        set shop_distance_limit = raceshop_distance_limit
+        set shop_ordered = true 
         set expitem_buy = true
         call TQAddJob(5, BUY_ITEM, race_item_expansion_item_id)
-      elseif item_exp_count > 3 and not shop_ordered then
+      elseif item_exp_count > 3 or not shop_ordered then
         call Trace("Item expansion state 0 - but item timeout")
         set item_expanding = false
         set expitem_buy = false
@@ -83,7 +89,6 @@ function ItemExpansionJob takes nothing returns nothing
     if u == null and not CheckExpansionTaken(current_expansion) then
       call CreateDebugTag("Item expansion state 0 - use item", 10, itemhero, 3.00, 1.50)
       call UseExpansionItem(exp_item)
-      set item_exp_state = 2
       set exp_item = null
       return
     endif
