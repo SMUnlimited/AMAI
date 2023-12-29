@@ -21,20 +21,20 @@ function AncientExpansionReset takes nothing returns nothing
 	set ancient_exp_maintree = false
 endfunction
 
-function BuildAncient takes unit u, location loc returns nothing
+function BuildAncient takes nothing returns nothing
 	local unit temp = null
 	local location l = null
-	call RemoveGuardPosition(u)
-	call GroupAddUnit(ancient_exp_group, u)
-	if loc == null then
+	call RemoveGuardPosition(ancient_exp_wisp)
+	call GroupAddUnit(ancient_exp_group, ancient_exp_wisp)
+	if ancient_exp_loc == null then
 		set temp = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
 		set l = GetUnitLoc(temp)
 		call RemoveUnit(temp)
 		set temp = null
 	else
-		set l = Location(GetLocationX(loc),GetLocationY(loc))
+		set l = Location(GetLocationX(ancient_exp_loc),GetLocationY(ancient_exp_loc))
 	endif
-	call IssuePointOrderByIdLoc(u,old_id[racial_expansion], l)
+	call IssuePointOrderByIdLoc(ancient_exp_wisp, old_id[racial_expansion], l)
 	call RemoveLocation(l)
 	set l = null
 endfunction
@@ -102,16 +102,15 @@ if ancient_exp_state == 0 then
 		set gold_buffer = 0
 		set wood_buffer = 0
 		return
-	elseif u == null and not CheckExpansionTaken(current_expansion) then
+	elseif u == null then
 		if ancient_exp_wisp == null or not UnitAlive(ancient_exp_wisp) then
 			set ancient_exp_wisp = GetExpansionPeon()
-			if ancient_exp_wisp == null then
+			if ancient_exp_wisp == null or not UnitAlive(ancient_exp_wisp) then
 				set ancient_exp_wisp = GetExpansionPeon2(ancient_exp_wisp)
 			endif
 		endif
 		if ancient_exp_wisp != null then
 			call CreateDebugTag("Expansion State 0 - prior build racial_expansion", 10, ancient_exp_wisp, 3.00, 1.50)
-			call BuildAncient(ancient_exp_wisp, ancient_exp_loc)
 			set ancient_exp_state = 5
 			set ancient_exp_count = 0
 			set ancient_exp_unit = null
@@ -126,6 +125,11 @@ if ancient_exp_state == 0 then
 			endif
 		endif
 		call TQAddJob(5, ANCIENT_EXPANSION, 0)
+	else
+		call Trace("Expansion State 0 - have creep or fail , not build")
+		call AncientExpansionReset()
+		set gold_buffer = 0
+		set wood_buffer = 0
 	endif
 elseif ancient_exp_state == 1 then
 	if ancient_exp_unit == null or not UnitAlive(ancient_exp_unit) then  //  find tree
@@ -170,7 +174,6 @@ elseif ancient_exp_state == 2 then
 			exitwhen u == null
 			if IsUnitType(u, UNIT_TYPE_ANCIENT) then  // take other tree , guardians ancient_exp_unit or not blocking ancient_exp_unit
 				call RemoveGuardPosition(u)
-				call GroupAddUnit(ancient_exp_group, u)
 				call IssueImmediateOrder(u, "unroot")
 			endif
 			call GroupRemoveUnit(g, u)
@@ -274,7 +277,7 @@ elseif ancient_exp_state == 5 then
 	if ancient_exp_wisp != null and GetUnitState(ancient_exp_wisp, UNIT_STATE_LIFE) > 0 and not CheckExpansionTaken(current_expansion) then
 		if GetUnitCurrentOrder(ancient_exp_wisp) != old_id[racial_expansion] then
 			call CreateDebugTag("Expansion State 5: Fast Expand as camp clear", 10, ancient_exp_wisp, 3.00, 1.50)
-			call BuildAncient(ancient_exp_wisp, ancient_exp_loc)
+			call BuildAncient()
 		endif
 		call TQAddJob(5, ANCIENT_EXPANSION, 0)
 	else
