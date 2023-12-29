@@ -20,6 +20,7 @@ function BuildMilitiaExpansion takes nothing returns boolean
   local boolean b = false
   if DistanceBetweenUnits(u, current_expansion) <= race_max_expa_mine_distance then
     set l = GetUnitLoc(u)
+    call CreateDebugTag("Militia Expansion - build", 10, militia_builder, 3.00, 1.50)
     set b = IssuePointOrderByIdLoc(militia_builder, old_id[racial_expansion], l)
     call TQAddUnitJob(200, RESET_GUARD_POSITION_ONLY, 80, militia_builder)
     call RemoveLocation(l)
@@ -36,12 +37,16 @@ function BuildMilitiaExpansion takes nothing returns boolean
 endfunction
 
 function MilitiaExpansionReset takes nothing returns nothing
+	if militia_builder != null then
+		call RecycleGuardPosition(militia_builder)
+	endif
 	set gold_buffer = 0
 	set wood_buffer = 0
 	set militia_time_out = 0
 	set militia_state = 0
 	set militia_expanding = false
 	set not_taken_expansion = null
+	set militia_builder = null
 endfunction
 
 function TryMilitiaExpansionFoot takes nothing returns nothing
@@ -137,6 +142,7 @@ local location l = null
 		call DestroyGroup(g)
 		set g = null
 		if militia_builder != null then
+			call CreateDebugTag("Militia Expansion - take peon", 10, militia_builder, 3.00, 1.50)
 			set militia_state = 3
 			call Trace("Militia state 2 to 3")
 			call TQAddJob(2, MILITIA_EXPAND, 0)
@@ -152,10 +158,6 @@ local location l = null
 	elseif militia_state == 3 then
 		if militia_builder == null or GetUnitState(militia_builder, UNIT_STATE_LIFE) <= 0 or CheckExpansionTaken(current_expansion) or GetGold() < GetUnitGoldCost2(racial_expansion) or GetWood() < GetUnitWoodCost2(racial_expansion) then
 			call MilitiaExpansionReset()
-			if militia_builder != null then
-				call RecycleGuardPosition(militia_builder)
-				set militia_builder = null
-			endif
 			call Trace("Militia state 3 Ended , lost peon or expansion by other player take or no gold or no wood")
 		else
 			call RemoveGuardPosition(militia_builder)  // has to be here or peasant comes off construction
@@ -166,10 +168,12 @@ local location l = null
 					call Trace("Militia state 3 , Build Success")
 				else
 					call Trace("Militia state 3 , Build Fail")
+					call CreateDebugTag("Militia Expansion -  Build Fail", 10, militia_builder, 3.00, 1.50)
 				endif
 				call MilitiaExpansionReset()
 			else
 				call Trace("Militia state 3 , Moving expansion")
+				call CreateDebugTag("Militia Expansion - peon move to loc", 10, militia_builder, 3.00, 1.50)
 				call IssueTargetOrder(militia_builder, "move", current_expansion)
 				call TQAddJob(3, MILITIA_EXPAND, 0)
 				return
