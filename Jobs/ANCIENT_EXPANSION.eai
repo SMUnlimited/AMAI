@@ -61,7 +61,7 @@ if current_expansion == null then
 	endif
 endif
 
-if current_expansion == null then
+if current_expansion == null or (ancient_exp_unit != null and GetUnitState(ancient_exp_unit, UNIT_STATE_LIFE) <= 0) then
 	// Found out so no point trying ancient expansion again
 	call SetCaptainHome(BOTH_CAPTAINS,GetLocationX(front_loc[0]),GetLocationY(front_loc[0]))
 	call GroupRecycleGuardPositionInstant(CopyGroup(ancient_exp_group,g))
@@ -69,16 +69,8 @@ if current_expansion == null then
 	set gold_buffer = 0
 	set wood_buffer = 0
 	set g = null
-	call Trace("Ancient Expansion state : no mine or mine take by other player , cannot expansion")
+	call Trace("Ancient Expansion state : no mine or tree die , cannot expansion")
 	return
-endif
-if ancient_exp_state > 1 and ancient_exp_state != 5 and ancient_exp_unit != null and GetUnitState(ancient_exp_unit, UNIT_STATE_LIFE) <= 0 then
-	call Trace("Ancient Expansion state : tree die , get new tree")
-	set ancient_exp_state = 0
-	set ancient_exp_count = 0
-	set ancient_exp_unit = null
-	call GroupRecycleGuardPositionInstant(CopyGroup(ancient_exp_group,g))
-	set g = null
 endif
 set exp_time_count = ai_time
 set not_taken_expansion = current_expansion
@@ -138,20 +130,18 @@ if ancient_exp_state == 0 then
 		set wood_buffer = 0
 	endif
 elseif ancient_exp_state == 1 then
-	if ancient_exp_unit == null or not UnitAlive(ancient_exp_unit) then  //  find tree
-		set l = GetUnitLoc(current_expansion)
-		set g = CreateGroup()
-		call GroupEnumUnitsOfPlayer(g, ai_player, null)
-		set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
-		set g = SelectByAlive(g, true)
-		set g = SelectByHidden(g, false)
-		set g = GetNearestSubGroupOfGroup(g, l, 1)
-		set ancient_exp_unit = FirstOfGroup(g)
-		call DestroyGroup(g)
-		set g = null
-		call RemoveLocation(l)
-		set l = null
-	endif
+	set l = GetUnitLoc(current_expansion)
+	set g = CreateGroup()
+	call GroupEnumUnitsOfPlayer(g, ai_player, null)
+	set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+	set g = SelectByAlive(g, true)
+	set g = SelectByHidden(g, false)
+	set g = GetNearestSubGroupOfGroup(g, l, 1)
+	set ancient_exp_unit = FirstOfGroup(g)  //  find tree
+	call DestroyGroup(g)
+	set g = null
+	call RemoveLocation(l)
+	set l = null
 	if ancient_exp_unit == null then
 		call Trace("Expansion State 1 - cannot expansion , no tree")
 		call AncientExpansionReset()
