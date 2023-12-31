@@ -6,7 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## Unreleased
 
 ### Changed
-- Improved ally attack control and fixed some issues with recovery/infinite attacking in team games.
+
+### Fixed
+- Fixed some issues with recovery/infinite attacking in team games for the AI. Should now retreat and regroup correctly and improving ally coordination.
+- Fixed installer unable to install classic editions to folders.
 
 ## [3.3.1a] - 2023-12-21
 

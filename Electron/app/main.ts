@@ -189,7 +189,7 @@ const installProcess = () => {
   });
   
   ipcMain && ipcMain.on('install-folder-TFT', async () => {
-    execInstall(signal, true, true, "TFT");
+    execInstall(signal, true, false, "TFT");
   });
   
   ipcMain && ipcMain.on('install-folder-noc-TFT', async () => {
@@ -204,8 +204,8 @@ const installProcess = () => {
     execInstall(signal, false, true, "TFT");
   });
   
-    ipcMain && ipcMain.on('install-folder-ROC', async () => {
-    execInstall(signal, true, true, "ROC");
+  ipcMain && ipcMain.on('install-folder-ROC', async () => {
+    execInstall(signal, true, false, "ROC");
   });
   
   ipcMain && ipcMain.on('install-folder-noc-ROC', async () => {
