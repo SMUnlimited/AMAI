@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (Classic) Fixed case where 24 player mode was active when shouldn't be.
 - (Classic) Fixed minor memory leak.
 - (DevTools) Fixed strategy manager unable to compile REFORGED scripts. Bat files renamed to match version name instead of shorthand RFG.
+- (DevTools) InstallToDir.pl power script will also detect UAC protection and logs exit codes during run.
 
 ## [3.3.1a] - 2023-12-21
 
