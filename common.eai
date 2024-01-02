@@ -956,6 +956,9 @@ integer array gold_mines_ids
     integer queue_t_y		= 0
     unit	queue_t_u = null
 
+    real lastcaptainx = 0
+    real lastcaptainy = 0
+
 //==============================================================
 // (AMAI)  Profile system globals
 //==============================================================
@@ -3316,34 +3319,6 @@ function GetLocationBetweenUnits takes unit u1, unit u2, real d returns location
 endfunction
 
 //============================================================================
-function GetTeleportLandPoint takes location l returns location
-  local group g = CreateGroup()
-  local unit u = null
-  local real x = GetLocationX(l)
-  local real y = GetLocationY(l)
-  call GroupEnumUnitsInRangeOfLoc(g, l, 900, null)
-  if teleportloc != null then
-    call RemoveLocation(teleportloc)  // set new loc , cannot return teleportloc
-  endif
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null  //Find a enemy unit , land to unit loc , prevent army land to hall , cannot expand
-    if IsPlayerEnemy(ai_player,GetOwningPlayer(u)) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitInvisible(u, ai_player) and UnitAlive(u) and not IsUnitHidden(u) then
-      set teleportloc = GetUnitLoc(u)
-      call DestroyGroup(g)
-      set g = null
-      set u = null
-      return GetUnitLoc(u)
-    endif
-    call GroupRemoveUnit(g, u)
-  endloop
-  set teleportloc = Location(x,y)
-  call DestroyGroup(g)
-  set g = null
-  return Location(x,y)
-endfunction
-
-//============================================================================
 function GetNearestEnemyToLoc_k takes location l returns player
   local integer i = 0
   local integer min_p = 30
@@ -4456,7 +4431,7 @@ function CalcNearestNeutrals takes nothing returns nothing
                 call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
               endif
             else
-              call CreateDebugTag("Invisible Path Unit Here and Moving", 10, pather[i], 10.00, 8.00)
+              //call CreateDebugTag("Invisible Path Unit Here and Moving", 10, pather[i], 10.00, 8.00)
               if (lx[i] != 0 and ly[i] != 0) then
                 if GetUnitX(pather[i]) == lx[i] and GetUnitY(pather[i]) == ly[i] then
                   // Actually stuck
@@ -4572,9 +4547,9 @@ function GetNearestNeutral takes unit ru, integer id returns unit
           else
             call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
           endif
-        else
+        //else
           //set checks = 0	// means unit is moving and not standing still
-          call CreateDebugTag("Invisible Path Unit Here", 10, pather[i], 3.00, 3.00)
+          //call CreateDebugTag("Invisible Path Unit Here", 10, pather[i], 3.00, 3.00)
         endif
         set pathingdone = false
       endif
@@ -5334,7 +5309,6 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
   local group g = CreateGroup()
   local integer sum = 0
   local unit u = null
-  local player p = null
   call GroupEnumUnitsInRange(g,x,y,radius,null)
   if only_structures then
     set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
@@ -5344,15 +5318,13 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set p = GetOwningPlayer(u)
-    if IsPlayerEnemy(ai_player, p) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) then
+    if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) then
       set sum = sum + 1
     endif
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
   set g = null
-  set p = null
   return sum
 endfunction
 
@@ -6126,7 +6098,7 @@ function MakeExpansionList takes nothing returns nothing
             call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u)) // Try again?
           endif
         else
-          call CreateDebugTag("Invisible Path Unit Here", 10, pather[i], 5.00, 3.00)
+          //call CreateDebugTag("Invisible Path Unit Here", 10, pather[i], 5.00, 3.00)
           if (lx[i] != 0 and ly[i] != 0) then
             if GetUnitX(pather[i]) == lx[i] and GetUnitY(pather[i]) == ly[i] then
               // Actually stuck
@@ -7018,7 +6990,7 @@ function GetHealer takes unit u returns unit
     set u = FirstOfGroup(healer_group)
     exitwhen u == null
     set id = GetHealerId(GetUnitTypeId(u))
-    if id != -1 and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) then
+    if id != -1 and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) then
       return u
     endif
     call GroupRemoveUnit(healer_group, u)
@@ -10448,14 +10420,14 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     return BUILT_ALL
   endif
 
-  if current_expansion == null or CheckExpansionTaken(current_expansion) or current_expansion == not_taken_expansion then
+  if current_expansion == null or CheckExpansionTaken(current_expansion) then
     call ChooseExpansion()
     if current_expansion == null then
       call Trace("AMAIStartexpa: Expansion Not Found")
       return BUILT_ALL
     endif
   endif
-  if CheckExpansionTaken(current_expansion) or current_expansion == not_taken_expansion then  // not taken used in the MultipleMinefix , militai expansion , ancient expansion and item expansion system then
+  if CheckExpansionTaken(current_expansion) then
     call Trace("AMAIStartexpa: Expansion Taken by someone else")
     set current_expansion = null
     if expansion_peon != null and build_zeppelin != null and UnitAlive(expansion_peon) and IsUnitLoaded(expansion_peon) then
@@ -10499,7 +10471,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
 
   set take_exp = (GetExpFoe(u) != null)
   set u = null
-  if take_exp or total_gold <= 0 or total_wood <= 0 then
+  if take_exp or total_gold <= 0 or total_wood <= 0 or current_expansion == not_taken_expansion then  // not taken used in the MultipleMinefix , militai expansion , ancient expansion and item expansion system
     return BUILT_SOME
   endif
 
@@ -11487,6 +11459,7 @@ endfunction
 //============================================================================
 function SleepInCombatAM takes nothing returns nothing
   local integer count = 0
+  local real sleep = 0.1
   //local integer attack_length_counter = 0
   call Trace("SleepInCombat")
   loop
@@ -11495,7 +11468,7 @@ function SleepInCombatAM takes nothing returns nothing
     exitwhen not CaptainInCombat(true)  // goal is cleared
     exitwhen CaptainIsEmpty()// duh
     exitwhen town_threat_break
-    exitwhen R2I(count/sleep_multiplier) >= 900 // Took longer than 15 mins to attack something is wrong
+    exitwhen R2I(count) >= 900 // Took longer than 15 mins to attack something is wrong
     //loop
       //exitwhen captain_flee and CaptainRetreating()
       //exitwhen isfleeing and CaptainRetreating()
@@ -11509,14 +11482,24 @@ function SleepInCombatAM takes nothing returns nothing
     //endloop
     //call Sleep(1)
     set count = count + 1
-    call Sleep(1 * sleep_multiplier)
+    call Sleep(1)
   endloop
   set count = 0
   loop
-    exitwhen count >= 8 or town_threatened
+    exitwhen count >= (8.0/sleep) or town_threatened
+    if (lastcaptainx != 0 and lastcaptainy != 0 and not CaptainIsEmpty()) then
+      call TeleportCaptain(lastcaptainx, lastcaptainy)
+    endif
+    //if (lastcaptainx != 0 and lastcaptainy != 0 and not CaptainIsEmpty() and (CaptainAtGoal() or CaptainIsHome())) and not CaptainInCombat(true) then
+    //  call CreateDebugTagLoc("SleepInCombat", 10, lastcaptainx, lastcaptainy, 1.00, 0.80)
+    //  call AttackMoveXY(R2I(lastcaptainx), R2I(lastcaptainy)) // Keep units around killed unit/target to help collect any loot
+    //endif
     set count = count + 1
-    call Sleep(1)
+    call Sleep(sleep)
   endloop
+  if (not CaptainIsHome()) then
+    call CaptainGoHome()
+  endif
   call Trace("exit SleepInCombat")
 endfunction
 
@@ -11608,9 +11591,12 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     exitwhen town_threat_break and town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat and not desperation_assault
     exitwhen break_attack and not desperation_assault
     //exitwhen captain_flee and CaptainRetreating()
-    exitwhen isfleeing and CaptainRetreating() and not desperation_assault
+    exitwhen isfleeing and (CaptainRetreating() or CaptainIsHome()) and not desperation_assault
     exitwhen CaptainIsEmpty() and not desperation_assault
     //exitwhen not UnitAlive(target) and CaptainIsHome()  // A fail safe mechanism if getlocationnoncreepstrength malfunctions: not needed as issue now fixed
+    if (GetAllianceTarget() != null) then // If alliance target exists this overrides hardcoded attack controls regardless of unit you pass, so reconfigure attack to be aware of this
+      set target = GetAllianceTarget()
+    endif
     if IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player)) then
       set g = CreateGroup()
       call GroupEnumUnitsInRange(g,GetUnitX(target), GetUnitY(target),battle_radius,null)
@@ -11636,16 +11622,34 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     set dist = DistanceBetweenPoints_kd(ally_loc, GetUnitLoc(target))
     if c_ally_total > 0 and dist > 1300 and dist < 2500 then
       if CheckAttackWait(target) then
+        set lastcaptainx = GetLocationX(ally_loc)
+        set lastcaptainy = GetLocationY(ally_loc)
+        //call SetCaptainHome(, lastcaptainx, lastcaptainy)
         call AttackMoveXY(R2I(GetLocationX(ally_loc)), R2I(GetLocationY(ally_loc)))
+        call CreateDebugTagLoc("Reform until ally target dead", 10, GetLocationX(ally_loc), GetLocationY(ally_loc), 1.00, 0.80)
       else
         call AttackMoveKill(target)
+        set lastcaptainx = GetUnitX(target)
+        set lastcaptainy = GetUnitY(target)
+        if (GetAllianceTarget() == target) then
+          call CreateDebugTag("Reform until ally dead", 10, target, 1.00, 0.80)
+        else
+          call CreateDebugTag("Reform until target dead", 10, target, 1.00, 0.80)
+        endif
       endif
     else
       call AttackMoveKill(target)
+      set lastcaptainx = GetUnitX(target)
+      set lastcaptainy = GetUnitY(target)
+      if (GetAllianceTarget() == target) then
+        call CreateDebugTag("Reform until ally dead", 10, target, 1.00, 0.80)
+      else
+        call CreateDebugTag("Reform until target dead", 10, target, 1.00, 0.80)
+      endif
     endif
 
     call Sleep(2 * sleep_multiplier)
-    call CreateDebugTag("Reform until target dead", 10, target, 1.00, 0.80)
+
     //set attack_length_counter = attack_length_counter + 1
         //if reform and attack_length_counter > attack_reform_length then
     //  if CaptainInCombat(true) then
@@ -11696,6 +11700,7 @@ endfunction
 //============================================================================
 function SleepUntilAtGoalAM takes nothing returns nothing
   local integer lcount = 0
+  call Trace("SleepUntilGoal")
   loop
     exitwhen town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat
     set lcount = lcount + 1
@@ -11710,6 +11715,13 @@ function SleepUntilAtGoalAM takes nothing returns nothing
     //call Trace("Sleeping until target reached")
     call Sleep(2 * sleep_multiplier)
   endloop
+  call Trace("SleepUntilGoal exit")
+endfunction
+
+function SetAllianceTargetIfLead takes unit u returns nothing
+  if (GetAllianceTarget() == null or u == null) then // if leadally
+    call SetAllianceTarget(u)
+  endif
 endfunction
 
 //============================================================================
@@ -11827,6 +11839,8 @@ function AttackMoveKillXYAAM takes integer x, integer y returns nothing
     set zep_next_wave = false
   endif
   call AttackMoveXY(x,y)
+  set lastcaptainx = x
+  set lastcaptainy = y
   call SleepUntilAtGoalAM()
   call SleepInCombatAM()
   set attack_running = false
@@ -11854,12 +11868,12 @@ function AttackMoveTowerRush takes nothing returns nothing
 				set builder[10] = FirstOfGroup(g)
 				call GroupClear(g)
 			endif
-			call SetAllianceTarget(builder[10])
+			call SetAllianceTargetIfLead(builder[10])
 			if towers_built < 4 then
 				if tower_peon_inplace then
 					call AttackMoveXY(R2I(first_tower_point_x), R2I(first_tower_point_y))
 				elseif builder[1] != null then
-					call SetAllianceTarget(builder[1])
+					call SetAllianceTargetIfLead(builder[1])
 					call AttackMoveKill(builder[1])
 				endif
 			elseif towers_built < 7 then
@@ -11986,7 +12000,7 @@ function CreepAttack takes integer str returns nothing
   endif
   call Chat(C_Creep)
   if air_strength > 15 then
-    call SetAllianceTarget(target)
+    call SetAllianceTargetIfLead(target)
   endif
   call FormGroupAM(3)
   call AttackMoveKillCreep(target)
@@ -12449,21 +12463,19 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
   set own_strength = ai_strength
   call Trace("==Sleep Defend Town==" )
   loop
-    exitwhen not town_threatened
-    exitwhen player_defeated
     if town_loc[most_threatened_town] != null and LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] then
-      if town_threat[most_threatened_town] >= teleport_low_threat then
-        if not teleporting then
-          call AttackMoveXY(R2I(GetLocationX(town_loc[most_threatened_town])), R2I(GetLocationY(town_loc[most_threatened_town])))
-        endif
-      endif
+      // if town_threat[most_threatened_town] >= teleport_low_threat then
+      //   if not teleporting then
+      //     call AttackMoveXY(R2I(GetLocationX(town_loc[most_threatened_town])), R2I(GetLocationY(town_loc[most_threatened_town])))
+      //   endif
+      // endif
       call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
     else
       //call Trace("Town threatened - retreat" )
       //if town_threat[most_threatened_town] >= teleport_low_threat then
-        if not teleporting then
-          call AttackMoveXY(R2I(GetLocationX(home_location)), R2I(GetLocationY(home_location)))
-        endif
+        //if not teleporting then
+          //call AttackMoveXY(R2I(GetLocationX(home_location)), R2I(GetLocationY(home_location)))
+        //endif
         set defense_length_counter = defense_length_counter + 1
         if defense_length_counter > attack_reform_length then
           set defense_length_counter = 0
@@ -12474,6 +12486,12 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
       //call ClearCaptainTargets()
       //call CaptainGoHome()
     endif
+    if CaptainInCombat(true) then
+      call CaptainGoHome()
+    endif
+    exitwhen not town_threatened
+    exitwhen player_defeated
+    exitwhen not CaptainInCombat(false)
     call Sleep(2*sleep_multiplier)
     set own_strength = GetOwnStrength()
   endloop
@@ -12486,9 +12504,9 @@ function SetLeadAlly takes nothing returns nothing
   local boolean checkdone = false
   local player p = null
   loop
-    exitwhen i >= c_ally_total or checkdone
-    set p = ally_force[i]
-    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
+    exitwhen i >= GetBJMaxPlayers() or checkdone
+    set p = Player(i)
+    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(p, ai_player) and GetPlayerController(p) == MAP_CONTROL_COMPUTER then
       if p != ai_player then
         set leadally = false
         set checkdone = true
@@ -12535,7 +12553,7 @@ if desperation_assault and not no_attack then
   set common = ChooseAnEnemyTarget(common)
   if (common != null) then
     call Trace("===Desperation Attack Random Enemy Target===")
-    call SetAllianceTarget(common)
+    call SetAllianceTargetIfLead(common)
     call FormGroupAM(3)
     call DesperationAssault()
     call AttackMoveKillAAM(common)
@@ -12717,7 +12735,7 @@ if not creeping_only then	// Do the normal attack sequence
   //
   if double_expansion_target != null and IsTargetGood(double_expansion_target, 10) then
     call Trace("Double Expansion Attack")
-    call SetAllianceTarget(double_expansion_target)
+    call SetAllianceTargetIfLead(double_expansion_target)
     call FormGroupAM(3)
     call AttackMoveKillAAM(double_expansion_target)
     if not UnitAlive(double_expansion_target) then
@@ -12740,7 +12758,7 @@ if not creeping_only then	// Do the normal attack sequence
           call Trace("Creep the Expansion")
           set attacking_expansion = true
           set battle_radius = creep_battle_radius
-          call SetAllianceTarget(creep)
+          call SetAllianceTargetIfLead(creep)
           call Chat(C_Expansion)
           call FormGroupAM(3)
           call AttackMoveKillCreep(creep)
@@ -12783,7 +12801,7 @@ if not creeping_only then	// Do the normal attack sequence
       if humanhall != null then
         call Chat(C_Attack)
         call Trace("Attack real human player")
-        call SetAllianceTarget(humanhall)
+        call SetAllianceTargetIfLead(humanhall)
         call FormGroupAM(3)
         call AttackMoveKillAAM(humanhall)
         set humanhall = null
@@ -12797,7 +12815,7 @@ if not creeping_only then	// Do the normal attack sequence
       set mega = GetMegaTarget()
       if mega != null and UnitAlive(mega) then
         call Trace("Mega Attack Target")
-        call SetAllianceTarget(mega)
+        call SetAllianceTargetIfLead(mega)
         call SetChatVarsAttack(mega)
         call Chat(C_Mega)
         call Chat(C_Megatarget)
@@ -12816,7 +12834,7 @@ if not creeping_only then	// Do the normal attack sequence
         call SetChatVarsAttack(hall)
         call Chat(C_Attack)
         call Trace("Attack Choose player")
-        call SetAllianceTarget(alli_target)
+        call SetAllianceTargetIfLead(alli_target)
         //set alli_target = null
         call FormGroupAM(3)
         call AttackMoveKillAAM(hall)
@@ -13292,10 +13310,12 @@ function universal_peon_assignment takes nothing returns nothing
   set T = Max(T + 3,TownCountDone(racial_expansion))
   if FoodUsed() <= 20 and hero_built[3] then  // later stages of the game, AI may not be harvest
     set i = 0
+    set T = TownCountDone(racial_peon)
     loop
-      exitwhen i > max_towns
+      exitwhen i > max_towns or T <= 0
       if not CheckExpansionTaken(own_town_mine[i]) then
         call PeonMineCheck(own_town_mine[i], false)
+        set T = T - 5
         call CreateDebugTag("Forced Harvest", 10, own_town_mine[i], 3.00, 1.50)
       endif
       set i = i + 1
