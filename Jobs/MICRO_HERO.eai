@@ -108,11 +108,11 @@ function TeleportHome takes integer hn returns nothing
   local real actual_diff = 0
   local location start_loc = null
   //set hero_loc = GetUnitLoc(hero_unit[hn])
-  if major_hero != null and UnitAlive(major_hero) then
+  if c_ally_total > 0 and major_hero != null and UnitAlive(major_hero) then
     loop
-      exitwhen i >= c_ally_total
-      set p = ally_force[i]
-      if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
+      exitwhen i >= GetBJMaxPlayers()
+      set p = Player(i)
+      if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(p, ai_player) then
         set start_loc = GetPlayerStartLocationLoc(p)
         //set dx = GetLocationX(start_loc) - GetLocationX(hero_loc)
         //set dy = GetLocationY(start_loc) - GetLocationY(hero_loc)
@@ -154,6 +154,33 @@ function TeleportHome takes integer hn returns nothing
   //call RemoveLocation( hero_loc )
   //set hero_loc = null
   //endif
+endfunction
+
+function GetTeleportLandPoint takes location l returns location
+  local group g = CreateGroup()
+  local unit u = null
+  local real x = GetLocationX(l)
+  local real y = GetLocationY(l)
+  call GroupEnumUnitsInRangeOfLoc(g, l, 900, null)
+  if teleportloc != null then
+    call RemoveLocation(teleportloc)  // set new loc , cannot return teleportloc
+  endif
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null  //Find a enemy unit , land to unit loc , prevent army land to hall , cannot expand
+    if IsPlayerEnemy(ai_player,GetOwningPlayer(u)) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitInvisible(u, ai_player) and UnitAlive(u) and not IsUnitHidden(u) then
+      set teleportloc = GetUnitLoc(u)
+      call DestroyGroup(g)
+      set g = null
+      set u = null
+      return GetUnitLoc(u)
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  set teleportloc = Location(x,y)
+  call DestroyGroup(g)
+  set g = null
+  return Location(x,y)
 endfunction
 
 function TeleportToLoc takes unit u, location l returns nothing
