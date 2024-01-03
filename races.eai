@@ -116,7 +116,6 @@ endfunction
 //	Initialization of racial units
 //============================================================================
 function initRacialUnits takes nothing returns nothing
-
 #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%3" eq "$RACE$" and "%4" =~ /\bpeon\b/
     set racial_peon = %1
 #ENDINCLUDE
@@ -198,8 +197,8 @@ function initRacialTraits takes nothing returns nothing
   local integer i = 0
 
   set i = GetRandomInt(1,100)
-  set militia = race_militia_expansion_available and i <= 60
-  if militia then
+  set race_militia_expansion_available = race_militia_expansion_available and i <= 60
+  if race_militia_expansion_available then
     call Trace("Militia expansion is true")
   endif
   set i = GetRandomInt(1, 100)
@@ -221,23 +220,28 @@ function initRacialTraits takes nothing returns nothing
 endfunction
 
 function CanTowerRush takes nothing returns nothing
-	local real distance = GetNearestEnemyDistance()
 	local integer i = GetRandomInt(1,100)
 
-	if game_is_ffa then
-		set i = i + 40       // in ffa reduce likly hood of tower rush extremly
+	if c_ally_total - c_enemy_total < -1 or c_enemy_total + c_ally_total > 5 or mapSize > 3 then
+		set race_towerrush_available = false
+		return  // ffa no tower rush
 	endif
+	call StartTowerRush(10)
 
-	 if hero_rush_bonus[hero[1]] >= race_towerrush_hero_rush_level then
-		if distance < 8000 then   // Total percentage to be choosen is 33%
-			call StartTowerRush(180)
-		elseif i <= 75 and distance < 11000 then // Total percentage to be choosen is 25%
-			call StartTowerRush(160)
-		elseif i <= 50 and distance < 14000 then // Total percentage to be choosen is 16%
-			call StartTowerRush(140)
-		elseif i <= 20 and distance < 16000 then // Total percentage to be choosen is 7%
-		endif
-	  endif
+	// if hero_rush_bonus[hero[1]] >= race_towerrush_hero_rush_level then
+		// if ai_time > 60 then     // 5 mins
+			// set towerrush = false
+			//call Trace("Tower Rush - Out of Time")
+		// elseif distance < 8000 then   // Total percentage to be choosen is 33%
+			// call StartTowerRush(180)
+		// elseif i <= 75 and distance < 11000 then // Total percentage to be choosen is 25%
+			// call StartTowerRush(160)
+		// elseif i <= 50 and distance < 14000 then // Total percentage to be choosen is 16%
+			// call StartTowerRush(140)
+		// elseif i <= 20 and distance < 16000 then // Total percentage to be choosen is 7%
+		// call StartTowerRush(120)
+		// endif
+	  // endif
 endfunction
 
 //===========================================================================
@@ -559,6 +563,10 @@ function setup_ghouls takes nothing returns nothing
     set attacking_ghouls = gn - harvesting_ghouls 
   endif
   set attacking_ghouls = Min(Max(attacking_ghouls, 0), gn)
+  if towerrush then  // towerrush compensate
+    set harvesting_ghouls = Max(2, harvesting_ghouls)
+    set attacking_ghouls = gn - harvesting_ghouls
+  endif
 endfunction
 
 #INCLUDE <$VER$\$RACE$\BuildSequence.ai>
@@ -582,9 +590,20 @@ endfunction
 function build_sequence takes nothing returns nothing
   call global_build_sequence()
   if towerrush then
-    call AddBlock(2, GRUNT, true, 0, STRONGHOLD, 1000)
-    call BuildUnit(1, hero[1], 100)
-    call BuildUnit(1, race_towerrush_requirement, 98)
+    if GetUnitCount(old_id[race_simple_melee]) <= 8 and TownCount(hero[1]) > 0 then
+      call BuildUnit(Max(difficulty * 2,4), race_simple_melee, 200)
+    endif
+    if TownCount(race_towerrush_requirement) == 0 and race_towerrush_requirement != 0 and TownCount(racial_altar) > 0 and TownCount(needed1[race_simple_melee]) > 0 then
+      call BuildUnit(1, race_towerrush_requirement, 180)
+    endif
+    if race_tower_item != 0 then
+      if TownCount(racial_shop) == 0 and TownCount(racial_altar) > 0 and race_tower_item_must == true then
+        call BuildUnit(1, racial_shop, 160)
+      endif
+      if builder[0] == null and tower_attack_run == false and TownCountDone(racial_shop) > 0 and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) > 0 then
+        call BuildItem(race_tower_item_quantity, race_tower_item, 220)
+      endif
+    endif
   endif
   if strategy >= rp_strat_length then
     call cmdBuild()
@@ -797,12 +816,11 @@ function build_sequence_all takes nothing returns nothing
     endif
     if debugging then
       call UpdateDebugTextTag(debugstrattag, "Strat:" + GetCurrentStrategyName(), 18, GetLocationX(home_location) - 300, GetLocationY(home_location) - 300)
-      call SetTextTagPermanent(debugstrattag, true)
+      //call SetTextTagPermanent(debugstrattag, true)
     endif
 
     if (x > counter_timer and counter_timer < 0) or reset_counter then
       set chosen_counter = DetermineCounterForce()
-
       if last_counter != chosen_counter and (debugging or GetRandomInt(1,5) == 1) then // Only randomly report counter changes to allies not every single time unless debug mode is on
         set reportStrategy = true
       endif
@@ -815,7 +833,7 @@ function build_sequence_all takes nothing returns nothing
     endif
    if debugging then
       call UpdateDebugTextTag(debugcountertag, "Counter:" + strengthtext[chosen_counter], 18, GetLocationX(home_location) - 600, GetLocationY(home_location) - 600)
-      call SetTextTagPermanent(debugcountertag, true)
+      //call SetTextTagPermanent(debugcountertag, true)
    endif
 
     if reportStrategy then
@@ -826,7 +844,6 @@ function build_sequence_all takes nothing returns nothing
       //call DisplayToAlliesImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
       //call DisplayToObserversImportant( GetCurrentStrategyReport() + GetCurrentDynamicReport())
     endif
-
     set new_tier = GetTier()
     if tier != new_tier then
       set tier = new_tier
@@ -855,7 +872,6 @@ endfunction
 //	main
 //============================================================================
 function main takes nothing returns nothing
-  call VersionCheck()
   call InitAMAIGameCache()
   set IsAMAI = true
   set ai_player = Player(GetAiPlayer())
