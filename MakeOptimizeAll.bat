@@ -1,4 +1,4 @@
 SET LOG=1
-@call MakeOptROC.bat
-@call MakeOptTFT.bat
-@call MakeOptREFORGED.bat
+@call MakeOptROC.bat %LOG%
+@call MakeOptTFT.bat %LOG%
+@call MakeOptREFORGED.bat %LOG%
