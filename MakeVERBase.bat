@@ -1,8 +1,9 @@
 @ECHO OFF
 SET VSAI=%~1
 SET VER=%~2
+SET LOG=%~3
 SET RESULTMAKEVER=0
-ECHO Making AMAI
+ECHO Making AMAI %VER%
 mkdir Scripts\
 mkdir Scripts\%VER%\
 ECHO _____________________________
@@ -62,4 +63,9 @@ if "%RESULTMAKEVER%"=="1" (
   exit /b %RESULTMAKEVER%
 ) else (
   ECHO _____________________________
+)
+if "%LOG%" == "2" (
+  ECHO =============================
+  ECHO Making AMAI finished
+  pause
 )
