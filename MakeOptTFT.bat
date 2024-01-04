@@ -1,5 +1,6 @@
 @ECHO OFF
 SET LOG=%~1
+SET VER=TFT
 if not "%LOG%"=="0" SET LOG=1
 ECHO Synchronize files
 perl ejass.pl REFORGED\AddedAggression.txt > %VER%\AddedAggression.txt
@@ -17,7 +18,6 @@ perl ejass.pl REFORGED\Profiles.txt > %VER%\Profiles.txt
 perl ejass.pl REFORGED\Races.txt > %VER%\Races.txt
 perl ejass.pl REFORGED\StandardAiSettings.txt > %VER%\StandardAiSettings.txt
 perl ejass.pl REFORGED\Strengths.txt > %VER%\Strengths.txt
-perl ejass.pl REFORGED\Tiers.txt > %VER%\Tiers.txt
 perl ejass.pl REFORGED\Upkeep.txt > %VER%\Upkeep.txt
 perl ejass.pl REFORGED\UnitConversions.txt > %VER%\UnitConversions.txt
 
