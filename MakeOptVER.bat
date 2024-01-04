@@ -29,3 +29,5 @@ if "%RESULTOPTVER%"=="1" (
   exit /b %RESULTOPTVER%
 )
 ECHO =============================
+ECHO Making AMAI Optimize finished
+pause
