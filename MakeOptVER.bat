@@ -1,5 +1,6 @@
 @ECHO OFF
 SET VER=%~1
+SET LOG=%~2
 SET RESULTOPTVER=0
 ECHO Optimizing Scripts
 perl Optimize.pl %VER%\common.j Scripts\%VER%\common.ai -l %VER%\Races.txt Scripts\%VER%\$2
@@ -28,6 +29,8 @@ if "%RESULTOPTVER%"=="1" (
   ECHO Optimization error
   exit /b %RESULTOPTVER%
 )
-ECHO =============================
-ECHO Making AMAI Optimize finished
-pause
+if "%LOG%" == "1" (
+  ECHO =============================
+  ECHO Making AMAI Optimize finished
+  pause
+)
