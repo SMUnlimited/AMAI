@@ -42,4 +42,4 @@ perl ejass.pl REFORGED\Undead\Settings.txt > %VER%\Undead\Settings.txt
 perl ejass.pl REFORGED\Undead\Tiers.txt > %VER%\Undead\Tiers.txt
 ECHO Synchronize files done
 
-call MakeOptVER TFT
+call MakeOptVER TFT %LOG%
