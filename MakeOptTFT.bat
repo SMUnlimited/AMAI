@@ -2,43 +2,44 @@
 SET LOG=%~1
 if not "%LOG%"=="0" SET LOG=1
 ECHO Synchronize files
-perl ejass.pl REFORGED\AddedAggression.txt > TFT\AddedAggression.txt
-perl ejass.pl REFORGED\CommandBuilds.txt > TFT\CommandBuilds.txt
-perl ejass.pl REFORGED\Dragons.txt > TFT\Dragons.txt
-perl ejass.pl REFORGED\DragonTypes.txt > TFT\DragonTypes.txt
-perl ejass.pl REFORGED\Healers.txt > TFT\Healers.txt
-perl ejass.pl REFORGED\HealingItems.txt > TFT\HealingItems.txt
-perl ejass.pl REFORGED\HeroAbilities.txt > TFT\HeroAbilities.txt
-perl ejass.pl REFORGED\HeroLevels.txt > TFT\HeroLevels.txt
-perl ejass.pl REFORGED\ItemCheck.txt > TFT\ItemCheck.txt
-perl ejass.pl REFORGED\MercTypes.txt > TFT\MercTypes.txt
-perl ejass.pl REFORGED\NeutralShops.txt > TFT\NeutralShops.txt
-perl ejass.pl REFORGED\Profiles.txt > TFT\Profiles.txt
-perl ejass.pl REFORGED\Races.txt > TFT\Races.txt
-perl ejass.pl REFORGED\StandardAiSettings.txt > TFT\StandardAiSettings.txt
-perl ejass.pl REFORGED\Strengths.txt > TFT\Strengths.txt
-perl ejass.pl REFORGED\Upkeep.txt > TFT\Upkeep.txt
-perl ejass.pl REFORGED\UnitConversions.txt > TFT\UnitConversions.txt
+copy /y REFORGED\AddedAggression.txt TFT\AddedAggression.txt
+copy /y REFORGED\CommandBuilds.txt TFT\CommandBuilds.txt
+copy /y REFORGED\Dragons.txt TFT\Dragons.txt
+copy /y REFORGED\DragonTypes.txt TFT\DragonTypes.txt
+copy /y REFORGED\Healers.txt TFT\Healers.txt
+copy /y REFORGED\HealingItems.txt TFT\HealingItems.txt
+copy /y REFORGED\HeroAbilities.txt TFT\HeroAbilities.txt
+copy /y REFORGED\HeroLevels.txt TFT\HeroLevels.txt
+copy /y REFORGED\ItemCheck.txt TFT\ItemCheck.txt
+copy /y REFORGED\MercTypes.txt TFT\MercTypes.txt
+copy /y REFORGED\NeutralShops.txt TFT\NeutralShops.txt
+copy /y REFORGED\Profiles.txt TFT\Profiles.txt
+copy /y REFORGED\Races.txt TFT\Races.txt
+copy /y REFORGED\StandardAiSettings.txt TFT\StandardAiSettings.txt
+copy /y REFORGED\Strengths.txt TFT\Strengths.txt
+copy /y REFORGED\Upkeep.txt TFT\Upkeep.txt
+copy /y REFORGED\UnitConversions.txt TFT\UnitConversions.txt
 
-perl ejass.pl REFORGED\Elf\CommandBuilds.txt > TFT\Elf\CommandBuilds.txt
-perl ejass.pl REFORGED\Elf\RaceAggression.txt > TFT\Elf\RaceAggression.txt
-perl ejass.pl REFORGED\Elf\Settings.txt > TFT\Elf\Settings.txt
-perl ejass.pl REFORGED\Elf\Tiers.txt > TFT\Elf\Tiers.txt
+copy /y REFORGED\Elf\CommandBuilds.txt TFT\Elf\CommandBuilds.txt
+copy /y REFORGED\Elf\RaceAggression.txt TFT\Elf\RaceAggression.txt
+copy /y REFORGED\Elf\Settings.txt TFT\Elf\Settings.txt
+copy /y REFORGED\Elf\Tiers.txt TFT\Elf\Tiers.txt
 
-perl ejass.pl REFORGED\Human\CommandBuilds.txt > TFT\Human\CommandBuilds.txt
-perl ejass.pl REFORGED\Human\RaceAggression.txt > TFT\Human\RaceAggression.txt
-perl ejass.pl REFORGED\Human\Settings.txt > TFT\Human\Settings.txt
-perl ejass.pl REFORGED\Human\Tiers.txt > TFT\Human\Tiers.txt
+copy /y REFORGED\Human\CommandBuilds.txt TFT\Human\CommandBuilds.txt
+copy /y REFORGED\Human\RaceAggression.txt TFT\Human\RaceAggression.txt
+copy /y REFORGED\Human\Settings.txt TFT\Human\Settings.txt
+copy /y REFORGED\Human\Tiers.txt TFT\Human\Tiers.txt
 
-perl ejass.pl REFORGED\Orc\CommandBuilds.txt > TFT\Orc\CommandBuilds.txt
-perl ejass.pl REFORGED\Orc\RaceAggression.txt > TFT\Orc\RaceAggression.txt
-perl ejass.pl REFORGED\Orc\Settings.txt > TFT\Orc\Settings.txt
-perl ejass.pl REFORGED\Orc\Tiers.txt > TFT\Orc\Tiers.txt
+copy /y REFORGED\Orc\CommandBuilds.txt TFT\Orc\CommandBuilds.txt
+copy /y REFORGED\Orc\RaceAggression.txt TFT\Orc\RaceAggression.txt
+copy /y REFORGED\Orc\Settings.txt TFT\Orc\Settings.txt
+copy /y REFORGED\Orc\Tiers.txt TFT\Orc\Tiers.txt
 
-perl ejass.pl REFORGED\Undead\CommandBuilds.txt > TFT\Undead\CommandBuilds.txt
-perl ejass.pl REFORGED\Undead\RaceAggression.txt > TFT\Undead\RaceAggression.txt
-perl ejass.pl REFORGED\Undead\Settings.txt > TFT\Undead\Settings.txt
-perl ejass.pl REFORGED\Undead\Tiers.txt > TFT\Undead\Tiers.txt
+copy /y REFORGED\Undead\CommandBuilds.txt TFT\Undead\CommandBuilds.txt
+copy /y REFORGED\Undead\RaceAggression.txt TFT\Undead\RaceAggression.txt
+copy /y REFORGED\Undead\Settings.txt TFT\Undead\Settings.txt
+copy /y REFORGED\Undead\Tiers.txt TFT\Undead\Tiers.txt
 ECHO Synchronize files done
 
 call MakeOptVER TFT %LOG%
+pause
