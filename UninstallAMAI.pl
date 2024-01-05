@@ -31,11 +31,11 @@ sub process_dir {
 
 			system "MPQEditor f \"$dirname/$filename\""
 
-                                                if ($? == -1 || $? >> 8 == 5) {
-                                                   printf "ERROR: Failed to Uninstalling, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
-                                                } else {
-                                                  printf "Uninstalling:%d\n", $? >> 8
-                                                }
+			if ($? == -1 || $? >> 8 == 5) {
+			  printf "ERROR: Failed to Uninstalling, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
+			} else {
+			  printf "Uninstall completion:%d\n", $? >> 8
+			}
 
 		}
 	}
