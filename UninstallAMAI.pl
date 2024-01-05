@@ -34,7 +34,7 @@ sub process_dir {
 			if ($? == -1 || $? >> 8 == 5) {
 			  printf "ERROR: Failed to Uninstalling, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
 			} else {
-			  printf "Uninstall completion:%d\n", $? >> 8
+			  printf "Uninstall Completion:%d\n", $? >> 8
 			}
 
 		}
