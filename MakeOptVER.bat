@@ -24,7 +24,6 @@ if "%errorlevel%"=="1" SET RESULTOPTVER=1
 ECHO _____________________________
 pjass %VER%\common.j Scripts\Blizzard_%VER%.j
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
 if "%RESULTOPTVER%"=="1" (
   ECHO Optimization error
   if "%LOG%" == "1" (

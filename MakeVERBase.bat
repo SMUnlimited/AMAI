@@ -48,10 +48,15 @@ if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 jassparser %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\undead.ai
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 ECHO _____________________________
-ECHO creating \Scripts\Blizzard.j VSAI Flag set to %VSAI%
 perl SplitBlizzardJ.pl %VER%
-if %VSAI% == 1 perl ejass.pl Blizzard3VAI.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
-if %VSAI% == 0 perl ejass.pl Blizzard3.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
+if %VSAI% == 1 (
+ECHO creating \Scripts\Blizzard.j  AMAI VS AI Flag set to: ON
+perl ejass.pl Blizzard3VAI.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
+)
+if %VSAI% == 0 (
+ECHO creating \Scripts\Blizzard.j AMAI VS AI Flag set to: OFF
+perl ejass.pl Blizzard3.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
+)
 perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\Blizzard_%VER%.j
 ECHO \Scripts\Blizzard.j created
 pjass %VER%\common.j Scripts\Blizzard_%VER%.j
@@ -60,12 +65,17 @@ jassparser %VER%\common.j Scripts\Blizzard_%VER%.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 if "%RESULTMAKEVER%"=="1" (
   ECHO Compilation error
-  exit /b %RESULTMAKEVER%
+  if "%LOG%" == "2" (
+    ECHO =============================
+    ECHO Making AMAI finished
+    pause
+  ) else (
+  exit /b %RESULTOPTVER%
+  )
 ) else (
-  ECHO _____________________________
-)
-if "%LOG%" == "2" (
-  ECHO =============================
-  ECHO Making AMAI finished
-  pause
+  if "%LOG%" == "2" (
+    ECHO =============================
+    ECHO Making AMAI finished
+    pause
+  )
 )
