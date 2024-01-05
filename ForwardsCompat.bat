@@ -86,10 +86,17 @@ if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 
 if "%RESULTFWCOMPAT%"=="1" (
   ECHO Compilation error
+  if "%LOG%" == "1" (
+    ECHO =============================
+    ECHO Making AMAI finished
+    pause
+  ) else (
   exit /b %RESULTFWCOMPAT%
-)
-if "%LOG%" == "1" (
-  ECHO =============================
-  ECHO Making AMAI finished
-  pause
+  )
+) else (
+  if "%LOG%" == "1" (
+    ECHO =============================
+    ECHO Making AMAI finished
+    pause
+  )
 )
