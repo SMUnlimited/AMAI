@@ -27,10 +27,17 @@ if "%errorlevel%"=="1" SET RESULTOPTVER=1
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
 if "%RESULTOPTVER%"=="1" (
   ECHO Optimization error
+  if "%LOG%" == "1" (
+    ECHO =============================
+    ECHO Making AMAI Optimize finished
+    pause
+  ) else (
   exit /b %RESULTOPTVER%
-)
-if "%LOG%" == "1" (
-  ECHO =============================
-  ECHO Making AMAI Optimize finished
-  pause
+  )
+) else (
+  if "%LOG%" == "1" (
+    ECHO =============================
+    ECHO Making AMAI Optimize finished
+    pause
+  )
 )
