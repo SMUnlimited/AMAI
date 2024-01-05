@@ -10,6 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+### Removed
+- (DevTools) Moved custom_common_vars into the custom_common file the same way as the job system.
+
 ### Fixed
 - Fixed some issues with recovery/infinite attacking in team games for the AI. Should now retreat and regroup correctly and improving ally coordination.
 - Fixed issue where double expansion was not cancelled when just 1 ally builds a mine. 
