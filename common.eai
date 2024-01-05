@@ -6898,7 +6898,7 @@ endfunction
 
 //============================================================================
 function CheckUseSaveItem takes integer i returns boolean
-  set herocanuse[i] = hero_built[i] and UnitAlive(hero_unit[i]) and not UnitInvis(hero_unit[i]) and not IsUnitBuying(hero_unit[i]) and IsStandardUnit(hero_unit[i]) 
+  set herocanuse[i] = hero_built[i] and UnitAlive(hero_unit[i]) and not UnitInvis(hero_unit[i]) and not IsUnitBuying(hero_unit[i]) and IsStandardUnit(hero_unit[i])
   return herocanuse[i]
 endfunction
 
@@ -8048,7 +8048,7 @@ function ApplyUpkeepCheck takes integer afford_food, integer food, integer food_
         if food_cost == 0 then
           set afford_food = need_qty
         else
-          set afford_food = Max(upkeep_border[i] - food, 0) / food_cost
+          set afford_food = Max(upkeep_border[i] - food, 0) / Max(food_cost, 1)
         endif
       endif
     endif
@@ -8302,7 +8302,7 @@ endfunction
 
 //===========================================================================
 function GetMaxFarms takes nothing returns integer
-  local integer fm = GetFoodMade(old_id[racial_farm])
+  local integer fm = Max(GetFoodMade(old_id[racial_farm]), 1)
   local integer div = ver_food_limit / fm
   if div * fm < ver_food_limit then
     set div = div + 1
@@ -9577,10 +9577,9 @@ function AddHarass takes integer groupnum, integer qty, integer unitid returns n
   set harass_group_length = harass_group_length + 1
 endfunction
 
-function AddHarassUnittype takes integer groupnum, integer harassnum, group g, group harasser, integer qty, integer uid, integer key returns group
+function AddHarassUnittype takes integer groupnum, integer harassnum, group g, group harasser, integer qty, integer uid, real player_sum, integer key returns group
   local group cg = null
   local unit u = null
-  local real player_sum = 0
   set cg = CopyGroup(g,cg)
   set cg = SelectNumberOfId(cg, qty, old_id[uid])
   set cg = SelectByUnitFree(cg, true)
@@ -9597,7 +9596,6 @@ function AddHarassUnittype takes integer groupnum, integer harassnum, group g, g
   endloop
   call DestroyGroup(cg)
   set cg = null
-  call SaveReal(additional_info, key, START_STRENGTH, player_sum)
   return harasser
 endfunction
 
@@ -9624,8 +9622,7 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
       set t = t + qty
     endif
     if qty > 0 then
-      set harasser = AddHarassUnittype(groupnum, i , g, harasser, qty, uid, key)
-      set strength = strength + LoadReal(additional_info, key, START_STRENGTH)
+      set harasser = AddHarassUnittype(groupnum, i , g, harasser, qty, uid, strength, key)
     endif
     set i = i + 1
   endloop
@@ -9811,9 +9808,9 @@ endfunction
 
 function FoodPoolAM takes integer food, boolean weak, integer id1, integer use1, boolean strong, integer id2, integer use2, integer prio returns nothing
   if strong then
-    call BuildUnit( (food - use1 * TownCount(id1)) / use2, id2, prio )
+    call BuildUnit( (food - use1 * TownCount(id1)) / Max(use2, 1), id2, prio )
   elseif weak then
-    call BuildUnit( (food - use2 * TownCount(id2)) / use1, id1, prio )
+    call BuildUnit( (food - use2 * TownCount(id2)) / Max(use1, 1), id1, prio )
   endif
 endfunction
 
