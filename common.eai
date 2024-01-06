@@ -1023,7 +1023,7 @@ integer array gold_mines_ids
 
     unit expansion_peon = null
     unit build_zeppelin = null
-    location exp_loc_cache = Location(0,0)
+    //location exp_loc_cache = Location(0,0)
     integer exp_loc_cache_timeout = 0
 
     integer exp_number = 0
@@ -3171,6 +3171,9 @@ endfunction
 
 //============================================================================
 function GetPlayerStartLocationLoc takes player whichPlayer returns location
+  if whichPlayer == null then
+    return null
+  endif
   return GetStartLocationLoc(GetPlayerStartLocation(whichPlayer))
 endfunction
 
@@ -10332,24 +10335,21 @@ endfunction
 
 //============================================================================
 function ConstructExpansion takes unit peon, integer unitid returns boolean
-  local unit u = null
+  local unit u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), unitid, GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
+  local real x = GetUnitX(u)
+  local real y = GetUnitY(u)
+  call RemoveUnit(u)
+  set u = null
   if ai_time > exp_loc_cache_timeout then
-    set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), unitid, GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
-    if DistanceBetweenUnits(u, current_expansion) > race_max_expa_mine_distance then
-      call RemoveUnit(u)
-      set u = null
+    if DistanceBetweenPoints_dd(Location(x, y), GetUnitLoc(current_expansion)) > race_max_expa_mine_distance then
       return false
     endif
-    call RemoveLocation(exp_loc_cache)
-    set exp_loc_cache = GetUnitLoc(u)
     set exp_loc_cache_timeout = ai_time + 4
   //  call SetUnitExploded(u, true)
   //  call KillUnit(u)
-    call RemoveUnit(u)
-    set u = null
   endif
   call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon)
-  return IssuePointOrderByIdLoc(peon, unitid, exp_loc_cache)
+  return IssuePointOrderById(peon, unitid, x, y)
 endfunction
 
 //============================================================================
@@ -13025,6 +13025,9 @@ function ApplyMassHealingItem takes unit u, item mh_i returns nothing
     set hu = FirstOfGroup(medium_healing_group)
     if hu == null then
       set hu = FirstOfGroup(small_healing_group)
+    endif
+    if hu == null then
+      return
     endif
   endif
 
