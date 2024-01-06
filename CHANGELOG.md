@@ -6,9 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## Unreleased
 
 ### Added
+- When urgent healing is required but are missing prerequisites, the required item will now be added to the build queue so that those can be built.
+- Item equivalency check so merchant and racial items of the same item count as the same item to avoid buying the item twice.
 - (Classic) Dynamic unit counter system now active for original TFT AI (jzy-chitong56)
+- (DevTools) New HasExpanded function for strategies that can be used to detect when AI has expanded. Used as a condition in the global racial strategies.
+- (DevTools) New DefendTownsFrontDone function that will build at the home location in addition to expansions, but if it does it will build those at the Front of the base.
 
 ### Changed
+- Minor Strategy Tweaks and fixes, notably global tower defense, item and upgrades. (Based on jzy-chitong56)
+- (DevTools) Zepplins are now built automatically like peons and shredders, no need to be in strategies explictly.
 
 ### Removed
 - (DevTools) Moved custom_common_vars into the custom_common file the same way as the job system.

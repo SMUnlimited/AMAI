@@ -67,20 +67,26 @@ function global_init_strategy takes nothing returns nothing
 
 endfunction
 function global_build_sequence takes nothing returns nothing
-    call DefendTownsDone(1, BURROW, 70)
-    call DefendTownsDone(2, ORC_WATCH_TOWER, 70)
-    if tier == 3 and GetGold() > 2000 then
+    // Anti rush
+    if GetRushFactor() < 5000 then
+      call BuildAtMine(1, ORC_WATCH_TOWER, 42)
+      call BuildFront(1, ORC_WATCH_TOWER, 45)
+    endif
+    // home_location tower
+    if GetGold() > 500 then
+      call BuildFront(2, ORC_WATCH_TOWER, 40)
+    endif
+    if HasExpanded() then
       call DefendTownsDone(1, BURROW, 70)
-      call DefendTownsDone(2, ORC_WATCH_TOWER, 70)
-      call DefendTownsDone(4, ORC_WATCH_TOWER, 35)
-      call BuildFront(4, ORC_WATCH_TOWER, 35)
-      if TownCount(ORC_WATCH_TOWER) >= 4 and TownCount(VOODOO_LOUNGE) < 2 then
-        call DefendTownsDone(1, VOODOO_LOUNGE, 40)
+      call DefendTownsFrontDone(2, ORC_WATCH_TOWER, 70)
+      if tier == 3 and GetGold() > 2000 then
+            call DefendTownsFrontDone(2, ORC_WATCH_TOWER, 70)
+            call DefendTownsFrontDone(4, ORC_WATCH_TOWER, 35)
+            if TownCount(ORC_WATCH_TOWER) >= 4 and TownCount(VOODOO_LOUNGE) < 2 then
+                  call DefendTownsDone(1, VOODOO_LOUNGE, 40)
+            endif
       endif
     endif
-
-    call BuildAtMine(1, ORC_WATCH_TOWER, 40)
-    call BuildFront(2, ORC_WATCH_TOWER, 35)
 
     if urgent_healing_count > 3 then
           call BuildItem(1, HEALING_SALVE, 120)
@@ -91,21 +97,25 @@ function global_build_sequence takes nothing returns nothing
       call BuildItem(2, HEALING_SALVE, 50)
     endif
     call BuildItem(1, M_SCROLL_OF_HEALING, 55)
-    
-      call BuildItem(1, SCROLL_OF_SPEED, 40)
-
+    call BuildItem(1, SCROLL_OF_SPEED, 40)
     call BuildItem(1, POTION_OF_LESSER_INVULNERBILITY, 50)
-    if hero[1] == BLADE_MASTER then
-      call BuildItem(1, LESSER_CLARITY_POTION, 35)
-    endif
-    if tier == 1 then
-      call BuildItem(1, M_TOWN_PORTAL, 100)
-    endif
-    if tier > 1 then
+    call BuildItem(1, LESSER_CLARITY_POTION, 35)
+    call BuildItem(1, M_TOWN_PORTAL, 100)
+    if tier >= 2 then
       call BuildItem(1, HEALING_POTION, 70)
       call BuildItem(1, TOWN_PORTAL, 180)
+      if c_ally_total > 0 then
+            call BuildItem(1, STAFF_OF_PRESERVATION, 30)
+      endif
     endif
-    call BuildUnit(1, VOODOO_LOUNGE, 45+30*(tier-1))
+    if tier >= 3 then
+      if c_ally_total > 0 then
+        call BuildItem(1, STAFF_OF_SANCTUARY, 30)
+      endif
+    endif
+    if GetGold() > 1000 then
+      call BuildItem(1, STAFF_OF_TELEPORTATION, 35)
+    endif
     // DYNAMIC
     call ResetDynamicSystem()
     if tier == 1 then
@@ -163,8 +173,8 @@ function global_build_sequence takes nothing returns nothing
       call AddUnitToAntiair(RAIDER,1)
       call AddUnitToAnticasters(SPIRIT_WALKER,15)
       call AddUnitToAnticasters(SHAMAN,5)
-      call AddUnitToAntitowers(CATAPULT,8)
-      call AddUnitToAntitowers(BATRIDER,1)
+      call AddUnitToAntitowers(CATAPULT,8+GetUpgradeLevel(old_id[UPG_ORC_NAPTHA]))
+      call AddUnitToAntitowers(BATRIDER,1+GetUpgradeLevel(old_id[UPG_ORC_FIRE]))
       call AddUnitToAntitowers(RAIDER,1)
       call AddUnitToAntipiercing(RAIDER, 1)
       call AddUnitToAntipiercing(HEAD_HUNTER, 1)
@@ -199,29 +209,33 @@ function global_build_sequence takes nothing returns nothing
     call BuildAdvUpgr2(3, UPG_ORC_MELEE, 1,TownCountDone(GRUNT) + TownCountDone(TAUREN) + TownCountDone(RAIDER), 4,5,40)
     call BuildAdvUpgr2(3, UPG_ORC_ARMOR, 1,TownCountDone(GRUNT) + TownCountDone(TAUREN) + TownCountDone(RAIDER) + TownCountDone(HEAD_HUNTER) + TownCountDone(CATAPULT) + TownCountDone(KODO_BEAST) + TownCountDone(WYVERN) + TownCountDone(BATRIDER), 3,5,40)
     call BuildAdvUpgr2(3, UPG_ORC_RANGED, 1,TownCountDone(HEAD_HUNTER) + TownCountDone(CATAPULT) + TownCountDone(KODO_BEAST) + TownCountDone(WYVERN) + TownCountDone(BATRIDER), 4,5,40)
+    if not (c_enemy_total == c_enemy[R_ELF]) then
+      call BuildAdvUpgr(2, UPG_ORC_SPIKES, 1, 1, 1, 10, 10)
+    else
+      call BuildAdvUpgr(2, UPG_ORC_SPIKES, 1, 1, 1, 5, 5)
+    endif
+    call BuildAdvUpgr2(1, UPG_ORC_PILLAGE, 1,TownCountDone(RAIDER) + TownCountDone(GRUNT),0.5,15,60)
 
     // TIER 2 UPGRADES
     //--------------------------------------------------------
     if tier == 2 then
     endif
-    if not (c_enemy_total == c_enemy[R_ELF]) then
-      call BuildAdvUpgr(2, UPG_ORC_SPIKES, 1, 1, 1, 10, 10)
-    endif
-    call BuildAdvUpgr2(1, UPG_ORC_PILLAGE, 2,TownCountDone(RAIDER) + TownCountDone(GRUNT),0.5,15,60)
-    call BuildAdvUpgr2(1, UPG_ORC_WAR_DRUMS, 2,TownCountDone(KODO_BEAST),0.25,10,60)
+
+
     call BuildAdvUpgr2(1, UPG_ORC_ENSNARE, 2,TownCountDone(RAIDER),0.33,15,80)
     call BuildAdvUpgr2(1, UPG_ORC_REGEN, 2,TownCountDone(HEAD_HUNTER)+TownCountDone(BATRIDER),1,15,60)
     call BuildAdvUpgr2(2, UPG_ORC_SHAMAN, 2,TownCountDone(SHAMAN),0.33,15,90)
     call BuildAdvUpgr2(2, UPG_ORC_DOCS, 2,TownCountDone(WITCH_DOCTOR), 0.33,15,90)
     call BuildAdvUpgr2(2, UPG_ORC_SWALKER, 2,TownCountDone(SPIRIT_WALKER), 0.33,15,90)
     call BuildAdvUpgr2(2, UPG_ORC_BERSERK, 2, TownCountDone(GRUNT), 0.33,15,60)	  
+    call BuildAdvUpgr(1, UPG_ORC_BURROWS, 2,1,1,0,50)
 
     // TIER 3 UPGRADES
     //--------------------------------------------------------
     if tier == 3 then
     endif
     call BuildAdvUpgr2(1, UPG_ORC_NAPTHA, 3,TownCountDone(CATAPULT),0.25,15,60)
-    call BuildAdvUpgr(1, UPG_ORC_BURROWS, 3,1,1,0,50)
+    call BuildAdvUpgr2(1, UPG_ORC_WAR_DRUMS, 3,TownCountDone(KODO_BEAST),0.25,10,60)
     call BuildAdvUpgr2(1, UPG_ORC_BERSERKER, 3,TownCountDone(HEAD_HUNTER), 0.33,15,75)
     call BuildAdvUpgr2(1, UPG_ORC_VENOM, 3,TownCountDone(WYVERN),0.33,15,85)
     call BuildAdvUpgr2(1, UPG_ORC_PULVERIZE, 3,TownCountDone(TAUREN),0.25,15,75)
@@ -403,7 +417,6 @@ else
       call BuildUnit(1, STRONGHOLD, 45)
       call BuildUnit(6, GRUNT, 35)
       call BasicExpansionAM( GetMinesOwned() < 2 ,GREAT_HALL, 37)
-      call BuildFront(1, ORC_WATCH_TOWER, 36)
       call BuildUnit(2, CATAPULT, 22)
 
 
@@ -463,7 +476,6 @@ if tier == 3 then
       call BuildUnit(1, hero[3], 120)
       call BuildUnit(3, WITCH_DOCTOR, 70)
 
-      call BuildUnit(1, ZEPPELIN, 50)
       call BuildUpgr(2, UPG_ORC_SWALKER, 62)
       call BuildUpgr(2, UPG_ORC_SHAMAN, 65)
       call BuildUpgr(1, UPG_ORC_PULVERIZE, 65)
@@ -525,7 +537,6 @@ elseif tier == 2 then
 
 else
 
-      call BuildFront(2, ORC_WATCH_TOWER, 42)
       call BuildUnit(1, hero[1], 150)
       call BuildUnit(10, GRUNT, 40)
       call BuildUnit(1, STRONGHOLD, 50)
@@ -658,7 +669,6 @@ elseif tier == 2 then
 
 else
 
-      call BuildFront(2, ORC_WATCH_TOWER, 42)
       call BuildUnit(1, hero[1], 150)
       call BuildUnit(10, GRUNT, 40)
       call BuildUnit(1, STRONGHOLD, 50)
@@ -876,7 +886,6 @@ elseif tier == 2 then
 
 else
 
-      call BuildFront(2, ORC_WATCH_TOWER, 42)
       call BuildUnit(1, hero[1], 150)
       call BuildUnit(10, GRUNT, 40)
       call BuildUnit(1, STRONGHOLD, 50)
@@ -931,7 +940,6 @@ if tier == 3 then
       call BuildUnit(1, hero[3], 120)
       call BuildUnit(3, WITCH_DOCTOR, 70)
 
-      call BuildUnit(1, ZEPPELIN, 50)
       call BuildUpgr(1, UPG_ORC_NAPTHA, 100)
       call BuildUpgr(1, UPG_ORC_BERSERK, 100)
       call BuildUpgr(2, UPG_ORC_DOCS, 75)
@@ -959,7 +967,6 @@ elseif tier == 2 then
       call BuildUnit(1, FORTRESS, 45)
       call BuildUnit(2, WITCH_DOCTOR, 70)
 
-      call BuildUnit(1, ZEPPELIN, 50)
       call BuildUpgr(1, UPG_ORC_DOCS, 75)
       call BuildUpgr(1, UPG_ORC_BERSERK, 80)
 
@@ -1210,7 +1217,6 @@ elseif tier == 2 then
 
 else
 
-      call BuildFront(2, ORC_WATCH_TOWER, 44)
       call BuildUnit(1, hero[1], 150)
       call BuildUnit(10, GRUNT, 40)
       call BuildUnit(1, STRONGHOLD, 50)
@@ -2009,7 +2015,6 @@ if tier == 3 then
     call BuildUnit(2, KODO_BEAST, 43)
     call BuildUnit(3, WITCH_DOCTOR, 70)
 
-    call BuildUnit(1, ZEPPELIN, 55)
     call BuildUpgr(1, UPG_ORC_FIRE, 60)
     call BuildUpgr(1, UPG_ORC_ENSNARE, 70)
     call BuildUpgr(1, UPG_ORC_BERSERK, 70)
@@ -2031,7 +2036,6 @@ elseif tier == 2 then
 
     call BuildUnit(1, hero[1], 130)
     call BuildUnit(1, hero[2], 120)
-    call BuildUnit(1, ZEPPELIN, 40)
     call BuildUnit(10, RAIDER, 40)
     call BuildUnit(10, GRUNT, 50)
     call BuildUnit(8, BATRIDER, 40)

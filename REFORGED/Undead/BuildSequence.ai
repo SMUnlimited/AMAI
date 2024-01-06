@@ -3,12 +3,12 @@
 //============================================================================
 function global_init_strategy takes nothing returns nothing
     call AddBlock(1, UNDEAD_ALTAR, true, 0, TOMB_OF_RELICS, 10)
-    call AddBlock(1, UNDEAD_ALTAR, false, 0, CRYPT, 1)
+    call AddBlock(1, UNDEAD_ALTAR, false, 0, CRYPT, 2)
     call AddBlock(1, CRYPT, true, 0, TOMB_OF_RELICS, 10)
     call AddBlock(1, CRYPT, false, 0, GRAVEYARD, 10)
     call AddBlock(1, UNDEAD_ALTAR, false, 0, ZIGGURAT_1, 2)
-    call AddBlock(1, UNDEAD_ALTAR, true, 0, ZIGGURAT_2, 2)
-    call AddBlock(1, UNDEAD_ALTAR, true, 0, ZIGGURAT_FROST, 2)
+    call AddBlock(1, UNDEAD_ALTAR, false, 0, ZIGGURAT_2, 2)
+    call AddBlock(1, UNDEAD_ALTAR, false, 0, ZIGGURAT_FROST, 2)
     call AddHarass(1, 1, GHOUL)
     call AddHarass(2, 2, GHOUL)
     call AddHarass(3, 2, GARGOYLE)
@@ -56,53 +56,59 @@ function global_build_sequence takes nothing returns nothing
     if TownCount(GHOUL) == 0 and GetWood() < 500 then
       call BuildUnit(1, GHOUL, 260)
     endif
-    call BuildAtMine(1, ZIGGURAT_FROST, 40)
-    call DefendTownsDone(1, NECROPOLIS_1, 95)
-    call DefendTownsDone(2, ZIGGURAT_2, 90)
-    call DefendTownsCond(1, ZIGGURAT_FROST, 0, 8000, 0, 80)
-    call DefendTownsCond(1, NECROPOLIS_2, 7600, 20000, 0, 90)
-
-    if tier == 2 then
-      call BuildUnit(2, ZIGGURAT_FROST, 40)
-    endif
-
-    if tier == 3 and GetGold() > 2000 then
-      call BuildUnit(3, ZIGGURAT_2, 35)
-      call BuildUnit(3, ZIGGURAT_FROST, 35)
-      if TownCount(ZIGGURAT_2) >= 2 and TownCount(TOMB_OF_RELICS) < 2 then
-        call DefendTownsDone(1, TOMB_OF_RELICS, 40)
-      endif
-    endif
-
-    // Anti rush
+      // Anti rush
     if GetRushFactor() < 5000 then
-      call BuildUnit(1, ZIGGURAT_FROST, 70)
-      call BuildUnit(2, ZIGGURAT_2, 70)
+      call BuildAtMine(1, ZIGGURAT_FROST, 70)
+      call BuildUnit(2, ZIGGURAT_2, 45)
+    elseif GetRushFactor() < 10000 then
+      call BuildAtMine(1, ZIGGURAT_FROST, 60)
+      call BuildUnit(2, ZIGGURAT_2, 40)
     endif
-      if tier == 1 then
-	call BuildItem(1, M_TOWN_PORTAL, 100)
+    if GetGold() > 530 then
+      call BuildUnit(1, ZIGGURAT_2, 50)
+      call BuildAtMine(1, ZIGGURAT_FROST, 52)
+    endif
+    if HasExpanded() then
+      call BuildUnit(1, ZIGGURAT_2, 45)
+      call BuildUnit(1, ZIGGURAT_FROST, 40)
+      if GetGold() > 2000 then
+            call DefendTownsDone(1, NECROPOLIS_1, 95)
+            call DefendTownsDone(3, ZIGGURAT_2, 90)
+            call DefendTownsDone(1, ZIGGURAT_FROST, 50)
+            call DefendTownsCond(1, ZIGGURAT_FROST, 0, 8000, 0, 80)
+            call DefendTownsCond(1, NECROPOLIS_2, 7600, 20000, 0, 90)
+            if TownCount(ZIGGURAT_2) >= 2 and TownCount(TOMB_OF_RELICS) < 2 then
+                  call DefendTownsDone(1, TOMB_OF_RELICS, 40)
+            endif
       endif
-    // Global Items
-    if tier == 3 then
-      call BuildItem(1, SCROLL_OF_HEALING, 80)
-    else
-      call BuildItem(1, M_SCROLL_OF_HEALING, 50)
     endif
+
+    // Global Items
+    call BuildItem(1, M_TOWN_PORTAL, 100)
     call BuildItem(1, POTION_OF_LESSER_INVULNERBILITY, 50)
-    if tier > 1 then
+    if tier >= 2 then
       call BuildItem(1, HEALING_POTION, 60)
       call BuildItem(1, TOWN_PORTAL, 150)
+      if c_ally_total > 0 then
+        call BuildItem(1, STAFF_OF_PRESERVATION, 30)
+      endif
+      call BuildItem(1, M_SCROLL_OF_HEALING, 50)
+    endif  
+    if tier >= 3 then
+      call BuildItem(1, SCROLL_OF_HEALING, 80)
+      if c_ally_total > 0 then
+            call BuildItem(1, STAFF_OF_SANCTUARY, 30)
+      endif
     endif
-    call BuildUnit(1, TOMB_OF_RELICS, 45+30*(tier-1))
-    // Anti rush
-    if GetRushFactor() < 10000 then
-      call BuildAtMine(1, ZIGGURAT_FROST, 70)
+    if GetGold() > 1000 then
+      call BuildItem(1, STAFF_OF_TELEPORTATION, 35)
     endif
+
 
     // DYNAMIC
     call ResetDynamicSystem()
     if tier == 1 then
-      call AddUnitToAntiair(CRYPT_FIEND,29)
+      call AddUnitToAntiair(CRYPT_FIEND,GetUpgradeLevel(old_id[UPG_FIEND_WEB]))
       call AddUnitToAnticasters(CRYPT_FIEND,29)
       call AddUnitToAntitowers(CRYPT_FIEND,29)
       call AddUnitToAntipiercing(GHOUL, 29)
@@ -169,20 +175,15 @@ function global_build_sequence takes nothing returns nothing
       call BuildUnit(1, dragons[3], 65)
     endif
 
-    // Global Upgrades
-    call BuildAdvUpgr2(1, UPG_BURROWING, 1,TownCountDone(CRYPT_FIEND),0.5,10,80)
-    call BuildAdvUpgr2(1, UPG_CANNIBALIZE,1,TownCountDone(GHOUL) + TownCountDone(ABOMINATION), 0.33,15,75)
-    call BuildAdvUpgr2(1, UPG_PLAGUE,3,TownCountDone(ABOMINATION)+TownCountDone(MEAT_WAGON), 1,5,30)
-    call BuildAdvUpgr2(1, UPG_EXHUME, 2,TownCountDone(MEAT_WAGON), 1, 10,60)
-
     // TIER 1 UPGRADES
     //--------------------------------------------------------
     if tier == 1 then
     endif
-	call BuildAdvUpgr2(3, UPG_UNHOLY_STR, 1,TownCountDone(GHOUL) + TownCountDone(ABOMINATION) + TownCountDone(MEAT_WAGON), 3,5,35)
-	call BuildAdvUpgr2(3, UPG_UNHOLY_ARMOR,1,TownCountDone(GHOUL) + TownCountDone(ABOMINATION),3,5,35)
-	call BuildAdvUpgr2(3, UPG_CR_ATTACK, 1,TownCountDone(CRYPT_FIEND) + TownCountDone(GARGOYLE) + TownCountDone(FROST_WYRM) + TownCountDone(BLK_SPHINX),3,5,35)
-	call BuildAdvUpgr2(1, UPG_CR_ARMOR,1,TownCountDone(CRYPT_FIEND) + TownCountDone(GARGOYLE) + TownCountDone(FROST_WYRM) + TownCountDone(BLK_SPHINX),3,5,35)
+      call BuildAdvUpgr2(3, UPG_UNHOLY_STR, 1,TownCountDone(GHOUL) + TownCountDone(ABOMINATION) + TownCountDone(MEAT_WAGON), 3,5,35)
+      call BuildAdvUpgr2(3, UPG_UNHOLY_ARMOR,1,TownCountDone(GHOUL) + TownCountDone(ABOMINATION),3,5,35)
+      call BuildAdvUpgr2(3, UPG_CR_ATTACK, 1,TownCountDone(CRYPT_FIEND) + TownCountDone(GARGOYLE) + TownCountDone(FROST_WYRM) + TownCountDone(BLK_SPHINX),3,5,35)
+      call BuildAdvUpgr2(1, UPG_CR_ARMOR,1,TownCountDone(CRYPT_FIEND) + TownCountDone(GARGOYLE) + TownCountDone(FROST_WYRM) + TownCountDone(BLK_SPHINX),3,5,35)
+      call BuildAdvUpgr2(1, UPG_CANNIBALIZE,1,TownCountDone(GHOUL) + TownCountDone(ABOMINATION), 0.33,15,75)
 
     // TIER 2 UPGRADES
     //--------------------------------------------------------
@@ -192,6 +193,8 @@ function global_build_sequence takes nothing returns nothing
     call BuildAdvUpgr2(2, UPG_NECROS,2,TownCountDone(NECRO),0.33,15,95)
     call BuildAdvUpgr2(1, UPG_SKEL_MASTERY,2,TownCountDone(NECRO),0.33,15,75)
     call BuildAdvUpgr2(2, UPG_BANSHEE,2,TownCountDone(BANSHEE),0.33,15,95)
+    call BuildAdvUpgr2(1, UPG_EXHUME, 2,TownCountDone(MEAT_WAGON), 1, 10,60)
+    call BuildAdvUpgr2(1, UPG_BURROWING, 2,TownCountDone(CRYPT_FIEND),0.5,10,80)
 
     // TIER 3 UPGRADES
     //--------------------------------------------------------
@@ -200,7 +203,7 @@ function global_build_sequence takes nothing returns nothing
     call BuildAdvUpgr2(1, UPG_STONE_FORM,3,TownCountDone(GARGOYLE),0.33,10,60)
     call BuildAdvUpgr2(1, UPG_BLK_SPHINX,3,TownCountDone(OBSIDIAN_STATUE),1,10,90)
     call BuildAdvUpgr2(1, UPG_WYRM_BREATH,3,TownCountDone(FROST_WYRM),0.25,10,60)
-    call BuildAdvUpgr2(1, UPG_SKEL_MASTERY,3,TownCountDone(NECRO),0.33,15,75)
+    call BuildAdvUpgr2(1, UPG_PLAGUE,3,TownCountDone(ABOMINATION)+TownCountDone(MEAT_WAGON), 1,5,30)
 
     // Global Mercenaries
 
@@ -296,7 +299,6 @@ if tier == 3 then
       call BuildUpgr(2, UPG_BANSHEE, 54)
       
       call BuildUpgr(1, UPG_BLK_SPHINX, 40)
-      call BuildUnit(1, ZEPPELIN, 50)
 
 
 
@@ -884,7 +886,6 @@ if tier == 3 then
       call BuildUnit(1, hero[2], 130)
       call BuildUnit(1, hero[3], 120)
 
-      call BuildUnit(1, ZEPPELIN, 50)
 
       call BuildUpgr(1, UPG_FIEND_WEB, 95)
       call BuildUpgr(1, UPG_BURROWING, 95)
@@ -912,7 +913,6 @@ elseif tier == 2 then
       call BuildUnit(1, hero[1], 140)
       call BuildUnit(1, hero[2], 130)
 
-      call BuildUnit(1, ZEPPELIN, 45)
       call BuildUnit(1, NECROPOLIS_3, 45)
       call BuildUpgr(1, UPG_FIEND_WEB, 74)
       call BuildUpgr(1, UPG_BURROWING, 74)
@@ -994,7 +994,6 @@ if tier == 3 then
       call BuildUnit(1, hero[2], 130)
       call BuildUnit(1, hero[3], 120)
 
-      call BuildUnit(1, ZEPPELIN, 50)
       call BuildUpgr(1, UPG_PLAGUE, 71)
       call BuildUpgr(1, UPG_STONE_FORM, 72)
       call BuildUpgr(1, UPG_WYRM_BREATH, 55)
@@ -1021,7 +1020,6 @@ elseif tier == 2 then
       call BuildUnit(1, hero[2], 130)
       call BuildUnit(1, NECROPOLIS_3, 60)
 
-      call BuildUnit(1, ZEPPELIN, 50)
       call BuildUpgr(1, UPG_CANNIBALIZE, 50)
 
 
@@ -1096,7 +1094,6 @@ if tier == 3 then
       call BuildUnit(1, hero[2], 130)
       call BuildUnit(1, hero[3], 120)
 
-      call BuildUnit(1, ZEPPELIN, 50)
       call BuildUpgr(1, UPG_PLAGUE, 71)
       call BuildUpgr(1, UPG_CANNIBALIZE, 71)
       call BuildUpgr(1, UPG_BLK_SPHINX, 40)
@@ -1120,7 +1117,6 @@ elseif tier == 2 then
       call BuildUnit(1, hero[2], 130)
       call BuildUnit(1, NECROPOLIS_3, 55)
 
-      call BuildUnit(1, ZEPPELIN, 50)
 
       call BuildUpgr(1, UPG_CANNIBALIZE, 56)
 
@@ -1196,7 +1192,6 @@ if tier == 3 then
       call BuildUnit(1, hero[2], 130)
       call BuildUnit(1, hero[3], 120)
 
-      call BuildUnit(1, ZEPPELIN, 50)
 
       call BuildUpgr(1, UPG_FIEND_WEB, 77)
       call BuildUpgr(1, UPG_EXHUME, 72)
@@ -1223,7 +1218,6 @@ elseif tier == 2 then
       call BuildUnit(1, hero[1], 140)
       call BuildUnit(1, hero[2], 130)
 
-      call BuildUnit(1, ZEPPELIN, 50)
       call BuildUnit(1, NECROPOLIS_3, 50)
 
       call BuildUpgr(1, UPG_FIEND_WEB, 69)
@@ -1300,7 +1294,6 @@ if tier == 3 then
       call BuildUnit(1, hero[1], 140)
       call BuildUnit(1, hero[2], 130)
       call BuildUnit(1, hero[3], 120)
-      call BuildUnit(1, ZEPPELIN, 50)
 
       call BuildUpgr(1, UPG_FIEND_WEB, 65)
       call BuildUpgr(1, UPG_BURROWING, 65)

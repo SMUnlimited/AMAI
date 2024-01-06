@@ -742,6 +742,8 @@ globals
     integer small_healing_count = 0
     boolean fountain_available = false
 
+    integer build_emergency_healing_item = 0
+
     unit item_unit = null
 
     integer array healer_id
@@ -6814,6 +6816,7 @@ endfunction
 //============================================================================
 // (AMAI) Items
 //============================================================================
+
 function GetItemNumberOnUnit takes integer id, unit u returns integer
   local integer i = 0
   local integer sum = 0
@@ -6827,6 +6830,19 @@ function GetItemNumberOnUnit takes integer id, unit u returns integer
   return sum
 endfunction
 
+function GetItemEquivalence takes integer id, unit u returns integer
+  local integer qty = 0
+  #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "TC_ITEM"
+  if id == %1 then
+    set qty = qty + GetItemNumberOnUnit(%3, u)
+  endif
+  if id == %3 then
+    set qty = qty + GetItemNumberOnUnit(%1, u)
+  endif
+  #ENDINCLUDE
+  return qty
+endfunction
+
 //============================================================================
 function GetItemNumber takes integer id returns integer
   local integer sum = 0
@@ -6834,7 +6850,7 @@ function GetItemNumber takes integer id returns integer
   loop
     exitwhen i > 3
     if hero_built[i] then
-      set sum = sum + GetItemNumberOnUnit(id, hero_unit[i])
+      set sum = sum + GetItemNumberOnUnit(id, hero_unit[i]) + GetItemEquivalence(id, hero_unit[i])
     endif
     set i = i + 1
   endloop
@@ -9637,43 +9653,60 @@ endfunction
 // (AMAI) Utility Functions
 //============================================================================
 
+function HasExpanded takes nothing returns boolean
+  local integer twm = Max(TownWithMine(),1)
+  return (twm > 1 or GetMinesOwned() > 1 or TownCountDone(racial_expansion) > 1)
+endfunction  
+
 function GuardSecondaryAM takes integer townid, integer qty, integer unitid, integer prio returns nothing
   if TownHasHall(townid) and TownHasMine(townid) then
     call SecondaryTownAM( townid, qty, unitid, prio )
   endif
 endfunction
 
-//============================================================================
-function DefendTownsEx takes boolean only_done, integer qty, integer unitid, integer prio returns nothing
-  local integer twm = Max(TownWithMine(),1)
+function DefendTownsEx takes boolean only_done, boolean at_front, integer qty, integer unitid, integer prio returns nothing
+  local integer twm = TownWithMine()
   local integer i = twm
+  if not at_front then
+    set twm = Max(twm, 1) // Home town is town 0
+  endif  
   loop
     exitwhen i > twm + 2
     if TownHasMine(i) and TownCountEx(racial_expansion,only_done,i) > 0 then
-      call SecondaryTownAM(i, qty, unitid, prio)
+      if i == 0 and at_front then
+        call BuildFront(qty, unitid, prio)
+      else  
+        call SecondaryTownAM(i, qty, unitid, prio)
+      endif  
     endif
     set i = i + 1
   endloop
 endfunction
 
-//============================================================================
 function DefendTowns takes integer qty, integer unitid, integer prio returns nothing
-  call DefendTownsEx(false, qty, unitid, prio)
+  call DefendTownsEx(false, false, qty, unitid, prio)
 endfunction
 
-//============================================================================
 function DefendTownsDone takes integer qty, integer unitid, integer prio returns nothing
-  call DefendTownsEx(true, qty, unitid, prio)
+  call DefendTownsEx(true, false, qty, unitid, prio)
 endfunction
 
-//============================================================================
+// Same as defend towns but will also build at the main town and will build at the front locations for that town.
+function DefendTownsFront takes integer qty, integer unitid, integer prio returns nothing
+  call DefendTownsEx(false, true, qty, unitid, prio)
+endfunction
+
+function DefendTownsFrontDone takes integer qty, integer unitid, integer prio returns nothing
+  call DefendTownsEx(true, true, qty, unitid, prio)
+endfunction
+
 function DefendTownsCond takes integer qty, integer unitid, integer min_dist, integer max_dist, integer min_gold, integer prio returns nothing
   local integer twm = Max(TownWithMine(),1)
   local integer i = twm
   loop
     exitwhen i > twm + 2
     if TownHasMine(i) and town_built[i] and own_town_dist[i] >= min_dist and own_town_dist[i] <= max_dist and GetResourceAmount(own_town_mine[i]) >= min_gold then
-      call SecondaryTownAM(i, qty, unitid, prio)
+        call SecondaryTownAM(i, qty, unitid, prio)
     endif
     set i = i + 1
   endloop
@@ -10476,6 +10509,7 @@ function StartEmergencyItem takes integer ask_qty, integer itemid returns intege
 
   if (needed1[itemid] != 0 and TownCountDone(needed1[itemid]) < 1) or (needed2[itemid] != 0 and TownCountDone(needed2[itemid]) < 1) or (needed3[itemid] != 0 and TownCountDone(needed3[itemid]) < 1) then
     call Trace("Emergency item not enough requirements to buy item")
+    set build_emergency_healing_item = itemid
     return CANNOT_BUILD
   endif
 
@@ -10501,6 +10535,7 @@ function StartEmergencyItem takes integer ask_qty, integer itemid returns intege
     call Trace("Buying emergency item")
     return BUILT_SOME
   else
+    set build_emergency_healing_item = itemid
     return CANNOT_BUILD
   endif
   return BUILT_SOME
@@ -10961,6 +10996,10 @@ function OneBuildLoopAM takes nothing returns nothing
     call SetBuildFree()
     call FarmBuilder()
     call PeonBuilder()
+    // Zeppelin builder
+    if GetGold() > 600 and GetWood() > 360 then
+      call BuildUnit(1, ZEPPELIN, 50)
+    endif
     if not campaign_ai then
       call ExpansionBuilder()
       call HeroReviver()
@@ -12879,6 +12918,7 @@ function HealArmy takes nothing returns nothing
     exitwhen (urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger)
     exitwhen player_defeated or town_threatened or ver_heroes == false
     call Trace("function HealArmy: Army is badly damaged and needs healing " + Real2Str(hs))
+    set build_emergency_healing_item = 0
     set mh_item = GetMassHealingItem()
     if mh_item > 0 then
       set mass_healed = true
