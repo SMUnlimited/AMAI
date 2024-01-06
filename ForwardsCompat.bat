@@ -1,7 +1,6 @@
-ECHO Apply forwards compatability scripts
 SET VER=%~1
-SET LOG=%~2
 SET RESULTFWCOMPAT=0
+ECHO Applying forwards compatability %VER% scripts
 perl -i -pe"s/GetBJMaxPlayers/GetBJMaxPlayersAMAI/g" Scripts/%VER%/common.ai
 perl -i -pe"s/GetBJMaxPlayers/GetBJMaxPlayersAMAI/g" Scripts/Blizzard_%VER%.j
 
@@ -83,20 +82,9 @@ pjass %VER%\common.j Scripts\Blizzard_%VER%.j
 if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 jassparser %VER%\common.j Scripts\Blizzard_%VER%.j
 if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
-
 if "%RESULTFWCOMPAT%"=="1" (
-  ECHO Compilation error
-  if "%LOG%" == "1" (
-    ECHO =============================
-    ECHO Making AMAI finished
-    pause
-  ) else (
+  ECHO Apply forwards compatability %VER% scripts error
   exit /b %RESULTFWCOMPAT%
-  )
 ) else (
-  if "%LOG%" == "1" (
-    ECHO =============================
-    ECHO Making AMAI finished
-    pause
-  )
+  ECHO Apply forwards compatability %VER% scripts finish
 )

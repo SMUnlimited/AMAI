@@ -1,7 +1,7 @@
 @ECHO OFF
 SET LOG=%~1
-if not "%LOG%"=="0" SET LOG=1
-ECHO Synchronize files
+ECHO Synchronize TFT common library
+
 copy /y REFORGED\AddedAggression.txt TFT\AddedAggression.txt
 copy /y REFORGED\CommandBuilds.txt TFT\CommandBuilds.txt
 copy /y REFORGED\Dragons.txt TFT\Dragons.txt
@@ -39,8 +39,13 @@ copy /y REFORGED\Undead\CommandBuilds.txt TFT\Undead\CommandBuilds.txt
 copy /y REFORGED\Undead\RaceAggression.txt TFT\Undead\RaceAggression.txt
 copy /y REFORGED\Undead\Settings.txt TFT\Undead\Settings.txt
 copy /y REFORGED\Undead\Tiers.txt TFT\Undead\Tiers.txt
-ECHO Synchronize files done
 
-call MakeVERBase.bat 0 TFT %LOG%
-call ForwardsCompat.bat TFT %LOG%
+ECHO Synchronize TFT common library complete
+
+call MakeVERBase.bat 0 TFT
+call ForwardsCompat.bat TFT
 ECHO =============================
+if not "%LOG%"=="0" SET LOG=1
+if not "%LOG%"=="0" (
+    pause
+)

@@ -1,7 +1,6 @@
 @ECHO OFF
 SET VSAI=%~1
 SET VER=%~2
-SET LOG=%~3
 SET RESULTMAKEVER=0
 ECHO Making AMAI %VER%
 mkdir Scripts\
@@ -64,18 +63,8 @@ if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 jassparser %VER%\common.j Scripts\Blizzard_%VER%.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 if "%RESULTMAKEVER%"=="1" (
-  ECHO Compilation error
-  if "%LOG%" == "2" (
-    ECHO =============================
-    ECHO Making AMAI finished
-    pause
-  ) else (
+  ECHO Compilation AMAI %VER% error
   exit /b %RESULTOPTVER%
-  )
 ) else (
-  if "%LOG%" == "2" (
-    ECHO =============================
-    ECHO Making AMAI finished
-    pause
-  )
+  ECHO Compilation AMAI %VER% finish
 )
