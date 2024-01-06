@@ -45,7 +45,6 @@ ECHO Synchronize TFT common library complete
 call MakeVERBase.bat 1 TFT
 call ForwardsCompat.bat TFT
 ECHO =============================
-if not "%LOG%"=="0" SET LOG=1
-if "%LOG%" == "1" (
+if not "%LOG%"=="0" (
     pause
 )
