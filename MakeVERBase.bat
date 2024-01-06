@@ -58,7 +58,7 @@ ECHO creating \Scripts\Blizzard.j  AMAI VS AI Flag set to: ON
 perl ejass.pl Blizzard3VAI.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
 )
 if %VSAI% == 0 (
-ECHO creating \Scripts\Blizzard.j AMAI VS AI Flag set to: OFF
+ECHO creating \Scripts\Blizzard.j  AMAI VS AI Flag set to: OFF
 perl ejass.pl Blizzard3.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
 )
 perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\Blizzard_%VER%.j
@@ -68,7 +68,12 @@ if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 jassparser %VER%\common.j Scripts\Blizzard_%VER%.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 if "%RESULTMAKEVER%"=="1" (
-  ECHO Compilation AMAI %VER% error
+  if %VSAI% == 1 (
+    ECHO Compilation AMAI %VER% VS AI error
+  )
+  if %VSAI% == 0 (
+    ECHO Compilation AMAI %VER% error
+  )
   exit /b %RESULTOPTVER%
 ) else (
   if %VSAI% == 1 (
