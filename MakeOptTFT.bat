@@ -41,7 +41,7 @@ copy /y REFORGED\Undead\Settings.txt TFT\Undead\Settings.txt
 copy /y REFORGED\Undead\Tiers.txt TFT\Undead\Tiers.txt
 
 ECHO Synchronize TFT common library complete
-
+ECHO _____________________________
 call MakeOptVER TFT
 ECHO =============================
 if not "%LOG%"=="0" (
