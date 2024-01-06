@@ -2,7 +2,13 @@
 SET VSAI=%~1
 SET VER=%~2
 SET RESULTMAKEVER=0
+if %VSAI% == 1 (
+ECHO Making AMAI %VER% VS AI
+)
+if %VSAI% == 0 (
 ECHO Making AMAI %VER%
+)
+
 mkdir Scripts\
 mkdir Scripts\%VER%\
 ECHO _____________________________
