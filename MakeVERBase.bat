@@ -71,5 +71,10 @@ if "%RESULTMAKEVER%"=="1" (
   ECHO Compilation AMAI %VER% error
   exit /b %RESULTOPTVER%
 ) else (
-  ECHO Compilation AMAI %VER% finish
+  if %VSAI% == 1 (
+    ECHO Making AMAI %VER% VS AI finish
+  )
+  if %VSAI% == 0 (
+    ECHO Making AMAI %VER% finish
+  )
 )
