@@ -32,8 +32,8 @@ function BuyNeutral takes integer id returns nothing
       set buy_place = null
       return
     endif
+    call GroupAddUnit(unit_buying_merc, neutral_sent[nn])
   endif
-  call GroupAddUnit(unit_buying_merc, neutral_sent[nn])
   if retreat_home then
     if DistanceBetweenPoints_dk(GetUnitLoc(neutral_sent[nn]), home_location) >= 1100 then
       call CreateDebugTag("BUY_ITEM: Retreat to Home", 10, neutral_sent[nn], 3.00, 1.50)
@@ -52,9 +52,10 @@ function BuyNeutral takes integer id returns nothing
     set buy_place = null
     return
   endif
+  set dist = DistanceBetweenUnits(neutral_sent[nn], buy_place)
 // Enemies are present so get home before they harm us
   set detectedenemies = GetLocationNonCreepStrength(GetUnitX(neutral_sent[nn]), GetUnitY(neutral_sent[nn]), 1000)
-  if DistanceBetweenUnits(neutral_sent[nn], buy_place) <= 800 and detectedenemies >= GetUnitStrength(neutral_sent[nn]) then
+  if dist <= 800 and detectedenemies >= GetUnitStrength(neutral_sent[nn]) then
     call RemoveGuardPosition(neutral_sent[nn])
     call IssuePointOrder(neutral_sent[nn], "move", GetLocationX(home_location), GetLocationY(home_location))
     //call TQAddUnitJob(GetTimeToReachLoc(neutral_sent[nn], home_location), RESET_GUARD_POSITION, 1, neutral_sent[nn])
@@ -93,8 +94,7 @@ function BuyNeutral takes integer id returns nothing
     if buy_time_large[nn] < 0 then
       set buy_time_large[nn] = current_time
     endif
-    //set timetotravel = GetTimeToReachUnit(neutral_sent[nn], buy_place)
-    set dist = DistanceBetweenUnits(neutral_sent[nn], buy_place)
+    set timetotravel = GetTimeToReachUnit(neutral_sent[nn], buy_place)
     if dist < buy_distance then
       call CreateDebugTag("buy unit", 10, neutral_sent[nn], 3.00, 1.50)
       call IssueImmediateOrder(neutral_sent[nn], "stop")
@@ -106,7 +106,7 @@ function BuyNeutral takes integer id returns nothing
     else
       call CreateDebugTag("move to merc camp", 10, neutral_sent[nn], 3.00, 1.50) 
       call IssuePointOrder(neutral_sent[nn], "move", GetUnitX(buy_place), GetUnitY(buy_place))
-      set time_next_try = RMin(4, Max(R2I(dist / buy_distance),1))
+      set time_next_try = RMin(4, Max(R2I(timetotravel + 1),1))
     endif
   endif
   call TQAddJob(time_next_try, BUY_NEUTRAL, id)
