@@ -8,7 +8,6 @@ ECHO Making AMAI %VER% VS AI
 if %VSAI% == 0 (
 ECHO Making AMAI %VER%
 )
-
 mkdir Scripts\
 mkdir Scripts\%VER%\
 ECHO _____________________________
