@@ -5048,7 +5048,7 @@ function GetHeroStrength takes unit u returns integer
     if lvl >= ver_hero_ultimate_level then
       return R2I((ver_hero_base_value + lvl + ver_hero_ultimate_value)/2 + 0.5)
     else
-      return R2I((ver_hero_base_value + lvl)/2 + 0.5)
+      return R2I((ver_hero_base_value + lvl) / 2 + 0.5)
     endif
   endif
   return 0
@@ -5088,7 +5088,7 @@ function GetUnitStrengthEx takes unit u returns integer
     if f >= ver_hero_ultimate_level then
       return R2I((GetUnitFoodUsed(u)+ f + ver_hero_ultimate_value) / 2 + 0.5)
     else
-      return R2I((GetUnitFoodUsed(u) + f)/2 + 0.5)
+      return R2I((GetUnitFoodUsed(u) + f) / 2 + 0.5)
     endif
   endif
   return 0
@@ -5137,7 +5137,7 @@ endfunction
 function GetUnexactPlayerStrength takes player p returns integer
   local integer pid = GetPlayerId(p)
   if p_str_cache_timeout[pid] < ai_time then
-    set p_str_cache[pid] = Max(0, R2I(GetPlayerStrength(p) * GetRandomReal(1 - I2R(uncertainty)/50, 1 + I2R(uncertainty)/50)) + GetRandomDiff(uncertainty/5))
+    set p_str_cache[pid] = Max(0, R2I(GetPlayerStrength(p) * GetRandomReal(1 - I2R(uncertainty) / 50, 1 + I2R(uncertainty) / 50)) + GetRandomDiff(uncertainty / 5))
     set p_str_cache_timeout[pid] = ai_time + p_str_cache_valid_time
   endif
   return p_str_cache[pid]
@@ -5259,7 +5259,7 @@ function GetLocationCreepAirStrength takes real x, real y, real radius returns i
   local group g = CreateGroup()
   local unit u = null
   local real airsum = 0
-  set no_sleep = false
+  //set no_sleep = false
   call GroupEnumUnitsInRange(g,x,y,radius,null)
   loop
     set u = FirstOfGroup(g)
@@ -5288,10 +5288,14 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
     exitwhen u == null
     set p = GetOwningPlayer(u)
     if IsPlayerEnemy(ai_player, p) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and not IsUnitType(u,UNIT_TYPE_STRUCTURE) and not IsUnitType(u,UNIT_TYPE_PEON) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) and UnitAlive(u) and not IsUnitHidden(u) then
-      set strength = GetUnitStrength(u)
-      set sum = sum + strength
-      if IsUnitType(u, UNIT_TYPE_FLYING) then
-        set airsum = airsum + strength
+      if IsUnitType(u, UNIT_TYPE_HERO) then
+        set sum = sum + GetHeroStrength(u)
+      else
+        set strength = GetUnitStrength(u)
+        set sum = sum + strength
+        if IsUnitType(u, UNIT_TYPE_FLYING) then
+          set airsum = airsum + strength
+        endif
       endif
     endif
     call GroupRemoveUnit(g,u)
@@ -5306,7 +5310,9 @@ endfunction
 //============================================================================
 function GetLocationEnemyStrength takes real x, real y, real radius, boolean only_structures returns integer
   local group g = CreateGroup()
-  local integer sum = 0
+  local real sum = 0
+  local real strength = 0
+  local real airsum = 0
   local unit u = null
   call GroupEnumUnitsInRange(g,x,y,radius,null)
   if only_structures then
@@ -5318,12 +5324,23 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
     set u = FirstOfGroup(g)
     exitwhen u == null
     if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) then
-      set sum = sum + 1
+      if IsUnitType(u, UNIT_TYPE_HERO) then
+        set sum = sum + GetHeroStrength(u)
+      elseif IsUnitType(u, UNIT_TYPE_STRUCTURE) and not (IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) or IsUnitType(u, UNIT_TYPE_MELEE_ATTACKER)) then
+        set sum = sum + 0.5
+      else
+        set strength = GetUnitStrength(u)
+        set sum = sum + strength
+        if IsUnitType(u, UNIT_TYPE_FLYING) then
+          set airsum = airsum + strength
+        endif
+      endif
     endif
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
   set g = null
+  set air_strength = R2I(airsum + 0.5)
   return sum
 endfunction
 
@@ -5748,7 +5765,7 @@ function BuildBRAtCreep takes nothing returns nothing
   endif
   set ru = i
   loop
-    if i == ru then
+    if i >= ru then
       set i = 0
     endif
     exitwhen loc != null or s >= ru
@@ -6294,7 +6311,7 @@ if c_enemy_user_total == 1 then
 	set builder[10] = temphumanu
 	set rushedplayer = nearhumanplayer
 	set mindistance = humandistance
-else
+elseif c_enemy_user_total != 0 then
 	set builder[10] = tempu
 	set rushedplayer = nearplayer
 endif
@@ -7240,18 +7257,20 @@ endfunction
 // (AMAI)	CheckNeutral
 //==========================================================================
 function CheckNeutral takes integer nn returns nothing
+  local group g = null
   if neutral_available[nn] == true then
     if nearest_neutral[nn] == null then
       call Trace("Neutral Pathing ID done (no pathable neutral): " + Int2Str(nn))
       set neutral_available[nn] = false
       return  // SUMMONED or water path
     endif
-    call DestroyGroup(neutral_guards[nn])
+    set g = neutral_guards[nn]
     set neutral_guards[nn] = GetCreepGuardGroup(neutral_guards[nn],nn)
     set neutral_guarded[nn] = GetNeutralGuard(nn)
     set neutral_night_buy[nn] = CanCreepGuardsSleep(nn)
     // set neutral_night_buy[nn] = not no_sleep
-
+    call DestroyGroup(g)
+    set g = null
     call Trace("Neutral Pathing ID done: " + Int2Str(nn)) 
   endif
 
@@ -7443,7 +7462,6 @@ function CheckAllNeutralsQuick takes nothing returns nothing
     call CheckNeutralQuick(i)
     set i = i + 1
   endloop
-  set nearest_neutral[NEUTRAL_COUNT] = null
 
   if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null then
     call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALING_FOUNTAIN)
@@ -8937,7 +8955,7 @@ function GetGoldIncome takes nothing returns real
   if inc > GetGoldOwned() then
     set inc = GetGoldOwned()
   endif
-  return I2R(inc + GetGold())/300
+  return I2R(inc + GetGold()) / 300
 endfunction
 
 //============================================================================
@@ -8945,15 +8963,15 @@ function GetIncomePercentage takes integer qty returns real
   if qty == 0 then
     return 0.0
   endif
-  return 1 - 1/I2R(qty)
+  return 1 - 1 / I2R(qty)
 endfunction
 
 //============================================================================
 function GetFactoryQty takes integer qty, integer build_time, integer gold_cost, real in_percentage returns integer
   local real gip = GetIncomePercentage(qty) * gold_income * in_percentage
-  local real gic = I2R(Max(gold_cost,1))/I2R(Max(build_time, 1))
+  local real gic = I2R(Max(gold_cost,1)) / I2R(Max(build_time, 1))
 //  call DisplayToAll("factory number returned: "+Int2Str(Max(Min(R2I(gip/gic), difficulty),1)))
-  return Max(Min(R2I(gip/gic), difficulty),1)
+  return Max(Min(R2I(gip / gic), difficulty),1)
 endfunction
 
 //============================================================================
@@ -9473,12 +9491,12 @@ function DynamicBuildUnit takes integer count, integer prio returns nothing
 	local integer num
 	if chosen_counter_unit > 0 then
 		if IsUnitIdType(old_id[chosen_counter_unit], UNIT_TYPE_STRUCTURE) == false and not (buy_type[chosen_counter_unit] > BT_RACIAL_ITEM and buy_type[chosen_counter_unit] < BT_MERCHANT_ITEM) then // Normal units/upgrades
-			set num = R2I((count - FoodUsed())/Max(GetFoodUsed(old_id[chosen_counter_unit]),1))
+			set num = R2I((count - FoodUsed()) / Max(GetFoodUsed(old_id[chosen_counter_unit]),1))
 			if num > 0 and GetUnitCount(old_id[chosen_counter_unit]) < num then
 				call BuildUnit(Min(num, GetUnitCountDone(old_id[chosen_counter_unit]) + 10), chosen_counter_unit, prio)
 			endif
 		elseif buy_type[chosen_counter_unit] > BT_RACIAL_ITEM and buy_type[chosen_counter_unit] < BT_MERCHANT_ITEM then // A neutral mercenary
-			set num = R2I((count - FoodUsed())/Max(GetFoodUsed(old_id[chosen_counter_unit]),1))
+			set num = R2I((count - FoodUsed()) / Max(GetFoodUsed(old_id[chosen_counter_unit]),1))
 			if num > 0 then
 				call BuildUnit(GetUnitCountDone(old_id[chosen_counter_unit]) + 1, chosen_counter_unit, prio)
 			endif
@@ -9632,8 +9650,7 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     set harasser = null
     return
   endif
-  set g = LoadGroupHandle(additional_info, key, HARASS_GROUP)
-  if g == null then
+  if not HaveSavedHandle(additional_info, key, HARASS_GROUP) then
     set harass_time[groupnum] = ai_time
     call SaveGroupHandle(additional_info, key, HARASS_GROUP, harasser)
     call SaveReal(additional_info, key, START_STRENGTH, strength)
@@ -9647,17 +9664,19 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     call SaveReal(additional_info, key, LOCX, lx)
     call SaveReal(additional_info, key, LOCY, ly)
     call TQAddGroupJob(0, HARASS, harass_target, null, harasser)
-  elseif LoadBoolean(additional_info, key, STATE_ATTACKING) == true then  //The group still working no need to initiate it repeatedly
-    call GroupAddGroup(g,harasser)  //  unit maybe more then 12
-    call SaveReal(additional_info, key, START_STRENGTH, LoadReal(additional_info, key, START_STRENGTH) + strength)
-    call SaveReal(additional_info, key, STRENGTH_LIMIT, LoadReal(additional_info, key, STRENGTH_LIMIT) + strength_limit)
-    call SaveReal(additional_info, key, FLEE_PERCENT, LoadReal(additional_info, key, FLEE_PERCENT) + flee_percent)
-    call SaveInteger(additional_info, key, FLEE_NUMBER, LoadInteger(additional_info, key, FLEE_NUMBER) + flee_number)
-    call DestroyGroup(harasser)
-    set g = null
-  else  // maybe RETREAT
-    call GroupRecycleHarrassPositionInstant(harasser)
-    set g = null
+  else
+    if LoadBoolean(additional_info, key, STATE_ATTACKING) == true then  //The group still working no need to initiate it repeatedly
+      set g = LoadGroupHandle(additional_info, key, HARASS_GROUP)
+      call GroupAddGroup(g,harasser)  //  unit maybe more then 12
+      call SaveReal(additional_info, key, START_STRENGTH, LoadReal(additional_info, key, START_STRENGTH) + strength)
+      call SaveReal(additional_info, key, STRENGTH_LIMIT, LoadReal(additional_info, key, STRENGTH_LIMIT) + strength_limit)
+      call SaveReal(additional_info, key, FLEE_PERCENT, LoadReal(additional_info, key, FLEE_PERCENT) + flee_percent)
+      call SaveInteger(additional_info, key, FLEE_NUMBER, LoadInteger(additional_info, key, FLEE_NUMBER) + flee_number)
+      call DestroyGroup(harasser)
+      set g = null
+    else  // maybe RETREAT
+      call GroupRecycleHarrassPositionInstant(harasser)
+    endif
   endif
   set harasser = null
 endfunction
