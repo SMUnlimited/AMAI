@@ -764,6 +764,8 @@ integer array gold_mines_ids
     integer small_healing_count = 0
     boolean fountain_available = false
 
+    integer build_emergency_healing_item = 0
+
     unit item_unit = null
 
     integer array healer_id
@@ -6805,6 +6807,19 @@ function GetItemNumberOnUnit takes integer id, unit u returns integer
   return sum
 endfunction
 
+function GetItemEquivalence takes integer id, unit u returns integer
+  local integer qty = 0
+  #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "TC_ITEM"
+  if id == %1 then
+    set qty = qty + GetItemNumberOnUnit(%3, u)
+  endif
+  if id == %3 then
+    set qty = qty + GetItemNumberOnUnit(%1, u)
+  endif
+  #ENDINCLUDE
+  return qty
+endfunction
+
 //============================================================================
 function GetItemNumber takes integer id returns integer
   local integer sum = 0
@@ -6812,7 +6827,7 @@ function GetItemNumber takes integer id returns integer
   loop
     exitwhen i > 3
     if hero_built[i] then
-      set sum = sum + GetItemNumberOnUnit(id, hero_unit[i])
+      set sum = sum + GetItemNumberOnUnit(id, hero_unit[i]) + GetItemEquivalence(id, hero_unit[i])
     endif
     set i = i + 1
   endloop
@@ -9766,6 +9781,11 @@ endfunction
 // (AMAI) Utility Functions
 //============================================================================
 
+function HasExpanded takes nothing returns boolean
+  local integer twm = Max(TownWithMine(),1)
+  return (twm >= 1 or GetMinesOwned() > 1 or TownCountDone(racial_expansion) > 1)
+endfunction
+
 function GuardSecondaryAM takes integer townid, integer qty, integer unitid, integer prio returns nothing
   if TownHasHall(townid) and TownHasMine(townid) then
     call SecondaryTownAM( townid, qty, unitid, prio )
@@ -9773,13 +9793,20 @@ function GuardSecondaryAM takes integer townid, integer qty, integer unitid, int
 endfunction
 
 //============================================================================
-function DefendTownsEx takes boolean only_done, integer qty, integer unitid, integer prio returns nothing
-  local integer twm = Max(TownWithMine(),1)
+function DefendTownsEx takes boolean only_done, boolean at_front, integer qty, integer unitid, integer prio returns nothing
+  local integer twm = TownWithMine()
   local integer i = twm
+  if not at_front then
+    set twm = Max(twm, 1) // Home town is town 0
+  endif
   loop
     exitwhen i > twm + 2
     if TownHasMine(i) and TownCountEx(racial_expansion,only_done,i) > 0 then
-      call SecondaryTownAM(i, qty, unitid, prio)
+      if i == 0 and at_front then
+        call BuildFront(qty, unitid, prio)
+      else  
+        call SecondaryTownAM(i, qty, unitid, prio)
+      endif  
     endif
     set i = i + 1
   endloop
@@ -9787,15 +9814,23 @@ endfunction
 
 //============================================================================
 function DefendTowns takes integer qty, integer unitid, integer prio returns nothing
-  call DefendTownsEx(false, qty, unitid, prio)
+  call DefendTownsEx(false, false, qty, unitid, prio)
 endfunction
 
 //============================================================================
 function DefendTownsDone takes integer qty, integer unitid, integer prio returns nothing
-  call DefendTownsEx(true, qty, unitid, prio)
+  call DefendTownsEx(true, false, qty, unitid, prio)
 endfunction
 
-//============================================================================
+// Same as defend towns but will also build at the main town and will build at the front locations for that town.
+function DefendTownsFront takes integer qty, integer unitid, integer prio returns nothing
+  call DefendTownsEx(false, true, qty, unitid, prio)
+endfunction
+
+function DefendTownsFrontDone takes integer qty, integer unitid, integer prio returns nothing
+  call DefendTownsEx(true, true, qty, unitid, prio)
+endfunction
+
 function DefendTownsCond takes integer qty, integer unitid, integer min_dist, integer max_dist, integer min_gold, integer prio returns nothing
   local integer twm = Max(TownWithMine(),1)
   local integer i = twm
@@ -10653,6 +10688,7 @@ function StartEmergencyItem takes integer ask_qty, integer itemid returns intege
 
   if (needed1[itemid] != 0 and TownCountDone(needed1[itemid]) < 1) or (needed2[itemid] != 0 and TownCountDone(needed2[itemid]) < 1) or (needed3[itemid] != 0 and TownCountDone(needed3[itemid]) < 1) then
     call Trace("Emergency item not enough requirements to buy item")
+    set build_emergency_healing_item = itemid
     return CANNOT_BUILD
   endif
 
@@ -10678,6 +10714,7 @@ function StartEmergencyItem takes integer ask_qty, integer itemid returns intege
     call Trace("Buying emergency item")
     return BUILT_SOME
   else
+    set build_emergency_healing_item = itemid
     return CANNOT_BUILD
   endif
   return BUILT_SOME
@@ -10695,9 +10732,9 @@ function StartItem takes integer ask_qty, integer itemid returns integer
   endif
 
   if nearest_neutral[NEUTRAL_MERCHANT] == null and buy_type[itemid] == BT_MERCHANT_ITEM then
-     // Cannot path so will require transporter
-     // NYI
-     return BUILT_ALL
+    // Cannot path so will require transporter
+    // NYI
+    return BUILT_ALL
   endif
 
   if available_time[itemid] > ai_time or GetSlotsFree() <= 0 or (buy_type[itemid] == BT_MERCHANT_ITEM and neutral_guarded[NEUTRAL_MERCHANT] and ((daytime >= 5 and daytime < 18) or not neutral_night_buy[NEUTRAL_MERCHANT])) then
@@ -10863,7 +10900,7 @@ function PeonBuilder takes nothing returns nothing
     endif
   endif
   if race_has_ghouls then
-    call BuildGhouls(Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, race_max_ghouls, race_min_ghouls, w) - R2I(shredder_peon_count/2)*sc),2))
+    call BuildGhouls(Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, race_max_ghouls, race_min_ghouls, w) - R2I(shredder_peon_count / 2)*sc),2))
   endif
 endfunction
 
@@ -11103,7 +11140,7 @@ function TimeKeeper takes nothing returns nothing
   //  call Chat(C_NewYear)
   //endif
   //set time_of_day = new_time_of_day
-  set ai_time = R2I(TimerGetElapsed(tq_timer)/5)
+  set ai_time = R2I(TimerGetElapsed(tq_timer) / 5)
   if ai_time >= taunt_start_time then
     call Chat(C_Taunt)
   endif
@@ -11159,6 +11196,10 @@ function OneBuildLoopAM takes nothing returns nothing
     call SetBuildFree()
     call FarmBuilder()
     call PeonBuilder()
+    // Zeppelin builder
+    if GetGold() > 600 and GetWood() > 360 then
+      call BuildUnit(1, ZEPPELIN, 50)
+    endif
     if not campaign_ai then
       call ExpansionBuilder()
       call HeroReviver()
@@ -11498,7 +11539,7 @@ function SleepInCombatAM takes nothing returns nothing
   endloop
   set count = 0
   loop
-    exitwhen count >= (8.0/sleep) or town_threatened
+    exitwhen count >= (8.0 / sleep) or town_threatened
     if (lastcaptainx != 0 and lastcaptainy != 0 and not CaptainIsEmpty()) then
       call TeleportCaptain(lastcaptainx, lastcaptainy)
     endif
@@ -12045,7 +12086,7 @@ function GetRangePenalty takes unit target returns integer
   if major_hero == null or not UnitAlive(major_hero) or not UnitAlive(target) then
     return 0
   endif
-  return R2I(DistanceBetweenUnits(major_hero, target)/1400)
+  return R2I(DistanceBetweenUnits(major_hero, target) / 1400)
 endfunction
 
 //============================================================================
@@ -12232,7 +12273,7 @@ endfunction
 
 //============================================================================
 function GetRaceAggression takes unit target returns integer
-  local integer i = Max((GetRace(GetOwningPlayer(target))-1) * tiernum + tier - 1,0)
+  local integer i = Max((GetRace(GetOwningPlayer(target)) - 1) * tiernum + tier - 1,0)
   return race_aggression[i]
 endfunction
 
@@ -12266,7 +12307,7 @@ function GetEnemyAllyStrength takes player tp returns integer
     set i = i + 1
   endloop
   set p = null
-  return (enemy_sum - ally_sum)/2
+  return (enemy_sum - ally_sum) / 2
 endfunction
 
 //============================================================================
@@ -13134,6 +13175,7 @@ function HealArmy takes nothing returns nothing
     exitwhen player_defeated or town_threatened or ver_heroes == false
     set mass_healed = false
     call Trace("function HealArmy: Army is badly damaged and needs healing " + Real2Str(hs))
+    set build_emergency_healing_item = 0
     set mh_item = GetMassHealingItem()
     if mh_item > 0 then
       set mass_healed = true
@@ -13324,7 +13366,7 @@ function universal_peon_assignment takes nothing returns nothing
   call HarvestWood(0,swh)
   set T = Max(T + 3,TownCountDone(racial_expansion))
   call CreateDebugTagLoc(Int2Str(GetMinesOwned()), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
-  if (FoodUsed() <= 20 or GetMinesOwned() < 1 or g <= 5000) and hero_built[3] then  // later stages of the game, AI may not be harvest
+  if (FoodUsed() <= 20 or GetMinesOwned() < 1 or Max(GetGoldOwned(), g) <= 2500) and hero_built[3] then  // later stages of the game, AI may not be harvest
     set i = 0
     set T = TownCountDone(racial_peon)
     loop
