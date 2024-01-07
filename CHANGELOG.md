@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed an issue where healers or heros within a zepplin were trying to be used for unit micro or following the hero resulting in zepplins getting stuck.
 - Units for healing will all be sent to the same town to avoid difficulties getting everyone healed.
 - Ghouls needing healing will only collect lumber while waiting if a town hall is nearby.
+- Prevent follow zepplin conflicting with buy merc controls.
 - (Classic) Fixed installer unable to install classic editions to folders.
 - (Classic) Fixed case where 24 player mode was active when shouldn't be.
 - (Classic) Fixed minor memory leak.
