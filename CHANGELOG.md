@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 - Minor Strategy Tweaks and fixes, notably global tower defense, item and upgrades. (Based on jzy-chitong56)
+- Night Elf Demon hunter has a minor chance to use immolation when picked as first hero (Miezhiko)
 - (DevTools) Zepplins are now built automatically like peons and shredders, no need to be in strategies explictly.
 
 ### Removed
