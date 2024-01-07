@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed some issues with recovery/infinite attacking in team games for the AI. Should now retreat and regroup correctly and improving ally coordination.
 - Fixed issue where double expansion was not cancelled when just 1 ally builds a mine. 
 - Fixed some team game alliance targeting issues.
+- Fixed an issue where healers or heros within a zepplin were trying to be used for unit micro or following the hero resulting in zepplins getting stuck.
 - (Classic) Fixed installer unable to install classic editions to folders.
 - (Classic) Fixed case where 24 player mode was active when shouldn't be.
 - (Classic) Fixed minor memory leak.
