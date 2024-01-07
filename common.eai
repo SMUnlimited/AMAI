@@ -7021,7 +7021,7 @@ function GetHealer takes unit u returns unit
     set u = FirstOfGroup(healer_group)
     exitwhen u == null
     set id = GetHealerId(GetUnitTypeId(u))
-    if id != -1 and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) then
+    if id != -1 and not IsUnitLoaded(u) and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) then
       return u
     endif
     call GroupRemoveUnit(healer_group, u)
@@ -9796,13 +9796,16 @@ endfunction
 function DefendTownsEx takes boolean only_done, boolean at_front, integer qty, integer unitid, integer prio returns nothing
   local integer twm = TownWithMine()
   local integer i = twm
+  call Trace("DefendTownsEx TownWithMine:" + Int2Str(twm))
   if not at_front then
     set twm = Max(twm, 1) // Home town is town 0
+  else
+    set twm = Max(twm, 0)
   endif
   loop
     exitwhen i > twm + 2
     if TownHasMine(i) and TownCountEx(racial_expansion,only_done,i) > 0 then
-      if i == 0 and at_front then
+      if i <= 0 and at_front then
         call BuildFront(qty, unitid, prio)
       else  
         call SecondaryTownAM(i, qty, unitid, prio)
@@ -11647,7 +11650,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     exitwhen isfleeing and (CaptainRetreating() or CaptainIsHome()) and not desperation_assault
     exitwhen CaptainIsEmpty() and not desperation_assault
     //exitwhen not UnitAlive(target) and CaptainIsHome()  // A fail safe mechanism if getlocationnoncreepstrength malfunctions: not needed as issue now fixed
-    if (GetAllianceTarget() != null) then // If alliance target exists this overrides hardcoded attack controls regardless of unit you pass, so reconfigure attack to be aware of this
+    if (c_ally_total > 0 and GetAllianceTarget() != null) then // If alliance target exists this overrides hardcoded attack controls regardless of unit you pass, so reconfigure attack to be aware of this
       set target = GetAllianceTarget()
     endif
     if IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player)) then
@@ -11684,7 +11687,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
         call AttackMoveKill(target)
         set lastcaptainx = GetUnitX(target)
         set lastcaptainy = GetUnitY(target)
-        if (GetAllianceTarget() == target) then
+        if (c_ally_total > 0 and GetAllianceTarget() == target) then
           call CreateDebugTag("Reform until ally dead", 10, target, 1.00, 0.80)
         else
           call CreateDebugTag("Reform until target dead", 10, target, 1.00, 0.80)
@@ -12887,7 +12890,7 @@ if not creeping_only then	// Do the normal attack sequence
         call SetChatVarsAttack(hall)
         call Chat(C_Attack)
         call Trace("Attack Choose player")
-        call SetAllianceTargetIfLead(alli_target)
+        call SetAllianceTargetIfLead(alli_target)  // This technically won't work as the new attack move in the sleep loop will redirect this player as well to this target
         //set alli_target = null
         call FormGroupAM(3)
         call AttackMoveKillAAM(hall)
