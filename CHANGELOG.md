@@ -28,6 +28,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Units for healing will all be sent to the same town to avoid difficulties getting everyone healed.
 - Ghouls needing healing will only collect lumber while waiting if a town hall is nearby.
 - Prevent follow zepplin conflicting with buy merc controls.
+- Fixed an issue where ally attack messages did not align with where they actually attacked especially in team games. Should be more accurate, in real time and only from one of your allies that is coordinating the attacks for all allies. 
+- AI Greetings are no longer rate limited but only a max of 6 enemy players will greet you to avoid polluting your chat dialog.
 - (Classic) Fixed installer unable to install classic editions to folders.
 - (Classic) Fixed case where 24 player mode was active when shouldn't be.
 - (Classic) Fixed minor memory leak.
