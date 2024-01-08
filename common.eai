@@ -3148,7 +3148,7 @@ function Chat takes integer c returns nothing
     else
       return
     endif
-    if c == C_AGG or c == C_EGG or c == C_Goldproblem or c == C_Thanks then
+    if c == C_AGG or c == C_EGG or c == C_Goldproblem or c == C_Thanks or c == C_Ally or c == C_Attack or c == C_Megatarget or c == C_Expansion or c == C_Creep then
       set immediate = true
     endif  
     if chance >= GetRandomReal(0.00,100.00) then
@@ -11573,8 +11573,26 @@ function SleepUntilAtGoalAM takes nothing returns nothing
   call Trace("SleepUntilGoal exit")
 endfunction
 
+function SetChatVarsAttack takes unit u returns nothing
+  local player p = GetOwningPlayer(u)
+  call SetChatVar("TargetRace", race_name[player_race[GetPlayerId(p)]])
+  call SetChatVar("TargetColor", ColorText(p))
+  call SetChatVarR("TargetStrength", GetPlayerStrength(p))
+  set p = null
+endfunction
+
 function SetAllianceTargetIfLead takes unit u returns nothing
   if (GetAllianceTarget() == null or u == null) then // if leadally
+    call SetAllianceTarget(u)
+  endif
+endfunction
+
+function SetAllianceTargetIfLeadAndChat takes unit u, integer chat returns nothing
+  if (GetAllianceTarget() == null) then // if leadally
+    call SetAllianceTarget(u)
+    call SetChatVarsAttack(u)
+    call Chat(chat)
+  elseif (u == null) then
     call SetAllianceTarget(u)
   endif
 endfunction
@@ -11819,9 +11837,8 @@ function CreepAttack takes integer str returns nothing
     call Sleep(20)
     return
   endif
-  call Chat(C_Creep)
   if air_strength > 15 then
-    call SetAllianceTargetIfLead(target)
+    call SetAllianceTargetIfLeadAndChat(target, C_Creep)
   endif
   call FormGroupAM(3)
   call AttackMoveKillCreep(target)
@@ -12175,14 +12192,6 @@ function ChooseAttackTarget takes unit u returns unit
   return u
 endfunction
 
-//============================================================================
-function SetChatVarsAttack takes unit u returns nothing
-  local player p = GetOwningPlayer(u)
-  call SetChatVar("TargetRace", race_name[player_race[GetPlayerId(p)]])
-  call SetChatVar("TargetColor", ColorText(p))
-  call SetChatVarR("TargetStrength", GetPlayerStrength(p))
-  set p = null
-endfunction
 
 //============================================================================
 // Militia Expansion melee attack
@@ -12337,7 +12346,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
         set common = GetAllianceTarget()
         if common != null then
           call Trace("===Desperation Attack Alliance Target===")
-          call Chat(C_Ally)
+          //call Chat(C_Ally)
           call FormGroupAM(3)
           call DesperationAssault()
           call AttackMoveKillAAM(common)
@@ -12351,7 +12360,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
     set common = ChooseAnEnemyTarget(common)
     if (common != null) then
       call Trace("===Desperation Attack Random Enemy Target===")
-      call SetAllianceTargetIfLead(common)
+      call SetAllianceTargetIfLeadAndChat(common, C_Ally)
       call FormGroupAM(3)
       call DesperationAssault()
       call AttackMoveKillAAM(common)
@@ -12532,7 +12541,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
     //
     if double_expansion_target != null and IsTargetGood(double_expansion_target, 10) then
       call Trace("Double Expansion Attack")
-      call SetAllianceTargetIfLead(double_expansion_target)
+      call SetAllianceTargetIfLeadAndChat(double_expansion_target, C_Ally)
       call FormGroupAM(3)
       call AttackMoveKillAAM(double_expansion_target)
       if not UnitAlive(double_expansion_target) then
@@ -12557,8 +12566,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
             call Trace("Creep the Expansion")
             set attacking_expansion = true
             set battle_radius = creep_battle_radius
-            call SetAllianceTargetIfLead(creep)
-            call Chat(C_Expansion)
+            call SetAllianceTargetIfLeadAndChat(creep, C_Expansion)
             call FormGroupAM(3)
             call AttackMoveKillCreep(creep)
             if creep == null then
@@ -12582,7 +12590,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
         set common = GetAllianceTarget()
         if common != null then
           call Trace("Attack Alliance Target")
-          call Chat(C_Ally)
+          //call Chat(C_Ally)
           call FormGroupAM(3)
           call AttackMoveKillAAM(common)
           call Trace("Attack complete")
@@ -12601,10 +12609,9 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
         set mega = GetMegaTarget()
         if mega != null and UnitAlive(mega) then
           call Trace("Mega Attack Target")
-          call SetAllianceTargetIfLead(mega)
-          call SetChatVarsAttack(mega)
-          call Chat(C_Mega)
-          call Chat(C_Megatarget)
+          call SetAllianceTargetIfLeadAndChat(mega, C_Megatarget)
+          //call SetChatVarsAttack(mega)
+          call Chat(C_Mega) // This chat is to enemies not allies
           call FormGroupAM(3)
           call AttackMoveKillAAM(mega)
           set mega = null
@@ -12617,9 +12624,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
 
         set hall = ChooseAttackTarget(hall)
         if hall != null and UnitAlive(hall) then
-          call SetChatVarsAttack(hall)
-          call Chat(C_Attack)
-          call SetAllianceTargetIfLead(alli_target) // This technically won't work as the new attack move in the sleep loop will redirect this player as well to this target
+          call SetAllianceTargetIfLeadAndChat(alli_target, C_Attack) // This technically won't work as the new attack move in the sleep loop will redirect this player as well to this target
           //set alli_target = null
           call FormGroupAM(3)
           call AttackMoveKillAAM(hall)
