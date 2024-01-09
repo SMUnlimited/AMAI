@@ -145,21 +145,30 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
           exitwhen not UnitAlive(corpse) and IsUnitType(corpse, UNIT_TYPE_DEAD) and not IsUnitType(corpse, UNIT_TYPE_STRUCTURE)
           call GroupRemoveUnit(g, corpse)
         endloop
-        call DestroyGroup(g)
-        set g = null
         if corpse != null then
           call IssueTargetOrder(u, "move" , corpse)
           call IssueImmediateOrder(u, "cannibalize")
           call CreateDebugTag("SEND_HOME cannibalize", 10, u, 3.00, 1.50)
           set corpse = null
-        elseif GetUnitAbilityLevel(u, 'Ahrl') > 0 then   // 'Ahrl' Ghoul Harvest lumber ability
-          set id = GetUnitCurrentOrder(u)
-          if id == OrderId("harvest") or id == OrderId("resumeharvesting") or id == OrderId("cannibalize") then
+        else
+          call GroupClear(g)
+          call GroupEnumUnitsInRangeOfLoc(g, exist_town[p], 1000, null)
+          loop
+              set corpse = FirstOfGroup(g) // Not a corpse, is it a town hall we can return wood too?
+              exitwhen corpse == null
+              exitwhen UnitAlive(corpse) and IsUnitType(corpse, UNIT_TYPE_TOWNHALL)
+              call GroupRemoveUnit(g, corpse)
+          endloop
+          if corpse != null and GetUnitAbilityLevel(u, 'Ahrl') > 0 and GetUnitCurrentOrder(u) != OrderId("cannibalize") then   // 'Ahrl' Ghoul Harvest lumber ability
+            if GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == OrderId("resumeharvesting") then
           else
             call IssueImmediateOrder(u, "autoharvestlumber")
           endif
           call CreateDebugTag("SEND_HOME harvest lumber", 10, u, 3.00, 1.50)
         endif
+        set corpse = null
+        call DestroyGroup(g)
+        set g = null
       endif
     endif
     call TQAddUnitJob(4, SEND_HOME, p, u)
