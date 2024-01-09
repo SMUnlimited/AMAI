@@ -33,8 +33,17 @@ pjass common.j 在线工作流-测试\common.ai 在线工作流-测试\undead.ai
 jassparser common.j 在线工作流-测试\common.ai 在线工作流-测试\undead.ai
 ECHO _____________________________
 ECHO creating \在线工作流-测试\Blizzard.j
-perl ejass.pl Blizzard.eai TFT VER:TFT > 在线工作流-测试\Blizzard.j
+perl SplitBlizzardJ.pl
+perl ejass.pl Blizzard3.eai TFT VER:TFT > Blizzard3Gen.j
+perl ejass.pl Blizzard.eai TFT VER:TFT > Scripts\Blizzard.j
 ECHO \在线工作流-测试\Blizzard.j created
 pjass common.j 在线工作流-测试\Blizzard.j
 jassparser common.j 在线工作流-测试\Blizzard.j
+ECHO _____________________________
+del blizzard1.j
+del blizzard2.j
+del blizzard3.j
+del blizzard4.j
+del blizzard5.j
+del blizzard6.j
 ECHO _____________________________
