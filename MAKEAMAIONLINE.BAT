@@ -1,5 +1,6 @@
 @ECHO OFF
 ECHO Making AMAI
+mkdir 上传\
 ECHO _____________________________
 ECHO creating \上传\common.ai
 perl ejass.pl common.eai TFT VER:TFT > 上传\common.ai
