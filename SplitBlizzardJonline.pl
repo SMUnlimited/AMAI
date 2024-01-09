@@ -7,12 +7,12 @@ sub process_blizzj {
   my $flag = 0;
   
   open my $in, '<', "blizzard.j" or die "blizzard.j not found $!";
-  open my $bliz1, '>',".\back\Blizzard1.j" or die "Unable to write blizzard1.j $!";
-  open my $bliz2, '>',".\back\Blizzard2.j" or die "Unable to write blizzard2.j $!";
-  open my $bliz3, '>',".\back\Blizzard3.j" or die "Unable to write blizzard3.j $!";
-  open my $bliz4, '>',".\back\Blizzard4.j" or die "Unable to write blizzard4.j $!";
-  open my $bliz5, '>',".\back\Blizzard5.j" or die "Unable to write blizzard5.j $!";
-  open my $bliz6, '>',".\back\Blizzard6.j" or die "Unable to write blizzard6.j $!";
+  open my $bliz1, '>',"./back/Blizzard1.j" or die "Unable to write blizzard1.j $!";
+  open my $bliz2, '>',"./back/Blizzard2.j" or die "Unable to write blizzard2.j $!";
+  open my $bliz3, '>',"./back/Blizzard3.j" or die "Unable to write blizzard3.j $!";
+  open my $bliz4, '>',"./back/Blizzard4.j" or die "Unable to write blizzard4.j $!";
+  open my $bliz5, '>',"./back/Blizzard5.j" or die "Unable to write blizzard5.j $!";
+  open my $bliz6, '>',"./back/Blizzard6.j" or die "Unable to write blizzard6.j $!";
   while (my $line = <$in>) {
       if ($mode == 1) {
         print $bliz1 $line;
