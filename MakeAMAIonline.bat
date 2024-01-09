@@ -1,42 +1,42 @@
 @ECHO OFF
 ECHO Making AMAI
 ECHO _____________________________
-ECHO creating \download\common.ai
+ECHO creating download\common.ai
 perl ejass.pl common.eai TFT VER:TFT > download\common.ai
-ECHO IGNORE jasshelper --scriptonly common.j Scripts\Blizzard.j download\common.ai download\common2.ai
-ECHO \download\common.ai created
+ECHO IGNORE jasshelper --scriptonly common.j download\Blizzard.j download\common.ai download\common2.ai
+ECHO download\common.ai created
 pjass common.j download\common.ai
 jassparser common.j download\common.ai
 ECHO _____________________________
-ECHO creating \download\elf.ai
+ECHO creating download\elf.ai
 perl ejass.pl races.eai TFT VER:TFT ELF RACE:ELF > download\elf.ai
-ECHO \download\elf.ai created
+ECHO download\elf.ai created
 pjass common.j download\common.ai download\elf.ai
 jassparser common.j download\common.ai download\elf.ai
 ECHO _____________________________
-ECHO creating \download\human.ai
+ECHO creating download\human.ai
 perl ejass.pl races.eai TFT VER:TFT HUMAN RACE:HUMAN > download\human.ai
-ECHO \download\human.ai created
+ECHO download\human.ai created
 pjass common.j download\common.ai download\human.ai
 jassparser common.j download\common.ai download\human.ai
 ECHO _____________________________
-ECHO creating \download\orc.ai
+ECHO creating download\orc.ai
 perl ejass.pl races.eai TFT VER:TFT ORC RACE:ORC > download\orc.ai
-ECHO \download\orc.ai created
+ECHO download\orc.ai created
 pjass common.j download\common.ai download\orc.ai
 jassparser common.j download\common.ai download\orc.ai
 ECHO _____________________________
-ECHO creating \download\undead.ai
+ECHO creating download\undead.ai
 perl ejass.pl races.eai TFT VER:TFT UNDEAD RACE:UNDEAD > download\undead.ai
-ECHO \download\undead.ai created
+ECHO download\undead.ai created
 pjass common.j download\common.ai download\undead.ai
 jassparser common.j download\common.ai download\undead.ai
 ECHO _____________________________
-ECHO creating \download\Blizzard.j
+ECHO creating download\Blizzard.j
 perl SplitBlizzardJ.pl
 perl ejass.pl Blizzard3.eai TFT VER:TFT > Blizzard3Gen.j
 perl ejass.pl Blizzard.eai TFT VER:TFT > download\Blizzard.j
-ECHO \download\Blizzard.j created
+ECHO download\Blizzard.j created
 pjass common.j download\Blizzard.j
 jassparser common.j download\Blizzard.j
 ECHO _____________________________
