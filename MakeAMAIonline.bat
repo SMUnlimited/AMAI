@@ -33,7 +33,7 @@ pjass common.j .\download\common.ai .\download\undead.ai
 jassparser common.j .\download\common.ai .\download\undead.ai
 ECHO _____________________________
 ECHO creating .\download\Blizzard.j
-perl SplitBlizzardJ.pl
+perl SplitBlizzardJonline.pl
 perl ejass.pl Blizzard3.eai TFT VER:TFT > .\back\Blizzard3Gen.j
 perl ejass.pl Blizzard.eai TFT VER:TFT > .\download\Blizzard.j
 ECHO .\download\Blizzard.j created
