@@ -119,14 +119,14 @@ function BuyItemJob takes integer id returns nothing
   //call CreateDebugTag("In BUT ITEM JOB, 10, shop_sent, 3.00, 1.50)
 
   // Town threatened so dont get item
-  if GetUnitTypeId(shop_unit) == old_id[racial_shop] and dist < 1000 then
+  if GetOwningPlayer(shop_unit) == ai_player and dist < 1000 then
   else
     if town_threatened or attack_running then
       call CreateDebugTag("BUY_ITEM:in attack so dont get item", 10, shop_sent, 3.00, 1.50)
       call RecycleGuardPosition(shop_sent)
       call GroupRemoveUnit(unit_buying_item, shop_sent)
-      call AddAssault(1, GetUnitTypeId(shop_sent))
       call GroupRemoveUnit(going_home_group, shop_sent)
+      call AddAssault(1, GetUnitTypeId(shop_sent))
       set shop_sent = null
       set shop_ordered = false
       set shop_buy_time_large = -1
@@ -140,7 +140,6 @@ function BuyItemJob takes integer id returns nothing
       call CreateDebugTag("BUY_ITEM: Retreat to Home", 10, shop_sent, 3.00, 1.50)
       call RemoveGuardPosition(shop_sent)
       call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
-      call GroupAddUnit(going_home_group, shop_sent)
       call TQAddJob(5, BUY_ITEM, id)
     else
       call GroupRemoveUnit(unit_buying_item, shop_sent)
@@ -158,8 +157,9 @@ function BuyItemJob takes integer id returns nothing
 
 // Enemies are present so get home before they harm us
   set detectedenemies = GetLocationNonCreepStrength(GetUnitX(shop_sent), GetUnitY(shop_sent), 1000)
-  if detectedenemies >= GetUnitStrength(shop_sent) and GetUnitTypeId(shop_unit) != old_id[racial_shop] then
+  if detectedenemies >= GetUnitStrength(shop_sent) and GetOwningPlayer(shop_unit) != ai_player then
     call RemoveGuardPosition(shop_sent)
+    call GroupAddUnit(going_home_group, shop_sent)
     call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
     //call TQAddUnitJob(GetTimeToReachLoc(shop_sent, home_location), RESET_GUARD_POSITION, 1, shop_sent)
     set retreat_home = true
@@ -222,7 +222,7 @@ function BuyItemJob takes integer id returns nothing
     if ismoving == false then
       set ismoving = true
     endif
-    set time_next_try = RMin(4, Max(R2I(GetTimeToReachUnit(shop_sent, shop_unit) + 1),1))
+    set time_next_try = RMin(4, RMax(GetTimeToReachUnit(shop_sent, shop_unit) + 1),1)
   endif
 
   call TQAddJob(time_next_try, BUY_ITEM, id)
