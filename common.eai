@@ -497,7 +497,7 @@ globals
     integer array racial_hall
     integer array racial_goldmine
     integer minearray = 0
-integer array gold_mines_ids
+    integer array gold_mines_ids
     integer gold_mine_ids_size = 0
     integer array racial_zigg
     integer ziggarray = 0
@@ -891,7 +891,6 @@ integer array gold_mines_ids
     constant integer WINDWALK_COUNT = 10
     constant integer HARASS_GROUP = 11
     hashtable com = InitHashtable()
-    constant integer PROFILE_USED = 0
     constant integer TEAM_STATEGY_INUSE = 1
     constant integer IS_AMAI = 2
     constant integer RACE = 3
@@ -901,7 +900,8 @@ integer array gold_mines_ids
     constant integer CHAT_LOCK = 7
 
     gamecache amaiCache = InitGameCache("AMAI_AI.w3v")
-
+    constant integer PROFILE_USED = 0
+    constant integer GREETINGS_NUM = 1
     //gamecache settings = InitGameCache("AMAI_Set.w3v")
 
     string array char_table
@@ -3100,11 +3100,12 @@ function QueueChat takes string text, player p, boolean important returns nothin
   endif
 endfunction
 
-function DisplayChat takes boolean ally, boolean enemy, boolean obs, boolean important, boolean immediate returns nothing
+function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean obs, boolean important, boolean immediate returns nothing
   local integer i = 0
   local integer std_rand = 0
   local integer rand = 0
   local player p = null
+  local integer chat_greet_count = 0
   call ApplyChatConditions()
   if chat_list_length == 0 then
     return
@@ -3120,7 +3121,18 @@ function DisplayChat takes boolean ally, boolean enemy, boolean obs, boolean imp
         set rand = GetRandomInt(0, chat_list_length - 1)
       endloop
       call SetChatVarsPlayer(p)
-      if immediate then
+      // Only send at most 8 greetings to a single player
+      if chat == C_Greet then
+        if (HaveStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i))) then
+          set chat_greet_count = GetStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i)) 
+        endif
+        if chat_greet_count < 6 then
+            //call DisplayToAllFromPlayer("GREET" + Int2Str(chat_greet_count), GetAiPlayer(), false)
+            call StoreInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i), chat_greet_count + 1 )
+            //call SyncStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(GREETINGS_NUM))
+            call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)          
+        endif
+      elseif immediate then
         call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)
       else
         call QueueChat(ApplyChatVars(chat_list[rand]), p, important)
@@ -3162,11 +3174,11 @@ function Chat takes integer c returns nothing
     else
       return
     endif
-    if c == C_AGG or c == C_EGG or c == C_Goldproblem or c == C_Thanks then
+    if c == C_AGG or c == C_EGG or c == C_Goldproblem or c == C_Thanks or c == C_Ally or c == C_Attack or c == C_Megatarget or c == C_Expansion or c == C_Creep then
       set immediate = true
-    endif  
+    endif
     if chance >= GetRandomReal(0.00,100.00) then
-      call DisplayChat(chat_target_ally[c], chat_target_enemy[c], chat_target_obs[c], chat_important[c], immediate)
+      call DisplayChat(c, chat_target_ally[c], chat_target_enemy[c], chat_target_obs[c], chat_important[c], immediate)
     endif
   endif
 endfunction
@@ -4758,10 +4770,11 @@ function GetUnitToBuy takes unit ru, unit buy_place returns unit
   local real newdistance = 0
   set ru = null
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  call GroupRemoveUnit(g, follow_zeppelin )
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_SUMMONED) and not IsUnitIllusion(u) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) and not IsUnitBuying(u) and IsStandardUnit(u) then
+    if not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_SUMMONED) and not IsUnitLoaded(u) and not IsUnitIllusion(u) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) and not IsUnitBuying(u) and IsStandardUnit(u) then
       set newdistance = DistanceBetweenUnits(buy_place, u)
       if newdistance < distance then
         set distance = newdistance
@@ -11774,8 +11787,26 @@ function SleepUntilAtGoalAM takes nothing returns nothing
   call Trace("SleepUntilGoal exit")
 endfunction
 
+function SetChatVarsAttack takes unit u returns nothing
+  local player p = GetOwningPlayer(u)
+  call SetChatVar("TargetRace", race_name[player_race[GetPlayerId(p)]])
+  call SetChatVar("TargetColor", ColorText(p))
+  call SetChatVarR("TargetStrength", GetPlayerStrength(p))
+  set p = null
+endfunction
+
 function SetAllianceTargetIfLead takes unit u returns nothing
   if (GetAllianceTarget() == null or u == null) then // if leadally
+    call SetAllianceTarget(u)
+  endif
+endfunction
+
+function SetAllianceTargetIfLeadAndChat takes unit u, integer chat returns nothing
+  if (GetAllianceTarget() == null) then // if leadally
+    call SetAllianceTarget(u)
+    call SetChatVarsAttack(u)
+    call Chat(chat)
+  elseif (u == null) then
     call SetAllianceTarget(u)
   endif
 endfunction
@@ -12054,9 +12085,8 @@ function CreepAttack takes integer str returns nothing
     call Sleep(20)
     return
   endif
-  call Chat(C_Creep)
   if air_strength > 15 then
-    call SetAllianceTargetIfLead(target)
+    call SetAllianceTargetIfLeadAndChat(target, C_Creep)
   endif
   call FormGroupAM(3)
   call AttackMoveKillCreep(target)
@@ -12433,15 +12463,6 @@ function ChooseAttackTarget takes unit u returns unit
 endfunction
 
 //============================================================================
-function SetChatVarsAttack takes unit u returns nothing
-  local player p = GetOwningPlayer(u)
-  call SetChatVar("TargetRace", race_name[player_race[GetPlayerId(p)]])
-  call SetChatVar("TargetColor", ColorText(p))
-  call SetChatVarR("TargetStrength", GetPlayerStrength(p))
-  set p = null
-endfunction
-
-//============================================================================
 // Militia Expansion melee attack
 //============================================================================
 function Militia_Expansion takes integer m returns nothing
@@ -12596,7 +12617,7 @@ if desperation_assault and not no_attack then
       set common = GetAllianceTarget()
       if common != null then
         call Trace("===Desperation Attack Alliance Target===")
-        call Chat(C_Ally)
+        //call Chat(C_Ally)
         call FormGroupAM(3)
         call DesperationAssault()
         call AttackMoveKillAAM(common)
@@ -12609,7 +12630,7 @@ if desperation_assault and not no_attack then
   set common = ChooseAnEnemyTarget(common)
   if (common != null) then
     call Trace("===Desperation Attack Random Enemy Target===")
-    call SetAllianceTargetIfLead(common)
+    call SetAllianceTargetIfLeadAndChat(common, C_Ally)
     call FormGroupAM(3)
     call DesperationAssault()
     call AttackMoveKillAAM(common)
@@ -12791,7 +12812,7 @@ if not creeping_only then	// Do the normal attack sequence
   //
   if double_expansion_target != null and IsTargetGood(double_expansion_target, 10) then
     call Trace("Double Expansion Attack")
-    call SetAllianceTargetIfLead(double_expansion_target)
+    call SetAllianceTargetIfLeadAndChat(double_expansion_target, C_Ally)
     call FormGroupAM(3)
     call AttackMoveKillAAM(double_expansion_target)
     if not UnitAlive(double_expansion_target) then
@@ -12814,8 +12835,7 @@ if not creeping_only then	// Do the normal attack sequence
           call Trace("Creep the Expansion")
           set attacking_expansion = true
           set battle_radius = creep_battle_radius
-          call SetAllianceTargetIfLead(creep)
-          call Chat(C_Expansion)
+          call SetAllianceTargetIfLeadAndChat(creep, C_Expansion)
           call FormGroupAM(3)
           call AttackMoveKillCreep(creep)
           if creep == null then
@@ -12840,7 +12860,7 @@ if not creeping_only then	// Do the normal attack sequence
       set common = GetAllianceTarget()
       if common != null then
         call Trace("Attack Alliance Target")
-        call Chat(C_Ally)
+        //call Chat(C_Ally)
         call FormGroupAM(3)
         call AttackMoveKillAAM(common)
         call Trace("Attack Alliance Target complete")
@@ -12871,10 +12891,9 @@ if not creeping_only then	// Do the normal attack sequence
       set mega = GetMegaTarget()
       if mega != null and UnitAlive(mega) then
         call Trace("Mega Attack Target")
-        call SetAllianceTargetIfLead(mega)
-        call SetChatVarsAttack(mega)
-        call Chat(C_Mega)
-        call Chat(C_Megatarget)
+        call SetAllianceTargetIfLeadAndChat(mega, C_Megatarget)
+        //call SetChatVarsAttack(mega)
+        call Chat(C_Mega) // This chat is to enemies not allies
         call FormGroupAM(3)
         call AttackMoveKillAAM(mega)
         set mega = null
@@ -12887,10 +12906,8 @@ if not creeping_only then	// Do the normal attack sequence
 
       set hall = ChooseAttackTarget(hall)
       if hall != null and UnitAlive(hall) then
-        call SetChatVarsAttack(hall)
-        call Chat(C_Attack)
+        call SetAllianceTargetIfLeadAndChat(alli_target, C_Attack) // This technically won't work as the new attack move in the sleep loop will redirect this player as well to this target
         call Trace("Attack Choose player")
-        call SetAllianceTargetIfLead(alli_target)  // This technically won't work as the new attack move in the sleep loop will redirect this player as well to this target
         //set alli_target = null
         call FormGroupAM(3)
         call AttackMoveKillAAM(hall)
@@ -13369,14 +13386,14 @@ function universal_peon_assignment takes nothing returns nothing
   call HarvestWood(0,swh)
   set T = Max(T + 3,TownCountDone(racial_expansion))
   call CreateDebugTagLoc(Int2Str(GetMinesOwned()), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
-  if (FoodUsed() <= 20 or GetMinesOwned() < 1 or Max(GetGoldOwned(), g) <= 2500) and hero_built[3] then  // later stages of the game, AI may not be harvest
+  if (FoodUsed() <= 20 or GetMinesOwned() < 1 or g <= 2500) and hero_built[3] then  // later stages of the game, AI may not be harvest
     set i = 0
-    set T = TownCountDone(racial_peon)
+    set T = 0
     loop
-      exitwhen i > max_towns or T <= 0
+      exitwhen i > max_towns or T > 1
       if not CheckExpansionTaken(own_town_mine[i]) then
         call PeonMineCheck(own_town_mine[i])
-        set T = T - 5
+        set T = T + 1
         call CreateDebugTag("Forced Harvest", 10, own_town_mine[i], 3.00, 1.50)
       endif
       set i = i + 1
