@@ -1,48 +1,49 @@
 @ECHO OFF
 ECHO Making AMAI
 ECHO _____________________________
-ECHO creating \在线工作流-测试\common.ai
-perl ejass.pl common.eai TFT VER:TFT > 在线工作流-测试\common.ai
-ECHO IGNORE jasshelper --scriptonly common.j Scripts\Blizzard.j 在线工作流-测试\common.ai 在线工作流-测试\common2.ai
-ECHO \在线工作流-测试\common.ai created
-pjass common.j 在线工作流-测试\common.ai
-jassparser common.j 在线工作流-测试\common.ai
+ECHO creating \download\common.ai
+perl ejass.pl common.eai TFT VER:TFT > download\common.ai
+ECHO IGNORE jasshelper --scriptonly common.j Scripts\Blizzard.j download\common.ai download\common2.ai
+ECHO \download\common.ai created
+pjass common.j download\common.ai
+jassparser common.j download\common.ai
 ECHO _____________________________
-ECHO creating \在线工作流-测试\elf.ai
-perl ejass.pl races.eai TFT VER:TFT ELF RACE:ELF > 在线工作流-测试\elf.ai
-ECHO \在线工作流-测试\elf.ai created
-pjass common.j 在线工作流-测试\common.ai 在线工作流-测试\elf.ai
-jassparser common.j 在线工作流-测试\common.ai 在线工作流-测试\elf.ai
+ECHO creating \download\elf.ai
+perl ejass.pl races.eai TFT VER:TFT ELF RACE:ELF > download\elf.ai
+ECHO \download\elf.ai created
+pjass common.j download\common.ai download\elf.ai
+jassparser common.j download\common.ai download\elf.ai
 ECHO _____________________________
-ECHO creating \在线工作流-测试\human.ai
-perl ejass.pl races.eai TFT VER:TFT HUMAN RACE:HUMAN > 在线工作流-测试\human.ai
-ECHO \在线工作流-测试\human.ai created
-pjass common.j 在线工作流-测试\common.ai 在线工作流-测试\human.ai
-jassparser common.j 在线工作流-测试\common.ai 在线工作流-测试\human.ai
+ECHO creating \download\human.ai
+perl ejass.pl races.eai TFT VER:TFT HUMAN RACE:HUMAN > download\human.ai
+ECHO \download\human.ai created
+pjass common.j download\common.ai download\human.ai
+jassparser common.j download\common.ai download\human.ai
 ECHO _____________________________
-ECHO creating \在线工作流-测试\orc.ai
-perl ejass.pl races.eai TFT VER:TFT ORC RACE:ORC > 在线工作流-测试\orc.ai
-ECHO \在线工作流-测试\orc.ai created
-pjass common.j 在线工作流-测试\common.ai 在线工作流-测试\orc.ai
-jassparser common.j 在线工作流-测试\common.ai 在线工作流-测试\orc.ai
+ECHO creating \download\orc.ai
+perl ejass.pl races.eai TFT VER:TFT ORC RACE:ORC > download\orc.ai
+ECHO \download\orc.ai created
+pjass common.j download\common.ai download\orc.ai
+jassparser common.j download\common.ai download\orc.ai
 ECHO _____________________________
-ECHO creating \在线工作流-测试\undead.ai
-perl ejass.pl races.eai TFT VER:TFT UNDEAD RACE:UNDEAD > 在线工作流-测试\undead.ai
-ECHO \在线工作流-测试\undead.ai created
-pjass common.j 在线工作流-测试\common.ai 在线工作流-测试\undead.ai
-jassparser common.j 在线工作流-测试\common.ai 在线工作流-测试\undead.ai
+ECHO creating \download\undead.ai
+perl ejass.pl races.eai TFT VER:TFT UNDEAD RACE:UNDEAD > download\undead.ai
+ECHO \download\undead.ai created
+pjass common.j download\common.ai download\undead.ai
+jassparser common.j download\common.ai download\undead.ai
 ECHO _____________________________
-ECHO creating \在线工作流-测试\Blizzard.j
+ECHO creating \download\Blizzard.j
 perl SplitBlizzardJ.pl
 perl ejass.pl Blizzard3.eai TFT VER:TFT > Blizzard3Gen.j
-perl ejass.pl Blizzard.eai TFT VER:TFT > Scripts\Blizzard.j
-ECHO \在线工作流-测试\Blizzard.j created
-pjass common.j 在线工作流-测试\Blizzard.j
-jassparser common.j 在线工作流-测试\Blizzard.j
+perl ejass.pl Blizzard.eai TFT VER:TFT > download\Blizzard.j
+ECHO \download\Blizzard.j created
+pjass common.j download\Blizzard.j
+jassparser common.j download\Blizzard.j
 ECHO _____________________________
 del blizzard1.j
 del blizzard2.j
 del blizzard3.j
+del Blizzard3Gen.j
 del blizzard4.j
 del blizzard5.j
 del blizzard6.j
