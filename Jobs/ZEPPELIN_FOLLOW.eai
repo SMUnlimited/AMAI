@@ -3,35 +3,44 @@
 function ZeppelinFollowJob takes nothing returns nothing
   local real dist = 0
   local location l = null
-  local group g = CreateGroup()
+  local group g = null
   local location heroloc = null
   local boolean b = true
   call DisplayToAllJobDebug("ZEPPELIN_FOLLOW Start")
-  //call GroupEnumUnitsOfType(g, "goblinzeppelin", null)
-  call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  set g = SelectById(g, old_id[neutral_zeppelin], true)
-  //set g = SelectByOrderOr(g, 0, order_attack, true)
-  set g = SelectByUnitStandard(g, true)
-  if water_expansion_list_length == 0 or racial_lumber != 0 or not race_no_wood_harvest then
-    call GroupRemoveGuardPositionInstant(g)  //water_expansion Transport Harvest peon , AI default Transport Order need use zep , racial_lumber help ELF fix building blockage
+  if (follow_zeppelin == null) then
+    //call GroupEnumUnitsOfType(g, "goblinzeppelin", null)
+    set g = CreateGroup()
+    call GroupEnumUnitsOfPlayer(g, ai_player, null)
+    set g = SelectById(g, old_id[neutral_zeppelin], true)
+    //set g = SelectByOrderOr(g, 0, order_attack, true)
+    set g = SelectByUnitStandard(g, true)
+    set g = SelectByUnitFree(g, true)
+    //if FirstOfGroup(g) != null then
+    //  call GroupPointOrderLoc(g, "attack", exist_town[GetRandomInt(0,Max(exist_town_num-1,0))])
+    //endif
+    if major_hero != null and UnitAlive(major_hero) then
+      set heroloc = GetUnitLoc(major_hero)
+      set follow_zeppelin = GetNearestOfGroup(follow_zeppelin, g, heroloc)
+      call RemoveLocation(heroloc)
+      set heroloc = null
+    endif 
+    call DestroyGroup(g)
+    set g = null
   endif
-  if FirstOfGroup(g) != null then
-    call GroupPointOrderLoc(g, "attack", exist_town[GetRandomInt(0,Max(exist_town_num-1,0))])
-  endif
-  set follow_zeppelin = null
-  if major_hero != null and UnitAlive(major_hero) then
-    set heroloc = GetUnitLoc(major_hero)
-    set follow_zeppelin = GetNearestOfGroup(follow_zeppelin, g, heroloc)
-    call RemoveLocation(heroloc)
-    set heroloc = null
-  endif
-  call DestroyGroup(g)
-  set g = null
-  if follow_zeppelin == null or IsUnitInGroup(follow_zeppelin, unit_buying_merc)then
+
+  if follow_zeppelin == null and IsUnitBuying(follow_zeppelin) or not UnitAlive(follow_zeppelin) or IsUnitInGroup(follow_zeppelin, unit_rescueing) or IsUnitInGroup(follow_zeppelin, unit_zepplin_move) then
+    set follow_zeppelin = null
     call TQAddJob(10, ZEPPELIN_FOLLOW, 0)
     set zeppelin_following = false
     return
   endif
+  if (major_hero == null or not UnitAlive(major_hero)) then
+    call RecycleGuardPosition(follow_zeppelin) // Not being used by other zepplin control so recycle position
+    set follow_zeppelin = null
+    call TQAddJob(10, ZEPPELIN_FOLLOW, 0)
+    set zeppelin_following = false
+    return
+  endif  
   call RemoveGuardPosition(follow_zeppelin)
   set zeppelin_following = true
   set dist = DistanceBetweenUnits(major_hero, follow_zeppelin)
@@ -43,6 +52,7 @@ function ZeppelinFollowJob takes nothing returns nothing
     call IssueTargetOrder(follow_zeppelin, "move", major_hero)
     call TQAddJob(RMax((dist - max_follow_dist) / RMax(GetUnitMoveSpeed(follow_zeppelin) + GetUnitMoveSpeed(major_hero), 50), 1) * sleep_multiplier,ZEPPELIN_FOLLOW,0)
   else
+    call CreateDebugTag("Zepplin follow stopped", 10, follow_zeppelin, 3.00, 1.50)
     call IssueImmediateOrder(follow_zeppelin, "stop")
     set l = GetUnitLoc(follow_zeppelin)
     set b = IssuePointOrder(follow_zeppelin, "attack", GetUnitX(follow_zeppelin), GetUnitY(follow_zeppelin))
