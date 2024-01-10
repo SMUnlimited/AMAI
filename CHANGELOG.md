@@ -32,11 +32,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - AI Greetings are no longer rate limited but only a max of 6 enemy players will greet you to avoid polluting your chat dialog.
 - Fixed issue where global strategy block expiry was too low and effectively ignored.
 - Fixed an issue where needed prerequisites could be built in an unoptimal order.
+- Fixed an issue where bat script to install to a single map failed if path had spaces. 
+- All install mechanisms will now warn of non-zero error codes and report it as an error.
 - (Classic) Fixed installer unable to install classic editions to folders.
 - (Classic) Fixed case where 24 player mode was active when shouldn't be.
 - (Classic) Fixed minor memory leak.
 - (DevTools) Fixed strategy manager unable to compile REFORGED scripts. Bat files renamed to match version name instead of shorthand RFG.
-- (DevTools) InstallToDir.pl power script will also detect UAC protection and logs exit codes during run.
+- (DevTools) InstallToDir.pl power script will also detect UAC protection.
 
 ## [3.3.1a] - 2023-12-21
 

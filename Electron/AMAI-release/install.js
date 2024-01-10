@@ -119,6 +119,9 @@ const installOnDirectory = async () => {
         if (f1AddToMPQ.status == 5) {
           process.send(`WARN: ${file} Failed to add ai scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
           continue;
+        } else if (f1AddToMPQ.status > 0) {
+          process.send(`WARN: ${file} Possibly failed to add ai scripts, Unknown error occurred: ${f1AddToMPQ.status}`)
+          continue;
         }
         f1AddToMPQ.error ?
           process.send(f1AddToMPQ.error.message)
@@ -144,6 +147,9 @@ const installOnDirectory = async () => {
           if (f2AddToMPQ.status == 5) {
             process.send(`WARN: ${file} Failed to add blizzard.j script, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
             continue;
+          } else if (f2AddToMPQ.status > 0) {
+            process.send(`WARN: ${file} Possibly failed to add blizzard.j script, Unknown error occurred: ${f2AddToMPQ.status}`)
+            continue;
           }
           f2AddToMPQ.error ?
             process.send(f2AddToMPQ.error.message)
@@ -167,7 +173,10 @@ const installOnDirectory = async () => {
         if (f3AddToMPQ.status == 5) {
           process.send(`WARN: ${file} Failed to flush scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
           continue;
-        }
+        } else if (f3AddToMPQ.status > 0) {
+            process.send(`WARN: ${file} Possibly failed to flush scripts, Unknown error occurred: ${f3AddToMPQ.status}`)
+            continue;
+          }
         f3AddToMPQ.error ?
           process.send(f3AddToMPQ.error.message)
             : process.send(`Optimize map MPQ ${file}`);
