@@ -30,6 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Prevent follow zepplin conflicting with various other jobs and controls.
 - Fixed an issue where ally attack messages did not align with where they actually attacked especially in team games. Should be more accurate, in real time and only from one of your allies that is coordinating the attacks for all allies. 
 - AI Greetings are no longer rate limited but only a max of 6 enemy players will greet you to avoid polluting your chat dialog.
+- Fixed issue where global strategy block expiry was too low and effectively ignored.
 - (Classic) Fixed installer unable to install classic editions to folders.
 - (Classic) Fixed case where 24 player mode was active when shouldn't be.
 - (Classic) Fixed minor memory leak.
