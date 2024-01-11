@@ -119,6 +119,9 @@ const installOnDirectory = async () => {
         if (f1AddToMPQ.status == 5) {
           process.send(`WARN: ${file} Failed to add ai scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
           continue;
+        } else if (f1AddToMPQ.status > 0) {
+          process.send(`WARN: ${file} Possibly failed to add ai scripts, Unknown error occurred: ${f1AddToMPQ.status}`)
+          continue;
         }
         f1AddToMPQ.error ?
           process.send(f1AddToMPQ.error.message)
@@ -144,6 +147,9 @@ const installOnDirectory = async () => {
           if (f2AddToMPQ.status == 5) {
             process.send(`WARN: ${file} Failed to add blizzard.j script, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
             continue;
+          } else if (f2AddToMPQ.status > 0) {
+            process.send(`WARN: ${file} Possibly failed to add blizzard.j script, Unknown error occurred: ${f2AddToMPQ.status}`)
+            continue;
           }
           f2AddToMPQ.error ?
             process.send(f2AddToMPQ.error.message)
@@ -161,6 +167,9 @@ const installOnDirectory = async () => {
             );
             if (f3AddToMPQ.status == 5) {
               process.send(`WARN: ${file} Failed to add minimap icon, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+              continue;
+            } else if (f3AddToMPQ.status > 0) {
+              process.send(`WARN: ${file} Possibly failed to add minimap icon, Unknown error occurred: ${f3AddToMPQ.status}`)
               continue;
             }
             f3AddToMPQ.error ?
@@ -181,6 +190,9 @@ const installOnDirectory = async () => {
             if (f4AddToMPQ.status == 5) {
               process.send(`WARN: ${file} Failed to add Reforged item icon, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
               continue;
+            } else if (f4AddToMPQ.status > 0) {
+              process.send(`WARN: ${file} Possibly failed to add Reforged item icon, Unknown error occurred: ${f4AddToMPQ.status}`)
+              continue;
             }
             f4AddToMPQ.error ?
             process.send(f4AddToMPQ.error.message)
@@ -197,6 +209,9 @@ const installOnDirectory = async () => {
             );
             if (f4AddToMPQ.status == 5) {
               process.send(`WARN: ${file} Failed to add Class item icon, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+              continue;
+            } else if (f4AddToMPQ.status > 0) {
+              process.send(`WARN: ${file} Possibly failed to add Class item icon, Unknown error occurred: ${f4AddToMPQ.status}`)
               continue;
             }
             f4AddToMPQ.error ?
@@ -217,6 +232,9 @@ const installOnDirectory = async () => {
             if (f5AddToMPQ.status == 5) {
               process.send(`WARN: ${file} Failed to add Reforged item disabled icon, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
               continue;
+            } else if (f5AddToMPQ.status > 0) {
+              process.send(`WARN: ${file} Possibly failed to add Reforged item disabled icon, Unknown error occurred: ${f5AddToMPQ.status}`)
+              continue;
             }
             f5AddToMPQ.error ?
             process.send(f5AddToMPQ.error.message)
@@ -233,6 +251,9 @@ const installOnDirectory = async () => {
             );
             if (f5AddToMPQ.status == 5) {
               process.send(`WARN: ${file} Failed to add Class item disabled icon, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+              continue;
+            } else if (f5AddToMPQ.status > 0) {
+              process.send(`WARN: ${file} Possibly failed to add Class item disabled icon, Unknown error occurred: ${f5AddToMPQ.status}`)
               continue;
             }
             f5AddToMPQ.error ?
@@ -254,6 +275,9 @@ const installOnDirectory = async () => {
             if (f6AddToMPQ.status == 5) {
               process.send(`WARN: ${file} Failed to add Reforged icon list file, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
               continue;
+            } else if (f6AddToMPQ.status > 0) {
+              process.send(`WARN: ${file} Possibly failed to add Reforged icon list file, Unknown error occurred: ${f6AddToMPQ.status}`)
+              continue;
             }
             f6AddToMPQ.error ?
               process.send(f6AddToMPQ.error.message)
@@ -271,6 +295,9 @@ const installOnDirectory = async () => {
             );
             if (f6AddToMPQ.status == 5) {
               process.send(`WARN: ${file} Failed to add Class icon list file, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+              continue;
+            } else if (f6AddToMPQ.status > 0) {
+              process.send(`WARN: ${file} Possibly failed to add Class icon list file, Unknown error occurred: ${f6AddToMPQ.status}`)
               continue;
             }
             f6AddToMPQ.error ?
@@ -292,6 +319,9 @@ const installOnDirectory = async () => {
             if (f7AddToMPQ.status == 5) {
               process.send(`WARN: ${file} Failed to add Reforged item index file, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
               continue;
+            } else if (f7AddToMPQ.status > 0) {
+              process.send(`WARN: ${file} Possibly failed to add Reforged item index file, Unknown error occurred: ${f7AddToMPQ.status}`)
+              continue;
             }
             f7AddToMPQ.error ?
               process.send(f7AddToMPQ.error.message)
@@ -309,6 +339,9 @@ const installOnDirectory = async () => {
             );
             if (f7AddToMPQ.status == 5) {
               process.send(`WARN: ${file} Failed to add Class item index file, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+              continue;
+            } else if (f7AddToMPQ.status > 0) {
+              process.send(`WARN: ${file} Possibly failed to add Class item index file, Unknown error occurred: ${f7AddToMPQ.status}`)
               continue;
             }
             f7AddToMPQ.error ?
@@ -334,6 +367,9 @@ const installOnDirectory = async () => {
         if (f8AddToMPQ.status == 5) {
           process.send(`WARN: ${file} Failed to flush scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
           continue;
+        } else if (f8AddToMPQ.status > 0) {
+            process.send(`WARN: ${file} Possibly failed to flush scripts, Unknown error occurred: ${f8AddToMPQ.status}`)
+            continue;
         }
         f8AddToMPQ.error ?
           process.send(f8AddToMPQ.error.message)
