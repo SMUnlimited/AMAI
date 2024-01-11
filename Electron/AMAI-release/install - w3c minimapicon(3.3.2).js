@@ -84,7 +84,7 @@ const installOnDirectory = async () => {
 
         const mpqEditor = spawnSync(
           `MPQEditor.exe`,
-          [`htsize`, file, `64`],
+          [`htsize`, file, `128`],
           { encoding : `utf8` }
         );
 
@@ -181,11 +181,11 @@ const installOnDirectory = async () => {
             const f4AddToMPQ =  spawnSync(
               `MPQEditor.exe`,
               [
-              'a',
-              file,
-              `Icons\\Reforged\\CommandButtons\\*.dds`,
-              `ReplaceableTextures\\CommandButtons`,
-                ],
+                'a',
+                file,
+                `Icons\\Reforged\\CommandButtons\\*.dds`,
+                `ReplaceableTextures\\CommandButtons`,
+              ],
             );
             if (f4AddToMPQ.status == 5) {
               process.send(`WARN: ${file} Failed to add Reforged item icon, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
@@ -201,10 +201,10 @@ const installOnDirectory = async () => {
             const f4AddToMPQ =  spawnSync(
                 `MPQEditor.exe`,
                 [
-                'a',
-                file,
-                `Icons\\Class\\CommandButtons\\*.blp`,
-                `ReplaceableTextures\\CommandButtons`,
+                  'a',
+                  file,
+                  `Icons\\Class\\CommandButtons\\*.blp`,
+                  `ReplaceableTextures\\CommandButtons`,
                 ],
             );
             if (f4AddToMPQ.status == 5) {
