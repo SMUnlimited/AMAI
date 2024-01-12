@@ -1,43 +1,43 @@
 @ECHO OFF
 ECHO Making AMAI
-mkdir 上传\
+mkdir AMAI\
 ECHO _____________________________
-ECHO creating \上传\common.ai
-perl ejass.pl common.eai TFT VER:TFT > 上传\common.ai
-ECHO IGNORE jasshelper --scriptonly common.j 上传\Blizzard.j 上传\common.ai 上传\common2.ai
-ECHO \上传\common.ai created
-pjass common.j 上传\common.ai
-jassparser common.j 上传\common.ai
+ECHO creating AMAI\common.ai
+perl ejass.pl common.eai TFT VER:TFT > AMAI\common.ai
+ECHO IGNORE jasshelper --scriptonly common.j AMAI\Blizzard.j AMAI\common.ai AMAI\common2.ai
+ECHO AMAI\common.ai created
+pjass common.j AMAI\common.ai
+jassparser common.j AMAI\common.ai
 ECHO _____________________________
-ECHO creating \上传\elf.ai
-perl ejass.pl races.eai TFT VER:TFT ELF RACE:ELF > 上传\elf.ai
-ECHO \上传\elf.ai created
-pjass common.j 上传\common.ai 上传\elf.ai
-jassparser common.j 上传\common.ai 上传\elf.ai
+ECHO creating AMAI\elf.ai
+perl ejass.pl races.eai TFT VER:TFT ELF RACE:ELF > AMAI\elf.ai
+ECHO AMAI\elf.ai created
+pjass common.j AMAI\common.ai AMAI\elf.ai
+jassparser common.j AMAI\common.ai AMAI\elf.ai
 ECHO _____________________________
-ECHO creating \上传\human.ai
-perl ejass.pl races.eai TFT VER:TFT HUMAN RACE:HUMAN > 上传\human.ai
-ECHO \上传\human.ai created
-pjass common.j 上传\common.ai 上传\human.ai
-jassparser common.j 上传\common.ai 上传\human.ai
+ECHO creating AMAI\human.ai
+perl ejass.pl races.eai TFT VER:TFT HUMAN RACE:HUMAN > AMAI\human.ai
+ECHO AMAI\human.ai created
+pjass common.j AMAI\common.ai AMAI\human.ai
+jassparser common.j AMAI\common.ai AMAI\human.ai
 ECHO _____________________________
-ECHO creating \上传\orc.ai
-perl ejass.pl races.eai TFT VER:TFT ORC RACE:ORC > 上传\orc.ai
-ECHO \上传\orc.ai created
-pjass common.j 上传\common.ai 上传\orc.ai
-jassparser common.j 上传\common.ai 上传\orc.ai
+ECHO creating AMAI\orc.ai
+perl ejass.pl races.eai TFT VER:TFT ORC RACE:ORC > AMAI\orc.ai
+ECHO AMAI\orc.ai created
+pjass common.j AMAI\common.ai AMAI\orc.ai
+jassparser common.j AMAI\common.ai AMAI\orc.ai
 ECHO _____________________________
-ECHO creating \上传\undead.ai
-perl ejass.pl races.eai TFT VER:TFT UNDEAD RACE:UNDEAD > 上传\undead.ai
-ECHO \上传\undead.ai created
-pjass common.j 上传\common.ai 上传\undead.ai
-jassparser common.j 上传\common.ai 上传\undead.ai
+ECHO creating AMAI\undead.ai
+perl ejass.pl races.eai TFT VER:TFT UNDEAD RACE:UNDEAD > AMAI\undead.ai
+ECHO AMAI\undead.ai created
+pjass common.j AMAI\common.ai AMAI\undead.ai
+jassparser common.j AMAI\common.ai AMAI\undead.ai
 ECHO _____________________________
-ECHO creating \上传\Blizzard.j VSAI Flag set to %VSAI%
+ECHO creating AMAI\Blizzard.j VSAI Flag set to %VSAI%
 perl SplitBlizzardJ.pl
 perl ejass.pl Blizzard3.eai TFT VER:TFT > Blizzard3Gen.j
-perl ejass.pl Blizzard.eai TFT VER:TFT > 上传\Blizzard.j
-ECHO \上传\Blizzard.j created
-pjass common.j 上传\Blizzard.j
-jassparser common.j 上传\Blizzard.j
+perl ejass.pl Blizzard.eai TFT VER:TFT > AMAI\Blizzard.j
+ECHO AMAI\Blizzard.j created
+pjass common.j AMAI\Blizzard.j
+jassparser common.j AMAI\Blizzard.j
 ECHO _____________________________
