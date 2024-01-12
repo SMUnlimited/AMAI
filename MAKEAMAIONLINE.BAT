@@ -53,10 +53,8 @@ if "%RESULTMAKEVER%"=="1" (
 ECHO 编译失败，附件不可用--请耐心等待新的在线编译附件
 mkdir AMAI\fail\
 del AMAI\1
-ren AMAI AMAI_done
 ) else (
 ECHO 编译成功，附件可用--请按教程安装
 mkdir AMAI\done\
 del AMAI\2
-ren AMAI AMAI_done
 )
