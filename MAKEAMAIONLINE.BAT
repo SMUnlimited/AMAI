@@ -49,9 +49,8 @@ if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 ECHO _____________________________
 if "%RESULTMAKEVER%"=="1" (
 ECHO 编译失败，附件不可用--请耐心等待新的在线编译附件
-echo 附件不可用--请勿安装并等待新的在线编译附件 > AMAI\fail.txt
+echo 附件不可用--请勿安装并等待新的在线编译附件 > AMAI\附件不可用.txt
 ) else (
 ECHO 编译成功，附件可用--请按教程安装
-echo 附件可用--请按教程安装 > AMAI\done.txt
 echo 附件可用--请按教程安装 > AMAI\附件可用.txt
 )
