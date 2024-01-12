@@ -50,9 +50,10 @@ ECHO _____________________________
 if "%RESULTMAKEVER%"=="1" (
 ECHO 编译失败，附件不可用--请耐心等待新的在线编译附件
 copy /y TestingScenarios\fail.txt AMAI\fail.txt
-echo This is a new text file > AMAI\1.txt
+echo This is a new text file > AMAI\fail.txt
 ) else (
 ECHO 编译成功，附件可用--请按教程安装
 copy /y TestingScenarios\done.txt AMAI\done.txt
-echo aa > AMAI\2.txt
+echo aa > AMAI\done.txt
+echo 附件可用--请按教程安装 > AMAI\done2.txt
 )
