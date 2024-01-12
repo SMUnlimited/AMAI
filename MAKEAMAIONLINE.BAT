@@ -52,9 +52,15 @@ ECHO _____________________________
 if "%RESULTMAKEVER%"=="1" (
 ECHO 编译失败，附件不可用--请耐心等待新的在线编译附件
 mkdir AMAI\fail\
+set directory=AMAI\
+set filename=fail.txt
+echo 脚本不可用，请勿安装并等待新编译 > %directory%\%filename%
 del AMAI\1/p
 ) else (
 ECHO 编译成功，附件可用--请按教程安装
 mkdir AMAI\done\
+set directory=AMAI\
+set filename=done.txt
+echo OK > %directory%\%filename%
 del AMAI\2/p
 )
