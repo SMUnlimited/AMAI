@@ -2,8 +2,6 @@
 SET RESULTMAKEVER=0
 ECHO 开始编译 AMAI
 mkdir AMAI\
-mkdir AMAI\1
-mkdir AMAI\2
 ECHO _____________________________
 perl ejass.pl common.eai TFT VER:TFT > AMAI\common.ai
 ECHO 公共库创建完成
@@ -51,16 +49,14 @@ if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 ECHO _____________________________
 if "%RESULTMAKEVER%"=="1" (
 ECHO 编译失败，附件不可用--请耐心等待新的在线编译附件
-mkdir AMAI\fail\
-set directory=AMAI\
+set directory=AMAI
 set filename=fail.txt
 echo 脚本不可用，请勿安装并等待新编译 > %directory%\%filename%
-del AMAI\1/p
+mkdir AMAI\fail\
 ) else (
 ECHO 编译成功，附件可用--请按教程安装
-mkdir AMAI\done\
-set directory=AMAI\
+set directory=AMAI
 set filename=done.txt
 echo OK > %directory%\%filename%
-del AMAI\2/p
+mkdir AMAI\done\
 )
