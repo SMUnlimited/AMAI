@@ -903,6 +903,7 @@ globals
     gamecache amaiCache = InitGameCache("AMAI_AI.w3v")
     constant integer PROFILE_USED = 0
     constant integer GREETINGS_NUM = 1
+
     //gamecache settings = InitGameCache("AMAI_Set.w3v")
 
     string array char_table
@@ -1061,7 +1062,6 @@ globals
     gamecache udg_debug_cache = null
     string udg_current_category = null
     timer udg_debug_timer = CreateTimer()
-    boolean job_running = true  // Job system wiil running (now some jon running on path system when path done , this switch can unified control)
     boolean job_debug = false  // Job system reports will be displayed (used for finding thread crashes)
     integer debug_player = 0
 
@@ -3125,13 +3125,13 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
       // Only send at most 8 greetings to a single player
       if chat == C_Greet then
         if (HaveStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i))) then
-          set chat_greet_count = GetStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i)) 
+          set chat_greet_count = GetStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i))
         endif
         if chat_greet_count < 6 then
             //call DisplayToAllFromPlayer("GREET" + Int2Str(chat_greet_count), GetAiPlayer(), false)
             call StoreInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i), chat_greet_count + 1 )
             //call SyncStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(GREETINGS_NUM))
-            call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)          
+            call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)
         endif
       elseif immediate then
         call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)
@@ -5920,7 +5920,7 @@ function CheckExpansionTaken takes unit expa returns boolean
       set u = FirstOfGroup(g)
       exitwhen u == null
       set p = GetOwningPlayer(u)
-      if p != Player(PLAYER_NEUTRAL_PASSIVE) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 then  // Creeps dosn't mean expansion is taken
+      if p != Player(PLAYER_NEUTRAL_PASSIVE) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and IsUnitType(u, UNIT_TYPE_STRUCTURE) then  // Creeps dosn't mean expansion is taken
         if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitGoldMine(u) or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
           call DestroyGroup(g)
           set g = null
@@ -5930,7 +5930,7 @@ function CheckExpansionTaken takes unit expa returns boolean
             //call GroupRemoveUnit(far_expansion, expa)
           // endif
           return true
-        elseif p != ai_player and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+        elseif p != ai_player then
           call DestroyGroup(g)
           set g = null
           set u = null
@@ -6672,8 +6672,8 @@ function AddFrontPoint takes location l returns nothing
     call CreateDebugTagLoc("Front Point Added", 10, x, y, 60.00, 55.00)
     set front_loc[front_loc_num] = Location(x,y)
     set front_loc_num = front_loc_num + 1
-  else
-    call CreateDebugTagLoc("Front Point : Not Buildable", 10, x, y, 60.00, 55.00)
+  //else
+    //call CreateDebugTagLoc("Front Point : Not Buildable", 10, x, y, 60.00, 55.00)
   endif
   call RemoveUnit(pathable)
   set pathable = null
@@ -7530,11 +7530,7 @@ function PathingThread takes nothing returns nothing
   call ChooseExpansion()
   call CheckFastExpansion()
   call CheckAllNeutrals() // The more advanced new system check
-  call Trace("pathing done")
-  if not job_running then
-    return
-  endif
-  call Trace("pathing thread run job" )
+  call Trace("pathing thread done and run job" )
   set pathing_done = true
   call StaggerSleep(1,5)
   loop // this job no need run on job system , help job system more focused on combat
@@ -8455,10 +8451,8 @@ function AMAI takes code heroes, code peons, code attacks returns nothing
     endif
     call Sleep(0.1)
     // Job Thread
-    if job_running then  // now some jon running on path system when path done , this switch can unified control
-      call StartThread(function TQLoop)
-      //call Trace("TQLoop")
-    endif
+    call StartThread(function TQLoop)
+    //call Trace("TQLoop")
     call StartThread(peons)
     //call Trace("peons")
     call StartThread(attacks)
@@ -11133,7 +11127,7 @@ function LocalizeNewMine takes integer num returns nothing
   if u != null then
     set l = GetUnitLoc(u)
     set exist_mine[num] = GetMineNearLoc(exist_mine[num], l, 1500)
-    if debugging then
+    if debugging and exist_mine[num] != null then
       call PingMinimap(GetUnitX(exist_mine[num]), GetUnitY(exist_mine[num]), 20)
     endif
     call RemoveLocation(l)
