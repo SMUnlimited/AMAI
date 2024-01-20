@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Changed
+- Require more than 1 zepplin before attempting water expansions which should help fix some transporting issues.
+
 ### Fixed
 - Prevent desyncs with zoom function.
 
