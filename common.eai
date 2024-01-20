@@ -8979,12 +8979,12 @@ function BlockListCheck takes integer qty, integer t returns integer
   loop
     exitwhen i >= bl_length
     if bl_allow_type[i] == t then
-          //call Trace("BlockList Id " + Int2Str(t) + " time:" + Int2Str(ai_time) + " expiry time:" + Int2Str(bl_expire_time[i]))
+          //call Trace("BlockList Id " + unitNames[t] + " time:" + Int2Str(ai_time) + " expiry time:" + Int2Str(bl_expire_time[i]))
     endif
     if ai_time < bl_expire_time[i] and bl_allow_type[i] == t then
       if TownCountEx(bl_req_type[i], bl_only_done[i], -1) < bl_req_qty[i] then
-        //call Trace("BlockList Id " + Int2Str(t) + " original qty:" + Int2Str(max_qty) + " new qty:" + Int2Str(bl_allow_qty[i]))
         set max_qty = Min(max_qty, bl_allow_qty[i])
+        call Trace("BlockList Id " + unitNames[t] + " original qty:" + Int2Str(qty) + " new qty:" + Int2Str(max_qty))
       endif
     endif
     set i = i + 1
@@ -10191,7 +10191,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
        //call BuildBRAtCreep()
      endif
      set racial_rushcreep = -1  //just run once
-     return BUILT_SOME
+     //return BUILT_SOME
    endif
 
     if buy_type[unitid] > BT_RACIAL_ITEM and buy_type[unitid] <= BT_MERCHANT_ITEM then
@@ -11038,9 +11038,12 @@ function OneBuildLoopAM takes nothing returns nothing
     call GetBuildLock()
     loop
         exitwhen index >= build_length
-        call Sleep(0.01)
+        if index > 0 and ModuloInteger(index, 300) == 0 then
+          call Sleep(0.05)
+        endif
         set id = build_item[index]
         set qty = RBlockListCheck(build_qty[index], id)
+        set qty = BlockListCheck(qty, id)
         set tp = build_type[index]
         set town = Max(build_town[index],0)
         set mo = max_order[id + town*OBJECT_NUM]
@@ -11049,7 +11052,7 @@ function OneBuildLoopAM takes nothing returns nothing
 //        call DumpInteger("Gold"+Int2Str(index),total_gold)
 //        call DumpInteger("Prio"+Int2Str(index),build_prio[index])
 
-        if build_qty[index] > mo then
+        if qty > mo and qty > 0 then
           if tp == BUILD_UNIT then
               set logtype = "unit "
               set ret = StartUnitAM(qty,id,build_town[index], build_loc[index], build_prio[index], mo)
@@ -11116,6 +11119,9 @@ function OneBuildLoopAM takes nothing returns nothing
     endif
     loop
           exitwhen index >= build_length
+          if index > 0 and ModuloInteger(index, 300) == 0 then
+            call Sleep(0.02)
+          endif
           set build_qty[index_free] = build_qty[index]
           set build_type[index_free] = build_type[index]
           set build_item[index_free] = build_item[index]
@@ -11141,10 +11147,12 @@ endfunction
 //============================================================================
 function BuildLoopAM takes nothing returns nothing
   local integer blc = 0
+  local integer timing = 0
   call OneBuildLoopAM()
   call StaggerSleep(1,5)
   loop
     //call Trace("Build Loop")
+    set timing = ai_time
     set blc = blc + 1
     call OneBuildLoopAM()
     exitwhen player_defeated
@@ -11153,6 +11161,7 @@ function BuildLoopAM takes nothing returns nothing
       set blc = 0
     endif
     call Sleep(5 * sleep_multiplier)
+    //call Trace("Build Loop total seconds:" + Int2Str((ai_time - timing) * 5))
   endloop
 //    call DisplayToAll("Shutting down BuildLoopAM")
 //    call DebugSequenceEnd()
