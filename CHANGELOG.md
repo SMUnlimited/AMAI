@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 - Require more than 1 zepplin before attempting water expansions which should help fix some transporting issues.
+- Optimized double expansion detection reducing total unit loops.
 
 ### Fixed
 - Prevent desyncs with zoom function.

@@ -1,5 +1,7 @@
 #IFDEF GLOBAL
     unit double_expansion_target = null
+    boolean double_expansion_ally_present = false
+    boolean double_expansion_enemy_present = false
 #ELSE
 //============================================================================
 // Detect double expansion
@@ -32,6 +34,53 @@ function GetOtherExpansionNearby takes unit ru, real tx, real ty returns unit
   call DestroyGroup(g)
   set g = null
   return ru
+endfunction
+
+function CheckDoubleExpansionsClaimedInArea takes real tx, real ty returns boolean
+  local group g = CreateGroup()
+  local unit u = null
+  local integer minecount = 0
+  local integer claimedMines = 0
+  set double_expansion_ally_present = false
+  set double_expansion_enemy_present = false
+  call GroupEnumUnitsInRange(g, tx, ty, expansion_taken_radius, null)
+  set g = SelectByAlive2(g, true)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if IsPlayerEnemy(GetOwningPlayer(u), ai_player) and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+      set double_expansion_target = u
+      set double_expansion_enemy_present = true
+    endif
+    if IsUnitGoldMine(u) then
+      if GetOwningPlayer(u) != ai_player and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) then
+        set claimedMines = claimedMines + 1
+      endif
+      if IsPlayerAlly(ai_player, GetOwningPlayer(u)) then
+        set double_expansion_ally_present = true
+      else
+        set double_expansion_target = u
+      endif
+      set minecount = minecount + 1
+    endif
+    if IsUnitType(u, UNIT_TYPE_TOWNHALL) then
+      if GetOwningPlayer(u) != ai_player and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) then
+        set claimedMines = claimedMines + 1
+      endif
+      if IsPlayerAlly(ai_player, GetOwningPlayer(u)) then
+        set double_expansion_ally_present = true
+      else
+        set double_expansion_target = u
+        set double_expansion_enemy_present = true
+      endif
+    endif
+    call GroupRemoveUnit(g,u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+  call Trace("Total Mines:" + Int2Str(minecount) + " Claimed Mines:" + Int2Str(claimedMines))
+  return claimedMines >= minecount
 endfunction
 
 // Beware Does not include own halls and mines in this check
@@ -81,31 +130,27 @@ endfunction
 
 function CheckDoubleExpansion takes nothing returns nothing
   local group g = CreateGroup()
-  local unit v = null
   local unit u = null
-  local player p = null
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectNumberOfId(g, 100, old_id[racial_expansion])
+  
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set v = GetOtherExpansionNearby(v, GetUnitX(u), GetUnitY(u))
-    if v != null then
-      set p = GetOwningPlayer(v)
-      if IsPlayerEnemy(ai_player, p) then
-        call Trace("Enemy double expansion detected")
-        set double_expansion_target = v
-      elseif IsPlayerAlly(ai_player, p) and GetTotalClaimedMinesNearby(v, GetUnitX(u), GetUnitY(u)) >= GetTotalMinesNearby(v, GetUnitX(u), GetUnitY(u)) then
-        call Trace("Ally double expansion detected")
+    if CheckDoubleExpansionsClaimedInArea(GetUnitX(u), GetUnitY(u)) then
+      if double_expansion_ally_present then
         call IssueImmediateOrderById(u, order_cancel)
+        call Trace("Ally double expansion detected")
       endif
+    endif
+    if double_expansion_enemy_present then
+      call Trace("Enemy double expansion detected")
     endif
     call GroupRemoveUnit(g,u)
   endloop
+  
   call DestroyGroup(g)
   set g = null
-  set p = null
-  set v = null
 endfunction
 
 function DetectDoubleExpJob takes nothing returns nothing
