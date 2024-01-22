@@ -4,9 +4,9 @@
     //-----------------------------------------------------------------------
 
     // default values
-    string language = ""  // Possible values: "" (dialog), "English", "Deutsch", "Swedish", "French", "Spanish", "Romanian", "Russian", "Portuguese", "Norwegian", "Chinese"
+    string language = "Chinese"  // Possible values: "" (dialog), "English", "Deutsch", "Swedish", "French", "Spanish", "Romanian", "Russian", "Portuguese", "Norwegian", "Chinese"
     string game_mode = "" // Possible values: "" (dialog), "commander", "no_human", "ai_only", "shared"
-    string backlanguage = "English"
+    string backlanguage = "Chinese"
 
     integer array command_number
     integer array command_par1
@@ -96,6 +96,7 @@
     integer dlg_length = 0
 
     trigger ZoomSetx = null
+    real array current_zoom
 
     dialog game_start_dialog = null
     trigger game_start_trigger = null
@@ -614,9 +615,14 @@ function SetW3CDenyTip takes nothing returns nothing
 endfunction
 
 function W3CDenyTipControl takes nothing returns nothing
-  if (GetPlayerController(GetLocalPlayer()) != MAP_CONTROL_COMPUTER) or IsPlayerObserver(GetLocalPlayer()) then
-    call TriggerRegisterPlayerChatEvent(W3CDenyControl, GetLocalPlayer(), "-deny", false)
-  endif
+  local integer i = 0
+  loop
+    exitwhen i >= GetBJMaxPlayers()
+    if (GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER) then
+      call TriggerRegisterPlayerChatEvent(W3CDenyControl, Player(i), "-deny", false)
+    endif
+    set i = i + 1
+  endloop
   call TriggerAddAction( W3CDenyControl, function SetW3CDenyTip )
   call TriggerRegisterAnyUnitEventBJ( W3CDeny, EVENT_PLAYER_UNIT_DEATH )
   call TriggerAddAction( W3CDeny, function W3CDenyTip )
@@ -635,23 +641,34 @@ function ZoomSet takes nothing returns nothing
   if Zoom < 1650 then
     call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, 1650, 0 )
     call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "zoom min: |cff00ff001650|r" )
+    set current_zoom[i] = 1650
   elseif Zoom > 3000 then
     call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, 3000, 0 )
     call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "zoom max: |cff00ff003000|r" )
+    set current_zoom[i] = 3000
   else
     call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, Zoom, 0 )
+    set current_zoom[i] = Zoom
   endif
 endfunction
 
 function InitZoom takes nothing returns nothing
+  local integer i = 0
   set ZoomSetx = CreateTrigger()
   call TriggerAddAction(ZoomSetx, function ZoomSet)
-  if (GetPlayerController(GetLocalPlayer()) != MAP_CONTROL_COMPUTER) and not IsPlayerObserver(GetLocalPlayer()) then
-    call DisplayTimedTextToPlayer(GetLocalPlayer(), 0, 0, 7, "Set Zoom type: |c00d5f038-zoom1850|r")
-    call TriggerRegisterPlayerChatEvent( ZoomSetx, GetLocalPlayer(), "-zoom", false )
-  elseif IsPlayerObserver(GetLocalPlayer()) then
-    call SetCameraFieldForPlayer(GetLocalPlayer(), CAMERA_FIELD_TARGET_DISTANCE, 1950, 0)
-  endif
+  loop
+    exitwhen i >= GetBJMaxPlayers()
+    if (GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER) then
+      call DisplayTimedTextToPlayer(Player(i),0,0,7,"Set Zoom type: |c00d5f038-zoom1850|r")
+      call TriggerRegisterPlayerChatEvent( ZoomSetx, Player(i), "-zoom", false )
+      set current_zoom[i] = CameraSetupGetFieldSwap(CAMERA_FIELD_TARGET_DISTANCE, GetCurrentCameraSetup())
+      if IsPlayerObserver(Player(i)) then
+        call SetCameraFieldForPlayer(Player(i), CAMERA_FIELD_TARGET_DISTANCE, 1950, 0)
+        set current_zoom[i] = 1950
+      endif
+    endif
+    set i = i + 1
+  endloop
 endfunction
 
 //===========================================================================
@@ -684,9 +701,14 @@ endfunction
 
 function W3CMiniMapIcons takes nothing returns nothing
   local trigger t = CreateTrigger()
-  if (GetPlayerController(GetLocalPlayer()) != MAP_CONTROL_COMPUTER) or IsPlayerObserver(GetLocalPlayer()) then
-    call TriggerRegisterPlayerChatEvent(t, GetLocalPlayer(), "-minimap", false)
-  endif
+  local integer i = 0
+  loop
+    exitwhen i >= GetBJMaxPlayers()
+    if (GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER) then
+      call TriggerRegisterPlayerChatEvent(t, Player(i), "-minimap", false)
+    endif
+    set i = i + 1
+  endloop
   call TriggerAddAction( t, function SetW3CMiniMapIcons )
 endfunction
 
