@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issues causing various strategy blocks to be ignored if units defined before the blocks are set. 
 - Fixed issue where elf would not ever build ancient of war promptly.
 - Units sent home for healing from a water expansion can now be picked up by zeppelins.
+- Fixed issue where undead gold mines were never fully detected as mines correctly for various logic.
 
 ## [3.3.2] - 2024-01-11
 
