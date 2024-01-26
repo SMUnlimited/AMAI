@@ -5,9 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+- (DevTools) Added a perl power script to uninstall AMAI from a directory of maps.
+- (DevTools) Classic script compilation will sync settings from REFORGED that don't need to be different. Could be used manually by modders as a blueprint to inherit settings.
+
 ### Changed
 - Require more than 1 zepplin before attempting water expansions which should help fix some transporting issues.
 - Optimized double expansion detection reducing total unit loops.
+- (DevTools) Optimize.bat script is now called OptimizeAll.bat.
 
 ### Fixed
 - Prevent desyncs with zoom function.
@@ -15,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issue where elf would not ever build ancient of war promptly.
 - Units sent home for healing from a water expansion can now be picked up by zeppelins.
 - Fixed issue where undead gold mines were never fully detected as mines correctly for various logic.
+- (DevTools) Fixed the optimize all script and the makeAll and optimizeAll scripts will pause between versions.
+- (Classic) Fixed some TFT settings not in sync with REFORGED.
+
 
 ## [3.3.2] - 2024-01-11
 

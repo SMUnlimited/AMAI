@@ -2,7 +2,11 @@
 SET VSAI=%~1
 SET VER=%~2
 SET RESULTMAKEVER=0
-ECHO Making AMAI
+if %VSAI% == 1 (
+  ECHO Making AMAI %VER% VS AI
+) else (
+  ECHO Making AMAI %VER%
+)
 mkdir Scripts\
 mkdir Scripts\%VER%\
 ECHO _____________________________
@@ -52,14 +56,23 @@ perl SplitBlizzardJ.pl %VER%
 if %VSAI% == 1 perl ejass.pl Blizzard3VAI.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
 if %VSAI% == 0 perl ejass.pl Blizzard3.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
 perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\Blizzard_%VER%.j
-ECHO \Scripts\Blizzard.j created
+ECHO \Scripts\Blizzard_%VER%.j created
 pjass %VER%\common.j Scripts\Blizzard_%VER%.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 jassparser %VER%\common.j Scripts\Blizzard_%VER%.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 if "%RESULTMAKEVER%"=="1" (
-  ECHO Compilation error
+  if %VSAI% == 1 (
+    ECHO Compilation %VER% VS AI error
+  ) else (
+    ECHO Compilation %VER% error
+  )
   exit /b %RESULTMAKEVER%
 ) else (
-  ECHO _____________________________
+  if %VSAI% == 1 (
+    ECHO Compilation %VER% VS AI successful
+  ) else (
+    ECHO Compilation %VER% successful
+  )
 )
+ECHO =============================

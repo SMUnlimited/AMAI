@@ -23,37 +23,37 @@ sub process_dir {
       }
       system "MPQEditor htsize \"$dirname/$filename\" 64";
       if ($? == -1) {
-        printf "Unable to spawn MPQEditor process"
+        printf "Unable to spawn MPQEditor process";
       } elsif ($? >> 8 == 5) {
         printf "ERROR: Failed to run htsize, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
       } else {
-        printf "Ran htsize:%d\n", $? >> 8
+        printf "Ran htsize:%d\n", $? >> 8;
       }
       system "MPQEditor a \"$dirname/$filename\" Scripts\\$ver\\*.ai Scripts";
       if ($? == -1) {
-        printf "Unable to spawn MPQEditor process"
+        printf "Unable to spawn MPQEditor process";
       } elsif ($? >> 8 == 5) {
         printf "ERROR: Failed to add ai scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
       } elsif ($? >> 8 > 0) {
-        printf "ERROR: Unknown. AMAI not have installed correctly. Adding ai scripts:%d\n", $? >> 8
+        printf "ERROR: Unknown. AMAI not have installed correctly. Adding ai scripts:%d\n", $? >> 8;
       }
       if (!(defined($commander)) || $commander eq "true") {
         system "MPQEditor a \"$dirname/$filename\" Scripts\\Blizzard_$ver.j Scripts\\Blizzard.j";
         if ($? == -1) {
-          printf "Unable to spawn MPQEditor process"
+          printf "Unable to spawn MPQEditor process";
         } elsif ($? >> 8 == 5) {
           printf "ERROR: Failed to add commander, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
         } elsif ($? >> 8 > 0) {
-          printf "ERROR: Unknown. AMAI not have installed correctly. Adding commander:%d\n", $? >> 8
+          printf "ERROR: Unknown. AMAI not have installed correctly. Adding commander:%d\n", $? >> 8;
         }
       }
       system "MPQEditor f \"$dirname/$filename\"";
       if ($? == -1) {
-        printf "Unable to spawn MPQEditor process"
+        printf "Unable to spawn MPQEditor process";
       } elsif ($? >> 8 == 5) {
         printf "ERROR: Failed to flush, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
       } elsif ($? >> 8 > 0)  {
-        printf "ERROR: Unknown. AMAI not have installed correctly. flush:%d\n", $? >> 8
+        printf "ERROR: Unknown. AMAI not have installed correctly. flush:%d\n", $? >> 8;
       }
     }
   }

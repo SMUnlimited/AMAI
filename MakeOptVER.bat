@@ -1,7 +1,7 @@
 @ECHO OFF
 SET VER=%~1
 SET RESULTOPTVER=0
-ECHO Optimizing Scripts
+ECHO Optimizing %VER% Scripts
 perl Optimize.pl %VER%\common.j Scripts\%VER%\common.ai -l %VER%\Races.txt Scripts\%VER%\$2
 perl Optimize.pl -b Scripts\Blizzard_%VER%.j
 ECHO Optimizing finished
@@ -25,7 +25,8 @@ pjass %VER%\common.j Scripts\Blizzard_%VER%.j
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
 if "%RESULTOPTVER%"=="1" (
-  ECHO Optimization error
+  ECHO Optimization %VER% error
   exit /b %RESULTOPTVER%
+) else (
+  ECHO Optimization %VER% successful
 )
-ECHO =============================
