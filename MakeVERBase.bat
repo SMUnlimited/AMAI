@@ -67,6 +67,7 @@ pjass %VER%\common.j Scripts\Blizzard_%VER%.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 jassparser %VER%\common.j Scripts\Blizzard_%VER%.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+rmdir /s /q "%VER%/tmp"
 if "%RESULTMAKEVER%"=="1" (
   if %VSAI% == 1 (
     ECHO Compilation AMAI %VER% VS AI error
