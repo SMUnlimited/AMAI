@@ -1,8 +1,8 @@
 @ECHO OFF
 SET LOG=%~1
-call MakeVERBase.bat 0 ROC
+call MakeVERBase.bat 0 REFORGED
 ECHO _____________________________
-call ForwardsCompat.bat ROC
+call MakeOptVER REFORGED
 ECHO =============================
 if not "%LOG%"=="0" (
     pause

@@ -1,22 +1,25 @@
 #! /usr/bin/perl5 -w
 # Splits the official blizzard J file into sections to add the AMAI code within
 use strict;
+use File::Copy;
 
 sub process_blizzj {
   my $mode = 1;
   my $flag = 0;
-  
-  open my $in, '<', "blizzard.j" or die "blizzard.j not found $!";
-  open my $bliz1, '>',"Blizzard1.j" or die "Unable to write blizzard1.j $!";
-  open my $bliz2, '>',"Blizzard2.j" or die "Unable to write blizzard2.j $!";
-  open my $bliz3, '>',"Blizzard3.j" or die "Unable to write blizzard3.j $!";
-  open my $bliz4, '>',"Blizzard4.j" or die "Unable to write blizzard4.j $!";
-  open my $bliz5, '>',"Blizzard5.j" or die "Unable to write blizzard5.j $!";
-  open my $bliz6, '>',"Blizzard6.j" or die "Unable to write blizzard6.j $!";
+  my $ver = $_[0];
+  mkdir "$ver/tmp";
+  mkdir "Scripts/$ver";
+  open my $in, '<', "$ver/blizzard.j" or die "blizzard.j not found $!";
+  open my $bliz1, '>',"$ver/tmp/Blizzard1.j" or die "Unable to write blizzard1.j $!";
+  open my $bliz2, '>',"$ver/tmp/Blizzard2.j" or die "Unable to write blizzard2.j $!";
+  open my $bliz3, '>',"$ver/tmp/Blizzard3.j" or die "Unable to write blizzard3.j $!";
+  open my $bliz4, '>',"$ver/tmp/Blizzard4.j" or die "Unable to write blizzard4.j $!";
+  open my $bliz5, '>',"$ver/tmp/Blizzard5.j" or die "Unable to write blizzard5.j $!";
+  open my $bliz6, '>',"$ver/tmp/Blizzard6.j" or die "Unable to write blizzard6.j $!";
   while (my $line = <$in>) {
       if ($mode == 1) {
         print $bliz1 $line;
-        if ($line =~ /bj_lastInstObjFuncSuccessful = true/) {
+        if ($line =~ /bj_wantDestroyGroup         = false/) {
           $mode = 2;
           close $bliz1;
         }
@@ -60,5 +63,10 @@ sub process_blizzj {
   close $in;
   close $bliz6;
 }
+my $ver = $ARGV[0];
+process_blizzj($ver);
 
-process_blizzj();
+copy("$ver/VanillaAI/elf2.ai", "Scripts/$ver/elf2.ai") or die "Copy failed: $!";
+copy("$ver/VanillaAI/human2.ai", "Scripts/$ver/human2.ai") or die "Copy failed: $!";
+copy("$ver/VanillaAI/orc2.ai", "Scripts/$ver/orc2.ai") or die "Copy failed: $!";
+copy("$ver/VanillaAI/undead2.ai", "Scripts/$ver/undead2.ai") or die "Copy failed: $!";
