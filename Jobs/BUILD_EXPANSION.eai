@@ -13,19 +13,28 @@ function BuildExpansionJob takes unit u returns nothing
     if current_expansion == null then
       return
     endif
-    if CheckDoubleExpansionsClaimedInArea(GetUnitX(current_expansion), GetUnitY(current_expansion)) then
-      if double_expansion_ally_present then
-        call Trace("Cancelling Expansion - Enemy ally expansion detected")
-        call IssueImmediateOrder(u, "stop")
-        return
-      endif
-      if double_expansion_enemy_present then
-        call Trace("Cancelling Expansion - Enemy double expansion detected")
-        call IssueImmediateOrder(u, "stop")
-        return
-      endif
-    endif    
     if DistanceBetweenUnits(u, current_expansion) > race_max_expa_mine_distance then
+      if CheckDoubleExpansionsClaimedInArea(GetUnitX(current_expansion), GetUnitY(current_expansion)) then
+        if double_expansion_ally_present then
+          call Trace("Cancelling Expansion - Enemy ally expansion detected")
+          call IssueImmediateOrder(u, "stop")
+          return
+        endif
+        if double_expansion_enemy_present then
+          call Trace("Cancelling Expansion - Enemy double expansion detected")
+          if race_uses_mine_expansion then
+            call IssueImmediateOrder(u, "stop")
+            //call IssueTargetOrderById(u, old_id[hall], current_expansion) // This cannot work as requires a new mine which there is none if reached here
+          elseif not race_uses_mine_expansion then
+            // Enemy expansion attempt to build in new valid location
+            call IssueImmediateOrder(u, "stop")
+            set v = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
+            call IssuePointOrderById(u, old_id[racial_expansion], GetUnitX(v), GetUnitY(v))
+            call RemoveUnit(v)
+            set v = null
+          endif
+        endif
+      endif
       call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, u)
     endif
 
