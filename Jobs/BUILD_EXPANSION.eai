@@ -5,6 +5,9 @@
 // Extra prevention against AMAI building two townhalls at the same location
 // GetotherExpansionNearby dosn't yet detect haunted mines so they are still the exception
 function BuildExpansionJob takes unit u returns nothing
+	local unit v = null
+	local real x = null
+	local real y = null
 	call DisplayToAllJobDebug("BuildExpansionJob JOB START")
 	if not UnitAlive(u) or current_expansion == null then
 		if UnitAlive(u) then
@@ -12,21 +15,38 @@ function BuildExpansionJob takes unit u returns nothing
 		endif
 		return
 	endif
-	if CheckDoubleExpansionsClaimedInArea(current_expansion) then
-		if double_expansion_ally_present then
-			call Trace("Cancelling Expansion - Enemy ally expansion detected")
-			call IssueImmediateOrder(u, "stop")
-			call RecycleGuardPosition(u)
-			return
-		endif
-		if double_expansion_enemy_present then
-			call Trace("Cancelling Expansion - Enemy double expansion detected")
-			call IssueImmediateOrder(u, "stop")
-			call RecycleGuardPosition(u)
-			return
-		endif
-	endif
 	if DistanceBetweenUnits(u, current_expansion) > race_max_expa_mine_distance then
+		if CheckDoubleExpansionsClaimedInArea(current_expansion) then
+			if double_expansion_ally_present then
+				call Trace("Cancelling Expansion - Enemy ally expansion detected")
+				call IssueImmediateOrder(u, "stop")
+				call RecycleGuardPosition(u)
+				return
+			endif
+			if double_expansion_enemy_present then
+				call Trace("Cancelling Expansion - Enemy double expansion detected")
+				if race_uses_mine_expansion then
+					call IssueImmediateOrder(u, "stop")
+					call RecycleGuardPosition(u)
+					return
+				else
+					// Enemy expansion attempt to build in new valid location
+					call IssueImmediateOrder(u, "stop")
+					set v = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
+					set x = GetUnitX(v)
+					set y = GetUnitY(v)
+					call RemoveUnit(v)
+					set v = null
+					if DistanceBetweenPoints_dd(Location(x, y), GetUnit(current_expansion)) <= race_max_expa_mine_distance and GetLocationNonCreepStrength(x, y, expansion_taken_radius) <= 0 then
+						call IssuePointOrderById(u, old_id[racial_expansion], x, y)
+					else
+						call IssueImmediateOrder(u, "stop")
+						call RecycleGuardPosition(u)
+						return
+					endif
+				endif
+			endif
+		endif
 		call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, u)
 	endif
 endfunction

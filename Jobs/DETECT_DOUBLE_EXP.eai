@@ -50,7 +50,9 @@ function CheckDoubleExpansionsClaimedInArea takes unit ru returns boolean
   set double_expansion_ally_present = false
   set double_expansion_enemy_present = false
   call GroupEnumUnitsInRange(g, GetUnitX(ru), GetUnitY(ru), expansion_taken_radius, null)
-  call GroupRemoveUnit(g,ru)
+  if IsUnitType(ru, UNIT_TYPE_TOWNHALL) and GetOwningPlayer(ru) == ai_player then
+    call GroupRemoveUnit(g,ru)
+  endif
   set g = SelectByAlive2(g, true)
   loop
     set u = FirstOfGroup(g)
@@ -62,26 +64,16 @@ function CheckDoubleExpansionsClaimedInArea takes unit ru returns boolean
         set double_expansion_enemy_present = true
       endif
       if IsUnitGoldMine(u) then
-        if p != ai_player then
-          set claimedMines = claimedMines + 1
-        endif
-        if IsPlayerAlly(ai_player, p) then
-          set double_expansion_ally_present = true
-        else
-          set double_expansion_target = u
-        endif
-        set minecount = minecount + 1
-      endif
-      if IsUnitType(u, UNIT_TYPE_TOWNHALL) then
-        if p != ai_player then
-          set claimedMines = claimedMines + 1
-        endif
-        if IsPlayerAlly(ai_player, p) then
+        set claimedMines = claimedMines + 1
+        if IsPlayerAlly(ai_player, GetOwningPlayer(u)) then
           set double_expansion_ally_present = true
         else
           set double_expansion_target = u
           set double_expansion_enemy_present = true
         endif
+      endif
+      if not IsUnitType(u, UNIT_TYPE_TOWNHALL) then
+        set minecount = minecount + 1
       endif
     endif
     call GroupRemoveUnit(g,u)
@@ -90,7 +82,7 @@ function CheckDoubleExpansionsClaimedInArea takes unit ru returns boolean
   set g = null
   set p = null
   call Trace("Total Mines:" + Int2Str(minecount) + " Claimed Mines:" + Int2Str(claimedMines))
-  return claimedMines >= minecount
+  return claimedMines > minecount
 endfunction
 
 // Beware Does not include own halls and mines in this check
