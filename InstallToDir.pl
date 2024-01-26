@@ -25,27 +25,27 @@ sub process_dir {
       if ($? == -1 || $? >> 8 == 5) {
         printf "ERROR: Failed to run htsize, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
       } else {
-        printf "htsize:%d\n", $? >> 8
+        printf "htsize:%d\n", $? >> 8;
       }
       system "MPQEditor a \"$dirname/$filename\" Scripts\\$ver\\*.ai Scripts";
       if ($? == -1 || $? >> 8 == 5) {
         printf "ERROR: Failed to add ai scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
       } else {
-        printf "add ai scripts:%d\n", $? >> 8
+        printf "add ai scripts:%d\n", $? >> 8;
       }
       if (!(defined($commander)) || $commander eq "true") {
         system "MPQEditor a \"$dirname/$filename\" Scripts\\Blizzard_$ver.j Scripts\\Blizzard.j";
         if ($? == -1 || $? >> 8 == 5) {
           printf "ERROR: Failed to add commander, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
         } else {
-          printf "add commander:%d\n", $? >> 8
+          printf "add commander:%d\n", $? >> 8;
         }
       }
       system "MPQEditor f \"$dirname/$filename\"";
       if ($? == -1 || $? >> 8 == 5) {
         printf "ERROR: Failed to flush, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
       } else {
-        printf "flush:%d\n", $? >> 8
+        printf "flush:%d\n", $? >> 8;
       }
     }
   }
