@@ -10079,7 +10079,6 @@ function InitBlizzard takes nothing returns nothing
     // Set up the Neutral Victim player slot, to torture the abandoned units
     // of defeated players.  Since some triggers expect this player slot to
     // exist, this is performed for all maps.
-    call VersionCheck()
     call ConfigureNeutralVictim()
 
     call InitBlizzardGlobals()
