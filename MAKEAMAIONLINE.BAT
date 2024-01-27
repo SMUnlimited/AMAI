@@ -4,7 +4,6 @@ ECHO 编译 AMAI 重置版-冰封王座 AMAI VS AMAI
 mkdir AMAI\
 mkdir Scripts\
 mkdir AMAI\REFORGED\
-mkdir REFORGED\
 ECHO _____________________________
 ECHO 创建公共库
 perl ejass.pl common.eai REFORGED VER:REFORGED > AMAI\REFORGED\common.ai
@@ -61,7 +60,6 @@ ECHO =============================
 SET RESULTMAKEVER=0
 ECHO 编译 AMAI 经典版-冰封王座 AMAI VS AMAI
 mkdir AMAI\TFT\
-mkdir TFT\
 call TFT/Inherit.bat
 ECHO _____________________________
 ECHO 创建公共库
