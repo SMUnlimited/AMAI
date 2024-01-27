@@ -2,7 +2,9 @@
 SET RESULTMAKEVER=0
 ECHO 编译 AMAI 重置版-冰封王座 AMAI VS AMAI
 mkdir AMAI\
+mkdir Scripts\
 mkdir AMAI\REFORGED\
+mkdir REFORGED\
 ECHO _____________________________
 ECHO 创建公共库
 perl ejass.pl common.eai REFORGED VER:REFORGED > AMAI\REFORGED\common.ai
@@ -58,6 +60,7 @@ if "%RESULTMAKEVER%"=="1" (
 SET RESULTMAKEVER=0
 ECHO 编译 AMAI 经典版-冰封王座 AMAI VS AMAI
 mkdir AMAI\TFT\
+mkdir TFT\
 call TFT/Inherit.bat
 ECHO _____________________________
 ECHO 创建公共库
@@ -111,5 +114,3 @@ if "%RESULTMAKEVER%"=="1" (
   ECHO 编译成功，附件经典版可用--请按教程安装
   echo 附件经典版可用--请按教程安装...仅支持1.33+ > AMAI\经典版脚本可用.txt
 )
-del /q "AMAI/REFORGED/elf2.ai" "AMAI/REFORGED/human2.ai" "AMAI/REFORGED/orc2.ai" "AMAI/REFORGED/undead2.ai"
-del /q "AMAI/TFT/elf2.ai" "AMAI/TFT/human2.ai" "AMAI/TFT/orc2.ai" "AMAI/TFT/undead2.ai"
