@@ -57,6 +57,7 @@ if "%RESULTMAKEVER%"=="1" (
   ECHO 编译成功，附件重置版可用--请按教程安装
   echo 附件重置版可用--请按教程安装...仅支持1.33+ > AMAI\重置版脚本可用.txt
 )
+ECHO =============================
 SET RESULTMAKEVER=0
 ECHO 编译 AMAI 经典版-冰封王座 AMAI VS AMAI
 mkdir AMAI\TFT\
@@ -114,3 +115,4 @@ if "%RESULTMAKEVER%"=="1" (
   ECHO 编译成功，附件经典版可用--请按教程安装
   echo 附件经典版可用--请按教程安装...仅支持1.33+ > AMAI\经典版脚本可用.txt
 )
+ECHO =============================
