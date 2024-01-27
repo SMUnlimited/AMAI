@@ -58,6 +58,7 @@ if "%RESULTMAKEVER%"=="1" (
 SET RESULTMAKEVER=0
 ECHO 编译 AMAI 经典版-冰封王座 AMAI VS AMAI
 mkdir AMAI\TFT\
+call TFT/Inherit.bat
 ECHO _____________________________
 ECHO 创建公共库
 perl ejass.pl common.eai TFT VER:TFT > AMAI\TFT\common.ai
