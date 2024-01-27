@@ -4121,15 +4121,9 @@ endfunction
 // (AMAI)	GetMineNearLoc
 //==========================================================================
 function GetMineNearLoc takes unit u, location l, real dist returns unit
-  local group g = null
+  local group g = CreateGroup()
   local integer i = 0
   local real distance = 1500
-  if DistanceBetweenPoints(l , home_location) < 500 then
-    if own_town_mine[0] != null and GetResourceAmount(own_town_mine[0]) > 0 then
-      return own_town_mine[0]
-    endif
-  endif
-  set g = CreateGroup()
   call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
   //set g = SelectByAlive(g, true)
   loop
@@ -6009,7 +6003,7 @@ function AddExpansion takes unit u, real d returns nothing
   set expansion_dist[expansion_list_length] = d
   set expansion_creeps[expansion_list_length] = GetExpFoeGroup(expansion_creeps[expansion_list_length],u)  // group of the the creeps that guard this mine
   if first_expansion_chosen == false then
-    set first_expansion_chosen = (expansion_creeps[expansion_list_length] != null) or (CheckExpansionTaken(u) == false)
+    set first_expansion_chosen = not CheckExpansionTaken(u)
   endif
   set expansion_list_length = expansion_list_length + 1
 endfunction
@@ -6345,7 +6339,7 @@ if c_enemy_user_total == 1 then
   set builder[10] = temphumanu
   set rushedplayer = nearhumanplayer
   set mindistance = humandistance
-else
+elseif c_enemy_user_total != 0 then
   set builder[10] = tempu
   set rushedplayer = nearplayer
 endif
@@ -6618,7 +6612,7 @@ function CanCreepGuardsSleep takes integer nn returns boolean
     return b
   endif
   if FirstOfGroup(neutral_guards[nn]) == null then
-    return true
+    return b
   endif
   set g = CopyGroup(neutral_guards[nn])
   loop
@@ -7040,7 +7034,7 @@ function GetHealer takes unit u returns unit
     set u = FirstOfGroup(healer_group)
     exitwhen u == null
     set id = GetHealerId(GetUnitTypeId(u))
-    if id != -1 and not IsUnitLoaded(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) then
+    if id != -1 and not IsUnitLoaded(u) and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) then
       return u
     endif
     call GroupRemoveUnit(healer_group, u)
@@ -7947,6 +7941,7 @@ function InitCheckHarvest takes nothing returns nothing
   set g = null
   call HarvestGold(0,3)
   call HarvestWood(0,2)  // Early triggering Harvest , convenient HARVEST_CHECK job check peon
+  call Trace("first town mine mode :" + Int2Str(first_town_mine))
 endfunction
 
 //===========================================================================
@@ -7955,6 +7950,7 @@ function InitTownBuilt takes nothing returns nothing
   loop
     exitwhen i >= max_towns
     set town_built[i] = false
+    set own_town_loc[i] = null
     set i = i + 1
   endloop
   set town_built[0] = true
@@ -10646,9 +10642,9 @@ function ShredderBuilder takes nothing returns nothing
   local real gdivw = g / w
   if neutral_available[NEUTRAL_OBSERVATORY] and gdivw > 4 and g - w > 500 and w < 550 and g > GetUnitGoldCost2(neutral_shredder) and w > GetUnitWoodCost2(neutral_shredder) and ai_time - available_time[neutral_shredder] >= -1 then
     if (race_has_ghouls) then
-      call BuildUnit(1, neutral_shredder, ghoul_prio - 4)
+      call BuildUnit(1, neutral_shredder, Max(ghoul_prio - 4,1))
     else
-      call BuildUnit(1, neutral_shredder, peon_prio - 10)
+      call BuildUnit(1, neutral_shredder, Max(peon_prio - 10,1))
     endif
   endif
 endfunction
@@ -10670,12 +10666,11 @@ endfunction
 //============================================================================
 function PeonBuilder takes nothing returns nothing
   local integer mo = GetMinesHarvested()
-  local integer sc = TownCount(neutral_shredder)
+  local integer sc = 0
   local real w = GetWood()
-  if race_uses_shredder then
+  if race_uses_shredder and neutral_shredder != 0 then
+    set sc = TownCount(neutral_shredder)
     call ShredderBuilder()
-  else
-    set sc = 0
   endif
   //if w <= maximum_peon_wood then 
   //  call BuildPeons( peon_1_mine_number * mo + Max(max_lumber_peons - shredder_peon_count*sc, 1 )  )  // number of peons per mine + wood peons
@@ -10684,8 +10679,12 @@ function PeonBuilder takes nothing returns nothing
   //else
   //  call BuildPeons( peon_1_mine_number * mo + Max(Max(min_lumber_peons, R2I(I2R(max_lumber_peons) / 2)) - shredder_peon_count*sc, 1 )  )
   //endif
+  
+  if race_uses_mine_expansion then
+    set mo = TownCount(racial_expansion)
+  endif
 
-  if race_has_ghouls then
+  if race_has_ghouls then // Ignore shredders
     if mo <= 1 then
       call BuildPeons(min_peon_number_single_mine)
     elseif mo <= 2 then
@@ -12940,10 +12939,10 @@ function HealArmy takes nothing returns nothing
   local integer sleepFrequency = 0
   loop
     set hs = GetArmyHealthState()
-    set mass_healed = false
     exitwhen (sleepFrequency >= 3 and hs > healthTrigger) // Tried to heal but overall still strong so exit loop
     exitwhen (urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger)
     exitwhen player_defeated or town_threatened or ver_heroes == false
+    set mass_healed = false
     call Trace("function HealArmy: Army is badly damaged and needs healing " + Real2Str(hs))
     set build_emergency_healing_item = 0
     set mh_item = GetMassHealingItem()
@@ -13133,26 +13132,18 @@ function universal_peon_assignment takes nothing returns nothing
   call HarvestWood(0,swh)
 
   set T = Max(T + 3,TownCountDone(racial_expansion))
-  if FoodUsed() <= 20 and FoodCap() >= 90 then  // later stages of the game, AI may not be harvest
-    loop
-      exitwhen i > T
-      call HarvestGold(i,ver_optimal_gold)
-      set i = i + 1
-    endloop
-  else
-    loop
-      //set i = i + 1
-      exitwhen i > T
-      if T != i and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then
-        if gdivw < 3.0 or g < 300 then
-          call HarvestGold(i,ver_optimal_gold)
-        else
-          call HarvestGold(i,ver_optimal_gold - 2)
-        endif
+  call CreateDebugTagLoc("MINES:" + Int2Str(GetMinesOwned()), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
+  loop
+    exitwhen i > T
+    if T != i and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then
+      if gdivw < 3.0 or g < 300 or ((FoodUsed() <= 20 or GetMinesOwned() < 1 or g <= 2500) and hero_built[3]) then
+        call HarvestGold(i,ver_optimal_gold)
+      else
+        call HarvestGold(i,ver_optimal_gold - 2)
       endif
-      set i = i + 1
-    endloop
-  endif
+    endif
+    set i = i + 1
+  endloop
 
   call HarvestWood(0,20)
 endfunction
