@@ -5992,7 +5992,7 @@ function AddExpansion takes unit u, real d returns nothing
   set expansion_dist[expansion_list_length] = d
   set expansion_creeps[expansion_list_length] = GetExpFoeGroup(expansion_creeps[expansion_list_length],u)  // group of the the creeps that guard this mine
   if first_expansion_chosen == false then
-    set first_expansion_chosen = FirstOfGroup(expansion_creeps[expansion_list_length]) != null or CheckExpansionTaken(u) == false
+    set first_expansion_chosen = not CheckExpansionTaken(u)
   endif
   if expansion_dist[expansion_list_length] > 6000 / 512 then
     call GroupAddUnit(far_expansion, expansion_list[expansion_list_length])
@@ -10392,9 +10392,9 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     endif
 
     if SetProduce(afford_qty,old_id[unitid],town) then
-      if town != -1 and unitid == racial_expansion then
-        set town_built[town] = false
-      endif
+      // if town != -1 and unitid == racial_expansion then
+      //   set town_built[town] = false
+      // endif
       if needed3[unitid] == UPGRADED then
         set available_time[unitid] = ai_time + GetUnitBuildTime(old_id[unitid]) / 5 + 1
       endif
@@ -10900,7 +10900,7 @@ function PeonBuilder takes nothing returns nothing
   //  call BuildPeons( peon_1_mine_number * mo + Max(Max(min_lumber_peons, R2I(I2R(max_lumber_peons) / 2)) - shredder_peon_count*sc, 1 )  )
   //endif
 
-  if race_has_ghouls then
+  if race_has_ghouls then  // Ignore shredders
     if mo <= 1 then
       call BuildPeons(min_peon_number_single_mine)
     elseif mo <= 2 then
@@ -11064,19 +11064,23 @@ endfunction
 //============================================================================
 function CheckUnitNewTown takes unit u, integer num returns boolean
   local integer i = 0
+  local integer t = GetTownUnitCount(GetUnitTypeId(u), num, true)
   local location l = GetUnitLoc(u)
-  loop
-    exitwhen i >= num
-    if town_built[i] and own_town_loc[i] != null and DistanceBetweenPoints(l, own_town_loc[i]) < town_radius then
-      call RemoveLocation(l)
-      set l = null
-      return false
-    endif
-    set i = i + 1
-  endloop
-  call RemoveLocation(l)
-  set l = null
-  return true
+  if t <= 0 then
+    loop
+      exitwhen i >= num
+      if town_built[i] and own_town_loc[i] != null and DistanceBetweenPoints(l, own_town_loc[i]) < town_radius then
+        call RemoveLocation(l)
+        set l = null
+        return false
+      endif
+      set i = i + 1
+    endloop
+    call RemoveLocation(l)
+    set l = null
+    return true
+  endif
+  return false
 endfunction
 
 function LocalizeNewTown takes integer num returns boolean
@@ -11149,7 +11153,7 @@ function CheckTownBuilt takes nothing returns nothing
   loop
     exitwhen i >= max_towns
     if not town_built[i] then
-      if (TownCountEx(racial_expansion, true, i) > 0 and not (TownCountEx(racial_expansion, true, 50) > 0)) then
+      if (TownCountEx(racial_expansion, true, i) > 0 then
         set town_built[i] = LocalizeNewTown(i)
       endif
     endif
