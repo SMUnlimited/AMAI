@@ -5755,17 +5755,22 @@ endfunction
 //============================================================================
 // Gets the best location to build a RushCreep building , if use GetCreepCamp , then location cannot control
 //============================================================================
-function BuildBRAtCreep takes nothing returns nothing
+function BuildBRAtCreep takes nothing returns boolean
   local integer i = 0
   local integer s = 0
   local integer ru = 0
   local real distance = 3200
-  local group g = CreateGroup()
+  local group g = null
   local unit u = null
   local unit array ua
   local unit array ub
   local unit array uc
   local location loc = null
+  local boolean success = false
+  if GetRandomInt(1, 100) > 0 then
+    return false
+  endif
+  set g = CreateGroup()
   call GroupEnumUnitsInRange(g,GetLocationX(home_location), GetLocationY(home_location),distance,null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set g = SelectUnittype(g, UNIT_TYPE_FLYING, false)
@@ -5787,7 +5792,7 @@ function BuildBRAtCreep takes nothing returns nothing
   set g = null
   set u = null
   if i == 0 then
-    return
+    return false
   endif
   set ru = i
   loop
@@ -5819,7 +5824,7 @@ function BuildBRAtCreep takes nothing returns nothing
     set i = i + 1
   endloop
   if s == ru or loc == null then  // fail , not found creep
-    return
+    return false
   endif
   set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_rushcreep], loc, 600, false)
   if loc != null and DistanceBetweenPoints(loc, home_location) < distance then  //Prevent some islands/shallow water terrain from creating u on the other side of the map
@@ -5837,12 +5842,13 @@ function BuildBRAtCreep takes nothing returns nothing
         call Sleep(0.01)
       endif
       call RemoveGuardPosition(u)  // no need reset guard , the tree can train
-      call IssuePointOrderByIdLoc(u, old_id[racial_rushcreep], loc)
+      set success = IssuePointOrderByIdLoc(u, old_id[racial_rushcreep], loc)
       set u = null
     endif
   endif
   call RemoveLocation(loc)
   set loc = null
+  return success
 endfunction
 
 //home_location have multiple mine
@@ -6612,7 +6618,7 @@ function CanCreepGuardsSleep takes integer nn returns boolean
     return b
   endif
   if FirstOfGroup(neutral_guards[nn]) == null then
-    return b
+    return true
   endif
   set g = CopyGroup(neutral_guards[nn])
   loop
@@ -10185,10 +10191,12 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
 
    if unitid == racial_rushcreep then
      if CreepsOnMap() and not towerrush then
-       //call BuildBRAtCreep()
+       if BuildBRAtCreep() then
+          set racial_rushcreep = -1 
+          return BUILT_SOME // Success
+       endif
      endif
-     set racial_rushcreep = -1  //just run once
-     //return BUILT_SOME
+     set racial_rushcreep = -1 //just run once
    endif
 
     if buy_type[unitid] > BT_RACIAL_ITEM and buy_type[unitid] <= BT_MERCHANT_ITEM then
@@ -10679,10 +10687,6 @@ function PeonBuilder takes nothing returns nothing
   //else
   //  call BuildPeons( peon_1_mine_number * mo + Max(Max(min_lumber_peons, R2I(I2R(max_lumber_peons) / 2)) - shredder_peon_count*sc, 1 )  )
   //endif
-  
-  if race_uses_mine_expansion then
-    set mo = TownCount(racial_expansion)
-  endif
 
   if race_has_ghouls then // Ignore shredders
     if mo <= 1 then
@@ -11635,7 +11639,7 @@ function BRRush takes nothing returns nothing
     exitwhen u == null or i == 1
     if UnitAlive(u) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsPlayerEnemy(ai_player,GetOwningPlayer(u)) then
       set i = 1  // have other player
-    elseif GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == 'eaom' then
+    elseif GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == old_id[racial_rushcreep] then
       set utemp = u
     endif
     call GroupRemoveUnit(g, u)
@@ -11646,6 +11650,7 @@ function BRRush takes nothing returns nothing
   if i != 1 and GetUnitState(utemp, UNIT_STATE_LIFE) >= GetUnitState(utemp, UNIT_STATE_MAX_LIFE) * 0.65 then
     set buildloc = GetUnitLoc(utemp)
     call RemoveGuardPosition(utemp)
+    call IssueImmediateOrderById(utemp, 851976) // Cancel building order
     call IssueImmediateOrder(utemp, "unroot")  //try unroot
     call Sleep(2.8)  //unroot time
     set loc = GetUnitLoc(rushcreep_target)
@@ -12551,16 +12556,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
       return
     endif
 
-    // ELF BR
-    //
-    if br_rush and rushcreep_target != null and UnitAlive(rushcreep_target) then
-      call Trace("ELF BR Attack")
-      call FormGroupAM(3)
-      call BRRush()  //try BR
-      return
-    endif
-
-
     // defend expansion from other expansion
     //
     if double_expansion_target != null and IsTargetGood(double_expansion_target, 10) then
@@ -12665,10 +12660,21 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
     call Sleep(4 * sleep_multiplier)
     return
   endif
+  
+    // ELF BR
+    //
+
 
   // nothing better to do, so kill a creep camp
   //
   set battle_radius = creep_battle_radius
+  
+  if br_rush and rushcreep_target != null and UnitAlive(rushcreep_target) then
+    call Trace("ELF BR Attack")
+    call FormGroupAM(3)
+    call BRRush()  //try BR
+    return
+  endif
   call Trace("Just gonna be creeping")
   call CreepAttack(own_strength)
 
@@ -13024,7 +13030,9 @@ function universal_attack_sequence takes nothing returns nothing
     set exp_strength = GetExpansionStrength()
   endif
   if rushcreep_target != null and UnitAlive(rushcreep_target) then
-    set br_rush = GetLocationCreepStrength(GetUnitX(rushcreep_target), GetUnitY(rushcreep_target), 510) <= ai_strength * 0.6
+    set br_rush = true //GetLocationCreepStrength(GetUnitX(rushcreep_target), GetUnitY(rushcreep_target), 510) <= ai_strength * 0.6
+  else
+    set br_rush = false
   endif
   set most_threatened_town = Max(most_threatened_town,0)
   if major_hero == null or not UnitAlive(major_hero) or not IsStandardUnit(major_hero) or (IsUnitType(major_hero, UNIT_TYPE_HERO) == false and ver_heroes) then
