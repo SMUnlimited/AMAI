@@ -5749,7 +5749,7 @@ endfunction
 //============================================================================
 // Gets the best location to build a RushCreep building , if use GetCreepCamp , then location cannot control
 //============================================================================
-function BuildBRAtCreep takes nothing returns nothing
+function BuildBRAtCreep takes nothing returns boolean
   local integer i = 0
   local integer s = 0
   local integer ru = 0
@@ -5760,6 +5760,7 @@ function BuildBRAtCreep takes nothing returns nothing
   local unit array ub
   local unit array uc
   local location loc = null
+  local boolean success = false
   call GroupEnumUnitsInRange(g,GetLocationX(home_location), GetLocationY(home_location),distance,null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set g = SelectUnittype(g, UNIT_TYPE_FLYING, false)
@@ -5781,7 +5782,7 @@ function BuildBRAtCreep takes nothing returns nothing
   set g = null
   set u = null
   if i == 0 then
-    return
+    return success
   endif
   set ru = i
   loop
@@ -5813,7 +5814,7 @@ function BuildBRAtCreep takes nothing returns nothing
     set i = i + 1
   endloop
   if s >= ru then  // fail , not found creep
-    return
+    return success
   endif
   set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_rushcreep], loc, 600, false)
   if loc != null and DistanceBetweenPoints(loc, home_location) < distance and GetLocationEnemyStrength(GetLocationX(loc), GetLocationY(loc), 510, false) <= 0 then  //Prevent some islands/shallow water terrain from creating u on the other side of the map or have enemy
@@ -5826,7 +5827,7 @@ function BuildBRAtCreep takes nothing returns nothing
       set u = FirstOfGroup(g)
       call DestroyGroup(g)
       set g = null
-      call IssueTargetOrder(own_town_mine[0], "unload", u)
+      set success = IssueTargetOrder(own_town_mine[0], "unload", u)
       call Sleep(0.01)
     endif
     call RemoveGuardPosition(u)  // no need reset guard , the tree can train
@@ -5835,6 +5836,7 @@ function BuildBRAtCreep takes nothing returns nothing
   endif
   call RemoveLocation(loc)
   set loc = null
+  return success
 endfunction
 
 //home_location have multiple mine
@@ -10352,10 +10354,12 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
 
     if unitid == racial_rushcreep then
       if CreepsOnMap() and not towerrush then
-        call BuildBRAtCreep()
+        if BuildBRAtCreep() then
+          set racial_rushcreep = -1 
+          return BUILT_SOME  // Success
+        endif
       endif
       set racial_rushcreep = -1  //just run once
-      //return BUILT_SOME
     endif
 
     if buy_type[unitid] > BT_RACIAL_ITEM and buy_type[unitid] <= BT_MERCHANT_ITEM then
@@ -11611,7 +11615,7 @@ function SleepInCombatAM takes nothing returns nothing
     call Sleep(sleep)
   endloop
   if (not CaptainIsHome()) then
-    call CaptainGoHome()
+    call ClearCaptainTargets()
   endif
   call Trace("exit SleepInCombat")
 endfunction
@@ -11880,6 +11884,7 @@ function BRRush takes nothing returns nothing
   if i != 1 and GetUnitState(utemp, UNIT_STATE_LIFE) >= GetUnitState(utemp, UNIT_STATE_MAX_LIFE) * 0.65 then
     set l = GetUnitLoc(utemp)
     call RemoveGuardPosition(utemp)
+    call IssueImmediateOrderById(utemp, 851976) // Cancel building order
     call IssueImmediateOrder(utemp, "unroot")  //try unroot
     call Sleep(2.8)  //unroot time
     set loc = GetUnitLoc(rushcreep_target)
@@ -12842,16 +12847,6 @@ if not creeping_only then	// Do the normal attack sequence
     return
   endif
 
-  // ELF BR
-  //
-  if br_rush and rushcreep_target != null and UnitAlive(rushcreep_target) then
-    call Trace("ELF BR Attack")
-    call FormGroupAM(3)
-    call BRRush()  //try BR
-    return
-  endif
-
-
   // defend expansion from other expansion
   //
   if double_expansion_target != null and IsTargetGood(double_expansion_target, 10) then
@@ -12969,9 +12964,19 @@ if no_creep_attack or ai_no_creep then
   return
 endif
 
+// ELF BR
+//
+
 // nothing better to do, so kill a creep camp
 //
 set battle_radius = creep_battle_radius
+
+if br_rush and rushcreep_target != null and UnitAlive(rushcreep_target) then
+  call Trace("ELF BR Attack")
+  call FormGroupAM(3)
+  call BRRush()  //try BR
+  return
+endif
 call Trace("Just gonna be creeping")
 call CreepAttack(own_strength)
 
