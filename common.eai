@@ -4121,15 +4121,9 @@ endfunction
 // (AMAI)	GetMineNearLoc
 //==========================================================================
 function GetMineNearLoc takes unit u, location l, real dist returns unit
-  local group g = null
+  local group g = CreateGroup()
   local integer i = 0
   local real distance = 1500
-  if DistanceBetweenPoints(l , home_location) < 500 then
-    if own_town_mine[0] != null and GetResourceAmount(own_town_mine[0]) > 0 then
-      return own_town_mine[0]
-    endif
-  endif
-  set g = CreateGroup()
   call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
   //set g = SelectByAlive(g, true)
   loop
@@ -5761,17 +5755,22 @@ endfunction
 //============================================================================
 // Gets the best location to build a RushCreep building , if use GetCreepCamp , then location cannot control
 //============================================================================
-function BuildBRAtCreep takes nothing returns nothing
+function BuildBRAtCreep takes nothing returns boolean
   local integer i = 0
   local integer s = 0
   local integer ru = 0
   local real distance = 3200
-  local group g = CreateGroup()
+  local group g = null
   local unit u = null
   local unit array ua
   local unit array ub
   local unit array uc
   local location loc = null
+  local boolean success = false
+  if GetRandomInt(1, 100) > 0 then
+    return false
+  endif
+  set g = CreateGroup()
   call GroupEnumUnitsInRange(g,GetLocationX(home_location), GetLocationY(home_location),distance,null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
   set g = SelectUnittype(g, UNIT_TYPE_FLYING, false)
@@ -5793,7 +5792,7 @@ function BuildBRAtCreep takes nothing returns nothing
   set g = null
   set u = null
   if i == 0 then
-    return
+    return false
   endif
   set ru = i
   loop
@@ -5825,7 +5824,7 @@ function BuildBRAtCreep takes nothing returns nothing
     set i = i + 1
   endloop
   if s == ru or loc == null then  // fail , not found creep
-    return
+    return false
   endif
   set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_rushcreep], loc, 600, false)
   if loc != null and DistanceBetweenPoints(loc, home_location) < distance then  //Prevent some islands/shallow water terrain from creating u on the other side of the map
@@ -5843,12 +5842,13 @@ function BuildBRAtCreep takes nothing returns nothing
         call Sleep(0.01)
       endif
       call RemoveGuardPosition(u)  // no need reset guard , the tree can train
-      call IssuePointOrderByIdLoc(u, old_id[racial_rushcreep], loc)
+      set success = IssuePointOrderByIdLoc(u, old_id[racial_rushcreep], loc)
       set u = null
     endif
   endif
   call RemoveLocation(loc)
   set loc = null
+  return success
 endfunction
 
 //home_location have multiple mine
@@ -6009,7 +6009,7 @@ function AddExpansion takes unit u, real d returns nothing
   set expansion_dist[expansion_list_length] = d
   set expansion_creeps[expansion_list_length] = GetExpFoeGroup(expansion_creeps[expansion_list_length],u)  // group of the the creeps that guard this mine
   if first_expansion_chosen == false then
-    set first_expansion_chosen = (expansion_creeps[expansion_list_length] != null) or (CheckExpansionTaken(u) == false)
+    set first_expansion_chosen = not CheckExpansionTaken(u)
   endif
   set expansion_list_length = expansion_list_length + 1
 endfunction
@@ -6345,7 +6345,7 @@ if c_enemy_user_total == 1 then
   set builder[10] = temphumanu
   set rushedplayer = nearhumanplayer
   set mindistance = humandistance
-else
+elseif c_enemy_user_total != 0 then
   set builder[10] = tempu
   set rushedplayer = nearplayer
 endif
@@ -7040,7 +7040,7 @@ function GetHealer takes unit u returns unit
     set u = FirstOfGroup(healer_group)
     exitwhen u == null
     set id = GetHealerId(GetUnitTypeId(u))
-    if id != -1 and not IsUnitLoaded(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) then
+    if id != -1 and not IsUnitLoaded(u) and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) then
       return u
     endif
     call GroupRemoveUnit(healer_group, u)
@@ -7947,6 +7947,7 @@ function InitCheckHarvest takes nothing returns nothing
   set g = null
   call HarvestGold(0,3)
   call HarvestWood(0,2)  // Early triggering Harvest , convenient HARVEST_CHECK job check peon
+  call Trace("first town mine mode :" + Int2Str(first_town_mine))
 endfunction
 
 //===========================================================================
@@ -7955,6 +7956,7 @@ function InitTownBuilt takes nothing returns nothing
   loop
     exitwhen i >= max_towns
     set town_built[i] = false
+    set own_town_loc[i] = null
     set i = i + 1
   endloop
   set town_built[0] = true
@@ -10189,10 +10191,12 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
 
    if unitid == racial_rushcreep then
      if CreepsOnMap() and not towerrush then
-       //call BuildBRAtCreep()
+       if BuildBRAtCreep() then
+          set racial_rushcreep = -1 
+          return BUILT_SOME // Success
+       endif
      endif
-     set racial_rushcreep = -1  //just run once
-     //return BUILT_SOME
+     set racial_rushcreep = -1 //just run once
    endif
 
     if buy_type[unitid] > BT_RACIAL_ITEM and buy_type[unitid] <= BT_MERCHANT_ITEM then
@@ -10229,9 +10233,6 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     endif
 
     if SetProduce(afford_qty,old_id[unitid],town) then
-      if town != -1 and unitid == racial_expansion then
-        set town_built[town] = false
-      endif
       if needed3[unitid] == UPGRADED then
         set available_time[unitid] = ai_time + GetUnitBuildTime(old_id[unitid]) / 5 + 1
       endif
@@ -10649,9 +10650,9 @@ function ShredderBuilder takes nothing returns nothing
   local real gdivw = g / w
   if neutral_available[NEUTRAL_OBSERVATORY] and gdivw > 4 and g - w > 500 and w < 550 and g > GetUnitGoldCost2(neutral_shredder) and w > GetUnitWoodCost2(neutral_shredder) and ai_time - available_time[neutral_shredder] >= -1 then
     if (race_has_ghouls) then
-      call BuildUnit(1, neutral_shredder, ghoul_prio - 4)
+      call BuildUnit(1, neutral_shredder, Max(ghoul_prio - 4,1))
     else
-      call BuildUnit(1, neutral_shredder, peon_prio - 10)
+      call BuildUnit(1, neutral_shredder, Max(peon_prio - 10,1))
     endif
   endif
 endfunction
@@ -10673,12 +10674,11 @@ endfunction
 //============================================================================
 function PeonBuilder takes nothing returns nothing
   local integer mo = GetMinesHarvested()
-  local integer sc = TownCount(neutral_shredder)
+  local integer sc = 0
   local real w = GetWood()
-  if race_uses_shredder then
+  if race_uses_shredder and neutral_shredder != 0 then
+    set sc = TownCount(neutral_shredder)
     call ShredderBuilder()
-  else
-    set sc = 0
   endif
   //if w <= maximum_peon_wood then 
   //  call BuildPeons( peon_1_mine_number * mo + Max(max_lumber_peons - shredder_peon_count*sc, 1 )  )  // number of peons per mine + wood peons
@@ -10688,7 +10688,7 @@ function PeonBuilder takes nothing returns nothing
   //  call BuildPeons( peon_1_mine_number * mo + Max(Max(min_lumber_peons, R2I(I2R(max_lumber_peons) / 2)) - shredder_peon_count*sc, 1 )  )
   //endif
 
-  if race_has_ghouls then
+  if race_has_ghouls then // Ignore shredders
     if mo <= 1 then
       call BuildPeons(min_peon_number_single_mine)
     elseif mo <= 2 then
@@ -10861,7 +10861,7 @@ function CheckUnitNewTown takes unit u, integer num returns boolean
   local location l = GetUnitLoc(u)
   loop
     exitwhen i >= num
-    if town_built[i] and own_town_loc[i] != null and DistanceBetweenPoints(l, own_town_loc[i]) < town_radius then
+    if town_built[i] and own_town_loc[i] != null and DistanceBetweenPoints(l, own_town_loc[i]) < town_radius and GetTownUnitCount(GetUnitTypeId(u), num, true) > 0 then
       call RemoveLocation(l)
       set l = null
       return false
@@ -10884,7 +10884,7 @@ function LocalizeOldTown takes integer num returns boolean
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    exitwhen IsUnitType(u, UNIT_TYPE_STRUCTURE)
+    exitwhen IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetTownUnitCount(GetUnitTypeId(u), num, true) > 0
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
@@ -10944,7 +10944,7 @@ function CheckTownBuilt takes nothing returns nothing
   loop
     exitwhen i >= max_towns
     if not town_built[i] then
-      if (TownCountEx(racial_expansion, true, i) > 0 and not (TownCountEx(racial_expansion, true, 50) > 0)) then
+      if (TownCountEx(racial_expansion, true, i) > 0) then
         set town_built[i] = LocalizeNewTown(i)
       endif
     else
@@ -11639,7 +11639,7 @@ function BRRush takes nothing returns nothing
     exitwhen u == null or i == 1
     if UnitAlive(u) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsPlayerEnemy(ai_player,GetOwningPlayer(u)) then
       set i = 1  // have other player
-    elseif GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == 'eaom' then
+    elseif GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == old_id[racial_rushcreep] then
       set utemp = u
     endif
     call GroupRemoveUnit(g, u)
@@ -11650,6 +11650,7 @@ function BRRush takes nothing returns nothing
   if i != 1 and GetUnitState(utemp, UNIT_STATE_LIFE) >= GetUnitState(utemp, UNIT_STATE_MAX_LIFE) * 0.65 then
     set buildloc = GetUnitLoc(utemp)
     call RemoveGuardPosition(utemp)
+    call IssueImmediateOrderById(utemp, 851976) // Cancel building order
     call IssueImmediateOrder(utemp, "unroot")  //try unroot
     call Sleep(2.8)  //unroot time
     set loc = GetUnitLoc(rushcreep_target)
@@ -12555,16 +12556,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
       return
     endif
 
-    // ELF BR
-    //
-    if br_rush and rushcreep_target != null and UnitAlive(rushcreep_target) then
-      call Trace("ELF BR Attack")
-      call FormGroupAM(3)
-      call BRRush()  //try BR
-      return
-    endif
-
-
     // defend expansion from other expansion
     //
     if double_expansion_target != null and IsTargetGood(double_expansion_target, 10) then
@@ -12669,10 +12660,21 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
     call Sleep(4 * sleep_multiplier)
     return
   endif
+  
+    // ELF BR
+    //
+
 
   // nothing better to do, so kill a creep camp
   //
   set battle_radius = creep_battle_radius
+  
+  if br_rush and rushcreep_target != null and UnitAlive(rushcreep_target) then
+    call Trace("ELF BR Attack")
+    call FormGroupAM(3)
+    call BRRush()  //try BR
+    return
+  endif
   call Trace("Just gonna be creeping")
   call CreepAttack(own_strength)
 
@@ -12943,10 +12945,10 @@ function HealArmy takes nothing returns nothing
   local integer sleepFrequency = 0
   loop
     set hs = GetArmyHealthState()
-    set mass_healed = false
     exitwhen (sleepFrequency >= 3 and hs > healthTrigger) // Tried to heal but overall still strong so exit loop
     exitwhen (urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger)
     exitwhen player_defeated or town_threatened or ver_heroes == false
+    set mass_healed = false
     call Trace("function HealArmy: Army is badly damaged and needs healing " + Real2Str(hs))
     set build_emergency_healing_item = 0
     set mh_item = GetMassHealingItem()
@@ -13028,7 +13030,9 @@ function universal_attack_sequence takes nothing returns nothing
     set exp_strength = GetExpansionStrength()
   endif
   if rushcreep_target != null and UnitAlive(rushcreep_target) then
-    set br_rush = GetLocationCreepStrength(GetUnitX(rushcreep_target), GetUnitY(rushcreep_target), 510) <= ai_strength * 0.6
+    set br_rush = true //GetLocationCreepStrength(GetUnitX(rushcreep_target), GetUnitY(rushcreep_target), 510) <= ai_strength * 0.6
+  else
+    set br_rush = false
   endif
   set most_threatened_town = Max(most_threatened_town,0)
   if major_hero == null or not UnitAlive(major_hero) or not IsStandardUnit(major_hero) or (IsUnitType(major_hero, UNIT_TYPE_HERO) == false and ver_heroes) then
@@ -13136,26 +13140,18 @@ function universal_peon_assignment takes nothing returns nothing
   call HarvestWood(0,swh)
 
   set T = Max(T + 3,TownCountDone(racial_expansion))
-  if FoodUsed() <= 20 and FoodCap() >= 90 then  // later stages of the game, AI may not be harvest
-    loop
-      exitwhen i > T
-      call HarvestGold(i,ver_optimal_gold)
-      set i = i + 1
-    endloop
-  else
-    loop
-      //set i = i + 1
-      exitwhen i > T
-      if T != i and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then
-        if gdivw < 3.0 or g < 300 then
-          call HarvestGold(i,ver_optimal_gold)
-        else
-          call HarvestGold(i,ver_optimal_gold - 2)
-        endif
+  call CreateDebugTagLoc("MINES:" + Int2Str(GetMinesOwned()), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
+  loop
+    exitwhen i > T
+    if T != i and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then
+      if gdivw < 3.0 or g < 300 or ((FoodUsed() <= 20 or GetMinesOwned() < 1 or g <= 2500) and hero_built[3]) then
+        call HarvestGold(i,ver_optimal_gold)
+      else
+        call HarvestGold(i,ver_optimal_gold - 2)
       endif
-      set i = i + 1
-    endloop
-  endif
+    endif
+    set i = i + 1
+  endloop
 
   call HarvestWood(0,20)
 endfunction

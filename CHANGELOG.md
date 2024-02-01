@@ -20,8 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issue where elf would not ever build ancient of war promptly.
 - Units sent home for healing from a water expansion can now be picked up by zeppelins.
 - Fixed issue where undead gold mines were never fully detected as mines correctly for various logic.
-- (DevTools) Fixed the optimize all script and the makeAll and optimizeAll scripts will pause between versions.
+- Hardened the town checks to ensure more likely to match the internal blizzard AI town.
+- Fixed picked healer was not alive. (jzy-chitong56)
+- Some mining irregularity fixes.
+- (Classic) Fixed game start crash with AMAI vs AI. (jzy-chitong56)
 - (Classic) Fixed some TFT settings not in sync with REFORGED.
+- (DevTools) Fixed the optimize all script and the makeAll and optimizeAll scripts will pause between versions.
 
 
 ## [3.3.2] - 2024-01-11
