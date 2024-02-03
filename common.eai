@@ -5947,9 +5947,9 @@ function CheckExpansionTaken takes unit expa returns boolean
       call DestroyGroup(g)
       set g = null
       set u = null
-      if not IsUnitHidden(u) then
+      //if not IsUnitHidden(u) then
         //call GroupRemoveUnit(far_expansion, expa)
-      endif
+      //endif
       return true
     elseif GetOwningPlayer(u) != ai_player and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then		// Creeps dosn't mean expansion is taken
       call DestroyGroup(g)
@@ -6009,7 +6009,10 @@ function AddExpansion takes unit u, real d returns nothing
   set expansion_dist[expansion_list_length] = d
   set expansion_creeps[expansion_list_length] = GetExpFoeGroup(expansion_creeps[expansion_list_length],u)  // group of the the creeps that guard this mine
   if first_expansion_chosen == false then
-    set first_expansion_chosen = not CheckExpansionTaken(u)
+    set first_expansion_chosen = d >= 2000 and not CheckExpansionTaken(u)
+  endif
+  if d > 6000 / 512 then
+    call GroupAddUnit(far_expansion, u)
   endif
   set expansion_list_length = expansion_list_length + 1
 endfunction
@@ -6541,9 +6544,6 @@ function ChooseExpansion takes nothing returns nothing
     exitwhen i >= expansion_list_length
     if GetResourceAmount(expansion_list[i]) > gold and not CheckExpansionTaken(expansion_list[i]) and DistanceBetweenPoints_kd(home_location,GetUnitLoc(expansion_list[i])) > 1500 then
       call add_exp(expansion_list[i], expansion_dist[i], expansion_ancient[i], expansion_creeps[i])
-      if (expansion_dist[i] > 6000/512 ) then
-        call GroupAddUnit(far_expansion, expansion_list[i])
-      endif
     endif
     set i = i + 1
   endloop
@@ -10739,7 +10739,10 @@ local boolean rebuild = false
 local unit u = null
 local boolean upkeepboost = false
 
-if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
+if not first_expansion_chosen then
+  return
+endif
+if current_expansion == null or CheckExpansionTaken(current_expansion) then
   call ChooseExpansion()
   if current_expansion == null then
     call Trace("ExpansionBuilder: No mine available")
