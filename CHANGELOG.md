@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Changed
 - Require more than 1 zepplin before attempting water expansions which should help fix some transporting issues.
 - Optimized double expansion detection reducing total unit loops.
+- Optimized first expansion calculation (jzy-chitong56)
 - (DevTools) Optimize.bat script is now called OptimizeAll.bat.
 
 ### Fixed
@@ -23,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Hardened the town checks to ensure more likely to match the internal blizzard AI town.
 - Fixed picked healer was not alive. (jzy-chitong56)
 - Some mining irregularity fixes.
+- Fix water expansion distance not calculated correctly. (jzy-chitong56)
 - (Classic) Fixed game start crash with AMAI vs AI. (jzy-chitong56)
 - (Classic) Fixed some TFT settings not in sync with REFORGED.
 - (DevTools) Fixed the optimize all script and the makeAll and optimizeAll scripts will pause between versions.
