@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Require more than 1 zepplin before attempting water expansions which should help fix some transporting issues.
 - Optimized double expansion detection reducing total unit loops.
 - Optimized first expansion calculation (jzy-chitong56)
+- AMAI does a better job collecting any items after creeping.
 - (DevTools) Optimize.bat script is now called OptimizeAll.bat.
 
 ### Fixed
