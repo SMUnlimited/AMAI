@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed picked healer was not alive. (jzy-chitong56)
 - Some mining irregularity fixes.
 - Fix water expansion distance not calculated correctly. (jzy-chitong56)
+- In certain languages if translated chat messages with variable placeholders cannot be parsed at least still return the message rather than complete nonsense.
 - (Classic) Fixed game start crash with AMAI vs AI. (jzy-chitong56)
 - (Classic) Fixed some TFT settings not in sync with REFORGED.
 - (DevTools) Fixed the optimize all script and the makeAll and optimizeAll scripts will pause between versions.
