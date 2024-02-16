@@ -2023,6 +2023,12 @@ function ApplyChatVars takes string s_in returns string
   loop
     exitwhen i >= l
     set c = GetChar(s_in, i)
+    if c == "" then
+      set key = null
+      set wf = null
+      set c = null
+      return s_in  // Means a character not in the StandardCharTable.txt so return original text as we cannot perform placeholder replacement.
+    endif
     if c == "}" then
       set is_cond = false
     elseif is_cond then
@@ -5954,7 +5960,7 @@ function CheckExpansionTaken takes unit expa returns boolean
 endfunction
 
 // Prevent some map creeps too far away
-function CheckCreepsByRadius takes group g, unit u, real n returns group
+function CheckCreepsByRadius takes group g , unit u , real n returns group
   call GroupClear(g)
   call GroupEnumUnitsInRange(g, GetUnitX(u), GetUnitY(u), n, null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
@@ -5963,7 +5969,7 @@ function CheckCreepsByRadius takes group g, unit u, real n returns group
 endfunction
 
 //  Gets the groups of creeps guarding the specified mine (or other structure)
-function GetExpFoeGroup takes group g, unit mine returns group
+function GetExpFoeGroup takes group g , unit mine returns group
   set g = CreateGroup()
   call GroupEnumUnitsInRange(g, GetUnitX(mine), GetUnitY(mine), expansion_radius, null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
@@ -5974,7 +5980,7 @@ function GetExpFoeGroup takes group g, unit mine returns group
   return g
 endfunction
 
-function GetCreepGuardGroup takes group g, integer nn returns group
+function GetCreepGuardGroup takes group g , integer nn returns group
   set g = CreateGroup()
   if nearest_neutral[nn] != null then
     call GroupEnumUnitsInRange(g, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), 750, null)
@@ -11591,14 +11597,29 @@ function SleepInCombatAM takes nothing returns nothing
   local integer count = 0
   local real sleep = 0.1
   //local integer attack_length_counter = 0
+  call Trace("SleepInCombat Collect Items")
+  loop
+    exitwhen count >= (8.0 / sleep) or town_threatened
+    if (lastcaptainx != 0 and lastcaptainy != 0 and not CaptainIsEmpty() and ((CaptainAtGoal() and not CaptainInCombat(true)) or CaptainRetreating() or CaptainIsHome())) then
+      call TeleportCaptain(lastcaptainx, lastcaptainy)  // Keep units around killed unit/target to help collect any loot
+      call AttackMoveXY(R2I(lastcaptainx), R2I(lastcaptainy))
+    endif
+    //if (lastcaptainx != 0 and lastcaptainy != 0 and not CaptainIsEmpty() and (CaptainAtGoal() or CaptainIsHome())) and not CaptainInCombat(true) then
+    //  call CreateDebugTagLoc("SleepInCombat", 10, lastcaptainx, lastcaptainy, 1.00, 0.80)
+    //  call AttackMoveXY(R2I(lastcaptainx), R2I(lastcaptainy)) // Keep units around killed unit/target to help collect any loot
+    //endif
+    set count = count + 1
+    call Sleep(sleep)
+  endloop
   call Trace("SleepInCombat")
+  set count = 0
   loop
     exitwhen town_threatened
     exitwhen break_attack
     exitwhen not CaptainInCombat(true)  // goal is cleared
     exitwhen CaptainIsEmpty()// duh
     exitwhen town_threat_break
-    exitwhen R2I(count) >= 900 // Took longer than 15 mins to attack something is wrong
+    exitwhen R2I(count) >= 900 // Took longer than 15 mins to stop lingering something is wrong
     //loop
       //exitwhen captain_flee and CaptainRetreating()
       //exitwhen isfleeing and CaptainRetreating()
@@ -11613,19 +11634,6 @@ function SleepInCombatAM takes nothing returns nothing
     //call Sleep(1)
     set count = count + 1
     call Sleep(1)
-  endloop
-  set count = 0
-  loop
-    exitwhen count >= (8.0 / sleep) or town_threatened
-    if (lastcaptainx != 0 and lastcaptainy != 0 and not CaptainIsEmpty()) then
-      call TeleportCaptain(lastcaptainx, lastcaptainy)
-    endif
-    //if (lastcaptainx != 0 and lastcaptainy != 0 and not CaptainIsEmpty() and (CaptainAtGoal() or CaptainIsHome())) and not CaptainInCombat(true) then
-    //  call CreateDebugTagLoc("SleepInCombat", 10, lastcaptainx, lastcaptainy, 1.00, 0.80)
-    //  call AttackMoveXY(R2I(lastcaptainx), R2I(lastcaptainy)) // Keep units around killed unit/target to help collect any loot
-    //endif
-    set count = count + 1
-    call Sleep(sleep)
   endloop
   if (not CaptainIsHome()) then
     call ClearCaptainTargets()
@@ -11727,6 +11735,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     if (c_ally_total > 0 and GetAllianceTarget() != null) then // If alliance target exists this overrides hardcoded attack controls regardless of unit you pass, so reconfigure attack to be aware of this
       set target = GetAllianceTarget()
     endif
+    exitwhen target == null // Fail safe
     if IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player)) then
       set g = CreateGroup()
       call GroupEnumUnitsInRange(g,GetUnitX(target), GetUnitY(target),battle_radius,null)
@@ -11741,8 +11750,8 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       endif
       set target = FirstOfGroup(g)
       call DestroyGroup(g)
-      exitwhen target == null
     endif
+    exitwhen target == null
     //if not iscreeping then
       //	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationEnemyStrength(unitx, unity, battle_radius, true) <= 0 // enemies are dead and target dead
     //else
@@ -11805,11 +11814,11 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       endif
       if CaptainInCombat(true) and combat_length_counter > attack_reform_length * 3 then
         set combat_length_counter = 0
-        call FormGroupAM(2)
+        call FormGroupAM(0)
       elseif not CaptainInCombat(true) and attack_length_counter > attack_reform_length then
         set attack_length_counter = 0
         set combat_length_counter = 0
-        call FormGroupAM(2)
+        call FormGroupAM(0)
       endif
     endif
   endloop
