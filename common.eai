@@ -626,7 +626,7 @@ globals
 
     boolean array neutral_available
     unit array nearest_neutral
-    group array neutral_guards
+
     boolean array neutral_guarded
     integer array neutral_enemy
     boolean array neutral_ordered
@@ -874,6 +874,7 @@ globals
 	constant integer USE_SPECIAL_RACES = 5
   constant integer PROFILE_SELECTION = 6
   constant integer CHAT_LOCK = 7
+  constant integer NEUTRAL_GUARDS = 7
 
   gamecache amaiCache = InitGameCache("AMAI_AI.w3v")
   constant integer PROFILE_USED = 0
@@ -5991,21 +5992,27 @@ function GetExpFoeGroup takes group g , unit mine returns group
   return g
 endfunction
 
-function GetCreepGuardGroup takes group g , integer nn returns group
-  if g != null then
-    call DestroyGroup(g)
-  endif
-  set g = CreateGroup()
+function GetCreepGuardGroup takes integer nn returns nothing
+  local integer i = 0
+  local unit u = null
+  local group g = null
   if nearest_neutral[nn] == null then
-    return g
+    return
   endif
-  call GroupEnumUnitsInRange(g, GetUnitX(nearest_neutral[nn]), GetUnitY(nearest_neutral[nn]), 750, null)
-  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
-  set g = SelectByAlive(g, true)
+  
+  set g = CreateGroup()
+  set g = CheckCreepsByRadius(g, nearest_neutral[nn], 750)
   if FirstOfGroup(g) == null and nn != NEUTRAL_TAVERN then
     set g = CheckCreepsByRadius(g, nearest_neutral[nn], 750 * 1.5)
   endif
-  return g
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    set i = i + 1
+    call SaveUnitHandle(com, NEUTRAL_GUARDS, i, u)
+    call GroupRemoveUnit(g, u)
+  endloop
+  call SaveInteger(com, NEUTRAL_GUARDS, 0, i) // Store size in first element
 endfunction
 
 //==============================================================
@@ -6595,49 +6602,45 @@ function GetExpFoe takes unit u returns unit
   return u
 endfunction
 
-function GetNeutralGuard takes integer nn returns boolean
-  local group g = null
+function GetNeutralGuard takes integer nn returns nothing
   local location l = null
   local unit u = null
+  local unit nearunit = null
   local boolean b = false
-  if nearest_neutral[nn] == null or FirstOfGroup(neutral_guards[nn]) == null then
-    return b
+  local integer i = 0
+  local real nearest = 10000000
+  local real tempnear = 0
+  local boolean can_sleep = true
+  if nearest_neutral[nn] == null or LoadInteger(com, NEUTRAL_GUARDS, 0) == 0 then
+    set neutral_guarded[nn] = false
+    set neutral_night_buy[nn] = true
+    return
   endif
-  set g = CopyGroup(neutral_guards[nn])
-  set g = SelectByAlive(g, true)
   set l = GetUnitLoc(nearest_neutral[nn])
-  set u = GetNearestOfGroup(u, g, l)
+  loop
+    exitwhen i > LoadInteger(com, NEUTRAL_GUARDS, 0)
+    set i = i + 1
+    set u = LoadUnitHandle(com, NEUTRAL_GUARDS, i)
+    if u != null then
+      set tempnear = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
+      if UnitAlive(u) then
+        if UnitCanSleep(u) then
+          set can_sleep = false
+        endif
+        if tempnear < nearest then
+          set nearunit = u
+          set nearest = tempnear
+        endif
+      endif
+    endif
+  endloop
   call RemoveLocation(l)
   set l = null
-  call DestroyGroup(g)
-  set g = null
-  set b = (u != null)
+  set neutral_guarded[nn] = (nearunit != null)
+  set neutral_night_buy[nn] = can_sleep
   set u = null
-  return b
-endfunction
-
-function CanCreepGuardsSleep takes integer nn returns boolean
-  local group g = null
-  local unit u = null
-  local boolean b = false
-  if nearest_neutral[nn] == null then
-    return b
-  endif
-  if FirstOfGroup(neutral_guards[nn]) == null then
-    return true
-  endif
-  set g = CopyGroup(neutral_guards[nn])
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    exitwhen not UnitCanSleep(u)
-    call GroupRemoveUnit(g, u)
-  endloop
-  call DestroyGroup(g)
-  set g = null
-  set b = (u == null)
-  set u = null
-  return b
+  set nearunit = null
+  return
 endfunction
 
 //============================================================================
@@ -7306,9 +7309,8 @@ function CheckNeutral takes integer nn returns nothing
       set neutral_available[nn] = false
       return
     endif
-    set neutral_guards[nn] = GetCreepGuardGroup(neutral_guards[nn],nn)
-    set neutral_guarded[nn] = GetNeutralGuard(nn)
-    set neutral_night_buy[nn] = CanCreepGuardsSleep(nn)
+    call GetCreepGuardGroup(nn)
+    call GetNeutralGuard(nn)
     // set neutral_night_buy[nn] = not no_sleep
 
     call Trace("Neutral Pathing ID done: " + Int2Str(nn)) 
@@ -7483,10 +7485,9 @@ if neutral_available[nn] == true then
   if nearest_neutral[nn] == null then
     return
   endif
-  set neutral_guards[nn] = GetCreepGuardGroup(neutral_guards[nn],nn)
+  call GetCreepGuardGroup(nn)
 //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "finished check")
-  set neutral_guarded[nn] = GetNeutralGuard(nn)
-  set neutral_night_buy[nn] = CanCreepGuardsSleep(nn)
+  call GetNeutralGuard(nn)
   if neutral_guarded[nn] then
     call TQAddJob(30 * sleep_multiplier, NEUTRAL_GUARDED, nn)
     if nn == NEUTRAL_TAVERN and hero[1] != 0 and buy_type[hero[1]] == BT_NEUTRAL_HERO then  //guarantee to train Ownrace hero at the first time
