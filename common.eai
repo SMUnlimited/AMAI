@@ -989,14 +989,14 @@ globals
     unit array expansion_list
     location array expansion_ancient
     real array expansion_dist
-    group array expansion_creeps
+    hashtable expansion_creeps = InitHashtable()
     integer expansion_list_length = 0
     
     unit array water_expansion_list
     integer water_expansion_list_length = 0
     real array water_expansion_dist
     group water_expansion = CreateGroup()
-    group array water_expansion_creeps
+    hashtable water_expansion_creeps = InitHashtable()
     group far_expansion = CreateGroup()
 
     boolean active_expansion = false
@@ -1011,9 +1011,11 @@ globals
     unit array exp_unit
     real array exp_dist
     location array exp_ancient
-    group array exp_creeps
+    integer array exp_creeps
+    boolean array exp_iswater
 
-    group current_expansion_creeps = null
+    integer current_expansion_creeps = 0
+    boolean current_expansion_iswater = false
     unit current_expansion = null
     boolean first_expansion_chosen = false
     unit not_taken_expansion = null
@@ -5982,10 +5984,7 @@ endfunction
 
 //  Gets the groups of creeps guarding the specified mine (or other structure)
 function GetExpFoeGroup takes group g , unit mine returns group
-  set g = CreateGroup()
-  call GroupEnumUnitsInRange(g, GetUnitX(mine), GetUnitY(mine), expansion_radius, null)
-  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
-  set g = SelectByAlive(g, true)
+  set g = CheckCreepsByRadius(g, mine, expansion_radius)
   if FirstOfGroup(g) == null then
     set g = CheckCreepsByRadius(g, mine, expansion_radius * 1.5)
   endif
@@ -6017,10 +6016,23 @@ endfunction
 
 //==============================================================
 function AddExpansion takes unit u, real d returns nothing
-
+  local group g = CreateGroup()
+  local unit creep = null
+  local integer i = 0
   set expansion_list[expansion_list_length] = u
   set expansion_dist[expansion_list_length] = d
-  set expansion_creeps[expansion_list_length] = GetExpFoeGroup(expansion_creeps[expansion_list_length],u)  // group of the the creeps that guard this mine
+  set g = GetExpFoeGroup(g,u)  // group of the the creeps that guard this mine
+  loop
+    set creep = FirstOfGroup(g)
+    exitwhen creep == null
+    set i = i + 1
+    call SaveUnitHandle(expansion_creeps, expansion_list_length, i, creep)
+    call GroupRemoveUnit(g, creep)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set creep = null
+  call SaveInteger(com, expansion_list_length, 0, i) // Store size in first element
   if first_expansion_chosen == false then
     set first_expansion_chosen = d > front_base_distance and not CheckExpansionTaken(u)
   endif
@@ -6032,10 +6044,24 @@ endfunction
 
 //==============================================================
 function AddWaterExpansion takes unit u, real d returns nothing
+  local group g = CreateGroup()
+  local unit creep = null
+  local integer i = 0
   set water_expansion_list[water_expansion_list_length] = u
   set water_expansion_dist[water_expansion_list_length] = d
   call GroupAddUnit(water_expansion, u)
-  set water_expansion_creeps[water_expansion_list_length] = GetExpFoeGroup(water_expansion_creeps[water_expansion_list_length],u)  // group of the the creeps that guard this mine
+  set g = GetExpFoeGroup(g,u)  // group of the the creeps that guard this mine
+  loop
+    set creep = FirstOfGroup(g)
+    exitwhen creep == null
+    set i = i + 1
+    call SaveUnitHandle(water_expansion_creeps, water_expansion_list_length, i, creep)
+    call GroupRemoveUnit(g, creep)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set creep = null
+  call SaveInteger(com, water_expansion_list_length, 0, i) // Store size in first element
   set water_expansion_list_length = water_expansion_list_length + 1
 endfunction
 
@@ -6288,11 +6314,12 @@ function remove_exp takes integer h returns nothing
 endfunction
 
 //============================================================================
-function add_exp takes unit u, real dist, location ancient, group creeps returns nothing
+function add_exp takes unit u, real dist, location ancient, integer creeps, boolean iswater returns nothing
   set exp_unit[exp_number] = u
   set exp_dist[exp_number] = dist
   set exp_ancient[exp_number] = ancient
   set exp_creeps[exp_number] = creeps
+  set exp_iswater[exp_number] = iswater
   set exp_number = exp_number + 1
 endfunction
 
@@ -6556,7 +6583,7 @@ function ChooseExpansion takes nothing returns nothing
   loop
     exitwhen i >= expansion_list_length
     if GetResourceAmount(expansion_list[i]) > gold and not CheckExpansionTaken(expansion_list[i]) and DistanceBetweenPoints_kd(home_location,GetUnitLoc(expansion_list[i])) > 1500 then
-      call add_exp(expansion_list[i], expansion_dist[i], expansion_ancient[i], expansion_creeps[i])
+      call add_exp(expansion_list[i], expansion_dist[i], expansion_ancient[i], i, false)
     endif
     set i = i + 1
   endloop
@@ -6565,7 +6592,7 @@ function ChooseExpansion takes nothing returns nothing
     loop
       exitwhen i >= water_expansion_list_length
       if GetResourceAmount(water_expansion_list[i]) > gold and not CheckExpansionTaken(water_expansion_list[i]) then
-        call add_exp(water_expansion_list[i], water_expansion_dist[i] + 10, null, water_expansion_creeps[i])
+        call add_exp(water_expansion_list[i], water_expansion_dist[i] + 5120, null, i, true)
       endif
       set i = i + 1
     endloop
@@ -6583,23 +6610,45 @@ function ChooseExpansion takes nothing returns nothing
     set current_expansion = exp_unit[exp_chosen]
     //set ancient_exp_loc = exp_ancient[exp_chosen]
     set current_expansion_creeps = exp_creeps[exp_chosen]
+    set current_expansion_iswater = exp_iswater[exp_chosen]
 //    call PingMinimap(GetUnitX(current_expansion), GetUnitY(current_expansion), 20)
   endif
 endfunction
 
 //============================================================================
-function GetExpFoe takes unit u returns unit
-  local group g = CopyGroup(current_expansion_creeps)
-  local location l = GetUnitLoc(current_expansion)
-  //call Trace("Copy group")
-  set g = SelectByAlive(g, true)
-  set u = GetNearestOfGroup(u, g, l)
+function GetExpFoe takes unit nearunit returns unit
+  local location l = null
+  local hashtable t = expansion_creeps
+  local real nearest = 10000000
+  local real tempnear = 0
+  local integer i = 0
+  local unit u = null
+  if current_expansion_iswater then
+    set t = water_expansion_creeps
+  endif
+  if LoadInteger(t, current_expansion_creeps , 0) == 0 then
+    return null
+  endif
+  set l = GetUnitLoc(current_expansion)
+  loop
+    exitwhen i > LoadInteger(t, current_expansion_creeps, 0)
+    set i = i + 1
+    set u = LoadUnitHandle(t, current_expansion_creeps, i)
+    if u != null then
+      set tempnear = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
+      if UnitAlive(u) then
+        if tempnear < nearest then
+          set nearunit = u
+          set nearest = tempnear
+        endif
+      endif
+    endif
+  endloop
   call RemoveLocation(l)
   set l = null
-  call DestroyGroup(g)
-  set g = null
+  set t = null
   //call Trace("Have a foe")
-  return u
+  return nearunit
 endfunction
 
 function GetNeutralGuard takes integer nn returns nothing
@@ -6624,7 +6673,7 @@ function GetNeutralGuard takes integer nn returns nothing
     if u != null then
       set tempnear = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
       if UnitAlive(u) then
-        if UnitCanSleep(u) then
+        if not UnitCanSleep(u) then
           set can_sleep = false
         endif
         if tempnear < nearest then
