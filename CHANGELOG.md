@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Optimized first expansion calculation (jzy-chitong56)
 - AMAI does a better job collecting any items after creeping.
 - (DevTools) Optimize.bat script is now called OptimizeAll.bat.
+- Added build order so that Elf will now sometimes buy the moonstone and Humans will now buy lesser clarity potions.
 
 ### Fixed
 - Prevent desyncs with zoom function.
@@ -27,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Some mining irregularity fixes.
 - Fix water expansion distance not calculated correctly. (jzy-chitong56)
 - In certain languages if translated chat messages with variable placeholders cannot be parsed at least still return the message rather than complete nonsense.
+- Fixed an issue where only a specific creep needs to be killed for AMAI to think mines and neutral buildings were unguarded going forwards.
 - (Classic) Fixed game start crash with AMAI vs AI. (jzy-chitong56)
 - (Classic) Fixed some TFT settings not in sync with REFORGED.
 - (DevTools) Fixed the optimize all script and the makeAll and optimizeAll scripts will pause between versions.
