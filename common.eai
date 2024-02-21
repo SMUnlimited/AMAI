@@ -5255,8 +5255,12 @@ function GetPlayerAntiAirStrength takes player p returns real
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and not IsUnitHidden(u) then
-      set sum = sum + GetUnitStrength(u)
+    if IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) and UnitAlive(u) and not IsUnitHidden(u) then
+      if IsUnitType(u, UNIT_TYPE_HERO) then
+        set sum = sum + GetHeroStrength(u)
+      elseif not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+        set sum = sum + GetUnitStrength(u)
+      endif
     endif
     call GroupRemoveUnit(g,u)
   endloop
@@ -9823,7 +9827,7 @@ function GetHarassGroupStrength takes integer groupnum returns real
     exitwhen i >= harass_size[groupnum] or t >= 12
     set id = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_UNITS)
     set qty = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_QTY)
-    set t = t + qty 
+    set t = t + qty
     if t + qty > 12 then
       set qty = 12 - t
       set t = 12
@@ -11165,23 +11169,42 @@ endfunction
 //============================================================================
 function CheckUnitNewTown takes unit u, integer num returns boolean
   local integer i = 0
-  local integer t = GetTownUnitCount(GetUnitTypeId(u), num, true)
   local location l = GetUnitLoc(u)
-  if t <= 0 then
-    loop
-      exitwhen i >= num
-      if town_built[i] and own_town_loc[i] != null and DistanceBetweenPoints(l, own_town_loc[i]) < town_radius then
-        call RemoveLocation(l)
-        set l = null
-        return false
-      endif
-      set i = i + 1
-    endloop
-    call RemoveLocation(l)
-    set l = null
-    return true
+  loop
+    exitwhen i >= num
+    if town_built[i] and own_town_loc[i] != null and DistanceBetweenPoints(l, own_town_loc[i]) < town_radius then
+      call RemoveLocation(l)
+      set l = null
+      return false
+    endif
+    set i = i + 1
+  endloop
+  call RemoveLocation(l)
+  set l = null
+  return true
+endfunction
+
+//============================================================================
+function LocalizeOldTown takes integer num returns boolean
+  local group g = CreateGroup()
+  local unit u = null
+  call GroupEnumUnitsInRangeOfLoc(g, own_town_loc[num], 2000, null)
+  set g = SelectByPlayer(g,ai_player,true)
+  set g = SelectByHidden(g,false)
+  set g = SelectByAlive(g,true)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    exitwhen IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetTownUnitCount(GetUnitTypeId(u), num, true) > 0
+    call GroupRemoveUnit(g,u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  if u == null then
+    return false
   endif
-  return false
+  set u = null
+  return true
 endfunction
 
 function LocalizeNewTown takes integer num returns boolean
@@ -11257,12 +11280,14 @@ function CheckTownBuilt takes nothing returns nothing
       if TownCountEx(racial_expansion, true, i) > 0 then
         set town_built[i] = LocalizeNewTown(i)
       endif
+    else
+      set town_built[i] = LocalizeOldTown(i)
     endif
     if own_town_loc[i] != null then
-      call CreateDebugTagLoc("own town loc " + Int2Str(i), 5, GetLocationX(own_town_loc[i]), GetLocationY(own_town_loc[i]), 1.50, 1.50)
+      call CreateDebugTagLoc("own town loc : " + Int2Str(i), 5, GetLocationX(own_town_loc[i]), GetLocationY(own_town_loc[i]), 1.50, 1.50)
     endif
-    if own_town_mine[i] != null then
-      call CreateDebugTag("own town mine " + Int2Str(i), 5, own_town_mine[i], 1.50, 1.50)
+    if own_town_mine[i] != null and GetResourceAmount(own_town_mine[i]) > 0 then
+      call CreateDebugTag("own town mine : " + Int2Str(i), 5, own_town_mine[i], 1.50, 1.50)
     endif
     set i = i + 1
   endloop
@@ -13435,6 +13460,10 @@ function universal_attack_sequence takes nothing returns nothing
     call Sleep(sleep_multiplier)
     return
   endif
+  loop
+    exitwhen not CaptainInCombat(true) or town_threatened or CaptainRetreating()
+    call Sleep(1)
+  endloop
   call SetTargetHeroes(difficulty != EASY)
   set ai_strength = GetOwnStrength()
   //set ai_antiair_strength = air_strength
