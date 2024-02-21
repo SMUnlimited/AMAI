@@ -11831,8 +11831,6 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
   local integer attack_length_counter = 0
   local integer combat_length_counter = 0
   local group g = null
-  set lastcaptainx = 0
-  set lastcaptainy = 0
   if race_has_ghouls and race_ghouls_attack then
     set attack_length_counter = 5000  // Force army to regroup to try and get ghouls to go along
   endif
@@ -13460,9 +13458,11 @@ function universal_attack_sequence takes nothing returns nothing
     call Sleep(sleep_multiplier)
     return
   endif
+  set lastcaptainx = 0
+  set lastcaptainy = 0
   loop
     exitwhen not CaptainInCombat(true) or town_threatened or CaptainRetreating()
-    call Sleep(1)
+    call SleepInCombatAM()
   endloop
   call SetTargetHeroes(difficulty != EASY)
   set ai_strength = GetOwnStrength()
@@ -13527,7 +13527,7 @@ function universal_peon_assignment takes nothing returns nothing
   local integer w = GetWood()
   local integer pwh = 0
   local integer swh = 0
-  local real gdivw = I2R(g)/I2R(Max(w,1))
+  local real gdivw = I2R(g) / I2R(Max(w,1))
   local integer i = T + 1
 
   if T < 0 then
@@ -13580,9 +13580,10 @@ function universal_peon_assignment takes nothing returns nothing
   call HarvestGold(T,1)
   call HarvestWood(0,pwh)
   call HarvestWood(0,swh)
+
   set T = Max(T + 3,TownCountDone(racial_expansion))
   call CreateDebugTagLoc("MINES:" + Int2Str(GetMinesOwned()), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
-  if (FoodUsed() <= 20 or GetMinesOwned() < 1 or g <= 2500) and hero_built[3] then  // later stages of the game, AI may not be harvest
+  if ((FoodUsed() <= 20 and hero_built[3]) or GetMinesOwned() < 1) and g <= 2500 and exist_mine[0] != null and GetResourceAmount(exist_mine[0]) > 0 then  // later stages of the game, AI may not be harvest
     set i = 0
     set T = 0
     loop
