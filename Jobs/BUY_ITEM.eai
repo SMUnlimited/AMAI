@@ -66,6 +66,16 @@ function DropNonHealingItem takes unit u returns nothing
 	set t = null
 endfunction
 
+function ResetBuyItemUnit takes nothing returns nothing
+  call GroupRemoveUnit(unit_buying_item, shop_sent)
+  call RecycleGuardPosition(shop_sent)
+  call AddAssault(1, GetUnitTypeId(shop_sent))
+  set shop_sent = null
+  set shop_ordered = false
+  set shop_buy_time_large = -1
+  set shop_buy_time_small = -1
+endfunction
+
 function BuyItemJob takes integer id returns nothing
   local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
   local real current_time = TimerGetElapsed(tq_timer)
@@ -123,14 +133,8 @@ function BuyItemJob takes integer id returns nothing
   else
     if town_threatened or attack_running then
       call CreateDebugTag("BUY_ITEM:in attack so dont get item", 10, shop_sent, 3.00, 1.50)
-      call RecycleGuardPosition(shop_sent)
-      call GroupRemoveUnit(unit_buying_item, shop_sent)
       call GroupRemoveUnit(going_home_group, shop_sent)
-      call AddAssault(1, GetUnitTypeId(shop_sent))
-      set shop_sent = null
-      set shop_ordered = false
-      set shop_buy_time_large = -1
-      set shop_buy_time_small = -1
+      call ResetBuyItemUnit()
       return
     endif
   endif
@@ -142,15 +146,10 @@ function BuyItemJob takes integer id returns nothing
       call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
       call TQAddJob(5, BUY_ITEM, id)
     else
-      call GroupRemoveUnit(unit_buying_item, shop_sent)
-      call GroupRemoveUnit(going_home_group, shop_sent)
-      call RecycleGuardPosition(shop_sent)
-      call CreateDebugTag("BUY_ITEM: Retreated", 10, shop_sent, 3.00, 1.50)
-      set shop_sent = null
       set retreat_home = false
-      set shop_ordered = false
-      set shop_buy_time_large = -1
-      set shop_buy_time_small = -1
+      call CreateDebugTag("BUY_ITEM: Retreated", 10, shop_sent, 3.00, 1.50)
+      call GroupRemoveUnit(going_home_group, shop_sent)
+      call ResetBuyItemUnit()
     endif
     return
   endif
@@ -172,24 +171,13 @@ function BuyItemJob takes integer id returns nothing
   if (shop_buy_time_large >= 0 and shop_buy_time_large + buy_timeout_large < current_time) or (shop_buy_time_small >= 0 and shop_buy_time_small + buy_timeout_small < current_time) then
     set available_time[id] = ai_time + regenerate_time[id] / 2
     call CreateDebugTag("Buy item timeout reached", 10, shop_sent, 3.00, 1.50)
-    call RecycleGuardPosition(shop_sent)
-    call GroupRemoveUnit(unit_buying_item, shop_sent)
-    set shop_sent = null
-    set shop_ordered = false
-    set shop_buy_time_large = -1
-    set shop_buy_time_small = -1
+    call ResetBuyItemUnit()
     return
   endif
 
   if (not ItemStacking and GetItemNumberOnUnit(id, shop_sent) > 0) or (ItemStacking and GetItemNumber(id) >= shop_wanted) or (GetSlotsFreeOnUnit(shop_sent) <= 0 and not healing) then
-    call RecycleGuardPosition(shop_sent)
-    call GroupRemoveUnit(unit_buying_item, shop_sent)
     call CreateDebugTag("BUT_ITEM: Items have been brought", 10, shop_sent, 3.00, 1.50)
-    call AddAssault(1, GetUnitTypeId(shop_sent))
-    set shop_sent = null
-    set shop_ordered = false
-    set shop_buy_time_large = -1
-    set shop_buy_time_small = -1
+    call ResetBuyItemUnit()
     return
   endif
 
