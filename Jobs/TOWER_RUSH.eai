@@ -168,6 +168,8 @@ function TowerRushJob takes nothing returns nothing
 	local integer buildtries = 10
 	local integer id = 0
 	local real time_next_try = 5
+	local real EnemyStrength = 0
+	local real OwnStrength = 0
 	local boolean CloseJob = false
 	call DisplayToAllJobDebug("TOWER_RUSH Job START")
 	if not hero_built[1] and race_tower_item_must == true then
@@ -241,8 +243,14 @@ function TowerRushJob takes nothing returns nothing
 	call CreateDebugTagLoc("build loc", 10, GetLocationX(t), GetLocationY(t), 60.00, 55.00)
 	//call Trace("Getting ready to tower rush")
 	if not (GetLocationX(t) == 0 and GetLocationY(t) == 0) and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) != 0 then
-		set CloseJob = (town_threatened and town_threat[most_threatened_town] >= teleport_low_threat + 60) or (GetLocationNonCreepStrength(GetLocationX(t), GetLocationY(t), 1200) > (GetOwnStrength() + towers_attck + towers_built * 0.3) * 4) or ((towers_built_count > 6 * race_tower_peon) and towers_built < 2)  //6 job cycles
-		set CloseJob = CloseJob or (race_tower_item_must and not tower_used_item and hero_unit[2] != null and builder[0] == null)  // too longer time not buy item , but item must
+		set CloseJob = town_threatened and town_threat[most_threatened_town] >= teleport_low_threat * 1.5
+		set CloseJob = CloseJob or (race_tower_item_must and not tower_used_item and hero_unit[2] != null and builder[0] == null)  //  too longer time not buy item , but item must
+		if not CloseJob then
+			set EnemyStrength = GetLocationNonCreepStrength(GetLocationX(t), GetLocationY(t), 1200)
+			set OwnStrength = GetOwnStrength() + towers_attck + towers_built * 0.3  //  tower have strength
+			set CloseJob = CloseJob or (EnemyStrength > OwnStrength * 2 and towers_built_count > 6 * race_tower_peon and towers_built < 2)  //  6 job cycles
+			set CloseJob = CloseJob or (EnemyStrength > OwnStrength * 4)
+		endif
 	endif
 	if GetPlayerSlotState(rushedplayer) != PLAYER_SLOT_STATE_PLAYING or GetLocationEnemyStrength(enemy_point_x, enemy_point_y, 1600, false) == 0 or CloseJob == true then  //or (builder[1] != null and (GetUnitState(builder[1], UNIT_STATE_LIFE) <= 0  and GetUnitState(builder[3], UNIT_STATE_LIFE) <= 0 and GetUnitState(builder[2], UNIT_STATE_LIFE) <= 0)) then
 		//maybe enemy give up the Location,so temporary no need built
@@ -378,7 +386,7 @@ function TowerRushJob takes nothing returns nothing
 		call GroupRemoveUnit(g,builder[i])
 		set i = i + 1
 	endloop
-	set tempg = CopyGroup(g)
+	set tempg = CopyGroup(g,tempg)
 	set g = GetNearestSubGroupOfGroup(g, tower_target_loc, 10)
 	set i = 1
 	loop
