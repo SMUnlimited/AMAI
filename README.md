@@ -149,7 +149,7 @@ It's now possible to set a default language and gametype so the dialog will not 
 To find the settings edit and search for "game_mode" in the Blizzard.j file located directly in the same folder as this readme file. You should directly end up viewing the two rows below.
 
     string language = ""  // Possible values: "" (dialog), "English", "Deutsch", "Swedish", "French", "Spanish", "Romanian", "Chinese"
-    string game_mode = "" // Possible values: "" (dialog), "commander", "no_human", "ai_only"
+    string game_mode = "" // Possible values: "" (dialog), "commander", "no_human", "ai_only", "shared"
 
 Now enter a setting you prefer in one or both of these rows, an example will follow.
 
