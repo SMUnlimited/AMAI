@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - AMAI does a better job collecting any items after creeping.
 - (DevTools) Optimize.bat script is now called OptimizeAll.bat.
 - Added build order so that Elf will now sometimes buy the moonstone and Humans will now buy lesser clarity potions.
+- Optimizations to return home after an attack only when nessecary instead of all the time.
 
 ### Fixed
 - Prevent desyncs with zoom function.

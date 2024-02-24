@@ -11458,9 +11458,6 @@ function SleepInCombatAM takes nothing returns nothing
       set count = count + 1
       call Sleep(1)
     endloop
-    if (not CaptainIsHome()) then
-      call CaptainGoHome()
-    endif
     call Trace("exit SleepInCombat")
 endfunction
 
@@ -12399,12 +12396,11 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
       //call ClearCaptainTargets()
       //call CaptainGoHome()
     endif
-    if CaptainInCombat(true) then
+    if not CaptainIsHome() then
       call CaptainGoHome()
     endif
-    exitwhen not town_threatened
+    exitwhen not town_threatened and not TownThreatened() and not CaptainInCombat(false)
     exitwhen player_defeated
-    exitwhen not CaptainInCombat(false)
     call Sleep(2*sleep_multiplier)
     set own_strength = GetOwnStrength()
   endloop
@@ -12480,7 +12476,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
     set isfleeing = false
     call FormGroupAM(1)
     call SleepUntilTownDefended(ai_strength)
-    call SleepInCombatAM()
     return
   endif
 
@@ -13026,6 +13021,9 @@ function HealArmy takes nothing returns nothing
     exitwhen player_defeated or town_threatened or ver_heroes == false
     set mass_healed = false
     call Trace("function HealArmy: Army is badly damaged and needs healing " + Real2Str(hs))
+    if (not CaptainIsHome()) then
+      call CaptainGoHome()
+    endif
     set build_emergency_healing_item = 0
     set mh_item = GetMassHealingItem()
     if mh_item > 0 then
@@ -13133,12 +13131,11 @@ function universal_attack_sequence takes nothing returns nothing
     call Sleep(1)
   endloop
 
-  if town_threatened then
+  if town_threatened or TownThreatened() then // Attack has finished so any AMAI detections or hardcoded threat detections should be dealt with
     set break_attack = false
     set isfleeing = false
     call FormGroupAM(1)
     call SleepUntilTownDefended(ai_strength)
-    call SleepInCombatAM()
   elseif not towerrush and not ancient_expanding and not militia_expanding and not item_expanding then
     call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
   endif
