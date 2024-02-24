@@ -84,7 +84,7 @@ Tested with strawbery perl 5.30 and Tk 804.034
 ## Building Scripts
 - You need to use the various `make` bat files to create the AI scripts for various versions.
 - Run/double click *makeRFG.bat* to create the reforged scripts.
-- Then install like normal e.g from a command prompt type *InstallEFORGEDToMap.bat "C:\mymap.w3m"* and press enter.
+- Then install like normal e.g from a command prompt type *InstallREFORGEDToMap.bat "C:\mymap.w3m"* and press enter.
 - To use the installer you must copy the `Scripts` folder and `MPQEditor.exe` to the folder `{your-amai-installer}/resources/AMAI`
 - Run up a custom game and select the map to play.
 
@@ -148,13 +148,13 @@ Once installed another dialog will appear with game mode options
 It's now possible to set a default language and gametype so the dialog will not appear when game starts, instead the setting you made will apply at once.
 To find the settings edit and search for "game_mode" in the Blizzard.j file located directly in the same folder as this readme file. You should directly end up viewing the two rows below.
 
-    string language = ""  // Possible values: "" (dialog), "English", "Deutsch", "Swedish", "French", "Spanish", "Romanian"
-    string game_mode = "" // Possible values: "" (dialog), "commander", "no_human", "ai_only"
+    string language = ""  // Possible values: "" (dialog), "English", "Deutsch", "Swedish", "French", "Spanish", "Romanian", "Russian", "Portuguese", "Norwegian", "Chinese"
+    string game_mode = "" // Possible values: "" (dialog), "commander", "no_human", "ai_only", "shared"
 
 Now enter a setting you prefer in one or both of these rows, an example will follow.
 
 If you make the first row look like this:
-    string language = "English"  // Possible values: "" (dialog), "English", "Deutsch", "Swedish", "French", "Spanish", "Romanian"
+    string language = "English"  // Possible values: "" (dialog), "English", "Deutsch", "Swedish", "French", "Spanish", "Romanian", "Russian", "Portuguese", "Norwegian", "Chinese"
 
 The language selection dialog will not show up again when the game starts, instead the specified language "English" will always be used by the computers.
 The game_mode setting works exactly the same way but that setting will only apply if you play a game where different game modes are available like if you got an allied computer in the game, else the normal melee game type will always be used.
