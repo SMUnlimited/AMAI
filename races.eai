@@ -729,6 +729,8 @@ endfunction
 //  peon_asignment
 //============================================================================
 function peon_assignment takes nothing returns nothing
+  local integer i = 0
+  local integer T = 0
   call ClearHarvestAI()
 
   if desperation_assault then
@@ -750,10 +752,27 @@ function peon_assignment takes nothing returns nothing
     // seize a seat is must be retained , use tell AI have ver_optimal_gold peon harvest gold
     // if delete seize a seat , when AI From A or B to Scenario C ，will have one or two peon cannot harvest , because no vacancy in the mine , but the peon order is harvest gold , the peon not controlled by HarvestWood
   else
-    call harvest_gold(0)
-    call harvest_gold(1)
-    call harvest_gold(2)
-    call harvest_gold(3)
+    if ((FoodUsed() <= 20 and hero_built[3]) or GetMinesOwned() < 1) and GetGold() <= 2500 and Forced_Harvest_total == 0 then  // later stages of the game, AI may not be harvest
+      loop
+        exitwhen i > max_towns or T > 2
+        if own_town_mine[i] != null and GetResourceAmount(own_town_mine[i]) > 0 then
+          call PeonMineCheck(own_town_mine[i])
+          set T = T + 1
+          call CreateDebugTag("Forced Harvest mine " + Int2Str(i), 10, own_town_mine[i], 3.00, 1.50)
+        endif
+        set i = i + 1
+      endloop
+    else
+      call harvest_gold(0)
+      call harvest_gold(1)
+      call harvest_gold(2)
+      call harvest_gold(3)
+    endif
+    if Forced_Harvest_total >= 3 then
+      set Forced_Harvest_total = 0  //Prevent excessive intervention from leading to excessive worker collection
+    else
+      set Forced_Harvest_total = Forced_Harvest_total + 1
+    endif
   endif
   if race_has_ghouls then
     call HarvestWood(0,Max(TownCountDone(racial_ghoul) - attacking_ghouls, harvesting_ghouls) - TownCountDone(neutral_shredder))

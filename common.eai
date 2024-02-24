@@ -809,6 +809,7 @@ globals
     integer first_town_mine = 0
     location array exist_town
     integer exist_town_num = 0
+    integer Forced_Harvest_total = 0
 
     integer attacking_ghouls = 0
     integer harvesting_ghouls = 0
@@ -13432,19 +13433,37 @@ function universal_attack_sequence takes nothing returns nothing
   local integer ai_strength = 0
   //local integer ai_antiair_strength = 0
   local integer exp_strength = 0
+  local group g = null
+  local unit u = null
 
   if hero_unit[1] == null and ver_heroes and not desperation_assault then
     call Sleep(sleep_multiplier)
     return
   endif
   loop
-    exitwhen break_attack or isfleeing or town_threatened or not CaptainInCombat(true) or CaptainRetreating() or CaptainIsEmpty() or CaptainIsHome()
+    exitwhen break_attack or isfleeing or town_threatened or not CaptainInCombat(true) or CaptainRetreating() or CaptainIsEmpty() or CaptainIsHome() or (u != null and not UnitAlive(u))
     if not retreat_controlled then
       set retreat_controlled = true
       call TQAddJob(0, RETREAT_CONTROL, 0)
     endif
-    call Sleep(1)
+    if lastcaptainx != 0 and lastcaptainy != 0 and u == null then
+      set g = CreateGroup()
+      call GroupEnumUnitsInRange(g, lastcaptainx, lastcaptainy, 850, null)
+      set g = SelectByEnemy(g, ai_player, true)
+      set g = SelectByAlive(g, true)
+      set g = SelectByHidden(g, false)
+      set u = FirstOfGroup(g)
+      call DestroyGroup(g)
+      set g = null
+    endif
+    if u != null and UnitAlive(u) then
+      call ReformUntilTargetDeadAM(u, true)
+      call SleepInCombatAM()
+    else
+      call Sleep(1)
+    endif
   endloop
+  set u = null
   call SetTargetHeroes(difficulty != EASY)
   set ai_strength = GetOwnStrength()
   //set ai_antiair_strength = air_strength
@@ -13564,7 +13583,7 @@ function universal_peon_assignment takes nothing returns nothing
 
   set T = Max(T + 3,TownCountDone(racial_expansion))
   call CreateDebugTagLoc("MINES:" + Int2Str(GetMinesOwned()), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
-  if ((FoodUsed() <= 20 and hero_built[3]) or GetMinesOwned() < 1) and g <= 2500 then  // later stages of the game, AI may not be harvest
+  if ((FoodUsed() <= 20 and hero_built[3]) or GetMinesOwned() < 1) and g <= 2500 and Forced_Harvest_total == 0 then  // later stages of the game, AI may not be harvest
     set i = 0
     set T = 0
     loop
@@ -13589,6 +13608,11 @@ function universal_peon_assignment takes nothing returns nothing
       endif
       set i = i + 1
     endloop
+  endif
+  if Forced_Harvest_total >= 3 then
+    set Forced_Harvest_total = 0  //Prevent excessive intervention from leading to excessive worker collection
+  else
+    set Forced_Harvest_total = Forced_Harvest_total + 1
   endif
   call HarvestWood(0,20)
 endfunction
