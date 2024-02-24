@@ -31,18 +31,18 @@ On windows make sure the maps to install onto are not in a protected UAC locatio
 ## Warcraft Requirements and Versions
 There are multiple editions of AMAI available to install based on your warcraft 3 version you run with. You must use the correct abrievation to install the correct scripts.
 Improvements and fixes to the core AI engine will improve the older scripts as well.
-- **REFORGED** : The AI scripts intended for the latest version of warcraft 3 **1.36+** (regardless if its **reforged** or not)(only AMAI 3.3.0+)
+- **REFORGED** : The AI scripts intended for the latest version of warcraft 3 **1.36+** (regardless if its **reforged** or not)
 - **TFT** : The classic Frozen Throne AI scripts intended for TFT **1.24+** version of warcraft 3. Has some forwards compatability support up to **1.31** including 24 player support although tech tree changes in later versions will not be available to the AI.
 - **ROC** : The classic Reign of Chaos AI scripts intended for ROC **1.24+** version of warcraft 3. Has some forwards compatability support up to **1.31** including 24 player support although tech tree changes in later versions will not be available to the AI.
 
 * Avoid v1.29 of Warcraft 3 as it breaks various things and prevents AMAI from chatting. This is just an issue with this version and you can downgrade or upgrade.
 
 ## Commandline install
-- From a windows commandline or powershell type `InstallTFTToMap.bat "C:\mymap.w3m" 1` and press enter to install AMAI to maps
-- If you do not want to have the Commander installed to control team mates or easily change language settings instead run `InstallTFTToMap.bat "C:\mymap.w3m" 0`
+- From a windows commandline or powershell type `InstallREFORGEDToMap.bat "C:\mymap.w3m" 1` and press enter to install AMAI to maps
+- If you do not want to have the Commander installed to control team mates or easily change language settings instead run `InstallREFORGEDToMap.bat "C:\mymap.w3m" 0`
 ![example](example.jpg)
-- Alternatively for complex installs if you have `perl` installed from a commandline you can type `perl InstallToDir.pl TFT "C:\Documents\Warcraft III\Maps\AMAI"` and press enter to install AMAI to all maps in a directory and subdirectories.
-- You can disable the commander for this install via the `perl InstallToDir.pl TFT "C:\Documents\Warcraft III\Maps\AMAI" "false"`
+- Alternatively for complex installs if you have `perl` installed from a commandline you can type `perl InstallToDir.pl REFORGED "C:\Documents\Warcraft III\Maps\AMAI"` and press enter to install AMAI to all maps in a directory and subdirectories.
+- You can disable the commander for this install via the `perl InstallToDir.pl REFORGED "C:\Documents\Warcraft III\Maps\AMAI" "false"`
 - After installing AMAI on your map just start Warcraft 3 and play the map against and/or with computers to make use of AMAI.
 
 ## Notes
@@ -83,8 +83,8 @@ Tested with strawbery perl 5.30 and Tk 804.034
 
 ## Building Scripts
 - You need to use the various `make` bat files to create the AI scripts for various versions.
-- Run/double click *makeTFT.bat* to create the tft scripts.
-- Then install like normal e.g from a command prompt type *InstallTFTToMap.bat "C:\mymap.w3m"* and press enter.
+- Run/double click *makeRFG.bat* to create the reforged scripts.
+- Then install like normal e.g from a command prompt type *InstallREFORGEDToMap.bat "C:\mymap.w3m"* and press enter.
 - To use the installer you must copy the `Scripts` folder and `MPQEditor.exe` to the folder `{your-amai-installer}/resources/AMAI`
 - Run up a custom game and select the map to play.
 
