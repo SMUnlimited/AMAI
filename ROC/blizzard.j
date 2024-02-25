@@ -5000,7 +5000,7 @@ endfunction
 function ConfigureNeutralVictim takes nothing returns nothing
     local integer index
     local player indexPlayer
-    local player neutralVictim = Player(bj_PLAYER_NEUTRAL_VICTIM)
+    local player neutralVictim = Player(bj_PLAYER_NEUTRAL_VICTIM_AMAI)
 
     set index = 0
     loop
@@ -5024,7 +5024,7 @@ endfunction
 
 //===========================================================================
 function MakeUnitsPassiveForPlayerEnum takes nothing returns nothing
-    call SetUnitOwner(GetEnumUnit(), Player(bj_PLAYER_NEUTRAL_VICTIM), false)
+    call SetUnitOwner(GetEnumUnit(), Player(bj_PLAYER_NEUTRAL_VICTIM_AMAI), false)
 endfunction
 
 //===========================================================================
