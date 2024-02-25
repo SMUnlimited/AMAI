@@ -8082,11 +8082,11 @@ function CheckUpkeepAllowed takes integer food returns nothing
   local integer i = 0
   loop
     exitwhen i >= UPKEEP_NUM
+    set last_upkeep_allowed[i] = UPKEEP_UNDECIDED
     if food > upkeep_border[i] then
       set upkeep_allowed[i] = UPKEEP_ALLOWED
     elseif mines < upkeep_mines_needed[i] then
       set upkeep_allowed[i] = UPKEEP_NOT_ALLOWED
-      set last_upkeep_allowed[i] = UPKEEP_NOT_ALLOWED
       set upkeep_time[i] = -1
     else
       set upkeep_allowed[i] = UPKEEP_UNDECIDED
@@ -8128,7 +8128,7 @@ function ApplyUpkeepSaving takes nothing returns nothing
     exitwhen i >= UPKEEP_NUM
     if upkeep_allowed[i] == UPKEEP_ALLOWED then
       set upkeep_time[i] = -1
-    elseif upkeep_allowed[i] == UPKEEP_NOT_ALLOWED then
+    elseif last_upkeep_allowed[i] == UPKEEP_UNDECIDED and upkeep_allowed[i] == UPKEEP_NOT_ALLOWED then
       if upkeep_time[i] == -1 then
         if total_gold > 0 and total_wood > 0 then
           set upkeep_time[i] = ai_time
@@ -10187,6 +10187,8 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     set cost_qty = Min(cost_qty, afford_food)
 
     set afford_food = ApplyUpkeepCheck(afford_food, ver_food_limit - total_food, food_cost, cost_qty, need_qty)
+    call ApplyUpkeepSaving()
+    call UpdateLastUpkeep()
 
     set cost_qty = Min(cost_qty, afford_food)
     set afford_qty = Min(afford_qty, cost_qty)
@@ -11117,7 +11119,6 @@ function OneBuildLoopAM takes nothing returns nothing
     set t_build_length = 0
 
     call GetBuildLock()
-    call ApplyUpkeepSaving() // Reduce total gold available to use due to upkeep saving
     loop
         exitwhen index >= build_length
         if index > 0 and ModuloInteger(index, 300) == 0 then
@@ -11191,7 +11192,6 @@ function OneBuildLoopAM takes nothing returns nothing
         set blocked_wood = 0
         set blocked_food = 0
     endloop
-    call UpdateLastUpkeep()
 
 //    call EndDump(Int2Str(ai_time))
 
