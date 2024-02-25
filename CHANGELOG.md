@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed an issue where only a specific creep needs to be killed for AMAI to think mines and neutral buildings were unguarded going forwards.
 - Fixed an issue where town threat was always 0 or negative so AMAI couldn't tell it was in danger correctly.
 - Fixed an issue where AMAI would share heroes with each other on defeat which is not intended behaviour and could break score screens.
+- Fixed a minor issue related related to forming assault groups.
 - (Classic) Fixed game start crash with AMAI vs AI. (jzy-chitong56)
 - (Classic) Fixed some TFT settings not in sync with REFORGED.
 - (DevTools) Fixed the optimize all script and the makeAll and optimizeAll scripts will pause between versions.
