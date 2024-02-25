@@ -7023,18 +7023,33 @@ endfunction
 //============================================================================
 function GetHeroToBuyItem takes unit shop, real limit, boolean is_healing_included, integer itemid, boolean ItemStacking returns unit
   local integer i = 1
+  local integer r = -1
+  local real d = 0
+  local real dmin = 0
+  local boolean b = TownCountDone(racial_shop) > 1 and GetOwningPlayer(shop) == ai_player
   loop
     exitwhen i > 3
     if hero_built[i] and UnitAlive(hero_unit[i]) then
-     if GetSlotsFreeOnUnit(hero_unit[i]) > 0 and DistanceBetweenUnits(hero_unit[i], shop) < limit and not IsUnitInGroup(hero_unit[i], unit_buying_tavern) and not IsUnitInGroup(hero_unit[i], unit_buying_merc) and not IsUnitInGroup(hero_unit[i], unit_harassing) then
-       if (is_healing_included == true and IsUnitInGroup(hero_unit[i], unit_healing)) or (GetItemOfTypeOnUnit(itemid, hero_unit[i]) != null and ItemStacking == false) then
-       else
-          return hero_unit[i]
-       endif
-     endif
+      set d = DistanceBetweenUnits(hero_unit[i], shop)
+      if GetSlotsFreeOnUnit(hero_unit[i]) > 0 and (b or d < limit) and not IsUnitInGroup(hero_unit[i], unit_buying_tavern) and not IsUnitInGroup(hero_unit[i], unit_buying_merc) and not IsUnitInGroup(hero_unit[i], unit_harassing) then
+        if (is_healing_included == true and IsUnitInGroup(hero_unit[i], unit_healing)) or (GetItemOfTypeOnUnit(itemid, hero_unit[i]) != null and ItemStacking == false) then
+        else
+          if b then
+            return hero_unit[i]  // more own shop , take first hero , wait find close shop
+          else
+            if dmin < d then
+              set dmin = d
+              set r = i
+            endif
+          endif
+        endif
+      endif
     endif
     set i = i + 1
   endloop
+  if r > -1 then
+    return hero_unit[r]  // one shop or not own shop , take close hero
+  endif
   return null
 endfunction
 
@@ -7618,6 +7633,73 @@ function CheckAllNeutralsQuick takes nothing returns nothing
     call TQAddJob(10, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEAL_WARD)
   endif
 endfunction
+
+//============================================================================
+function PJexchange takes nothing returns nothing
+  // local integer i = 1
+  // set pj_jid[0] = pj_jid[1]
+  // set pj_par[0] = pj_par[1]
+  // set pj_time[0] = pj_time[1]
+  // set pj_frequency[0] = pj_frequency[1]
+  // loop
+  //   exitwhen i > pj_length
+  //   set pj_time[i] = pj_time[i + 1]
+  //   set pj_jid[i] = pj_jid[i + 1]
+  //   set pj_par[i] = pj_par[i + 1]
+  //   set pj_frequency[i] = pj_frequency[i + 1]
+  //   set i = i + 1
+  // endloop
+  // set pj_time[pj_length] = pj_time[0]
+  // set pj_jid[pj_length] = pj_jid[0]
+  // set pj_par[pj_length] = pj_par[0]
+  // set pj_frequency[pj_length] = pj_frequency[0]
+endfunction
+
+function PJHandleOnce takes nothing returns boolean
+  // local integer jid = pj_jid[1]
+  // local integer par = pj_par[1]
+  // local integer time = pj_time[1]
+  // local integer frequency = pj_frequency[1]
+  // call PJexchange()
+  // if TimerGetElapsed(tq_timer) - time > frequency then
+  //   call TQDoJob(jid, par, null, null)
+  //   set pj_time[pj_length] = TimerGetElapsed(tq_timer)
+  //   return true
+  // endif
+  return false
+endfunction
+
+function PathingJobEx takes real time, real frequency, integer jid, integer par returns nothing
+  // set pj_length = pj_length + 1
+  // set pj_time[pj_length] = time
+  // set pj_frequency[pj_length] = frequency
+  // set pj_jid[pj_length] = jid
+  // set pj_par[pj_length] = par
+endfunction
+
+function PJInitJobs takes nothing returns nothing
+  // call PathingJobEx()  //ChatVarsJob()
+  // call PathingJobEx()  //RepairControlJob()
+  // if race_has_power_build then
+  //   call PathingJobEx()  //FastBuild()
+  // endif
+  // if race_sell_ziggurats then
+  //   call PathingJobEx()  //SellZigguratJob()
+  // endif
+  // call PathingJobEx()  //CleanupBlocksJob
+  // call PathingJobEx()  //ItemRepeatCheck
+  // call PathingJobEx()  //StructureControlJob
+  // call PathingJobEx()  //eutralEnemyCheckJob -- NEUTRAL_HEALING_FOUNTAIN  NEUTRAL_MANA_FOUNTAIN  NEUTRAL_POWER_FOUNTAIN  NEUTRAL_HEAL_WARD
+  // call PathingJobEx()  //DetectDoubleExpJob
+  // call PathingJobEx()  //DetectDefeatJob
+  // call PathingJobEx()  //UpdateStrengthJob
+  // call PathingJobEx()  //NeutralGuardedJob -- i
+
+  // if active_expansion and GetPlayerUnitTypeCount(Player(PLAYERPASSIVE),'ngol') < (c_enemy_total + c_ally_total + 1) * 2 then
+  //   set active_expansion = false
+  // endif
+endfunction
+
 //============================================================================
 function PathingThread takes nothing returns nothing
   local integer i = 0
@@ -7644,6 +7726,27 @@ function PathingThread takes nothing returns nothing
   call Trace("pathing thread done and run job" )
   set pathing_done = true
   call StaggerSleep(1,5)
+  // call PJInitJobs()
+  // loop
+  //   exitwhen player_defeated
+  //   if pj_length > 0 then
+  //     if not PJHandleOnce() then
+  //       set i = pj_time[1] - TimerGetElapsed(tq_timer)
+  //       if i >= 1 then
+  //         call Sleep(1)
+  //       elseif i >= 0.3 then
+  //         call Sleep(i+(0.05*sleep_multiplier))
+  //       else
+  //         call Sleep(RMax(0.05, GetRandomReal(0, 0.3)*sleep_multiplier))
+  //       endif
+  //     else
+  //       call Sleep(RMax(0.05, GetRandomReal(0, 0.3)*sleep_multiplier))
+  //     endif
+  //   else
+  //     call Trace("PJLOOP: No job is ready to fire")
+  //     call Sleep(1)
+  //   endif
+  // endloop
   loop // this job no need run on job system , help job system more focused on combat
     set t = t + 1
     exitwhen player_defeated
@@ -8161,16 +8264,16 @@ endfunction
 
 //===========================================================================
 function CheckUpkeepAllowed takes integer food returns nothing
-  local integer mines = GetMinesOwned()
   local integer i = 0
   loop
     exitwhen i >= UPKEEP_NUM
+    if last_upkeep_allowed[i] == UPKEEP_ALLOWED or last_upkeep_allowed[i] == UPKEEP_UNDECIDED then
+      set upkeep_time[i] = -1 
+    endif  
+    set last_upkeep_allowed[i] = UPKEEP_UNDECIDED
     if food > upkeep_border[i] then
+      set upkeep_time[i] = -1 
       set upkeep_allowed[i] = UPKEEP_ALLOWED
-    elseif mines < upkeep_mines_needed[i] then
-      set upkeep_allowed[i] = UPKEEP_NOT_ALLOWED
-      set last_upkeep_allowed[i] = UPKEEP_NOT_ALLOWED
-      set upkeep_time[i] = -1
     else
       set upkeep_allowed[i] = UPKEEP_UNDECIDED
     endif
@@ -8180,12 +8283,13 @@ endfunction
 
 //===========================================================================
 function ApplyUpkeepCheck takes integer afford_food, integer food, integer food_cost, integer cost_qty, integer need_qty returns integer
+  local integer mines = GetMinesOwned()
   local integer i = 0
   loop
     exitwhen i >= UPKEEP_NUM
     if food + food_cost * cost_qty > upkeep_border[i] then
       if upkeep_allowed[i] == UPKEEP_UNDECIDED then
-        if total_gold > upkeep_resistance[i] then
+        if total_gold > upkeep_resistance[i] or mines >= upkeep_mines_needed[i] then // Saved enough gold or got enough mines to support early tier up
           set upkeep_allowed[i] = UPKEEP_ALLOWED
         else
           set upkeep_allowed[i] = UPKEEP_NOT_ALLOWED
@@ -8216,7 +8320,9 @@ function ApplyUpkeepSaving takes nothing returns nothing
         if total_gold > 0 and total_wood > 0 then
           set upkeep_time[i] = ai_time
         endif
-      elseif use_linear_upkeep_saving then
+      endif
+      if use_linear_upkeep_saving then
+        // Note do not use as requires more cash as time goes on not less.
         set total_gold = total_gold - R2I(LinearInterpolation(upkeep_time[i], upkeep_time[i] + upkeep_save_time[i], 0, upkeep_resistance[i], ai_time))
       elseif ai_time <= upkeep_time[i] + upkeep_save_time[i] then
 //        call DisplayToAll("Saving "+Int2Str(upkeep_resistance[i])+" from "+Int2Str(total_gold))
@@ -9910,8 +10016,7 @@ endfunction
 //============================================================================
 
 function HasExpanded takes nothing returns boolean
-  local integer twm = Min(TownWithMine(),1)
-  return (twm >= 1 or GetMinesOwned() > 1 or TownCountDone(racial_expansion) > 1)
+  return TownWithMine() >= 1 or GetMinesOwned() > 1 or TownCountDone(racial_expansion) > 1
 endfunction
 
 function GuardSecondaryAM takes integer townid, integer qty, integer unitid, integer prio returns nothing
@@ -10382,6 +10487,8 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     set cost_qty = Min(cost_qty, afford_food)
 
     set afford_food = ApplyUpkeepCheck(afford_food, ver_food_limit - total_food, food_cost, cost_qty, need_qty)
+    call ApplyUpkeepSaving()
+    call UpdateLastUpkeep()
 
     set cost_qty = Min(cost_qty, afford_food)
     set afford_qty = Min(afford_qty, cost_qty)
@@ -11438,7 +11545,6 @@ function OneBuildLoopAM takes nothing returns nothing
           set build_prio[index_free] = build_prio[index] + prio_t_inc
           set index_free = index_free + 1
         endif
-        call ApplyUpkeepSaving()
       endif
 
       set index = index + 1
@@ -11448,7 +11554,6 @@ function OneBuildLoopAM takes nothing returns nothing
       set blocked_gold = 0
       set blocked_wood = 0
       set blocked_food = 0
-      call UpdateLastUpkeep()
     endloop
 
 //    call EndDump(Int2Str(ai_time))
@@ -11601,7 +11706,7 @@ function FormGroupAM takes integer seconds returns nothing
     set desire = attack_max[index]
     set count  = TownCountDone(unitid)
 
-    if unitid == racial_ghoul then
+    if unitid == racial_ghoul and not take_all_ghouls_along then
       set desire = attacking_ghouls
       if towerrush then
         set desire = Min(Max(count - 2 , 0),desire)  // reserve
@@ -11613,14 +11718,7 @@ function FormGroupAM takes integer seconds returns nothing
     if count >= desire then
       call AddAssault(desire,old_id[unitid])
     else
-      if unitid != racial_ghoul or take_all_ghouls_along then
-        set desire = attack_qty[index]
-      endif
-      if count < desire then
-        call AddAssault(desire,old_id[unitid])
-      else
-        call AddAssault(count,old_id[unitid])
-      endif
+      call AddAssault(count,old_id[unitid])
     endif
 
     set index = index + 1
@@ -11678,7 +11776,6 @@ endfunction
 function SleepInCombatAM takes nothing returns nothing
   local integer count = 0
   local real sleep = 0.1
-  local boolean clear = false
   //local integer attack_length_counter = 0
   call Trace("SleepInCombat Collect Items")
   loop
@@ -11697,13 +11794,11 @@ function SleepInCombatAM takes nothing returns nothing
   call Trace("SleepInCombat")
   set count = 0
   loop
-    set clear = false
     exitwhen town_threatened
     exitwhen break_attack
     exitwhen not CaptainInCombat(true)  // goal is cleared
     exitwhen CaptainIsEmpty()// duh
     exitwhen town_threat_break
-    set clear = true  // not town_threatened / break_attack / Combat / Empty / town_threat_break
     exitwhen count >= 900 // Took longer than 15 mins to stop lingering something is wrong
     //loop
       //exitwhen captain_flee and CaptainRetreating()
@@ -11721,9 +11816,6 @@ function SleepInCombatAM takes nothing returns nothing
     call Sleep(1)
   endloop
   call ClearCaptainTargets()
-  if not clear and not CaptainIsHome() then
-    call CaptainGoHome()
-  endif
   call Trace("exit SleepInCombat")
 endfunction
 
@@ -12726,12 +12818,11 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
       //call ClearCaptainTargets()
       //call CaptainGoHome()
     endif
-    if CaptainInCombat(true) then
-      call CaptainGoHome()
-    endif
-    exitwhen not town_threatened
+    // if not CaptainIsHome() then
+    //   call CaptainGoHome()
+    // endif
+    exitwhen not town_threatened and not TownThreatened() and not CaptainInCombat(false)
     exitwhen player_defeated
-    exitwhen not CaptainInCombat(false)
     call Sleep(2*sleep_multiplier)
     set own_strength = GetOwnStrength()
   endloop
@@ -12808,7 +12899,6 @@ if town_threatened then
   set isfleeing = false
   call FormGroupAM(1)
   call SleepUntilTownDefended(ai_strength)
-  call SleepInCombatAM()
   return
 endif
 
@@ -13365,6 +13455,9 @@ function HealArmy takes nothing returns nothing
     exitwhen player_defeated or town_threatened or ver_heroes == false
     set mass_healed = false
     call Trace("function HealArmy: Army is badly damaged and needs healing " + Real2Str(hs))
+    if (not CaptainIsHome()) then
+      call CaptainGoHome()
+    endif
     set build_emergency_healing_item = 0
     set mh_item = GetMassHealingItem()
     if mh_item > 0 then
@@ -13433,42 +13526,12 @@ function universal_attack_sequence takes nothing returns nothing
   local integer ai_strength = 0
   //local integer ai_antiair_strength = 0
   local integer exp_strength = 0
-  local group g = null
-  local unit u = null
 
   if hero_unit[1] == null and ver_heroes and not desperation_assault then
     call Sleep(sleep_multiplier)
     return
   endif
-  loop
-    exitwhen break_attack or isfleeing or town_threatened or not CaptainInCombat(true) or CaptainRetreating() or CaptainIsEmpty() or CaptainIsHome() or (u != null and not UnitAlive(u))
-    if not retreat_controlled then
-      set retreat_controlled = true
-      call TQAddJob(0, RETREAT_CONTROL, 0)
-    endif
-    if lastcaptainx != 0 and lastcaptainy != 0 and u == null then
-      set g = CreateGroup()
-      call GroupEnumUnitsInRange(g, lastcaptainx, lastcaptainy, 850, null)
-      set g = SelectByEnemy(g, ai_player, true)
-      set g = SelectByAlive(g, true)
-      set g = SelectByHidden(g, false)
-      set u = FirstOfGroup(g)
-      call DestroyGroup(g)
-      set g = null
-    endif
-    set attack_running = true
-    if u != null and UnitAlive(u) then
-      call CreateDebugTag("additional combat sleep", 10, u, 3.00, 1.50)
-      set lastcaptainx = GetUnitX(u)
-      set lastcaptainy = GetUnitY(u)
-      call SleepInCombatAM()
-    else
-      call CreateDebugTagLoc("additional combat sleep", 10, lastcaptainx, lastcaptainy, 3.00, 1.50)
-      call Sleep(1)
-    endif
-    set attack_running = false
-  endloop
-  set u = null
+
   call SetTargetHeroes(difficulty != EASY)
   set ai_strength = GetOwnStrength()
   //set ai_antiair_strength = air_strength
@@ -13500,12 +13563,11 @@ function universal_attack_sequence takes nothing returns nothing
     call Sleep(1)
   endloop
 
-  if town_threatened then
+  if town_threatened or TownThreatened() then // Attack has finished so any AMAI detections or hardcoded threat detections should be dealt with
     set break_attack = false
     set isfleeing = false
     call FormGroupAM(1)
     call SleepUntilTownDefended(ai_strength)
-    call SleepInCombatAM()
   elseif not towerrush and not ancient_expanding and not militia_expanding and not item_expanding then
     call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
   endif
