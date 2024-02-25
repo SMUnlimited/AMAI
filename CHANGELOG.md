@@ -35,6 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed an issue where AMAI would share heroes with each other on defeat which is not intended behaviour and could break score screens.
 - Fixed a minor issue related related to forming assault groups.
 - Fixed issue where upkeep calculations were still being ignored.
+- (Classic) Fixed an issue where player 14 would share with the creeps.
 - (Classic) Fixed game start crash with AMAI vs AI. (jzy-chitong56)
 - (Classic) Fixed some TFT settings not in sync with REFORGED.
 - (DevTools) Fixed the optimize all script and the makeAll and optimizeAll scripts will pause between versions.
