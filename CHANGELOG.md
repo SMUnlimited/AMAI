@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) Optimize.bat script is now called OptimizeAll.bat.
 - Added build order so that Elf will now sometimes buy the moonstone and Humans will now buy lesser clarity potions.
 - Optimizations to return home after an attack only when nessecary instead of all the time.
+- Added a random element to upkeep saving times so some ai's save for longer or shorter before breaking the upkeep barrier.
 
 ### Fixed
 - Prevent desyncs with zoom function.
@@ -33,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed an issue where town threat was always 0 or negative so AMAI couldn't tell it was in danger correctly.
 - Fixed an issue where AMAI would share heroes with each other on defeat which is not intended behaviour and could break score screens.
 - Fixed a minor issue related related to forming assault groups.
+- Fixed issue where upkeep calculations were still being ignored.
 - (Classic) Fixed game start crash with AMAI vs AI. (jzy-chitong56)
 - (Classic) Fixed some TFT settings not in sync with REFORGED.
 - (DevTools) Fixed the optimize all script and the makeAll and optimizeAll scripts will pause between versions.

@@ -8128,12 +8128,14 @@ function ApplyUpkeepSaving takes nothing returns nothing
     exitwhen i >= UPKEEP_NUM
     if upkeep_allowed[i] == UPKEEP_ALLOWED then
       set upkeep_time[i] = -1
-    elseif last_upkeep_allowed[i] == UPKEEP_UNDECIDED and upkeep_allowed[i] == UPKEEP_NOT_ALLOWED then
+    elseif upkeep_allowed[i] == UPKEEP_NOT_ALLOWED then
       if upkeep_time[i] == -1 then
         if total_gold > 0 and total_wood > 0 then
           set upkeep_time[i] = ai_time
         endif
-      elseif use_linear_upkeep_saving then
+      endif  
+      if use_linear_upkeep_saving then
+        // Note do not use as requires more cash as time goes on not less.
         set total_gold = total_gold - R2I(LinearInterpolation(upkeep_time[i], upkeep_time[i] + upkeep_save_time[i], 0, upkeep_resistance[i], ai_time))
       elseif ai_time <= upkeep_time[i] + upkeep_save_time[i] then
 //        call DisplayToAll("Saving "+Int2Str(upkeep_resistance[i])+" from "+Int2Str(total_gold))
@@ -11115,6 +11117,7 @@ function OneBuildLoopAM takes nothing returns nothing
     set t_build_length = 0
 
     call GetBuildLock()
+    call ApplyUpkeepSaving() // Reduce total gold available to use due to upkeep saving
     loop
         exitwhen index >= build_length
         if index > 0 and ModuloInteger(index, 300) == 0 then
@@ -11178,7 +11181,6 @@ function OneBuildLoopAM takes nothing returns nothing
             set build_prio[index_free] = build_prio[index] + prio_t_inc
             set index_free = index_free + 1
           endif
-          call ApplyUpkeepSaving()
         endif
 
         set index = index + 1
@@ -11188,8 +11190,8 @@ function OneBuildLoopAM takes nothing returns nothing
         set blocked_gold = 0
         set blocked_wood = 0
         set blocked_food = 0
-        call UpdateLastUpkeep()
     endloop
+    call UpdateLastUpkeep()
 
 //    call EndDump(Int2Str(ai_time))
 
