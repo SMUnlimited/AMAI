@@ -9846,10 +9846,10 @@ function AddHarassUnittype takes integer groupnum, integer harassnum, group g, g
     set u = FirstOfGroup(cg)
     exitwhen u == null
     call GroupAddUnit(harasser,u)
-    if not IsUnitType(u, UNIT_TYPE_HERO) then
-      set player_sum = player_sum + GetUnitStrength(u)
-    else
+    if IsUnitType(u, UNIT_TYPE_HERO) then
       set player_sum = player_sum + GetHeroStrength(u)
+    else
+      set player_sum = player_sum + GetUnitStrength(u)
     endif
     call GroupRemoveUnit(cg,u)
     call GroupRemoveUnit(g,u)
@@ -11283,11 +11283,12 @@ endfunction
 
 //============================================================================
 function CheckUnitNewTown takes unit u, integer num returns boolean
+  local integer id = GetUnitTypeId(u)
   local integer i = 0
   local location l = GetUnitLoc(u)
   loop
     exitwhen i >= num
-    if town_built[i] and own_town_loc[i] != null and DistanceBetweenPoints(l, own_town_loc[i]) < town_radius then
+    if town_built[i] and own_town_loc[i] != null and DistanceBetweenPoints(l, own_town_loc[i]) < town_radius and GetTownUnitCount(id, num, true) > 0 then
       call RemoveLocation(l)
       set l = null
       return false
@@ -11914,6 +11915,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       set target = GetAllianceTarget()
     endif
     exitwhen target == null // Fail safe
+    //exitwhen not UnitAlive(target) and CaptainIsHome()  // A fail safe mechanism if getlocationnoncreepstrength malfunctions: not needed as issue now fixed
     if IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player)) then
       set g = CreateGroup()
       call GroupEnumUnitsInRange(g,GetUnitX(target), GetUnitY(target),battle_radius,null)
@@ -13588,6 +13590,28 @@ endfunction
 //============================================================================
 // (AMAI) Universal peon assignment
 //============================================================================
+function ForcedHarves takes nothing returns boolean
+  local integer T = 0
+  local integer i = 0
+  if ((FoodUsed() <= 20 and hero_built[3]) or GetMinesOwned() < 1) and GetGold() <= 2500 and Forced_Harvest_total == 0 then  // later stages of the game, AI may not be harvest
+    loop
+      exitwhen i > max_towns or T > 2
+      if own_town_mine[i] != null and GetResourceAmount(own_town_mine[i]) > 0 then
+        call PeonMineCheck(own_town_mine[i])
+        set T = T + 1
+        call CreateDebugTag("Forced Harvest mine " + Int2Str(i), 10, own_town_mine[i], 3.00, 1.50)
+      endif
+      set i = i + 1
+    endloop
+  endif
+  if Forced_Harvest_total >= 3 then
+    set Forced_Harvest_total = 0  //Prevent excessive intervention from leading to excessive worker collection
+  else
+    set Forced_Harvest_total = Forced_Harvest_total + 1
+  endif
+  return T > 0
+endfunction
+
 function universal_peon_assignment takes nothing returns nothing
   local integer T = TownWithMine()
   local integer g = GetGold()
@@ -13650,19 +13674,7 @@ function universal_peon_assignment takes nothing returns nothing
 
   set T = Max(T + 3,TownCountDone(racial_expansion))
   call CreateDebugTagLoc("MINES:" + Int2Str(GetMinesOwned()), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
-  if ((FoodUsed() <= 20 and hero_built[3]) or GetMinesOwned() < 1) and g <= 2500 and Forced_Harvest_total == 0 then  // later stages of the game, AI may not be harvest
-    set i = 0
-    set T = 0
-    loop
-      exitwhen i > max_towns or T > 2
-      if own_town_mine[i] != null and GetResourceAmount(own_town_mine[i]) > 0 then
-        call PeonMineCheck(own_town_mine[i])
-        set T = T + 1
-        call CreateDebugTag("Forced Harvest mine " + Int2Str(i), 10, own_town_mine[i], 3.00, 1.50)
-      endif
-      set i = i + 1
-    endloop
-  else
+  if not ForcedHarves() then
     loop
       //set i = i + 1
       exitwhen i > T
@@ -13675,11 +13687,6 @@ function universal_peon_assignment takes nothing returns nothing
       endif
       set i = i + 1
     endloop
-  endif
-  if Forced_Harvest_total >= 3 then
-    set Forced_Harvest_total = 0  //Prevent excessive intervention from leading to excessive worker collection
-  else
-    set Forced_Harvest_total = Forced_Harvest_total + 1
   endif
   call HarvestWood(0,20)
 endfunction
