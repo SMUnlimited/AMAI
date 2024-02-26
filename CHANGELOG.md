@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [Unreleased]
+## [3.3.3] - 2024-02-25
 
 ### Added
 - (DevTools) Added a perl power script to uninstall AMAI from a directory of maps.
@@ -14,9 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Optimized double expansion detection reducing total unit loops.
 - Optimized first expansion calculation (jzy-chitong56)
 - AMAI does a better job collecting any items after creeping.
-- (DevTools) Optimize.bat script is now called OptimizeAll.bat.
 - Added build order so that Elf will now sometimes buy the moonstone and Humans will now buy lesser clarity potions.
 - Optimizations to return home after an attack only when nessecary instead of all the time.
+- Added a random element to upkeep saving times so some ai's save for longer or shorter before breaking the upkeep barrier.
+- (DevTools) Optimize.bat script is now called OptimizeAll.bat.
 
 ### Fixed
 - Prevent desyncs with zoom function.
@@ -32,6 +33,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed an issue where only a specific creep needs to be killed for AMAI to think mines and neutral buildings were unguarded going forwards.
 - Fixed an issue where town threat was always 0 or negative so AMAI couldn't tell it was in danger correctly.
 - Fixed an issue where AMAI would share heroes with each other on defeat which is not intended behaviour and could break score screens.
+- Fixed a minor issue related related to forming assault groups.
+- Fixed issue where upkeep calculations were still being ignored.
+- (Classic) Fixed an issue where player 14 would share with the creeps.
 - (Classic) Fixed game start crash with AMAI vs AI. (jzy-chitong56)
 - (Classic) Fixed some TFT settings not in sync with REFORGED.
 - (DevTools) Fixed the optimize all script and the makeAll and optimizeAll scripts will pause between versions.

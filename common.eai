@@ -8078,16 +8078,16 @@ endfunction
 
 //===========================================================================
 function CheckUpkeepAllowed takes integer food returns nothing
-  local integer mines = GetMinesOwned()
   local integer i = 0
   loop
     exitwhen i >= UPKEEP_NUM
+    if last_upkeep_allowed[i] == UPKEEP_ALLOWED or last_upkeep_allowed[i] == UPKEEP_UNDECIDED then
+      set upkeep_time[i] = -1 
+    endif  
+    set last_upkeep_allowed[i] = UPKEEP_UNDECIDED
     if food > upkeep_border[i] then
+      set upkeep_time[i] = -1 
       set upkeep_allowed[i] = UPKEEP_ALLOWED
-    elseif mines < upkeep_mines_needed[i] then
-      set upkeep_allowed[i] = UPKEEP_NOT_ALLOWED
-      set last_upkeep_allowed[i] = UPKEEP_NOT_ALLOWED
-      set upkeep_time[i] = -1
     else
       set upkeep_allowed[i] = UPKEEP_UNDECIDED
     endif
@@ -8097,12 +8097,13 @@ endfunction
 
 //===========================================================================
 function ApplyUpkeepCheck takes integer afford_food, integer food, integer food_cost, integer cost_qty, integer need_qty returns integer
+  local integer mines = GetMinesOwned()
   local integer i = 0
   loop
     exitwhen i >= UPKEEP_NUM
     if food + food_cost * cost_qty > upkeep_border[i] then
       if upkeep_allowed[i] == UPKEEP_UNDECIDED then
-        if total_gold > upkeep_resistance[i] then
+        if total_gold > upkeep_resistance[i] or mines >= upkeep_mines_needed[i] then // Saved enough gold or got enough mines to support early tier up
           set upkeep_allowed[i] = UPKEEP_ALLOWED
         else
           set upkeep_allowed[i] = UPKEEP_NOT_ALLOWED
@@ -8133,7 +8134,9 @@ function ApplyUpkeepSaving takes nothing returns nothing
         if total_gold > 0 and total_wood > 0 then
           set upkeep_time[i] = ai_time
         endif
-      elseif use_linear_upkeep_saving then
+      endif  
+      if use_linear_upkeep_saving then
+        // Note do not use as requires more cash as time goes on not less.
         set total_gold = total_gold - R2I(LinearInterpolation(upkeep_time[i], upkeep_time[i] + upkeep_save_time[i], 0, upkeep_resistance[i], ai_time))
       elseif ai_time <= upkeep_time[i] + upkeep_save_time[i] then
 //        call DisplayToAll("Saving "+Int2Str(upkeep_resistance[i])+" from "+Int2Str(total_gold))
@@ -10185,6 +10188,8 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     set cost_qty = Min(cost_qty, afford_food)
 
     set afford_food = ApplyUpkeepCheck(afford_food, ver_food_limit - total_food, food_cost, cost_qty, need_qty)
+    call ApplyUpkeepSaving()
+    call UpdateLastUpkeep()
 
     set cost_qty = Min(cost_qty, afford_food)
     set afford_qty = Min(afford_qty, cost_qty)
@@ -11178,7 +11183,6 @@ function OneBuildLoopAM takes nothing returns nothing
             set build_prio[index_free] = build_prio[index] + prio_t_inc
             set index_free = index_free + 1
           endif
-          call ApplyUpkeepSaving()
         endif
 
         set index = index + 1
@@ -11188,7 +11192,6 @@ function OneBuildLoopAM takes nothing returns nothing
         set blocked_gold = 0
         set blocked_wood = 0
         set blocked_food = 0
-        call UpdateLastUpkeep()
     endloop
 
 //    call EndDump(Int2Str(ai_time))
@@ -11342,7 +11345,7 @@ function FormGroupAM takes integer seconds returns nothing
     set desire = attack_max[index]
     set count  = TownCountDone(unitid)
 
-    if unitid == racial_ghoul then
+    if unitid == racial_ghoul and not take_all_ghouls_along then
       set desire = attacking_ghouls
       if towerrush then
         set desire = Min(Max(count - 2 , 0),desire)  // reserve
@@ -11354,15 +11357,7 @@ function FormGroupAM takes integer seconds returns nothing
     if count >= desire then
       call AddAssault(desire,old_id[unitid])
     else
-      if unitid != racial_ghoul or take_all_ghouls_along then
-        set desire = attack_qty[index]
-      endif
-
-      if count < desire then
-        call AddAssault(desire,old_id[unitid])
-      else
-        call AddAssault(count,old_id[unitid])
-      endif
+      call AddAssault(count,old_id[unitid])
     endif
 
     set index = index + 1
