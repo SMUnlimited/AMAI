@@ -825,6 +825,12 @@ globals
     boolean tq_lock = true
     timer tq_timer = CreateTimer()
 
+    integer pj_length = 0
+    real array pj_time
+    real array pj_frequency
+    integer array pj_jid
+    integer array pj_par
+
     boolean attack_running = false
     boolean no_attack_allowed = false
 
@@ -2551,8 +2557,8 @@ function InitMapSizeVars takes nothing returns nothing
       set mapSize = 7
     endif
   endif
-  set raceshop_distance_limit = raceshop_distance_limit * mapSize
-  set merchant_distance_limit = merchant_distance_limit * mapSize
+  set raceshop_distance_limit = raceshop_distance_limit * Max(mapSize, 1)
+  set merchant_distance_limit = merchant_distance_limit * Max(mapSize, 1)
 endfunction
 
 //============================================================================
@@ -7021,20 +7027,19 @@ function GetSlotsFree takes nothing returns integer
 endfunction
 
 //============================================================================
-function GetHeroToBuyItem takes unit shop, real limit, boolean is_healing_included, integer itemid, boolean ItemStacking returns unit
+function GetHeroToBuyItem takes unit shop, real limit, boolean is_healing_included, integer itemid, boolean itemstacking, boolean moreshop returns unit
   local integer i = 1
   local integer r = -1
   local real d = 0
   local real dmin = 0
-  local boolean b = TownCountDone(racial_shop) > 1 and GetOwningPlayer(shop) == ai_player
   loop
     exitwhen i > 3
     if hero_built[i] and UnitAlive(hero_unit[i]) then
       set d = DistanceBetweenUnits(hero_unit[i], shop)
-      if GetSlotsFreeOnUnit(hero_unit[i]) > 0 and (b or d < limit) and not IsUnitInGroup(hero_unit[i], unit_buying_tavern) and not IsUnitInGroup(hero_unit[i], unit_buying_merc) and not IsUnitInGroup(hero_unit[i], unit_harassing) then
-        if (is_healing_included == true and IsUnitInGroup(hero_unit[i], unit_healing)) or (GetItemOfTypeOnUnit(itemid, hero_unit[i]) != null and ItemStacking == false) then
+      if GetSlotsFreeOnUnit(hero_unit[i]) > 0 and (moreshop or d < limit) and not IsUnitInGroup(hero_unit[i], unit_buying_tavern) and not IsUnitInGroup(hero_unit[i], unit_buying_merc) and not IsUnitInGroup(hero_unit[i], unit_harassing) then
+        if (is_healing_included == true and IsUnitInGroup(hero_unit[i], unit_healing)) or (GetItemOfTypeOnUnit(itemid, hero_unit[i]) != null and itemstacking == false) then
         else
-          if b then
+          if moreshop then
             return hero_unit[i]  // more own shop , take first hero , wait find close shop
           else
             if dmin < d then
@@ -7635,69 +7640,50 @@ function CheckAllNeutralsQuick takes nothing returns nothing
 endfunction
 
 //============================================================================
-function PJexchange takes nothing returns nothing
-  // local integer i = 1
-  // set pj_jid[0] = pj_jid[1]
-  // set pj_par[0] = pj_par[1]
-  // set pj_time[0] = pj_time[1]
-  // set pj_frequency[0] = pj_frequency[1]
-  // loop
-  //   exitwhen i > pj_length
-  //   set pj_time[i] = pj_time[i + 1]
-  //   set pj_jid[i] = pj_jid[i + 1]
-  //   set pj_par[i] = pj_par[i + 1]
-  //   set pj_frequency[i] = pj_frequency[i + 1]
-  //   set i = i + 1
-  // endloop
-  // set pj_time[pj_length] = pj_time[0]
-  // set pj_jid[pj_length] = pj_jid[0]
-  // set pj_par[pj_length] = pj_par[0]
-  // set pj_frequency[pj_length] = pj_frequency[0]
-endfunction
-
-function PJHandleOnce takes nothing returns boolean
-  // local integer jid = pj_jid[1]
-  // local integer par = pj_par[1]
-  // local integer time = pj_time[1]
-  // local integer frequency = pj_frequency[1]
-  // call PJexchange()
-  // if TimerGetElapsed(tq_timer) - time > frequency then
-  //   call TQDoJob(jid, par, null, null)
-  //   set pj_time[pj_length] = TimerGetElapsed(tq_timer)
-  //   return true
-  // endif
+function PJHandleOnce takes integer t returns boolean
+  if TimerGetElapsed(tq_timer) - pj_time[t] >= pj_frequency[t] then
+   call TQDoJob(pj_jid[t], pj_par[t], null, null)
+   set pj_time[t] = TimerGetElapsed(tq_timer)
+   return true
+  endif
   return false
 endfunction
 
-function PathingJobEx takes real time, real frequency, integer jid, integer par returns nothing
-  // set pj_length = pj_length + 1
-  // set pj_time[pj_length] = time
-  // set pj_frequency[pj_length] = frequency
-  // set pj_jid[pj_length] = jid
-  // set pj_par[pj_length] = par
+function PathingJobEx takes real frequency, integer jid, integer par returns nothing
+  set pj_length = pj_length + 1
+  set pj_time[pj_length] = TimerGetElapsed(tq_timer)
+  set pj_frequency[pj_length] = frequency
+  set pj_jid[pj_length] = jid
+  set pj_par[pj_length] = par
 endfunction
 
 function PJInitJobs takes nothing returns nothing
-  // call PathingJobEx()  //ChatVarsJob()
-  // call PathingJobEx()  //RepairControlJob()
-  // if race_has_power_build then
-  //   call PathingJobEx()  //FastBuild()
-  // endif
-  // if race_sell_ziggurats then
-  //   call PathingJobEx()  //SellZigguratJob()
-  // endif
-  // call PathingJobEx()  //CleanupBlocksJob
-  // call PathingJobEx()  //ItemRepeatCheck
-  // call PathingJobEx()  //StructureControlJob
-  // call PathingJobEx()  //eutralEnemyCheckJob -- NEUTRAL_HEALING_FOUNTAIN  NEUTRAL_MANA_FOUNTAIN  NEUTRAL_POWER_FOUNTAIN  NEUTRAL_HEAL_WARD
-  // call PathingJobEx()  //DetectDoubleExpJob
-  // call PathingJobEx()  //DetectDefeatJob
-  // call PathingJobEx()  //UpdateStrengthJob
-  // call PathingJobEx()  //NeutralGuardedJob -- i
-
-  // if active_expansion and GetPlayerUnitTypeCount(Player(PLAYERPASSIVE),'ngol') < (c_enemy_total + c_ally_total + 1) * 2 then
-  //   set active_expansion = false
-  // endif
+  local integer i = 0
+  call PathingJobEx(6, CHAT_VARS, 0)                                                      //ChatVarsJob()
+  call PathingJobEx(15, REPAIR_CONTROL, 0)                                                //RepairControlJob()
+  if race_has_power_build then
+    call PathingJobEx(10, FAST_BUILD, 0)                                                  //FastBuild()
+  endif
+  if race_sell_ziggurats then
+    call PathingJobEx(30, SELL_ZIGGURATS, 0)                                              //SellZigguratJob()
+  endif
+  call PathingJobEx(60, CLEANUP_BLOCKS, 0)                                                //CleanupBlocksJob
+  call PathingJobEx(160, ITEM_REPEAT_CHECK, 0)                                            //ItemRepeatCheck
+  call PathingJobEx(sleep_multiplier * 5, STRUCTURE_CONTROL, 0)                           //StructureControlJob
+  call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALING_FOUNTAIN)  //NeutralEnemyCheckJob
+  call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_MANA_FOUNTAIN)     //NeutralEnemyCheckJob
+  call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_POWER_FOUNTAIN)    //NeutralEnemyCheckJob
+  call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEAL_WARD)         //NeutralEnemyCheckJob
+  call PathingJobEx(10 * sleep_multiplier, DETECT_DOUBLE_EXP, 0)                          //DetectDoubleExpJob
+  call PathingJobEx(13 * sleep_multiplier, DETECT_DEFEAT, 0)                              //DetectDefeatJob
+  call PathingJobEx(15 * sleep_multiplier, UPDATE_STRENGTH, 0)                            //UpdateStrengthJob
+  loop
+    exitwhen i >= NEUTRAL_COUNT
+    if neutral_guarded[i] and nearest_neutral[i] != null and UnitAlive(nearest_neutral[i]) then
+      call PathingJobEx(30 * sleep_multiplier, NEUTRAL_GUARDED, i)                        //NeutralGuardedJob
+    endif
+    set i = i + 1
+  endloop
 endfunction
 
 //============================================================================
@@ -7724,94 +7710,30 @@ function PathingThread takes nothing returns nothing
   call CheckFastExpansion()
   call CheckAllNeutrals() // The more advanced new system check
   call Trace("pathing thread done and run job" )
-  set pathing_done = true
-  call StaggerSleep(1,5)
-  // call PJInitJobs()
-  // loop
-  //   exitwhen player_defeated
-  //   if pj_length > 0 then
-  //     if not PJHandleOnce() then
-  //       set i = pj_time[1] - TimerGetElapsed(tq_timer)
-  //       if i >= 1 then
-  //         call Sleep(1)
-  //       elseif i >= 0.3 then
-  //         call Sleep(i+(0.05*sleep_multiplier))
-  //       else
-  //         call Sleep(RMax(0.05, GetRandomReal(0, 0.3)*sleep_multiplier))
-  //       endif
-  //     else
-  //       call Sleep(RMax(0.05, GetRandomReal(0, 0.3)*sleep_multiplier))
-  //     endif
-  //   else
-  //     call Trace("PJLOOP: No job is ready to fire")
-  //     call Sleep(1)
-  //   endif
-  // endloop
-  loop // this job no need run on job system , help job system more focused on combat
-    set t = t + 1
-    exitwhen player_defeated
-    if ModuloInteger(t, 6) == 0 then
-      call ChatVarsJob()
-    endif
-    if ModuloInteger(t, 12) == 0 then
-      call RepairControlJob()
-      if race_has_power_build then
-        call FastBuild()
+  call PJInitJobs()  // this job no need run on job system , help job system more focused on combat
+  if pj_length > 0 then
+    set pathing_done = true
+    call StaggerSleep(1,5)
+    loop
+      exitwhen player_defeated
+      if PJHandleOnce(t) then
+        call Sleep(RMin(1, GetRandomReal(0.1, 0.5) * sleep_multiplier))
+      else
+        call Sleep(1)
       endif
-    endif
-    if race_sell_ziggurats and ModuloInteger(t, 30) == 0 then
-      call SellZigguratJob()
-    endif
-    if ModuloInteger(t, 60) == 0 then
-      call CleanupBlocksJob()
-    endif
-    if ModuloInteger(t, 160) == 0 then
-      call ItemRepeatCheck()
-    endif
-    if ModuloInteger(t, 5*w) == 0 then
-      call StructureControlJob()
-    endif
-    if ModuloInteger(t, 6*w) == 0 then
-      if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null and UnitAlive(nearest_neutral[NEUTRAL_HEALING_FOUNTAIN]) then
-        call NeutralEnemyCheckJob(NEUTRAL_HEALING_FOUNTAIN)
+      set t = t + 1
+      if t >= pj_length then
+        set t = 1
       endif
-      if nearest_neutral[NEUTRAL_MANA_FOUNTAIN] != null and UnitAlive(nearest_neutral[NEUTRAL_MANA_FOUNTAIN]) then
-        call NeutralEnemyCheckJob(NEUTRAL_MANA_FOUNTAIN)
-      endif
-      if nearest_neutral[NEUTRAL_POWER_FOUNTAIN] != null and UnitAlive(nearest_neutral[NEUTRAL_POWER_FOUNTAIN]) then
-        call NeutralEnemyCheckJob(NEUTRAL_POWER_FOUNTAIN)
-      endif
-      if nearest_neutral[NEUTRAL_HEAL_WARD] != null and UnitAlive(nearest_neutral[NEUTRAL_HEAL_WARD]) then
-        call NeutralEnemyCheckJob(NEUTRAL_HEAL_WARD)
-      endif
-    endif
-    if ModuloInteger(t, 10*w) == 0 then
-      call DetectDoubleExpJob()
-    endif
-    if ModuloInteger(t, 13*w) == 0 then
-      call DetectDefeatJob()
-    endif
-    if ModuloInteger(t, 15*w) == 0 then
-      call UpdateStrengthJob()
-    endif
-    if ModuloInteger(t, 30*w) == 0 then
-      if active_expansion and GetPlayerUnitTypeCount(Player(PLAYER_NEUTRAL_PASSIVE),'ngol') < (c_enemy_total + c_ally_total + 1) * 2 then
-        set active_expansion = false
-      endif
-      set i = 0
-      loop
-        exitwhen i >= NEUTRAL_COUNT
-        if nearest_neutral[i] != null and neutral_guarded[i] then
-          call NeutralGuardedJob(i)
+      set i = i + 1
+      if i >= 60 then
+        set i = 0
+        if active_expansion and GetPlayerUnitTypeCount(Player(PLAYERPASSIVE),'ngol') < (c_enemy_total + c_ally_total + 1) * 2 then
+          set active_expansion = false
         endif
-        set i = i + 1
-      endloop
-    endif
-    if t >= 1000 then // initialization , prevent excessive size , computational complexity
-      set t = 0
-    endif
-    call Sleep(1)
-  endloop
+      endif
+    endloop
+  endif
 endfunction
 
 //============================================================================
@@ -11816,7 +11738,6 @@ function SleepInCombatAM takes nothing returns nothing
     set count = count + 1
     call Sleep(1)
   endloop
-  call ClearCaptainTargets()
   call Trace("exit SleepInCombat")
 endfunction
 
