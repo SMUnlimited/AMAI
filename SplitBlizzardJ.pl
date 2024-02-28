@@ -67,7 +67,7 @@ my $ver = $ARGV[0];
 process_blizzj($ver);
 
 my $vsai = $ARGV[1];
-if ($vsai == 1) {
+if ($vsai eq "1") {
   copy("$ver/VanillaAI/elf2.ai", "Scripts/$ver/elf2.ai") or die "Copy failed: $!";
   copy("$ver/VanillaAI/human2.ai", "Scripts/$ver/human2.ai") or die "Copy failed: $!";
   copy("$ver/VanillaAI/orc2.ai", "Scripts/$ver/orc2.ai") or die "Copy failed: $!";
