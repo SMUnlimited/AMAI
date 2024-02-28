@@ -10552,16 +10552,12 @@ function ConstructExpansion takes unit peon, integer unitid returns boolean
   local real y = GetUnitY(u)
   call RemoveUnit(u)
   set u = null
-  if ai_time > exp_loc_cache_timeout then
-    if DistanceBetweenPoints_dd(Location(x, y), GetUnitLoc(current_expansion)) > race_max_expa_mine_distance then
-      return false
-    endif
+  if ai_time > exp_loc_cache_timeout and DistanceBetweenPoints_dd(Location(x, y), GetUnitLoc(current_expansion)) <= race_max_expa_mine_distance then
     set exp_loc_cache_timeout = ai_time + 4
-  //  call SetUnitExploded(u, true)
-  //  call KillUnit(u)
+    call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon)
+    return IssuePointOrderById(peon, unitid, x, y)
   endif
-  call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon)
-  return IssuePointOrderById(peon, unitid, x, y)
+  return false
 endfunction
 
 //============================================================================
@@ -10799,7 +10795,7 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
       set u = FirstOfGroup(g)
       exitwhen u == null or i > 0
       if GetUnitAbilityLevel(u, 'Aall') > 0 and UnitAlive(u) and not IsUnitHidden(u) then  // select ally shop , use JOB TrackTown record ally shop is best, but worried about affecting efficiency , if use new JOB then too wasteful
-        if shop_unit == null or GetRandomInt(0,1) == 1 then
+        if shop_unit == null or GetRandomInt(0,1) > 0 then
           set shop_unit = u  // get Random shop
           set i = i + 1
         endif
@@ -10960,23 +10956,21 @@ endfunction
 
 //============================================================================
 function MercBuilder takes integer unitid1, integer unitid2 returns nothing
-  local integer i = GetRandomInt(0,100)
   if GetGold() > 400 and GetWood() > 300 and neutral_available[NEUTRAL_MERC_CAMP] then
-    if i > 30 then
-      call BuildUnit(1, unitid1, 45 + tier * 10)
+    if GetRandomInt(0, 100) >= 30 then
+      call BuildUnit(1, unitid1, 25 + tier * 10)
     else
-      call BuildUnit(1, unitid2, 45 + tier * 10)
+      call BuildUnit(1, unitid2, 25 + tier * 10)
     endif
   endif
 endfunction
 
 function DragonAndMercBuilder takes nothing returns nothing
-  local integer i = GetRandomInt(0,100)
   if GetGold() > 600 and GetWood() > 500 then
-    if i > 30 and neutral_available[NEUTRAL_DRAGON_ROOST] then
-      call BuildUnit(1, dragons[tier], 45 + tier * 10)
+    if GetRandomInt(0, 100) >= 30 and neutral_available[NEUTRAL_DRAGON_ROOST] then
+      call BuildUnit(1, dragons[Min(tier, 3)], 25 + tier * 10)
     elseif neutral_available[NEUTRAL_MERC_CAMP] then
-      call BuildUnit(1, merc_unit[GetRandomInt(0,3)], 45 + tier * 10)
+      call BuildUnit(1, merc_unit[GetRandomInt(0, 3)], 25 + tier * 10)
     endif
   endif
 endfunction
@@ -11132,7 +11126,7 @@ if mines < 2 and ai_time - exp_time_count > exp_first_time then
   endif
 endif
 
-if mines < 3 and ai_time - exp_time_count > exp_second_time or (active_expansion and ai_time - exp_time_count > exp_first_time) then
+if (mines < 3 and ai_time - exp_time_count > exp_second_time) or (active_expansion and ai_time - exp_time_count > exp_first_time) then
   if u != null then
     set take_exp = true
     call Trace("ExpansionBuilder:Need to Creep Mine 3")
@@ -11153,11 +11147,11 @@ endif
 set u = null
 
 set i = 0
-set f = FoodUsed()
+set f = FoodUsed() + 10
 loop
   exitwhen i >= UPKEEP_NUM or upkeepboost
   // If near on in an upkeep level that needs more mines then boost expansion priority
-  if mines < upkeep_mines_needed[i] and f > upkeep_border[i] - 10 then
+  if mines < upkeep_mines_needed[i] and f > upkeep_border[i] then
     set upkeepboost = true
   endif
   set i = i + 1
