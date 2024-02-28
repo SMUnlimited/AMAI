@@ -40,7 +40,7 @@ jassparser REFORGED\common.j AMAI\REFORGED\common.ai AMAI\REFORGED\undead.ai
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 ECHO _____________________________
 ECHO 创建控制台
-perl SplitBlizzardJ.pl REFORGED
+perl SplitBlizzardJ.pl REFORGED 0
 perl ejass.pl Blizzard3.eai REFORGED VER:REFORGED > REFORGED\tmp\Blizzard3Gen.j
 perl ejass.pl Blizzard.eai REFORGED VER:REFORGED > AMAI\Blizzard_REFORGED.j
 pjass REFORGED\common.j AMAI\Blizzard_REFORGED.j
@@ -112,7 +112,7 @@ jassparser TFT\common.j AMAI\TFT\common.ai AMAI\TFT\undead.ai
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 ECHO _____________________________
 ECHO 创建控制台
-perl SplitBlizzardJ.pl TFT
+perl SplitBlizzardJ.pl TFT 0
 perl ejass.pl Blizzard3.eai TFT VER:TFT > TFT\tmp\Blizzard3Gen.j
 perl ejass.pl Blizzard.eai TFT VER:TFT > AMAI\Blizzard_TFT.j
 pjass TFT\common.j AMAI\Blizzard_TFT.j
