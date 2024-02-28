@@ -1,6 +1,6 @@
 @ECHO OFF
 SET RESULTMAKEVER=0
-ECHO 编译 AMAI 重置版-冰封王座 AMAI VS AMAI
+ECHO 编译 AMAI 重制版-冰封王座 AMAI VS AMAI
 mkdir AMAI\
 mkdir Scripts\
 mkdir AMAI\REFORGED\
@@ -48,13 +48,16 @@ pjass REFORGED\common.j AMAI\Blizzard_REFORGED.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 jassparser REFORGED\common.j AMAI\Blizzard_REFORGED.j
 ECHO _____________________________
+ECHO 优化代码以减小压缩包体积
+call MakeOptVER REFORGED
+ECHO _____________________________
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 if "%RESULTMAKEVER%"=="1" (
   ECHO 编译失败，附件重置版不可用--请耐心等待新的在线编译附件
-  echo 附件重置版不可用--请勿安装并等待新的在线编译附件 > AMAI\重置版脚本不可用.txt
+  echo 附件重制版不可用--请勿安装并等待新的在线编译附件 > AMAI\重制版脚本不可用.txt
 ) else (
   ECHO 编译成功，附件重置版可用--请按教程安装
-  echo 附件重置版可用--请按教程安装...仅支持1.33+，平衡性1.36.1 > AMAI\重置版脚本可用.txt
+  echo 附件重制版可用--请按教程安装（为减少压缩包体积，代码已优化且失去阅读性）...仅支持1.33+，平衡性1.36.1 > AMAI\重制版脚本可用.txt
 )
 ECHO =============================
 SET RESULTMAKEVER=0
@@ -105,12 +108,15 @@ pjass TFT\common.j AMAI\Blizzard_TFT.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 jassparser TFT\common.j AMAI\Blizzard_TFT.j
 ECHO _____________________________
+ECHO 优化代码以减小压缩包体积
+call MakeOptVER TFT
+ECHO _____________________________
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 if "%RESULTMAKEVER%"=="1" (
   ECHO 编译失败，附件经典版不可用--请耐心等待新的在线编译附件
   echo 附件经典版不可用--请勿安装并等待新的在线编译附件 > AMAI\经典版脚本不可用.txt
 ) else (
   ECHO 编译成功，附件经典版可用--请按教程安装
-  echo 附件经典版可用--请按教程安装...支持冰封王座1.24e+，平衡性1.24e > AMAI\经典版脚本可用.txt
+  echo 附件经典版可用--请按教程安装（为减少压缩包体积，代码已优化且失去阅读性）...支持冰封王座1.24e+，平衡性1.24e > AMAI\经典版脚本可用.txt
 )
 ECHO =============================
