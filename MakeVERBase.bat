@@ -52,7 +52,7 @@ if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 jassparser %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\undead.ai
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 ECHO _____________________________
-perl SplitBlizzardJ.pl %VER%
+perl SplitBlizzardJ.pl %VER% %VSAI%
 if %VSAI% == 1 (
 ECHO creating \Scripts\Blizzard_%VER%.j  AMAI VS AI Flag set to: ON
 perl ejass.pl Blizzard3VAI.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j

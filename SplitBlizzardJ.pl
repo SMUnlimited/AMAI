@@ -66,7 +66,10 @@ sub process_blizzj {
 my $ver = $ARGV[0];
 process_blizzj($ver);
 
-copy("$ver/VanillaAI/elf2.ai", "Scripts/$ver/elf2.ai") or die "Copy failed: $!";
-copy("$ver/VanillaAI/human2.ai", "Scripts/$ver/human2.ai") or die "Copy failed: $!";
-copy("$ver/VanillaAI/orc2.ai", "Scripts/$ver/orc2.ai") or die "Copy failed: $!";
-copy("$ver/VanillaAI/undead2.ai", "Scripts/$ver/undead2.ai") or die "Copy failed: $!";
+my $vsai = $ARGV[1];
+if ($vsai == 1) {
+  copy("$ver/VanillaAI/elf2.ai", "Scripts/$ver/elf2.ai") or die "Copy failed: $!";
+  copy("$ver/VanillaAI/human2.ai", "Scripts/$ver/human2.ai") or die "Copy failed: $!";
+  copy("$ver/VanillaAI/orc2.ai", "Scripts/$ver/orc2.ai") or die "Copy failed: $!";
+  copy("$ver/VanillaAI/undead2.ai", "Scripts/$ver/undead2.ai") or die "Copy failed: $!";
+}
