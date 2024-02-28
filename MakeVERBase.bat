@@ -52,7 +52,7 @@ jassparser %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\undead.ai
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 ECHO _____________________________
 ECHO creating \Scripts\Blizzard.j VSAI Flag set to %VSAI%
-perl SplitBlizzardJ.pl %VER%
+perl SplitBlizzardJ.pl %VER% %VSAI%
 if %VSAI% == 1 perl ejass.pl Blizzard3VAI.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
 if %VSAI% == 0 perl ejass.pl Blizzard3.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
 perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\Blizzard_%VER%.j
