@@ -67,18 +67,18 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
     set racial_mana_item = GetHeroManaItem()
     if racial_healing_item != 0 then
       set otherhero = SomeUnitHasHealingItem(otherhero, u, racial_healing_item)
-      if buy_type[racial_healing_item] == BT_RACIAL_ITEM then
-        //set shop_unit = GetUnitOfTypeNearUnit(old_id[racial_shop], u, shop_unit)
-        set nearshopunit = GetUnitOfTypeNearUnit(old_id[racial_shop], u, nearshopunit)
-        //	set shop_distance_limit = raceshop_distance_limit
-      else
-        //	set shop_unit = nearest_neutral[NEUTRAL_MERCHANT]
-        if not (neutral_guarded[NEUTRAL_MERCHANT] and ((GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 5 and GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 18) or not neutral_night_buy[NEUTRAL_MERCHANT])) then
-          set nearshopunit = nearest_neutral[NEUTRAL_MERCHANT]
-        endif
-      endif
-      //	set shop_distance_limit = merchant_distance_limit
     endif
+    if buy_type[racial_healing_item] == BT_RACIAL_ITEM then
+      //set shop_unit = GetUnitOfTypeNearUnit(old_id[racial_shop], u, shop_unit)
+      set nearshopunit = GetUnitOfTypeNearUnit(old_id[racial_shop], u, nearshopunit)
+      //	set shop_distance_limit = raceshop_distance_limit
+    else
+      //	set shop_unit = nearest_neutral[NEUTRAL_MERCHANT]
+      if not (neutral_guarded[NEUTRAL_MERCHANT] and ((GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 5 and GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 18) or not neutral_night_buy[NEUTRAL_MERCHANT])) then
+        set nearshopunit = nearest_neutral[NEUTRAL_MERCHANT]
+      endif
+    endif
+    //	set shop_distance_limit = merchant_distance_limit
     //set shop_sent = u
     //call TQAddJob(0, BUY_ITEM, racial_healing_item)
     //set nearshopunit = shop_unit
@@ -88,10 +88,10 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
     call CreateDebugTag("SEND_HOME Healed", 10, u, 3.00, 1.50)
     call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
   elseif racial_healing_item != 0 and GetItemNumberOnUnit(racial_healing_item, u) > 0 then
-    call CreateDebugTag("Hero: Use healing item", 10, u, 3.00, 2.00)
     if GetItemInstantType(racial_healing_item) == ITEMTYPE_CONTINUOUS and DistanceBetweenPoints_dk(GetUnitLoc(u), exist_town[p]) >= 1200 then
       call SendHomeMoveUnitToLoc(u,exist_town[p])  // This should be required for all regenerative type healing items
       call TQAddUnitJob(4, SEND_HOME, p, u)
+      call CreateDebugTag("Hero: Use healing item", 10, u, 3.00, 2.00)
     else
       call CreateDebugTag("Hero: Use healing item", 10, u, 3.00, 1.50)
       set it = GetItemOfTypeOnUnit(racial_healing_item, u)
@@ -100,30 +100,21 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
       if racial_mana_item != 0 and GetUnitState(u, UNIT_STATE_MANA) < 100 and GetItemNumberOnUnit(racial_mana_item, u) > 0 then
         call UnitUseItem(u, GetItemOfTypeOnUnit(racial_mana_item, u))
       endif
-      call TQAddUnitJob(Max(3,GetItemHealingTime(racial_healing_item)), SEND_HOME, p, u) // Have to add delay as continous healing items run out
+      call TQAddUnitJob(Max(3,GetItemHealingTime(racial_healing_item)), SEND_HOME, p, u)  // Have to add delay as continous healing items run out
       set it = null
     endif
-  elseif otherhero != null and IsUnitType(u, UNIT_TYPE_HERO) then
-    if GetSlotsFreeOnUnit(u) > 0 then  // prevent create on the ground
-      call UnitAddItem(u, GetItemOfTypeOnUnit(racial_healing_item, otherhero))
-      call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
-    else
-      call TQAddUnitJob(4, SEND_HOME, p, u)
-    endif
+  elseif otherhero != null and IsUnitType(u, UNIT_TYPE_HERO) and GetSlotsFreeOnUnit(u) > 0 then  // prevent create on the ground
+    call UnitAddItem(u, GetItemOfTypeOnUnit(racial_healing_item, otherhero))
+    call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
+    call CreateDebugTag("Hero: add healing item", 10, u, 3.00, 2.00)
   elseif nearshopunit != null and IsUnitType(u, UNIT_TYPE_HERO) and GetSlotsFreeOnUnit(u) > 0 and GetItemNumberOnUnit(racial_healing_item, u) <= 0 then
     if DistanceBetweenUnits(u, nearshopunit) >= buy_distance then
       set l = GetUnitLoc(nearshopunit)
       call SendHomeMoveUnitToLoc(u,l)
-      if DistanceBetweenPoints_dk(l. exist_town[p]) < 1000 then  //  Prevent wandering between the shop and p location
-        call TQAddUnitJob(4, SEND_HOME, p, u)
-      else
-        call TQAddJob(0, BUY_ITEM, racial_healing_item)
-        set nearshopunit = null
-        set otherhero = null
-        set l = null
-        return
-      endif
+      call TQAddUnitJob(4, SEND_HOME, p, u)
+      call RemoveLocation(l)
       set l = null
+      call CreateDebugTag("Hero: move to shop", 10, u, 3.00, 2.00)
     else
       call CreateDebugTag("SEND_HOME Stop at Shop", 10, u, 3.00, 2.00)
       call IssueImmediateOrder(u, "stop")
@@ -187,6 +178,7 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
             endif
             call CreateDebugTag("SEND_HOME harvest lumber", 10, u, 3.00, 1.50)
           else
+            call CreateDebugTag("SEND_HOME cannibalize", 10, u, 3.00, 1.50)
             call IssueImmediateOrder(u, "cannibalize")
           endif
         endif
