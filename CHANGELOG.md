@@ -3,10 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## Unreleased
+## [3.3.3a] - 2024-03-02
 
 ### Fixed
-- Fixed more desyncs in the chat system and zoom function.
+- Fixed more multiplayer desyncs in the chat system and zoom function.
 
 ## [3.3.3] - 2024-02-25
 
