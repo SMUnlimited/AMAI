@@ -96,6 +96,9 @@
     integer dlg_length = 0
 
     trigger ZoomSetx = null
+    trigger AdjustZoomUp = null
+    trigger AdjustZoomDown = null
+    real array current_zoom
 
     dialog game_start_dialog = null
     trigger game_start_trigger = null
@@ -647,19 +650,55 @@ function ZoomSet takes nothing returns nothing
   else
     call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, Zoom, 0 )
   endif
+  // Fix desync, variables must be same across players
+  if Zoom < 1650 then
+    set current_zoom[GetPlayerId(GetTriggerPlayer())] = 1650
+  elseif Zoom > 3000 then
+    set current_zoom[GetPlayerId(GetTriggerPlayer())] = 3000
+  else
+    set current_zoom[GetPlayerId(GetTriggerPlayer())] = Zoom
+  endif
+endfunction
+
+function ZoomDown takes nothing returns nothing
+  if current_zoom[GetPlayerId(GetTriggerPlayer())] > 1650 then
+    if GetTriggerPlayer() == GetLocalPlayer() then
+      call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( current_zoom[GetPlayerId(GetTriggerPlayer())] - 50 ), 0 )
+      set current_zoom[GetPlayerId(GetTriggerPlayer())] = current_zoom[GetPlayerId(GetTriggerPlayer())] - 50
+    endif
+  endif
+endfunction
+
+function ZoomUp takes nothing returns nothing
+  if current_zoom[GetPlayerId(GetTriggerPlayer())] < 3000 then
+    if GetTriggerPlayer() == GetLocalPlayer() then
+      call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( current_zoom[GetPlayerId(GetTriggerPlayer())] + 50 ), 0 )
+      set current_zoom[GetPlayerId(GetTriggerPlayer())] = current_zoom[GetPlayerId(GetTriggerPlayer())] + 50
+    endif
+  endif
 endfunction
 
 function InitZoom takes nothing returns nothing
   local integer i = 0
   set ZoomSetx = CreateTrigger()
+  set AdjustZoomUp = CreateTrigger()
+  set AdjustZoomDown = CreateTrigger()
   call TriggerAddAction(ZoomSetx, function ZoomSet)
+  call TriggerAddAction(AdjustZoomUp , function ZoomUp)
+  call TriggerAddAction(AdjustZoomDown , function ZoomDown)
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if (GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER) then
+    if GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER then
       call DisplayTimedTextToPlayer(Player(i),0,0,7,"Set Zoom type: |c00d5f038-zoom1850|r")
       call TriggerRegisterPlayerChatEvent( ZoomSetx, Player(i), "-zoom", false )
-      if IsPlayerObserver(Player(i)) then
-        call SetCameraFieldForPlayer(Player(i), CAMERA_FIELD_TARGET_DISTANCE, 1950, 0)
+      if legacyCamera then // Only required for legacy versions as no camera support built into the game
+        call TriggerRegisterPlayerKeyEventBJ( AdjustZoomUp, Player(i), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_UP )
+        call TriggerRegisterPlayerKeyEventBJ( AdjustZoomDown, Player(i), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_DOWN )
+        set current_zoom[i] = 1650 // Default expected in legacy systems
+        if IsPlayerObserver(Player(i)) then
+          call SetCameraFieldForPlayer(Player(i), CAMERA_FIELD_TARGET_DISTANCE, 1950, 0)
+          set current_zoom[i] = 1950
+        endif
       endif
     endif
     set i = i + 1
