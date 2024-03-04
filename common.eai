@@ -730,6 +730,7 @@ globals
 
     boolean attacking_expansion = false
     boolean recalculate_heros = false // Tavern heros cannot be trained so get a normal hero
+    boolean TavernResurrect = false
 
     integer tier = 0
     integer own_strength = 0
@@ -8038,7 +8039,7 @@ function cmd_loop takes nothing returns nothing
 
   loop
     loop
-      exitwhen CommandsWaiting()!=0
+      exitwhen CommandsWaiting() != 0
       exitwhen player_defeated
       call Sleep(command_wait * sleep_multiplier)
     endloop
@@ -10097,10 +10098,24 @@ function GetNeutralHero takes integer unitid returns integer
 
   if (unitid == hero[1] and hero_built[1]) or (unitid == hero[2] and hero_built[2]) or (unitid == hero[3] and hero_built[3]) then
     call Trace("Try To Resurrect Tavern Hero")
-    if SetProduce(1,old_id[unitid],-1) then
-      return BUILT_ALL
-    else
-      return CANNOT_BUILD
+    if not TavernResurrect and not neutral_ordered[NEUTRAL_TAVERN] then  // once resurrect one hero
+      if unitid == hero[1] and TownCount(hero[1]) < 1 and (100 * (GetUnitLevel(hero_unit[1]) + 4)) > GetGold() and (25 * (GetUnitLevel(hero_unit[1]) + 4)) > GetWood() then
+        set TavernResurrect = true
+        set i = 1
+      elseif unitid == hero[2] and TownCount(hero[2]) < 1 and (100 * (GetUnitLevel(hero_unit[2]) + 4)) > GetGold() and (25 * (GetUnitLevel(hero_unit[2]) + 4)) > GetWood() then
+        set TavernResurrect = true
+        set i = 2
+      elseif unitid == hero[3] and TownCount(hero[3]) < 1 and (100 * (GetUnitLevel(hero_unit[3]) + 4)) > GetGold() and (25 * (GetUnitLevel(hero_unit[3]) + 4)) > GetWood() then
+        set TavernResurrect = true
+        set i = 3
+      endif
+    endif
+    if not TavernResurrect then
+      if SetProduce(1,old_id[unitid],-1) then
+        return BUILT_ALL
+      else
+        return CANNOT_BUILD
+      endif
     endif
   endif
 
@@ -10112,7 +10127,7 @@ function GetNeutralHero takes integer unitid returns integer
 //    endif
 
 //	call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "check requirements")
-  if TownCountDone(needed1[unitid]) < 1 or (unitid == hero[2] and TownCountDone(needed2[unitid]) < 1) or (unitid == hero[3] and TownCountDone(needed3[unitid]) < 1) then
+  if (not hero_built[1] and unitid == hero[1] and TownCountDone(needed1[unitid]) < 1) or (not hero_built[2] and unitid == hero[2] and TownCountDone(needed2[unitid]) < 1) or (not hero_built[3] and unitid == hero[3] and TownCountDone(needed3[unitid]) < 1) then
     call Trace("Requirements failed to get hero")
     return CANNOT_BUILD
   endif
@@ -10481,7 +10496,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     endif
   #ENDINCLUDE
 
-    if buy_type[unitid] == BT_NEUTRAL_HERO then
+    if buy_type[unitid] == BT_NEUTRAL_HERO or (not TavernResurrect and ((TownCount(hero[1]) < 1 and hero_built[1]) or (TownCount(hero[2]) < 1 and hero_built[2]) or (TownCount(hero[3]) < 1 and hero_built[3]))) then
       return GetNeutralHero(unitid)
     endif
 
