@@ -523,7 +523,7 @@ globals
     integer sanctuary_item = 0
     integer preservation_item = 0
     integer singe_tp_item = 0
-    boolean array herocanuse
+    //boolean array herocanuse
     integer tiernum = 3
     integer mapSize = 0
     boolean firstattackhp = false  //big map or more player first attack human player?
@@ -789,8 +789,8 @@ globals
     integer strat_prev = 0  // strategy chosen by the ai before this one
     integer hero_prev = 0  // hero chosen by the ai before this one
     integer picked_hero = 0
-    // boolean first_ai = true
-    // integer next_ai = 0
+    //boolean first_ai = true
+    //integer next_ai = 0
     boolean no_ai_ally = false
     boolean no_ally_ctrl = true
 
@@ -5413,7 +5413,7 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
   endloop
   call DestroyGroup(g)
   set g = null
-  set air_strength = R2I(airsum + 0.5)
+  set air_strength = Rmin(0, R2I(airsum + 0.5))  // structures no air strength
   return sum
 endfunction
 
@@ -7690,7 +7690,6 @@ endfunction
 function PathingThread takes nothing returns nothing
   local integer i = 0
   local integer t = 0
-  local integer w = Max(1,R2I(sleep_multiplier))
   call StaggerSleep(1,5)
   call SetAIArray()
   //  set command_wait = 0.5
@@ -10749,7 +10748,6 @@ function BuyItem takes integer qty, integer id returns boolean
   if not CheckRaceCanBuy(id,ai_player) then
     return false
   endif
-  set shop_wanted = qty
   if buy_type[id] == BT_RACIAL_ITEM then
     if shop_unit == null or not UnitAlive(shop_unit) or GetOwningPlayer(shop_unit) != ai_player then
       set shop_unit = GetOneOfId(shop_unit, ai_player, old_id[racial_shop])
@@ -10760,6 +10758,7 @@ function BuyItem takes integer qty, integer id returns boolean
     set shop_distance_limit = merchant_distance_limit
   endif
   if shop_unit != null then
+    set shop_wanted = qty
     set shop_ordered = true
     call TQAddJob(0, BUY_ITEM, id)
     return true
@@ -10781,25 +10780,24 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
   endif
   loop
     exitwhen i < 0 or i >= c_ally_total
-    set m = GetRandomInt(0,c_ally_total-1)
+    set m = GetRandomInt(0, c_ally_total - 1)
     set i = i + 1
     if GetPlayerSlotState(ally_force[m]) == PLAYER_SLOT_STATE_PLAYING then
       set i = -1
     endif
   endloop
+  set shop_unit = null
   if i < 0 then
-    if not CheckRaceCanBuy(id,ally_force[m]) then
+    if not CheckRaceCanBuy(id, ally_force[m]) then
       return false
     endif
-    set shop_unit = null
     set g = CreateGroup()
     call GroupEnumUnitsOfPlayer(g, ally_force[m], null)
-    set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
     loop
       set u = FirstOfGroup(g)
-      exitwhen u == null or i > 0
-      if GetUnitAbilityLevel(u, 'Aall') > 0 and UnitAlive(u) and not IsUnitHidden(u) then  // select ally shop , use JOB TrackTown record ally shop is best, but worried about affecting efficiency , if use new JOB then too wasteful
-        if shop_unit == null or GetRandomInt(0,1) > 0 then
+      exitwhen u == null or i > 1
+      if GetUnitAbilityLevel(u, 'Aall') > 0 and IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and not IsUnitHidden(u) then  // select ally shop , use JOB TrackTown record ally shop is best, but worried about affecting efficiency , if use new JOB then too wasteful
+        if shop_unit == null or GetRandomInt(0, 1) > 0 then
           set shop_unit = u  // get Random shop
           set i = i + 1
         endif
@@ -13478,7 +13476,6 @@ function universal_attack_sequence takes nothing returns nothing
     call Sleep(sleep_multiplier)
     return
   endif
-
   call SetTargetHeroes(difficulty != EASY)
   set ai_strength = GetOwnStrength()
   //set ai_antiair_strength = air_strength
