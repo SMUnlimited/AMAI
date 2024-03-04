@@ -12110,6 +12110,8 @@ endfunction
 function AttackMoveTowerRush takes nothing returns nothing
 	local integer attack_length_counter = 0
 	local real threat = teleport_low_threat * 1.5
+	local real x = 0
+	local real y = 0
 	local group g = CreateGroup()
 	loop
 		exitwhen not towerrush
@@ -12120,6 +12122,9 @@ function AttackMoveTowerRush takes nothing returns nothing
 			set tower_attack_run = true
 			set attack_running = true
 			set break_attack = false
+			if not town_threatened then
+				call SetAllianceTargetIfLead(builder[10])
+			endif
 			call Sleep(0.05)
 		elseif tower_attack_run then
 			if builder[10] == null or GetUnitState(builder[10], UNIT_STATE_LIFE) <= 0 then
@@ -12130,17 +12135,29 @@ function AttackMoveTowerRush takes nothing returns nothing
 				set builder[10] = FirstOfGroup(g)
 				call GroupClear(g)
 			endif
-			if not town_threatened then
+			if not town_threatened and ModuloInteger(attack_length_counter,5) == 0 then
 				call SetAllianceTargetIfLead(builder[10])
 			endif
 			if towers_built < 4 then
+				set x = GetLocationX(toweringpeonsubloc)
+				set y = GetLocationY(toweringpeonsubloc)
 				if tower_peon_inplace then
 					call AttackMoveXY(R2I(first_tower_point_x), R2I(first_tower_point_y))
-				elseif builder[1] != null then
-					if not town_threatened then
-						call SetAllianceTargetIfLead(builder[1])
+				elseif x != 0 and y != 0 then
+					if not town_threatened and ModuloInteger(attack_length_counter,2) == 0 then
+						call GroupEnumUnitsInRange(g, x, y, 1200, null)
+						set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
+						set g = SelectByPlayer(g, ai_player, true)
+						set g = SelectByAlive(g, true)
+						set g = SelectByHidden(g,false)
+						if FirstOfGroup(g) != null then
+							call SetAllianceTargetIfLead(FirstOfGroup(g))
+						endif
+						call GroupClear(g)
 					endif
-					call AttackMoveXY(R2I(GetUnitX(builder[1])),R2I(GetUnitY(builder[1])))
+					call AttackMoveXY(R2I(x),R2I(y))
+				else  // no peon
+					call CaptainGoHome()
 				endif
 			elseif towers_built < 7 then
 				call AttackMoveXY(R2I(second_attack_point_x), R2I(second_attack_point_y))
