@@ -1,5 +1,13 @@
 #IFDEF GLOBAL
 #ELSE
+
+function ResetBuyNeutralHero takes nothing returns nothing
+  set neutral_ordered[nn] = false
+  set TavernResurrect = false
+  set buy_time_large[nn] = -1
+  set buy_time_small[nn] = -1
+endfunction
+
 function BuyNeutralHero takes integer id returns nothing
   local real timetotravel = 0
   local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
@@ -18,10 +26,7 @@ function BuyNeutralHero takes integer id returns nothing
   if TownCount(id) >= neutral_wanted[nn] then
     call RecycleGuardPosition(neutral_sent[nn])
     call GroupRemoveUnit(unit_buying_tavern, neutral_sent[nn])
-    set neutral_ordered[nn] = false
-    set TavernResurrect = false
-    set buy_time_large[nn] = -1
-    set buy_time_small[nn] = -1
+    call ResetBuyNeutralHero()
     set neutral_sent[nn] = null
     set tavern = null
     return
@@ -37,10 +42,7 @@ function BuyNeutralHero takes integer id returns nothing
       endif
       set neutral_sent[nn] = GetUnitToBuy(neutral_sent[nn], tavern)
       if neutral_sent[nn] == null then
-        set neutral_ordered[nn] = false
-        set TavernResurrect = false
-        set buy_time_large[nn] = -1
-        set buy_time_small[nn] = -1
+        call ResetBuyNeutralHero()
         set tavern = null
         call Trace("No unit to get neutral hero")
         return
@@ -72,9 +74,13 @@ function BuyNeutralHero takes integer id returns nothing
           if TownCount(hero[3]) < 1 and hero_built[3] then
             call IssueNeutralImmediateOrderById(ai_player, tavern, old_id[hero[3]])
           endif
-        else
-          call IssueNeutralImmediateOrderById(ai_player, tavern, old_id[id])
+          call RecycleGuardPosition(neutral_sent[nn])
+          call GroupRemoveUnit(unit_buying_tavern, neutral_sent[nn])
+          call ResetBuyNeutralHero()
+          set tavern = null
+          return  // end job
         endif
+        call IssueNeutralImmediateOrderById(ai_player, tavern, old_id[id])
         set time_next_try = 0.5
       endif
     endif

@@ -1,250 +1,250 @@
-#IFDEF GLOBAL
-unit shop_sent = null
-boolean shop_ordered = false
-real shop_buy_time_small = -1
-real shop_buy_time_large = -1
-integer shop_wanted = 0
-unit shop_unit = null
-real shop_distance_limit = 8000
-real raceshop_distance_limit = 8000
-real merchant_distance_limit = 8000
-boolean retreat_home = false
-boolean ismoving = false
-real buyX
-real buyY
+  #IFDEF GLOBAL
+  unit shop_sent = null
+  boolean shop_ordered = false
+  real shop_buy_time_small = -1
+  real shop_buy_time_large = -1
+  integer shop_wanted = 0
+  unit shop_unit = null
+  real shop_distance_limit = 8000
+  real raceshop_distance_limit = 8000
+  real merchant_distance_limit = 8000
+  boolean retreat_home = false
+  boolean ismoving = false
+  real buyX
+  real buyY
 
-group going_home_group = CreateGroup()
-group buying_group = CreateGroup()
+  group going_home_group = CreateGroup()
+  group buying_group = CreateGroup()
 
-#ELSE
+  #ELSE
 function IsHealingItem takes integer id returns boolean
-if false then	//basically check that item to build is healing item and drop item to make room for this
-#INCLUDETABLE <$VER$\HealingItems.txt> #EFR
-elseif o%1 == id then
-  return true
-#ENDINCLUDE
-elseif oTOWN_PORTAL == id then
-  return true
-endif
-return false
+  if false then	//basically check that item to build is healing item and drop item to make room for this
+  #INCLUDETABLE <$VER$\HealingItems.txt> #EFR
+  elseif o%1 == id then
+    return true
+  #ENDINCLUDE
+  elseif oTOWN_PORTAL == id then
+    return true
+  endif
+  return false
 endfunction
 
 function IsValuables takes integer id returns boolean
-if old_id[singe_tp_item] == id then
-  return true
-elseif old_id[preservation_item] == id then
-  return true
-elseif old_id[sanctuary_item] == id then
-  return true
-elseif old_id[race_item_expansion_item_id] == id then
-  return true
-endif
-return false
+  if old_id[singe_tp_item] == id then
+    return true
+  elseif old_id[preservation_item] == id then
+    return true
+  elseif old_id[sanctuary_item] == id then
+    return true
+  elseif old_id[race_item_expansion_item_id] == id then
+    return true
+  endif
+  return false
 endfunction
 
 function CanRepeatItem takes integer id returns boolean
-if race_tower_item == id and race_tower_item_quantity > 1 then
-  return true
-endif
-return false  // record not heal but can repeat buy item
+  if race_tower_item == id and race_tower_item_quantity > 1 then
+    return true
+  endif
+  return false  // record not heal but can repeat buy item
 endfunction
 
 function DropNonHealingItem takes unit u returns nothing
-local integer i = 0
-local item t = null
+  local integer i = 0
+  local item t = null
 
-loop
-  exitwhen i >= 6
-  set t = UnitItemInSlot(u, i)
-  if t != null and not IsHealingItem(GetItemTypeId(t)) and not IsValuables(GetItemTypeId(t)) then
-    call UnitDropItemPoint(u, t, GetUnitX(u), GetUnitY(u))
-    set t = null
-    return
-  endif
-  set i = i + 1
-endloop
-set t = null
+  loop
+    exitwhen i >= 6
+    set t = UnitItemInSlot(u, i)
+    if t != null and not IsHealingItem(GetItemTypeId(t)) and not IsValuables(GetItemTypeId(t)) then
+      call UnitDropItemPoint(u, t, GetUnitX(u), GetUnitY(u))
+      set t = null
+      return
+    endif
+    set i = i + 1
+  endloop
+  set t = null
 endfunction
 
 function SellItem takes unit u, unit shop returns nothing
-local integer i = 0
-local integer id = 0
-local item t = null
-loop
-  exitwhen i >= 6
-  set t = UnitItemInSlot(u, i)
-  set id = GetItemTypeId(t)
-  if id == 'crys' or id == 'wswd' or id == 'wshs' or id == 'tret' or id == 'fgun' then
-    call UnitDropItemTarget(u, t, shop)
-  elseif id == 'pomn' or id == 'mcri' then
-    call UnitUseItem(u, t)
-  endif
-  set i = i + 1
-endloop
-set t = null
+  local integer i = 0
+  local integer id = 0
+  local item t = null
+  loop
+    exitwhen i >= 6
+    set t = UnitItemInSlot(u, i)
+    set id = GetItemTypeId(t)
+    if id == 'crys' or id == 'wswd' or id == 'wshs' or id == 'tret' or id == 'fgun' then
+      call UnitDropItemTarget(u, t, shop)
+    elseif id == 'pomn' or id == 'mcri' then
+      call UnitUseItem(u, t)
+    endif
+    set i = i + 1
+  endloop
+  set t = null
 endfunction
 
-function ResetBuyItemUnit takes nothing returns nothing
-call GroupRemoveUnit(unit_buying_item, shop_sent)
-call RecycleGuardPosition(shop_sent)
-call AddAssault(1, GetUnitTypeId(shop_sent))
-set shop_sent = null
-set shop_ordered = false
-set shop_buy_time_large = -1
-set shop_buy_time_small = -1
+function ResetBuyItem takes nothing returns nothing
+  call GroupRemoveUnit(unit_buying_item, shop_sent)
+  call RecycleGuardPosition(shop_sent)
+  call AddAssault(1, GetUnitTypeId(shop_sent))
+  set shop_sent = null
+  set shop_ordered = false
+  set shop_buy_time_large = -1
+  set shop_buy_time_small = -1
 endfunction
 
 function BuyItemJob takes integer id returns nothing
-local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
-local real current_time = TimerGetElapsed(tq_timer)
-local real time_next_try = 0
-local real dist = 0
-local integer detectedenemies = 0
-local boolean healing = IsHealingItem(old_id[id])
-local boolean itemstacking = healing == true or CanRepeatItem(id) == true  // heal item can repeat
-local boolean moreshop = false
-local unit backshop = null
-call DisplayToAllJobDebug("BUY_ITEM JOB START")
+  local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
+  local real current_time = TimerGetElapsed(tq_timer)
+  local real time_next_try = 0
+  local real dist = 0
+  local integer detectedenemies = 0
+  local boolean healing = IsHealingItem(old_id[id])
+  local boolean itemstacking = healing == true or CanRepeatItem(id) == true  // heal item can repeat
+  local boolean moreshop = false
+  local unit backshop = null
+  call DisplayToAllJobDebug("BUY_ITEM JOB START")
 
-if shop_ordered == false or shop_unit == null or not UnitAlive(shop_unit) then
-  if shop_sent != null then
-    call GroupRemoveUnit(unit_buying_item, shop_sent)
-    call GroupRemoveUnit(going_home_group, shop_sent)
-    call RecycleGuardPosition(shop_sent)
+  if shop_ordered == false or shop_unit == null or not UnitAlive(shop_unit) then
+    if shop_sent != null then
+      call GroupRemoveUnit(unit_buying_item, shop_sent)
+      call GroupRemoveUnit(going_home_group, shop_sent)
+      call RecycleGuardPosition(shop_sent)
+    endif
+    call Trace("Order to get item is off so end job")
+    return	// Shouldn't be buying an item anyway
   endif
-  call Trace("Order to get item is off so end job")
-  return	// Shouldn't be buying an item anyway
-endif
-set moreshop = TownCountDone(racial_shop) > 1 and GetOwningPlayer(shop_unit) == ai_player
-// moved here to prevent a job crash
-if shop_sent == null or not UnitAlive(shop_sent) or (not itemstacking and GetItemNumberOnUnit(id, shop_sent) > 0) then
-  if shop_sent != null then
-    call RecycleGuardPosition(shop_sent)
-    call GroupRemoveUnit(unit_buying_item, shop_sent)
-    call GroupRemoveUnit(going_home_group, shop_sent)
+  set moreshop = TownCountDone(racial_shop) > 1 and GetOwningPlayer(shop_unit) == ai_player
+  // moved here to prevent a job crash
+  if shop_sent == null or not UnitAlive(shop_sent) or (not itemstacking and GetItemNumberOnUnit(id, shop_sent) > 0) then
+    if shop_sent != null then
+      call RecycleGuardPosition(shop_sent)
+      call GroupRemoveUnit(unit_buying_item, shop_sent)
+      call GroupRemoveUnit(going_home_group, shop_sent)
+    endif
+    if retreat_home then
+      call Trace("Running Home end but item job")
+      set shop_ordered = false
+      set shop_buy_time_large = -1
+      set shop_buy_time_small = -1
+      set retreat_home = false
+      return
+    endif
+    if buy_type[id] == BT_RACIAL_ITEM then
+      set shop_sent = GetHeroToBuyItem(shop_unit, shop_distance_limit, false, id, itemstacking, moreshop)
+    else
+      set shop_sent = GetHeroToBuyItem(shop_unit, shop_distance_limit, true, id, itemstacking, moreshop)
+    endif
+    if shop_sent == null then
+      call Trace("No unit to buy item so end job")
+      set shop_ordered = false
+      set shop_buy_time_large = -1
+      set shop_buy_time_small = -1
+      return
+    endif
+    call GroupAddUnit(unit_buying_item, shop_sent)
   endif
+  if moreshop then
+    set backshop = GetUnitOfTypeNearUnit(old_id[racial_shop], shop_sent, backshop)
+    if backshop != null and backshop != shop_unit and DistanceBetweenUnits(shop_sent, backshop) < shop_distance_limit then
+      set shop_unit = backshop
+      call CreateDebugTag("BUY_ITEM: get close shop", 10, shop_unit, 3.00, 1.50)
+    elseif DistanceBetweenUnits(shop_sent, shop_unit) > shop_distance_limit then
+      call CreateDebugTag("BUY_ITEM: mroe shop , but no shop conform to distance", 10, shop_unit, 3.00, 1.50)
+      call ResetBuyItem()
+      return
+    endif
+    set backshop = null
+  endif
+  set dist = DistanceBetweenUnits(shop_sent, shop_unit)
+  //call CreateDebugTag("In BUT ITEM JOB, 10, shop_sent, 3.00, 1.50)
+
+  // Town threatened so dont get item
+  if GetOwningPlayer(shop_unit) == ai_player and dist < 1000 then
+  else
+    if town_threatened or attack_running then
+      call CreateDebugTag("BUY_ITEM:in attack so dont get item", 10, shop_sent, 3.00, 1.50)
+      call GroupRemoveUnit(going_home_group, shop_sent)
+      call ResetBuyItem()
+      return
+    endif
+  endif
+
   if retreat_home then
-    call Trace("Running Home end but item job")
-    set shop_ordered = false
-    set shop_buy_time_large = -1
-    set shop_buy_time_small = -1
-    set retreat_home = false
+    if DistanceBetweenPoints_dk(GetUnitLoc(shop_sent), home_location) >= 1100 then
+      call CreateDebugTag("BUY_ITEM: Retreat to Home", 10, shop_sent, 3.00, 1.50)
+      call RemoveGuardPosition(shop_sent)
+      call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
+      call TQAddJob(5, BUY_ITEM, id)
+    else
+      set retreat_home = false
+      call CreateDebugTag("BUY_ITEM: Retreated", 10, shop_sent, 3.00, 1.50)
+      call GroupRemoveUnit(going_home_group, shop_sent)
+      call ResetBuyItem()
+    endif
     return
   endif
-  if buy_type[id] == BT_RACIAL_ITEM then
-    set shop_sent = GetHeroToBuyItem(shop_unit, shop_distance_limit, false, id, itemstacking, moreshop)
-  else
-    set shop_sent = GetHeroToBuyItem(shop_unit, shop_distance_limit, true, id, itemstacking, moreshop)
-  endif
-  if shop_sent == null then
-    call Trace("No unit to buy item so end job")
-    set shop_ordered = false
-    set shop_buy_time_large = -1
-    set shop_buy_time_small = -1
-    return
-  endif
-  call GroupAddUnit(unit_buying_item, shop_sent)
-endif
-if moreshop then
-  set backshop = GetUnitOfTypeNearUnit(old_id[racial_shop], shop_sent, backshop)
-  if backshop != null and backshop != shop_unit and DistanceBetweenUnits(shop_sent, backshop) < shop_distance_limit then
-    set shop_unit = backshop
-    call CreateDebugTag("BUY_ITEM: get close shop", 10, shop_unit, 3.00, 1.50)
-  elseif DistanceBetweenUnits(shop_sent, shop_unit) > shop_distance_limit then
-    call CreateDebugTag("BUY_ITEM: mroe shop , but no shop conform to distance", 10, shop_unit, 3.00, 1.50)
-    call ResetBuyItemUnit()
-    return
-  endif
-  set backshop = null
-endif
-set dist = DistanceBetweenUnits(shop_sent, shop_unit)
-//call CreateDebugTag("In BUT ITEM JOB, 10, shop_sent, 3.00, 1.50)
 
-// Town threatened so dont get item
-if GetOwningPlayer(shop_unit) == ai_player and dist < 1000 then
-else
-  if town_threatened or attack_running then
-    call CreateDebugTag("BUY_ITEM:in attack so dont get item", 10, shop_sent, 3.00, 1.50)
-    call GroupRemoveUnit(going_home_group, shop_sent)
-    call ResetBuyItemUnit()
-    return
-  endif
-endif
-
-if retreat_home then
-  if DistanceBetweenPoints_dk(GetUnitLoc(shop_sent), home_location) >= 1100 then
-    call CreateDebugTag("BUY_ITEM: Retreat to Home", 10, shop_sent, 3.00, 1.50)
+  // Enemies are present so get home before they harm us
+  set detectedenemies = GetLocationNonCreepStrength(GetUnitX(shop_sent), GetUnitY(shop_sent), 1000)
+  if detectedenemies >= GetUnitStrength(shop_sent) and GetOwningPlayer(shop_unit) != ai_player then
     call RemoveGuardPosition(shop_sent)
+    call GroupAddUnit(going_home_group, shop_sent)
     call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
-    call TQAddJob(5, BUY_ITEM, id)
-  else
-    set retreat_home = false
-    call CreateDebugTag("BUY_ITEM: Retreated", 10, shop_sent, 3.00, 1.50)
-    call GroupRemoveUnit(going_home_group, shop_sent)
-    call ResetBuyItemUnit()
+    //call TQAddUnitJob(GetTimeToReachLoc(shop_sent, home_location), RESET_GUARD_POSITION, 1, shop_sent)
+    set retreat_home = true
+    call CreateDebugTag("BUY_ITEM: Enemies present so dont get item this time", 10, shop_sent, 3.00, 1.50)
+    call TQAddJob(0, BUY_ITEM, id)
+    return
   endif
-  return
-endif
 
-// Enemies are present so get home before they harm us
-set detectedenemies = GetLocationNonCreepStrength(GetUnitX(shop_sent), GetUnitY(shop_sent), 1000)
-if detectedenemies >= GetUnitStrength(shop_sent) and GetOwningPlayer(shop_unit) != ai_player then
+  //  call DisplayToAll("Item Buy Start")
+  if (shop_buy_time_large >= 0 and shop_buy_time_large + buy_timeout_large < current_time) or (shop_buy_time_small >= 0 and shop_buy_time_small + buy_timeout_small < current_time) then
+    set available_time[id] = ai_time + regenerate_time[id] / 2
+    call CreateDebugTag("Buy item timeout reached", 10, shop_sent, 3.00, 1.50)
+    call ResetBuyItem()
+    return
+  endif
+
+  if (not itemstacking and GetItemNumberOnUnit(id, shop_sent) > 0) or (itemstacking and GetItemNumber(id) >= shop_wanted) or (GetSlotsFreeOnUnit(shop_sent) <= 0 and not healing) then
+    call CreateDebugTag("BUT_ITEM: Items have been brought", 10, shop_sent, 3.00, 1.50)
+    call ResetBuyItem()
+    return
+  endif
+
+
+  if shop_buy_time_large < 0 then
+    set shop_buy_time_large = current_time
+  endif
   call RemoveGuardPosition(shop_sent)
-  call GroupAddUnit(going_home_group, shop_sent)
-  call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
-  //call TQAddUnitJob(GetTimeToReachLoc(shop_sent, home_location), RESET_GUARD_POSITION, 1, shop_sent)
-  set retreat_home = true
-  call CreateDebugTag("BUY_ITEM: Enemies present so dont get item this time", 10, shop_sent, 3.00, 1.50)
-  call TQAddJob(0, BUY_ITEM, id)
-  return
-endif
-
-//  call DisplayToAll("Item Buy Start")
-if (shop_buy_time_large >= 0 and shop_buy_time_large + buy_timeout_large < current_time) or (shop_buy_time_small >= 0 and shop_buy_time_small + buy_timeout_small < current_time) then
-  set available_time[id] = ai_time + regenerate_time[id] / 2
-  call CreateDebugTag("Buy item timeout reached", 10, shop_sent, 3.00, 1.50)
-  call ResetBuyItemUnit()
-  return
-endif
-
-if (not itemstacking and GetItemNumberOnUnit(id, shop_sent) > 0) or (itemstacking and GetItemNumber(id) >= shop_wanted) or (GetSlotsFreeOnUnit(shop_sent) <= 0 and not healing) then
-  call CreateDebugTag("BUT_ITEM: Items have been brought", 10, shop_sent, 3.00, 1.50)
-  call ResetBuyItemUnit()
-  return
-endif
-
-
-if shop_buy_time_large < 0 then
-  set shop_buy_time_large = current_time
-endif
-call RemoveGuardPosition(shop_sent)
-if dist < buy_distance then
-  call CreateDebugTag("buy item", 10, shop_sent, 3.00, 1.50)
-  call IssueImmediateOrder(shop_sent, "stop")
-  call SellItem(shop_sent, shop_unit)
-  if GetSlotsFreeOnUnit(shop_sent) <= 0 and healing then
-    call DropNonHealingItem(shop_sent)
+  if dist < buy_distance then
+    call CreateDebugTag("buy item", 10, shop_sent, 3.00, 1.50)
+    call IssueImmediateOrder(shop_sent, "stop")
+    call SellItem(shop_sent, shop_unit)
+    if GetSlotsFreeOnUnit(shop_sent) <= 0 and healing then
+      call DropNonHealingItem(shop_sent)
+    endif
+    set ismoving = false
+    if GetUnitAbilityLevel(shop_unit,'Aall') > 0 then  // Change shop target to this hero
+      call IssueTargetOrderById(shop_unit, 'Aall', shop_sent)
+    elseif GetUnitAbilityLevel(shop_unit,'Aneu') > 0 then
+      call IssueTargetOrderById(shop_unit, 'Aneu', shop_sent)
+    endif
+    call IssueNeutralImmediateOrderById(ai_player, shop_unit, old_id[id])
+    if shop_buy_time_small < 0 then
+      set shop_buy_time_small = current_time
+    endif
+    set time_next_try = 0.5
+  else
+    call CreateDebugTag("move to item shop", 10, shop_sent, 3.00, 1.50)
+    call IssuePointOrder(shop_sent, "move", GetUnitX(shop_unit), GetUnitY(shop_unit))
+    if ismoving == false then
+      set ismoving = true
+    endif
+    set time_next_try = RMin(4, RMax(GetTimeToReachUnit(shop_sent, shop_unit) + 1,1))
   endif
-  set ismoving = false
-  if GetUnitAbilityLevel(shop_unit,'Aall') > 0 then  // Change shop target to this hero
-    call IssueTargetOrderById(shop_unit, 'Aall', shop_sent)
-  elseif GetUnitAbilityLevel(shop_unit,'Aneu') > 0 then
-    call IssueTargetOrderById(shop_unit, 'Aneu', shop_sent)
-  endif
-  call IssueNeutralImmediateOrderById(ai_player, shop_unit, old_id[id])
-  if shop_buy_time_small < 0 then
-    set shop_buy_time_small = current_time
-  endif
-  set time_next_try = 0.5
-else
-  call CreateDebugTag("move to item shop", 10, shop_sent, 3.00, 1.50)
-  call IssuePointOrder(shop_sent, "move", GetUnitX(shop_unit), GetUnitY(shop_unit))
-  if ismoving == false then
-    set ismoving = true
-  endif
-  set time_next_try = RMin(4, RMax(GetTimeToReachUnit(shop_sent, shop_unit) + 1,1))
-endif
 
-call TQAddJob(time_next_try, BUY_ITEM, id)
+  call TQAddJob(time_next_try, BUY_ITEM, id)
 endfunction
-#ENDIF
+  #ENDIF

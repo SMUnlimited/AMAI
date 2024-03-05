@@ -17,7 +17,7 @@
   location array hero_enemy_loc
   real array hero_ally_density
   location array hero_ally_loc
-  boolean array hero_singetping
+  //boolean array hero_singetping
 
 #ELSE
 
@@ -43,7 +43,7 @@ function GetDensities takes location l, player p, real r returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if (ModuloInteger(i, 200) == 0) then
+    if ModuloInteger(i, 200) == 0 then
       call TQSleep(0.1)
     endif
     if UnitAlive(u) and not IsUnitHidden(u) then
@@ -108,11 +108,11 @@ function TeleportHome takes integer hn returns nothing
   local real actual_diff = 0
   local location start_loc = null
   //set hero_loc = GetUnitLoc(hero_unit[hn])
-  if c_ally_total > 0 and major_hero != null and UnitAlive(major_hero) then
+  if major_hero != null and UnitAlive(major_hero) then
     loop
-      exitwhen i >= GetBJMaxPlayers()
-      set p = Player(i)
-      if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(p, ai_player) then
+      exitwhen i >= c_ally_total
+      set p = ally_force[i]
+      if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
         set start_loc = GetPlayerStartLocationLoc(p)
         //set dx = GetLocationX(start_loc) - GetLocationX(hero_loc)
         //set dy = GetLocationY(start_loc) - GetLocationY(hero_loc)
@@ -225,8 +225,9 @@ function ItemSingetp takes integer hn, boolean retreat returns boolean
           call CreateDebugTag("use singe tp item", 10, hero_unit[hn], 3.00, 1.50)
           call RemoveGuardPosition(hero_unit[hn])
           set b = UnitUseItemTarget(hero_unit[hn],t, u)
+          call TQAddUnitJob(2.8, RESET_GUARD_POSITION, 0, hero_unit[hn])
           set u = null
-          set hero_singetping[hn] = true
+          //set hero_singetping[hn] = true
         endif
         call RemoveLocation(l)
         set l = null
@@ -395,11 +396,11 @@ function MicroHeroJob takes integer hn returns nothing
       call CreateDebugTag("HERO: Healing Bug Fix Job", 10, hero_unit[hn], 4.00, 2.00)
       call RecycleGuardPosition(hero_unit[hn])
       call GroupRemoveUnit(unit_healing, hero_unit[hn])
-      if not retreat_controlled and not town_threatened and not teleporting and major_hero != null and UnitAlive(major_hero) and DistanceBetweenUnits(major_hero,hero_unit[hn]) > 2000 then
-        call ItemSingetp(hn,false)
-      endif
     else
       set healing = IsUnitInGroup(hero_unit[hn], unit_healing)
+    endif
+    if not attack_running and not retreat_controlled and not town_threatened and not TownThreatened() and not teleporting and major_hero != null and UnitAlive(major_hero) and DistanceBetweenUnits(major_hero,hero_unit[hn]) > 2000 then
+      call ItemSingetp(hn,false)
     endif
     set new_hp = GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) / GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE)
     set current_order = GetUnitCurrentOrder(hero_unit[hn])
