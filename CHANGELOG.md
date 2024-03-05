@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## Unreleased
+
+### Added
+- If human player constructs an expansion where the AI is, allied AI's will immediately give up the location if the player attacks the expansion.
+
+### Fixed
+- Some more double expansion minor fixes correcting claim counts being off in some edge cases. 
+- Double expansion retry for humans, orcs and nightelfs should now be successful.
+
+
 ## [3.3.3a] - 2024-03-02
 
 ### Fixed

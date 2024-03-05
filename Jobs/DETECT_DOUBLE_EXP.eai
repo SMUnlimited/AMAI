@@ -1,6 +1,8 @@
 #IFDEF GLOBAL
     unit double_expansion_target = null
     boolean double_expansion_ally_present = false
+    boolean double_expansion_allyhuman_present = false
+    boolean double_own_present = false
     boolean double_expansion_enemy_present = false
 #ELSE
 //============================================================================
@@ -36,13 +38,15 @@ function GetOtherExpansionNearby takes unit ru, real tx, real ty returns unit
   return ru
 endfunction
 
-function CheckDoubleExpansionsClaimedInArea takes real tx, real ty returns boolean
+function CheckDoubleExpansionsClaimedInArea takes real tx, real ty, boolean isBuildCommand returns boolean
   local group g = CreateGroup()
   local unit u = null
   local integer minecount = 0
   local integer claimedMines = 0
   set double_expansion_ally_present = false
   set double_expansion_enemy_present = false
+  set double_expansion_allyhuman_present = false
+  set double_own_present = false
   call GroupEnumUnitsInRange(g, tx, ty, expansion_taken_radius, null)
   set g = SelectByAlive2(g, true)
   loop
@@ -52,13 +56,18 @@ function CheckDoubleExpansionsClaimedInArea takes real tx, real ty returns boole
       set double_expansion_target = u
       set double_expansion_enemy_present = true
     endif
-    if IsUnitGoldMine(u) then
-      if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) then
+    if IsUnitGoldMine(u) or IsUnitType(u, UNIT_TYPE_TOWNHALL) then
+      if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) and GetUnitTypeId(u) != old_id[ELF_MINE] and GetUnitTypeId(u) != old_id[NECROPOLIS_1] and GetUnitTypeId(u) != old_id[NECROPOLIS_2] and GetUnitTypeId(u) != old_id[NECROPOLIS_3] then
         set claimedMines = claimedMines + 1
       endif
-      if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) and GetOwningPlayer(u) != ai_player then
-        if IsPlayerAlly(ai_player, GetOwningPlayer(u)) then
+      if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) then
+        if GetOwningPlayer(u) == ai_player then
+          set double_own_present = true
+        elseif IsPlayerAlly(ai_player, GetOwningPlayer(u)) then
           set double_expansion_ally_present = true
+          if GetPlayerController(GetOwningPlayer(u)) == MAP_CONTROL_USER then
+            set double_expansion_allyhuman_present = true
+          endif
         else
           set double_expansion_target = u
           set double_expansion_enemy_present = true
@@ -66,7 +75,7 @@ function CheckDoubleExpansionsClaimedInArea takes real tx, real ty returns boole
       endif
       if not IsUnitType(u, UNIT_TYPE_TOWNHALL) then
         set minecount = minecount + 1
-      endif  
+      endif
     endif
     call GroupRemoveUnit(g,u)
   endloop
@@ -74,6 +83,9 @@ function CheckDoubleExpansionsClaimedInArea takes real tx, real ty returns boole
   set g = null
   set u = null
   call Trace("Total Mines:" + Int2Str(minecount) + " Claimed Mines:" + Int2Str(claimedMines))
+  if isBuildCommand then
+    set claimedMines = claimedMines + 1 // I'm on the way to build an expansion so include in count
+  endif  
   return minecount > 0 and claimedMines > minecount
 endfunction
 
@@ -131,8 +143,16 @@ function CheckDoubleExpansion takes nothing returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if CheckDoubleExpansionsClaimedInArea(GetUnitX(u), GetUnitY(u)) then
+    if CheckDoubleExpansionsClaimedInArea(GetUnitX(u), GetUnitY(u), false) then
       if double_expansion_ally_present then
+        if GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) then
+          call IssueImmediateOrderById(u, order_cancel)
+          if UnitAlive(u) and double_expansion_allyhuman_present then
+            // Simulated cancel as real cancel failed as it is actually successfully built at this point.
+            // Human probrably wants your expansion gone and attacked it
+            call KillUnit(u)
+          endif
+        endif
         call Trace("Ally double expansion detected")
       endif
     endif
