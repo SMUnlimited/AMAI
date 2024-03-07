@@ -800,6 +800,9 @@ globals
     integer array tq_par
     unit array tq_unit_par
     group array tq_group_par
+    unit array tq_unit_par2
+    
+    //hashtable tq_hashtable = InitHashtable()
     boolean tq_lock = true
     timer tq_timer = CreateTimer()
 
@@ -5544,6 +5547,7 @@ function TQCopy takes integer spos, integer tpos returns nothing
   set tq_par[tpos] = tq_par[spos]
   set tq_unit_par[tpos] = tq_unit_par[spos]
   set tq_group_par[tpos] = tq_group_par[spos]
+  set tq_unit_par2[tpos] = tq_unit_par2[spos]
 endfunction
 
 //============================================================================
@@ -5593,31 +5597,41 @@ function TQRemoveRoot takes nothing returns nothing
 endfunction
 
 //============================================================================
-function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, group group_par returns nothing
+function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, group group_par, unit unit_par_2 returns nothing
   call GetTQLock()
   set tq_length = tq_length + 1
+  //call SaveReal(tq_hashtable, time, tq_length, time)
+  //call SaveInteger(tq_hashtable, jid, tq_length, jid)
+  //call SaveInteger(tq_hashtable, par, tq_length, par)
+  //call SaveUnitHandle(tq_hashtable, unit_par, tq_length, unit_par)
+  //call SaveGroupHandle(tq_hashtable, group_par, tq_length, group_par)
   set tq_time[tq_length] = time
   set tq_jid[tq_length] = jid
   set tq_par[tq_length] = par
   set tq_unit_par[tq_length] = unit_par
   set tq_group_par[tq_length] = group_par
+  set tq_unit_par2[tq_length] = unit_par_2
   call TQUpHeap(tq_length)
   call ReleaseTQLock()
 endfunction
 
 //============================================================================
 function TQAddJob takes real time, integer jid, integer par returns nothing
-  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, null, null)
+  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, null, null, null)
 endfunction
 
 //============================================================================
 function TQAddUnitJob takes real time, integer jid, integer par, unit unit_par returns nothing
-  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, unit_par, null)
+  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, unit_par, null, null)
+endfunction
+
+function TQAddUnit2Job takes real time, integer jid, integer par, unit unit_par, unit unit_par2 returns nothing
+  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, unit_par, null, unit_par2)
 endfunction
 
 //============================================================================
 function TQAddGroupJob takes real time, integer jid, integer par, unit unit_par, group group_par returns nothing
-  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, unit_par, group_par)
+  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, unit_par, group_par, null)
 endfunction
 
 //==============================================================
@@ -7267,7 +7281,7 @@ endfunction
 #ENDINCLUDE
 
 //============================================================================
-function TQDoJob takes integer jid, integer par, unit unit_par, group group_par returns nothing
+function TQDoJob takes integer jid, integer par, unit unit_par, group group_par, unit unit_par2 returns nothing
   #SEARCHCODE Jobs jid
 endfunction
 
@@ -7277,7 +7291,8 @@ function TQHandleOnce takes nothing returns boolean
   local integer par = tq_par[1]
   local unit unit_par = tq_unit_par[1]
   local group group_par = tq_group_par[1]
-    local real jobtimings = 0
+  local unit unit_par2 = tq_unit_par2[1]
+  local real jobtimings = 0
 //  call DisplayToAll(Int2Str(R2I(TimerGetElapsed(tq_timer))))
 //  call TQDisplay()
   if TimerGetElapsed(tq_timer) >= tq_time[1] then
@@ -7286,16 +7301,18 @@ function TQHandleOnce takes nothing returns boolean
     if debugging then
       call UpdateDebugTextTag(debugjobtag, Int2Str(jid), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
     endif
-    call TQDoJob(jid, par, unit_par, group_par)
+    call TQDoJob(jid, par, unit_par, group_par, unit_par2)
     if jobtimings - TimerGetElapsed(tq_timer) >= 1 then
       call Trace("WARN: Job " + Int2Str(jid) + " took a long time " + Real2Str(jobtimings - TimerGetElapsed(tq_timer)) + "s")
     endif
     set unit_par = null
     set group_par = null
+    set unit_par2 = null
     return true
   endif
   set unit_par = null
   set group_par = null
+  set unit_par2 = null
   return false
 endfunction
 
@@ -10338,7 +10355,7 @@ function ConstructExpansion takes unit peon, integer unitid returns boolean
     call RemoveUnit(u)
     set u = null
   endif
-  call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon)
+  call TQAddUnit2Job(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon, current_expansion)
   return IssuePointOrderByIdLoc(peon, unitid, exp_loc_cache)
 endfunction
 
@@ -10494,7 +10511,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
       endif
     endif
     if race_uses_mine_expansion then
-      call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, expansion_peon)
+      call TQAddUnit2Job(2 * sleep_multiplier, BUILD_EXPANSION, 0, expansion_peon, current_expansion)
       call IssueTargetOrderById(expansion_peon, old_id[hall], current_expansion)
     else
       call ConstructExpansion(expansion_peon,old_id[hall])
