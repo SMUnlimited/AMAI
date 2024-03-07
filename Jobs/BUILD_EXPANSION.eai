@@ -8,46 +8,44 @@ function BuildExpansionJob takes unit u returns nothing
 	local unit v = null
 	local real x = 0
 	local real y = 0
-	call DisplayToAllJobDebug("BuildExpansionJob JOB START")
-	if not UnitAlive(u) or current_expansion == null then
-		if UnitAlive(u) then
-			call RecycleGuardPosition(u)
-		endif
+	local real d = 0
+	if u == null or not UnitAlive(u) or current_expansion == null then
 		return
 	endif
-	if DistanceBetweenUnits(u, current_expansion) > 250 then
-		if CheckDoubleExpansionsClaimedInArea(current_expansion) then
+	set d = DistanceBetweenUnits(u, current_expansion)
+	if GetUnitCurrentOrder(u) == old_id[racial_expansion] then
+		if CheckDoubleExpansionsClaimedInArea(GetUnitX(current_expansion), GetUnitY(current_expansion), true) then
 			if double_expansion_ally_present then
 				call Trace("Cancelling Expansion - Enemy ally expansion detected")
 				call IssueImmediateOrder(u, "stop")
-				call RecycleGuardPosition(u)
 				return
 			endif
 			if double_expansion_enemy_present then
 				call Trace("Cancelling Expansion - Enemy double expansion detected")
-				if race_uses_mine_expansion then
-					call IssueImmediateOrder(u, "stop")
-					call RecycleGuardPosition(u)
-					return
-				else
-					// Enemy expansion attempt to build in new valid location
-					call IssueImmediateOrder(u, "stop")
-					set v = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
-					set x = GetUnitX(v)
-					set y = GetUnitY(v)
-					call RemoveUnit(v)
-					set v = null
-					if DistanceBetweenPoints_dd(Location(x, y), GetUnitLoc(current_expansion)) <= race_max_expa_mine_distance and GetLocationNonCreepStrength(x, y, expansion_taken_radius) <= 0 then
-						call IssuePointOrderById(u, old_id[racial_expansion], x, y)
-					else
+				if d > (190 * 30) then // movement speed of peasant * seconds away. If way too far give up as enemy will be built first.
 						call IssueImmediateOrder(u, "stop")
-						call RecycleGuardPosition(u)
 						return
 					endif
 				endif
 			endif
-		endif
 		call TQAddUnitJob(2, BUILD_EXPANSION, 0, u)
+		call Trace("Build Expansion JOB")
+	elseif not race_uses_mine_expansion and d < race_max_expa_mine_distance then
+		if CheckDoubleExpansionsClaimedInArea(GetUnitX(current_expansion), GetUnitY(current_expansion), true) then
+			if not double_own_present and not double_expansion_ally_present and double_expansion_enemy_present and GetLocationNonCreepStrength(GetUnitX(current_expansion), GetUnitY(current_expansion), race_max_expa_mine_distance) == 0 then
+				call IssueImmediateOrder(u, "stop")
+				set v = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
+				set x = GetUnitX(v)
+				set y = GetUnitY(v)
+				call RemoveUnit(v)
+				set v = null
+				if DistanceBetweenPoints_dd(GetUnitLoc(v), GetUnitLoc(current_expansion)) <= race_max_expa_mine_distance then
+					call IssuePointOrderById(u, old_id[racial_expansion], x, y)
+					call TQAddUnitJob(2, BUILD_EXPANSION, 0, u)
+					call Trace("Threat Expansion JOB")
+				endif
+			endif
+		endif
 	endif
 endfunction
 
