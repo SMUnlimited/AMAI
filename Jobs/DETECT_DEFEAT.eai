@@ -18,12 +18,12 @@ function SaveYourself takes nothing returns boolean
     if current_expansion == null then
       call ChooseExpansion()
     endif
-    if race_ancient_expansion_available == true and TownCountDone(racial_expansion) > 0 then
+    if race_ancient_expansion_available == true and not ancient_expanding then
       call TQAddJob(2, ANCIENT_EXPANSION, 0)
       set ancient_expanding = true
       set SaveYourselfMode = ANCIENT_EXPANSION
       return true
-    elseif race_militia_available == true then
+    elseif race_militia_expansion_available == true and not militia_expanding then
       call TQAddJob(2, MILITIA_EXPAND, 0)
       set SaveYourselfMode = MILITIA_EXPAND
       return true
@@ -37,8 +37,10 @@ function SaveYourself takes nothing returns boolean
         return true
       endif
     elseif SaveYourselfMode == MILITIA_EXPAND then
-      if not HallsCompleted(racial_expansion) or GetMinesOwned() > 0 then
-        set SaveYourselfMode = -1
+      if militia_expanding == true then
+        return true  // In self rescue, wait
+      elseif not HallsCompleted(racial_expansion) or GetMinesOwned() > 0 then
+        set SaveYourselfMode = -1  // Self rescue successful , because ancient_expanding is false and have mine
         return true
       endif
     endif
@@ -55,6 +57,7 @@ function RemoveFromOwnForce takes player p returns nothing
     exitwhen own_force[i] == p
     set i = i + 1
   endloop
+  set force_number = force_number - 1
   loop
     exitwhen i >= force_number
     set own_force[i] = own_force[i+1]
@@ -76,6 +79,7 @@ function KillYourself takes boolean end_ai returns nothing
       call Sleep(3)
       set g = CreateGroup()
       call GroupEnumUnitsOfPlayer(g, ai_player, null)
+      set g = SelectByAlive(g, true)
       if destroy_buildings_on_defeat and (no_ai_ally and not humanPlayerAllys) then
         loop
           set u = FirstOfGroup(g)
@@ -83,7 +87,6 @@ function KillYourself takes boolean end_ai returns nothing
           call KillUnit(u)
           call GroupRemoveUnit(g, u )
         endloop
-        set player_defeated = true
       else
         loop
           exitwhen i >= c_ally_total
@@ -109,7 +112,9 @@ function KillYourself takes boolean end_ai returns nothing
           loop
             set u = FirstOfGroup(g)
             exitwhen u == null
-            if IsUnitType(u, UNIT_TYPE_HERO) then
+            if IsUnitHidden(u) then
+              call RemoveUnit(u)
+            elseif IsUnitType(u, UNIT_TYPE_HERO) then
               call KillUnit(u)
             else
               call SetUnitOwner(u, sharedRacePlayer, true)
@@ -118,8 +123,9 @@ function KillYourself takes boolean end_ai returns nothing
           endloop
         endif
         call RemovePlayer(ai_player, PLAYER_GAME_RESULT_DEFEAT)
-        set player_defeated = true
+        set p = null
       endif
+      set player_defeated = true
       call DestroyGroup(g)
       set g = null
       //if not destroy_buildings_on_defeat then
@@ -133,26 +139,26 @@ function KillYourself takes boolean end_ai returns nothing
 endfunction
 
 function Defeated takes nothing returns nothing
-    if not (no_ai_ally and not humanPlayerAllys) then
-      call Chat(C_Goldproblem)
-      if ask_for_gold == false then
-        set ask_for_gold = true
-        return
-      elseif GetGold() >= gold_problem_level then
-        set ask_for_gold = false
-        call Chat(C_Thanks)
-        set desperation_assault = false
-        return
-      endif
+  if not (no_ai_ally and not humanPlayerAllys) then
+    call Chat(C_Goldproblem)
+    if ask_for_gold == false then
+      set ask_for_gold = true
+      return
+    elseif GetGold() >= gold_problem_level then
+      set ask_for_gold = false
+      call Chat(C_Thanks)
+      set desperation_assault = false
+      return
     endif
-    if (p_surrender[profile]) >= 3 and FoodUsed() < 15 and not (no_ai_ally and not humanPlayerAllys) then
-      call KillYourself(no_ai_ally) // If no resources, and easily surrender just give up
-    else
-      if SaveYourself() then
-        return
-      endif
-      set desperation_assault = true
+  endif
+  if p_surrender[profile] >= 3 and FoodUsed() < 15 and not (no_ai_ally and not humanPlayerAllys) then
+    call KillYourself(no_ai_ally) // If no resources, and easily surrender just give up
+  else
+    if SaveYourself() then
+      return
     endif
+    set desperation_assault = true
+  endif
 endfunction
 
 function CheckDefeated takes nothing returns nothing
@@ -174,7 +180,7 @@ function CheckDefeated takes nothing returns nothing
   local unit u = null
   local player p = null
   local real enemy_sum = 0
-  local real player_sum = GetPlayerStrength(ai_player)
+  local real player_sum = GetOwnStrength()
   local real ally_sum = 0
   local integer i = 0
 
@@ -188,14 +194,15 @@ function CheckDefeated takes nothing returns nothing
     call GroupEnumUnitsInRange(g,GetLocationX(home_location),GetLocationY(home_location),front_base_distance,null)
     set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), false)
     set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
+    set g = SelectByHidden(g, false)  // towerrush will create hidden unit
     set g = SelectByAlive(g, true)
     loop
-        set u = FirstOfGroup(g)
-        exitwhen u == null
+      set u = FirstOfGroup(g)
+      exitwhen u == null
       if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) then
-          set enemy_sum = enemy_sum + GetUnitStrength(u)
-        endif
-    call GroupRemoveUnit(g,u)
+        set enemy_sum = enemy_sum + GetUnitStrength(u)
+      endif
+      call GroupRemoveUnit(g,u)
     endloop
   endif
   call DestroyGroup(g)
@@ -209,16 +216,16 @@ function CheckDefeated takes nothing returns nothing
     endif
     set i = i + 1
   endloop
-  set ally_sum = ally_sum + GetOwnStrength()
+  set ally_sum = ally_sum + player_sum
   set p = null
 // Have nothing left checks
   if GetPlayerUnitCount(ai_player, true) == 0 and GetPlayerStructureCount(ai_player, true) == 0 then
-    call KillYourself(no_ai_ally)	
+    call KillYourself(no_ai_ally)
     return
   endif
-  
+
   if food_use == 0 and hall_count == 0 then
-    if (agg <= 0 and (no_ai_ally and not humanPlayerAllys)) then
+    if agg <= 0 and no_ai_ally and not humanPlayerAllys then
       if SaveYourself() then
         return
       endif
@@ -230,23 +237,23 @@ function CheckDefeated takes nothing returns nothing
   endif
 
   if food_use < 6 and hall_count == 0 and worker_count == 0 then
-    if (agg <= 1 and (no_ai_ally and not humanPlayerAllys)) then
+    if agg <= 1 and no_ai_ally and not humanPlayerAllys then
       if SaveYourself() then
         return
       endif
       set desperation_assault = true
-    else 
+    else
       call KillYourself(no_ai_ally)
       return
     endif
   endif
-  
+
   // Overwhelmed
   if agg > 1 and enemy_sum > ((player_sum + ally_sum + 5) * (5 - (agg - 2))) and hall_count <= 1 then // each agg above 2 increases give up chance by 1 multiplicative factor
     call KillYourself(no_ai_ally)
     return
   endif
-  
+
   // Key Resource issues
   if hall_count == 0 and gold < hall_cost then
     set gold_problem_level = hall_cost
@@ -276,7 +283,9 @@ function SumForceState takes playerstate ps returns integer
   local integer sum = 0
   loop
     exitwhen i >= force_number
-    set sum = sum + GetPlayerState(own_force[i],ps)
+    if GetPlayerSlotState(own_force[i]) == PLAYER_SLOT_STATE_PLAYING then
+      set sum = sum + GetPlayerState(own_force[i],ps)
+    endif
     set i = i + 1
   endloop
   return sum
@@ -299,6 +308,7 @@ endfunction
 function DetectDefeatJob takes nothing returns nothing
   local integer i = 0
   local player p = null
+  local race r = GetPlayerRace(ai_player)
   call DisplayToAllJobDebug("DETECT_DEFEAT Job Start")
   set no_ai_ally = true
   loop
@@ -309,7 +319,7 @@ function DetectDefeatJob takes nothing returns nothing
         set humanPlayerAllys = true
       else
         set no_ai_ally = false
-        if GetPlayerRace(ai_player) == GetPlayerRace(p) then
+        if r == GetPlayerRace(p) then
           set sharedRacePlayer = p
         endif
       endif
@@ -321,8 +331,10 @@ function DetectDefeatJob takes nothing returns nothing
   if desperation_assault == true and (TownCount(race_manual_loading_mine) > 0 or not HallsCompleted(racial_expansion) or GetMinesOwned() > 0) then
     set desperation_assault = false
   endif
-  if not player_defeated then
+  if not player_defeated and not pathing_done then
     call TQAddJob(13 * sleep_multiplier, DETECT_DEFEAT, 0)
   endif
+  set p = null
+  set r = null
 endfunction
 #ENDIF
