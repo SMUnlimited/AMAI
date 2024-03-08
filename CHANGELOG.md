@@ -6,12 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## Unreleased
 
 ### Added
-- If human player constructs an expansion where the AI is, allied AI's will immediately give up the location if the player attacks the expansion.
+- If human player constructs an expansion where the AI is, allied AI's will immediately give up the expansion location if the player attacks the expansion.
 
 ### Fixed
 - Some more double expansion minor fixes correcting claim counts being off in some edge cases. 
 - Double expansion retry for humans, orcs and nightelfs should now be successful.
-
+- Some debug cache fixes. (jzy-chitong56)
+- Fix exchange behaviour to only include players currently playing. (jzy-chitong56)
+- Some detect defeat optimizations during emergency actions. (jzy-chitong56)
+- Fixed issue with hidden and dead units being considered during detect defeat actions. (jzy-chitong56)
+- (DevTools) AMAI will correctly only make the vanilla AI files using AMAI VS AI. (jzy-chitong56)
 
 ## [3.3.3a] - 2024-03-02
 
