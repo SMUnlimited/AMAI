@@ -5961,11 +5961,19 @@ function IsUnitGoldMine takes unit u returns boolean
     return false
 endfunction
 
+function IsValidMineClaimed takes unit u returns boolean
+  if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) and GetUnitTypeId(u) != old_id[ELF_MINE] and GetUnitTypeId(u) != old_id[NECROPOLIS_1] and GetUnitTypeId(u) != old_id[NECROPOLIS_2] and GetUnitTypeId(u) != old_id[NECROPOLIS_3] then
+    return true
+  endif
+  return false
+endfunction
 
 //============================================================================
 function CheckExpansionTaken takes unit expa returns boolean
   local group g = null
   local unit u = null
+  local integer claimedMines = 0
+  local integer minecount = 0
   if expa == null then
     return false
   elseif expa == not_taken_expansion then // Used in the ancient expansion and item expansion system
@@ -5975,31 +5983,36 @@ function CheckExpansionTaken takes unit expa returns boolean
   call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
   call GroupRemoveUnit(g, expa)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
+  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), false)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   //set g = SelectByAlive(g, true)
   set g = SelectByAlive2(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitGoldMine(u) or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
-      call DestroyGroup(g)
-      set g = null
-      set u = null
-      //if not IsUnitHidden(u) then
-        //call GroupRemoveUnit(far_expansion, expa)
-      //endif
-      return true
-    elseif GetOwningPlayer(u) != ai_player and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then		// Creeps dosn't mean expansion is taken
+    if IsPlayerEnemy(GetOwningPlayer(u), ai_player) then
       call DestroyGroup(g)
       set g = null
       set u = null
       return true
     endif
+    if IsUnitGoldMine(u) or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
+      if IsValidMineClaimed(u) then
+        set claimedMines = claimedMines + 1
+      endif
+      if not IsUnitType(u, UNIT_TYPE_TOWNHALL) then
+        set minecount = minecount + 1
+      endif
+    endif
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
   set g = null
-  return false
+  if claimedMines >= minecount then
+    return true
+  else
+    return false
+  endif
 endfunction
 
 // Prevent some map creeps too far away

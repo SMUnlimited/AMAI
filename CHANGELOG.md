@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Fixed
 - Some more double expansion minor fixes correcting claim counts being off in some edge cases. 
 - Double expansion retry for humans, orcs and nightelfs should now be successful.
+- Align expansion taken check with the double expansion check which should means AI's will expand when multiple empty mines at one expansion.
 - Fix human players unable to train seige engines with the barrage upgrade. (jzy-chitong56)
 - Some debug cache fixes. (jzy-chitong56)
 - Fix exchange behaviour to only include players currently playing. (jzy-chitong56)
