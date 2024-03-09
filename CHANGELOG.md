@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Added
 - If human player constructs an expansion where the AI is, allied AI's will immediately give up the expansion location if the player attacks the expansion.
 
+### Changed
+- Increase creep expansion radius slightly to 1250 from 1000 to better detect creeps that could cause issues.
+
 ### Fixed
 - Some more double expansion minor fixes correcting claim counts being off in some edge cases. 
 - Double expansion retry for humans, orcs and nightelfs should now be successful.
