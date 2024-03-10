@@ -3,51 +3,48 @@
 
 
 // Extra prevention against AMAI building two townhalls at the same location
-function BuildExpansionJob takes unit u, unit expansion returns nothing
+// GetotherExpansionNearby dosn't yet detect haunted mines so they are still the exception
+function BuildExpansionJob takes unit u returns nothing
 	local unit v = null
 	local real x = 0
 	local real y = 0
 	local real d = 0
-	if u == null or not UnitAlive(u) then
+	if u == null or not UnitAlive(u) or current_expansion == null then
 		return
 	endif
-	if expansion == null then
-		call IssueImmediateOrder(u, "stop")
-		return
-	  endif
-	set d = DistanceBetweenUnits(u, expansion)
-	call Trace("Build Expansion JOB start" + Real2Str(d))
+	set d = DistanceBetweenUnits(u, current_expansion)
 	if GetUnitCurrentOrder(u) == old_id[racial_expansion] then
-		call Trace("Build Expansion JOB has order")
-		if CheckDoubleExpansionsClaimedInArea(GetUnitX(expansion), GetUnitY(expansion), true) then
+		if CheckDoubleExpansionsClaimedInArea(GetUnitX(current_expansion), GetUnitY(current_expansion), true) then
 			if double_expansion_ally_present then
-				call Trace("Cancelling Expansion - ally expansion detected")
+				call Trace("Cancelling Expansion - Enemy ally expansion detected")
 				call IssueImmediateOrder(u, "stop")
 				return
 			endif
 			if double_expansion_enemy_present then
+				call Trace("Cancelling Expansion - Enemy double expansion detected")
 				if d > (190 * 30) then // movement speed of peasant * seconds away. If way too far give up as enemy will be built first.
-					call Trace("Cancelling Expansion - Enemy double expansion detected")
 					call IssueImmediateOrder(u, "stop")
 					return
 				endif
 			endif
 		endif
-		call TQAddUnit2Job(2, BUILD_EXPANSION, 0, u, expansion)
-	elseif not race_uses_mine_expansion and GetUnitCurrentOrder(u) != old_id[racial_expansion] and GetUnitCurrentOrder(u) != OrderId("humanbuild") and d < race_max_expa_mine_distance then
-		call Trace("Build Expansion JOB Retry Check")
-		call CheckDoubleExpansionsClaimedInArea(GetUnitX(expansion), GetUnitY(expansion), true)  // Result doesn't matter as long as its only enemies in the proximity
-		if not double_own_present and not double_expansion_ally_present and double_expansion_enemy_present and GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), race_max_expa_mine_distance) == 0 then
-			set v = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(expansion), GetUnitY(expansion), 270.0)
-			set x = GetUnitX(v)
-			set y = GetUnitY(v)
-			call RemoveUnit(v)
-			if DistanceBetweenPoints_dd(GetUnitLoc(v), GetUnitLoc(v)) <= race_max_expa_mine_distance then
-				call IssuePointOrderById(u, old_id[racial_expansion], x, y)
-				call TQAddUnit2Job(2, BUILD_EXPANSION, 0, u, expansion)
-				call Trace("Build Expansion JOB Retry Threat")
+		call TQAddUnitJob(2, BUILD_EXPANSION, 0, u)
+		call Trace("Build Expansion JOB")
+	elseif not race_uses_mine_expansion and d < race_max_expa_mine_distance then
+		if CheckDoubleExpansionsClaimedInArea(GetUnitX(current_expansion), GetUnitY(current_expansion), true) then
+			if not double_own_present and not double_expansion_ally_present and double_expansion_enemy_present and GetLocationNonCreepStrength(GetUnitX(current_expansion), GetUnitY(current_expansion), race_max_expa_mine_distance) == 0 then
+				call IssueImmediateOrder(u, "stop")
+				set v = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
+				set x = GetUnitX(v)
+				set y = GetUnitY(v)
+				call RemoveUnit(v)
+				set v = null
+				if DistanceBetweenPoints_dd(GetUnitLoc(v), GetUnitLoc(current_expansion)) <= race_max_expa_mine_distance then
+					call IssuePointOrderById(u, old_id[racial_expansion], x, y)
+					call TQAddUnitJob(2, BUILD_EXPANSION, 0, u)
+					call Trace("Threat Expansion JOB")
+				endif
 			endif
-			set v = null
 		endif
 	endif
 endfunction
