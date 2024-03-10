@@ -823,6 +823,9 @@ globals
     integer array tq_par
     unit array tq_unit_par
     group array tq_group_par
+    unit array tq_unit_par2
+
+    //hashtable tq_hashtable = InitHashtable()
     boolean tq_lock = true
     timer tq_timer = CreateTimer()
 
@@ -5565,6 +5568,7 @@ function TQCopy takes integer spos, integer tpos returns nothing
   set tq_par[tpos] = tq_par[spos]
   set tq_unit_par[tpos] = tq_unit_par[spos]
   set tq_group_par[tpos] = tq_group_par[spos]
+  set tq_unit_par2[tpos] = tq_unit_par2[spos]
 endfunction
 
 //============================================================================
@@ -5614,31 +5618,41 @@ function TQRemoveRoot takes nothing returns nothing
 endfunction
 
 //============================================================================
-function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, group group_par returns nothing
+function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, group group_par, unit unit_par_2 returns nothing
   call GetTQLock()
   set tq_length = tq_length + 1
+  //call SaveReal(tq_hashtable, time, tq_length, time)
+  //call SaveInteger(tq_hashtable, jid, tq_length, jid)
+  //call SaveInteger(tq_hashtable, par, tq_length, par)
+  //call SaveUnitHandle(tq_hashtable, unit_par, tq_length, unit_par)
+  //call SaveGroupHandle(tq_hashtable, group_par, tq_length, group_par)
   set tq_time[tq_length] = time
   set tq_jid[tq_length] = jid
   set tq_par[tq_length] = par
   set tq_unit_par[tq_length] = unit_par
   set tq_group_par[tq_length] = group_par
+  set tq_unit_par2[tq_length] = unit_par_2
   call TQUpHeap(tq_length)
   call ReleaseTQLock()
 endfunction
 
 //============================================================================
 function TQAddJob takes real time, integer jid, integer par returns nothing
-  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, null, null)
+  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, null, null, null)
 endfunction
 
 //============================================================================
 function TQAddUnitJob takes real time, integer jid, integer par, unit unit_par returns nothing
-  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, unit_par, null)
+  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, unit_par, null, null)
+endfunction
+
+function TQAddUnit2Job takes real time, integer jid, integer par, unit unit_par, unit unit_par2 returns nothing
+  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, unit_par, null, unit_par2)
 endfunction
 
 //============================================================================
 function TQAddGroupJob takes real time, integer jid, integer par, unit unit_par, group group_par returns nothing
-  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, unit_par, group_par)
+  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, unit_par, group_par, null)
 endfunction
 
 //==============================================================
@@ -5949,10 +5963,10 @@ function MultipleMinefix takes nothing returns boolean
         set g = SelectByHidden(g, false)
         set g = SelectByAlive(g, true)
         set u = FirstOfGroup(g)
-        if u != null then
+        if u != null and (GetUnitCurrentOrder(u) != OrderId("entangle") or GetRandomInt(0,3) == 1) then
           call IssueTargetOrder(u, "entangle", mine)  // first entangle , no need build
         endif
-      elseif TownCount(race_manual_loading_mine) < 2 and c > 1 and gold > 2 * GetUnitGoldCost2(racial_expansion) then  // more mine but one loadmine, build one tree
+      elseif TownCount(race_manual_loading_mine) < 2 and ((c > 1 and gold > 2 * GetUnitGoldCost2(racial_expansion)) or (c == 1 and gold > 5 * GetUnitGoldCost2(racial_expansion))) then  //  build one tree
         set b = false
       endif
     elseif race_uses_mine_expansion and gold > GetUnitGoldCost2(racial_expansion) / 3 then
@@ -5983,38 +5997,45 @@ function IsUnitGoldMine takes unit u returns boolean
   return false
 endfunction
 
+function IsValidMineClaimed takes unit u returns boolean
+  if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) and GetUnitTypeId(u) != old_id[ELF_MINE] and GetUnitTypeId(u) != old_id[NECROPOLIS_1] and GetUnitTypeId(u) != old_id[NECROPOLIS_2] and GetUnitTypeId(u) != old_id[NECROPOLIS_3] then
+    return true
+  endif
+  return false
+endfunction
+
 //============================================================================
 function CheckExpansionTaken takes unit expa returns boolean
   local group g = null
   local unit u = null
   local player p = null
+  local integer claimedMines = 0
+  local integer minecount = 0
   if expa != null then
-    if expa == not_taken_expansion and first_town_mine > 1 then
+    if expa == not_taken_expansion and first_town_mine > 1 and DistanceBetweenPoints_dk(GetUnitLoc(expa), home_location) < 1800 then
       return false
     endif
     set g = CreateGroup()
     call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
-    call GroupRemoveUnit(g, expa)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
       set p = GetOwningPlayer(u)
-      if p != Player(PLAYER_NEUTRAL_PASSIVE) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and IsUnitType(u, UNIT_TYPE_STRUCTURE) then  // Creeps dosn't mean expansion is taken
-        if GetUnitTypeId(u) == old_id[racial_expansion] or IsUnitGoldMine(u) or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
-          call DestroyGroup(g)
-          set g = null
-          set u = null
-          set p = null
-          // if not IsUnitHidden(u) then
-            //call GroupRemoveUnit(far_expansion, expa)
-          // endif
-          return true
-        elseif p != ai_player then
+      if p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and IsUnitType(u, UNIT_TYPE_STRUCTURE) then  // Creeps dosn't mean expansion is taken
+        if IsPlayerEnemy(GetOwningPlayer(u), ai_player) then
           call DestroyGroup(g)
           set g = null
           set u = null
           set p = null
           return true
+        endif
+        if IsUnitGoldMine(u) or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
+          if IsValidMineClaimed(u) and DistanceBetweenUnits(u, expa) < race_max_expa_mine_distance then
+            set claimedMines = claimedMines + 1
+          endif
+          if not IsUnitType(u, UNIT_TYPE_TOWNHALL) then
+            set minecount = minecount + 1  // Informative but not used
+          endif
         endif
       endif
       call GroupRemoveUnit(g, u)
@@ -6023,7 +6044,7 @@ function CheckExpansionTaken takes unit expa returns boolean
     set g = null
     set p = null
   endif
-  return false
+  return claimedMines >= 1  // While there may be extra mines, we focusing on is this mine taken
 endfunction
 
 // Prevent some map creeps too far away
@@ -7346,7 +7367,7 @@ endfunction
 #ENDINCLUDE
 
 //============================================================================
-function TQDoJob takes integer jid, integer par, unit unit_par, group group_par returns nothing
+function TQDoJob takes integer jid, integer par, unit unit_par, group group_par, unit unit_par2 returns nothing
   #SEARCHCODE Jobs jid
 endfunction
 
@@ -7356,6 +7377,7 @@ function TQHandleOnce takes nothing returns boolean
   local integer par = tq_par[1]
   local unit unit_par = tq_unit_par[1]
   local group group_par = tq_group_par[1]
+  local unit unit_par2 = tq_unit_par2[1]
   local real jobtimings = 0
 //  call DisplayToAll(Int2Str(R2I(TimerGetElapsed(tq_timer))))
 //  call TQDisplay()
@@ -7365,16 +7387,18 @@ function TQHandleOnce takes nothing returns boolean
     if debugging then
       call UpdateDebugTextTag(debugjobtag, Int2Str(jid), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
     endif
-    call TQDoJob(jid, par, unit_par, group_par)
+    call TQDoJob(jid, par, unit_par, group_par, unit_par2)
     if jobtimings - TimerGetElapsed(tq_timer) >= 1 then
       call Trace("WARN: Job " + Int2Str(jid) + " took a long time " + Real2Str(jobtimings - TimerGetElapsed(tq_timer)) + "s")
     endif
     set unit_par = null
     set group_par = null
+    set unit_par2 = null
     return true
   endif
   set unit_par = null
   set group_par = null
+  set unit_par2 = null
   return false
 endfunction
 
@@ -7660,7 +7684,7 @@ endfunction
 //============================================================================
 function PJHandleOnce takes integer t returns boolean
   if TimerGetElapsed(tq_timer) - pj_time[t] >= pj_frequency[t] then
-   call TQDoJob(pj_jid[t], pj_par[t], null, null)
+   call TQDoJob(pj_jid[t], pj_par[t], null, null, null)
    set pj_time[t] = TimerGetElapsed(tq_timer)
    call CreateDebugTagLoc("path sys runjob : " + Int2Str(pj_jid[t]), 10, GetLocationX(home_location), GetLocationY(home_location), 2.00, 1.00)
    return true
@@ -9337,7 +9361,7 @@ function RefreshNeeded takes integer t, integer qty, integer unitid, integer tow
   else
     if needed1[unitid] != 0 then
       if needed3[unitid] == UPGRADED then
-        call SetBuildAllAMCore(BUILD_UNIT, qty + TownCountExForUpgrade(needed1[unitid],unitid,false,town), needed1[unitid], town, bloc, prio + prio_n_inc*3)
+        call SetBuildAllAMCore(BUILD_UNIT, Max(0,qty - TownCountEx(unitid, false, town)), needed1[unitid], town, bloc, prio + prio_n_inc*3)
       else
         call SetBuildAllAMCore(BUILD_UNIT, Get_f_qty(qty, unitid, town), needed1[unitid], -1, BLOC_STD, prio + prio_n_inc*3)
       endif
@@ -10081,12 +10105,13 @@ endfunction
 
 //============================================================================
 function GetNeutralHero takes integer unitid returns integer
-  local integer i = 0
+  local boolean b = false
 
   call Trace("I Want a Tavern Hero")
 
   if not neutral_available[NEUTRAL_TAVERN] then
     call Trace("No Tavern Available")
+    set recalculate_heros = true
     return BUILT_ALL
   endif
   if nearest_neutral[NEUTRAL_TAVERN] == null or neutral_guarded[NEUTRAL_TAVERN] then
@@ -10122,16 +10147,12 @@ function GetNeutralHero takes integer unitid returns integer
 
   if (unitid == hero[1] and hero_built[1]) or (unitid == hero[2] and hero_built[2]) or (unitid == hero[3] and hero_built[3]) then
     call Trace("Try To Resurrect Tavern Hero")
-    if not TavernResurrect and not neutral_ordered[NEUTRAL_TAVERN] then  // once send one unit to buy
-      if unitid == hero[1] and TownCount(hero[1]) < 1 and (100 * (GetUnitLevel(hero_unit[1]) + 4)) > GetGold() and (25 * (GetUnitLevel(hero_unit[1]) + 4)) > GetWood() then
-        set i = 1
-      elseif unitid == hero[2] and TownCount(hero[2]) < 1 and (100 * (GetUnitLevel(hero_unit[2]) + 4)) > GetGold() and (25 * (GetUnitLevel(hero_unit[2]) + 4)) > GetWood() then
-        set i = 2
-      elseif unitid == hero[3] and TownCount(hero[3]) < 1 and (100 * (GetUnitLevel(hero_unit[3]) + 4)) > GetGold() and (25 * (GetUnitLevel(hero_unit[3]) + 4)) > GetWood() then
-        set i = 3
-      endif
+    if not neutral_ordered[NEUTRAL_TAVERN] then  // once send one unit to buy
+      set b = (unitid == hero[1] and TownCount(hero[1]) < 1 and (100 * (GetUnitLevel(hero_unit[1]) + 4)) > GetGold() and (25 * (GetUnitLevel(hero_unit[1]) + 4)) > GetWood())
+      set b = b or (unitid == hero[2] and TownCount(hero[2]) < 1 and (100 * (GetUnitLevel(hero_unit[2]) + 4)) > GetGold() and (25 * (GetUnitLevel(hero_unit[2]) + 4)) > GetWood())
+      set b = b or (unitid == hero[3] and TownCount(hero[3]) < 1 and (100 * (GetUnitLevel(hero_unit[3]) + 4)) > GetGold() and (25 * (GetUnitLevel(hero_unit[3]) + 4)) > GetWood())
     endif
-    if i == 0 then
+    if not b then
       if SetProduce(1,old_id[unitid],-1) then
         return BUILT_ALL
       else
@@ -10156,7 +10177,7 @@ function GetNeutralHero takes integer unitid returns integer
 
   if not neutral_ordered[NEUTRAL_TAVERN] then
     call Trace("Prepare to Do Tavern Job")
-    if i > 0 then
+    if b then
       set TavernResurrect = true
     endif
     set neutral_ordered[NEUTRAL_TAVERN] = true
@@ -10483,7 +10504,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     //
 
     if needed3[unitid] == UPGRADED then
-      if (needed1[unitid] != 0 and GetUnitCountEx(needed1[unitid],true,town) < 1) or (needed2[unitid] != 0 and TownCountDone(needed2[unitid]) < 1) then
+      if needed1[unitid] != 0 and GetUnitCountEx(needed1[unitid],true,town) < 1 then
         return CANNOT_BUILD
       endif
     endif
@@ -10520,7 +10541,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     endif
   #ENDINCLUDE
 
-    if buy_type[unitid] == BT_NEUTRAL_HERO or (not TavernResurrect and nearest_neutral[NEUTRAL_TAVERN] != null and not neutral_guarded[NEUTRAL_TAVERN] and ((TownCount(hero[1]) < 1 and hero_built[1]) or (TownCount(hero[2]) < 1 and hero_built[2]) or (TownCount(hero[3]) < 1 and hero_built[3]))) then
+    if buy_type[unitid] == BT_NEUTRAL_HERO or (buy_type[unitid] == BT_HERO and not TavernResurrect and nearest_neutral[NEUTRAL_TAVERN] != null and not neutral_guarded[NEUTRAL_TAVERN] and ((TownCount(hero[1]) < 1 and hero_built[1]) or (TownCount(hero[2]) < 1 and hero_built[2]) or (TownCount(hero[3]) < 1 and hero_built[3]))) then
       return GetNeutralHero(unitid)
     endif
 
@@ -10590,7 +10611,7 @@ function ConstructExpansion takes unit peon, integer unitid returns boolean
   set u = null
   if ai_time > exp_loc_cache_timeout and DistanceBetweenPoints_dd(Location(x, y), GetUnitLoc(current_expansion)) <= race_max_expa_mine_distance then
     set exp_loc_cache_timeout = ai_time + 4
-    call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon)
+    call TQAddUnit2Job(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon, current_expansion)
     return IssuePointOrderById(peon, unitid, x, y)
   endif
   return false
@@ -10749,7 +10770,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
       endif
     endif
     if race_uses_mine_expansion then
-      call TQAddUnitJob(2 * sleep_multiplier, BUILD_EXPANSION, 0, expansion_peon)
+      call TQAddUnit2Job(2 * sleep_multiplier, BUILD_EXPANSION, 0, expansion_peon, current_expansion)
       call IssueTargetOrderById(expansion_peon, old_id[hall], current_expansion)
     else
       call ConstructExpansion(expansion_peon,old_id[hall])
@@ -13432,7 +13453,7 @@ function HealArmy takes nothing returns nothing
   local item mh_i = null
   local boolean mass_healed = false
   local boolean global_heal = false
-  local integer sleepLength = 10
+  local integer sleepLength = 2
   local real healthTrigger = 0.75
   local integer sleepFrequency = 0
   loop
@@ -13481,22 +13502,17 @@ function HealArmy takes nothing returns nothing
             call ApplyHealingItem(u, mh_i)
           endif
           if hs <= healthTrigger then
-            call Sleep(sleepLength * sleep_multiplier) // Wait some time for item effects to work
-          else
-            call Sleep(2 * sleep_multiplier)
+            set sleepLength = 2
           endif
         endif
       else
         call StartEmergencyItem(1, mh_item)
         if hs <= healthTrigger then
-          call Sleep(8*sleep_multiplier) // Wait some time for item to be bought
-        else
-          call Sleep(2 * sleep_multiplier)
+          set sleepLength = 8
         endif
       endif
-    else
-      call Sleep(2 * sleep_multiplier)
     endif
+    call Sleep(sleepLength * sleep_multiplier) // Wait some time for item effects to work
     set sleepFrequency = sleepFrequency + 1
   endloop
   set mh_i = null
