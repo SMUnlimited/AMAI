@@ -6,15 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## Unreleased
 
 ### Added
-- If human player constructs an expansion where the AI is, allied AI's will immediately give up the expansion location if the player attacks the expansion.
+- If non-ai player constructs an expansion where the AI is, allied AI's will immediately give up the expansion location if his expansion is damaged.
 
 ### Changed
 - Increase creep expansion radius slightly to 1250 from 1000 to better detect creeps that could cause issues.
+- Increased expansion taken radius to 1300 from 1000 to more accurately detect additional mines available.
 
 ### Fixed
 - Some more double expansion minor fixes correcting claim counts being off in some edge cases. 
-- Double expansion retry for humans, orcs and nightelfs should now be successful.
-- Align expansion taken check with the double expansion check which should means AI's will expand when multiple empty mines at one expansion.
+- Double expansion retry for humans, orcs and nightelfs should now be more successful.
+- Align expansion taken check with the double expansion check which should means AI's will expand when multiple empty mines available at one expansion.
+- Fixed a possible lag/crash cause in the heal army routines.
+- Fixed an issue where human players were building too many scout towers and not upgrading them.
 - Fix human players unable to train seige engines with the barrage upgrade. (jzy-chitong56)
 - Some debug cache fixes. (jzy-chitong56)
 - Fix exchange behaviour to only include players currently playing. (jzy-chitong56)
