@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## Unreleased
+## [3.3.4] - 2024-03-10
 
 ### Added
 - If non-ai player constructs an expansion where the AI is, allied AI's will immediately give up the expansion location if his expansion is damaged.
@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Increased expansion taken radius to 1300 from 1000 to more accurately detect additional mines available.
 
 ### Fixed
-- Some more double expansion minor fixes correcting claim counts being off in some edge cases. 
+- Some more double expansion minor fixes correcting claim counts being off in some edge cases.
 - Double expansion retry for humans, orcs and nightelfs should now be more successful.
 - Align expansion taken check with the double expansion check which should means AI's will expand when multiple empty mines available at one expansion.
 - Fixed a possible lag/crash cause in the heal army routines.
