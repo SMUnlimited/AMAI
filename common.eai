@@ -5982,7 +5982,6 @@ function CheckExpansionTaken takes unit expa returns boolean
   set g = CreateGroup()
   call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
   call GroupRemoveUnit(g, expa)
-  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), false)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   //set g = SelectByAlive(g, true)
@@ -5997,18 +5996,18 @@ function CheckExpansionTaken takes unit expa returns boolean
       return true
     endif
     if IsUnitGoldMine(u) or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
-      if IsValidMineClaimed(u) then
+      if IsValidMineClaimed(u) and DistanceBetweenUnits(u, expa) < race_max_expa_mine_distance then
         set claimedMines = claimedMines + 1
       endif
       if not IsUnitType(u, UNIT_TYPE_TOWNHALL) then
-        set minecount = minecount + 1
+        set minecount = minecount + 1 // Informative but not used
       endif
     endif
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
   set g = null
-  if claimedMines >= minecount then
+  if claimedMines >= 1 then // While there may be extra mines, we focusing on is this mine taken
     return true
   else
     return false
@@ -9224,7 +9223,7 @@ function RefreshNeeded takes integer t, integer qty, integer unitid, integer tow
   else
     if needed1[unitid] != 0 then
       if needed3[unitid] == UPGRADED then
-        call SetBuildAllAMCore(BUILD_UNIT, qty + TownCountExForUpgrade(needed1[unitid],unitid,false,town), needed1[unitid], town, bloc, prio + prio_n_inc*3)
+        call SetBuildAllAMCore(BUILD_UNIT, Max(0,qty - TownCountEx(unitid, false, town)), needed1[unitid], town, bloc, prio + prio_n_inc*3)
       else
         call SetBuildAllAMCore(BUILD_UNIT, Get_f_qty(qty, unitid, town), needed1[unitid], -1, BLOC_STD, prio + prio_n_inc*3)
       endif
@@ -10252,7 +10251,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     //
 
     if needed3[unitid] == UPGRADED then
-      if (needed1[unitid] != 0 and GetUnitCountEx(needed1[unitid],true,town) < 1) or (needed2[unitid] != 0 and TownCountDone(needed2[unitid]) < 1) then
+      if (needed1[unitid] != 0 and GetUnitCountEx(needed1[unitid],true,town) < 1) then
         return CANNOT_BUILD
       endif
     endif
@@ -13034,7 +13033,7 @@ function HealArmy takes nothing returns nothing
   local item mh_i = null
   local boolean mass_healed = false
   local boolean global_heal = false
-  local integer sleepLength = 10
+  local integer sleepLength = 2
   local real healthTrigger = 0.75
   local integer sleepFrequency = 0
   loop
@@ -13083,23 +13082,19 @@ function HealArmy takes nothing returns nothing
             call ApplyHealingItem(u, mh_i)
           endif
           if hs <= healthTrigger then
-            call Sleep(sleepLength * sleep_multiplier) // Wait some time for item effects to work
           else
-            call Sleep(2 * sleep_multiplier)          
+            set sleepLength = 2
           endif
         endif
       else
         call StartEmergencyItem(1, mh_item)
         if hs <= healthTrigger then
-          call Sleep(8*sleep_multiplier) // Wait some time for item to be bought
-        else
-          call Sleep(2 * sleep_multiplier)
+          set sleepLength = 8
         endif
       endif
-    else
-        call Sleep(2 * sleep_multiplier)
     endif
     set sleepFrequency = sleepFrequency + 1
+    call Sleep(sleepLength * sleep_multiplier) // Wait some time for item effects to work
   endloop
   set mh_i = null
   set u = null
