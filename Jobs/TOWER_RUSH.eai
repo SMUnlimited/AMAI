@@ -284,7 +284,7 @@ function TowerRushJob takes nothing returns nothing
 				loop
 					set u = FirstOfGroup(g)
 					exitwhen u == null
-					if not IsUnitBuying(u) then
+					if not IsUnitBuying(u) and not IsUnitInGroup(u, unit_zepplin_move) and u != expansion_peon then
 						call TQAddUnitJob(3, RESET_GUARD_POSITION, 0, u)  //Prevent peon immediately go tower point repair tower
 					endif
 					if builder[i] != null then
@@ -424,19 +424,15 @@ function TowerRushJob takes nothing returns nothing
 	if race_has_power_build and tower_attack_run == true then  // fix AI pull all peon to build tower
 		set i = 41
 		loop
-			exitwhen i > 45  //prevent harvest gold peon more then 5 , so just control 3 peon
+			exitwhen i > 46 or FirstOfGroup(tempg) == null  //prevent harvest gold peon more then 5 , so just control 3 peon
 			if builder[i] == null or not UnitAlive(builder[i]) or not IsUnitInGroup(builder[i], tempg) then
 				set builder[i] = FirstOfGroup(tempg)
-				set id = GetUnitCurrentOrder(builder[i])
-				if i > 42 then
+				if i > 43 then
 					call RemoveGuardPosition(builder[i])
 					call GroupAddUnit(tower_rush_power,builder[i])
 					call IssueImmediateOrder(builder[i], "autoharvestgold")
-				elseif id == 0 then
-					call CreateDebugTag("TRush: free peon", 10, u, 4.00, 2.00)
-					call RecycleGuardPosition(builder[i])
 				endif
-			elseif i > 42 then
+			elseif i > 43 then
 				set id = GetUnitCurrentOrder(builder[i])
 				call CreateDebugTag("TRush: harvest gold peon", 10, u, 4.00, 2.00)
 				if id == OrderId("resumeharvesting") then  // no need do anything , maybe resume gold
@@ -447,8 +443,13 @@ function TowerRushJob takes nothing returns nothing
 			call GroupRemoveUnit(tempg,builder[i])
 			set i = i + 1
 		endloop
+		set i = 41
 		call GroupRemoveUnit(tower_rush_power,builder[41])  // give AI 2 peon build other construct
 		call GroupRemoveUnit(tower_rush_power,builder[42])
+		call GroupRemoveUnit(tower_rush_power,builder[43])
+		call RecycleGuardPosition(builder[41])
+		call RecycleGuardPosition(builder[42])
+		call RecycleGuardPosition(builder[43])
 		loop
 			set u = FirstOfGroup(tempg)
 			exitwhen u == null
@@ -480,22 +481,22 @@ function TowerRushJob takes nothing returns nothing
 				exitwhen i > race_tower_peon
 				call GroupClear(g)
 				call GroupEnumUnitsInRange(g, GetUnitX(builder[i]),GetUnitY(builder[i]), 1000 ,null)
-				set x = GetUnitX(builder[i])
-				set y = GetUnitY(builder[i])
 				set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
 				call TowerRushBuilderFirstControl_d(builder[i], FirstOfGroup(g))
 				set i = i + 1
 			endloop
-			set tower_peon_point_x = x / Max(1, i - 1)
-			set tower_peon_point_y = y / Max(1, i - 1)
 			set tower_peon_run = true
 			set time_next_try = 2
 		elseif towers_built < buildtries and towers_built - towers_attck < 2 then  // here towers_built no change , so AI will build more tower , even if tower can move , but not a big problem
 			loop
 				exitwhen i > race_tower_peon
 				call TowerRushBuilderControl_k(builder[i], t)
+				set x = GetUnitX(builder[i])
+				set y = GetUnitY(builder[i])
 				set i = i + 1
 			endloop
+			set tower_peon_point_x = x / Max(1, i - 1)
+			set tower_peon_point_y = y / Max(1, i - 1)
 			set time_next_try = 1
 		endif
 	endif
