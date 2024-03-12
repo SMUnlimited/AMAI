@@ -940,6 +940,7 @@ globals
 // (AMAI)  Variables for controlling the AI (different states)
 //===========================================================================
 
+    boolean console_on = false
     boolean creeping_only = false
 
     boolean break_attack 	= false
@@ -8067,6 +8068,9 @@ function cmd_misc takes integer cmd, integer data returns nothing
   #ENDINCLUDE
     endif
 
+  elseif cmd == 73 then
+    set console_on = true
+
   endif
 endfunction
 
@@ -12169,6 +12173,9 @@ endfunction
 function AttackMoveTowerRush takes nothing returns nothing
 	local integer attack_length_counter = 0
 	local real threat = teleport_low_threat * 1.5
+	local real x = 0
+	local real y = 0
+	local boolean upattack = false
 	local group g = CreateGroup()
 	loop
 		exitwhen not towerrush
@@ -12217,7 +12224,11 @@ function AttackMoveTowerRush takes nothing returns nothing
 			elseif towers_built < 7 then
 				call AttackMoveXY(R2I(second_attack_point_x), R2I(second_attack_point_y))
 			else
-				call AttackMoveXY(R2I(enemy_point_x),R2I(enemy_point_y))
+				if not upattack then
+					set x = enemy_point_x
+					set y = enemy_point_y
+				endif
+				call AttackMoveXY(R2I(x),R2I(y))
 			endif
 			set attack_length_counter = attack_length_counter + 1
 			call Sleep(RMin(sleep_multiplier,0.5))
@@ -12243,6 +12254,19 @@ function AttackMoveTowerRush takes nothing returns nothing
 		if attack_length_counter > attack_reform_length then
 			set attack_length_counter = 0
 			call FormGroupAM(0)
+			if towers_built >= 7 then
+				set upattack = true
+				call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1800, null)
+				set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+				set g = SelectByEnemy(g, ai_player, true)
+				set g = SelectByAlive(g, true)
+				set g = SelectByHidden(g,false)
+				if FirstOfGroup(g) != null then
+					set x = GetUnitX(FirstOfGroup(g))
+					set y = GetUnitY(FirstOfGroup(g))
+				endif
+				call GroupClear(g)
+			endif
 		endif
 	endloop
 	set lastcaptainx = 0
