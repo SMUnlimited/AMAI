@@ -28,15 +28,38 @@ function AncientExpansionReset takes nothing returns nothing
 	set ancient_exp_maintree = false
 endfunction
 
-function BuildAncient takes nothing returns nothing
+function CheckMine takes group rg returns group
+	local unit u = null
 	local unit temp = null
+	local location l = null
+	local group g = rg
+	set rg = CreateGroup()
+	loop
+		set u = FirstOfGroup(g)
+		exitwhen u == null
+		set l = GetUnitLoc(u)
+		set temp = GetOneOfIdNearLoc(temp, ai_player, 'egol', l, 1500)
+		if temp == null or GetResourceAmount(temp) <= 0 then
+			call GroupAddUnit(rg, u)
+		endif
+		call RemoveLocation(l)
+		call GroupRemoveUnit(g, u)
+	endloop
+	call DestroyGroup(g)
+	set g = null
+	set l = null
+	return rg
+endfunction
+
+function BuildAncient takes nothing returns nothing
+	local unit u = null
 	local location l = null
 	call RemoveGuardPosition(ancient_exp_wisp)
 	if ancient_exp_loc == null then
-		set temp = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
-		set l = GetUnitLoc(temp)
-		call RemoveUnit(temp)
-		set temp = null
+		set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
+		set l = GetUnitLoc(u)
+		call RemoveUnit(u)
+		set u = null
 	else
 		set l = Location(GetLocationX(ancient_exp_loc),GetLocationY(ancient_exp_loc))
 	endif
@@ -130,6 +153,7 @@ elseif ancient_exp_state == 1 then
 	set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
 	set g = SelectByAlive(g, true)
 	set g = SelectByHidden(g, false)
+	set g = CheckMine(g)  // Prevent root trees with mines
 	set g = GetNearestSubGroupOfGroup(g, l, 1)
 	set ancient_exp_unit = FirstOfGroup(g)  //  find tree
 	call DestroyGroup(g)
