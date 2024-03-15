@@ -8,7 +8,7 @@
 #ELSE
 
 function ItemExpansionReset takes nothing returns nothing
-  if itemhero != null then
+  if itemhero != null and UnitAlive(itemhero) then
     call RecycleGuardPosition(itemhero)
   endif
   set item_expanding = false
@@ -27,7 +27,6 @@ function UseExpansionItem takes item t returns nothing
   call RemoveUnit(u)
   call UnitUseItemPoint(itemhero, t, GetLocationX(l), GetLocationY(l))
   call MoveLocation(item_exp_guard_loc, GetLocationX(rl), GetLocationY(rl))
-  set item_attack_ruard = true
   call RemoveLocation(loc)
   set loc = null
   call RemoveLocation(rl)
@@ -59,33 +58,28 @@ function ItemExpansionJob takes nothing returns nothing
           call Trace("Item expansion state 0 - No gold or wood or buy item job is runing for other item")
           set item_expanding = false
           set item_exp_count = 0
-          set not_taken_expansion = null
           return
         endif
         set shop_unit = GetOneOfId(shop_unit, ai_player, old_id[racial_shop])
-        if shop_unit != null then
-          set shop_wanted = 1
-          set shop_distance_limit = raceshop_distance_limit
-          set shop_ordered = true 
-          set expitem_buy = true
-          call TQAddJob(2, BUY_ITEM, race_item_expansion_item_id)
-        else
-          call Trace("Item expansion state 0 - not get shop , end job")
+        if shop_unit == null then
+          call Trace("Item expansion state 0 - no shop")
           set item_expanding = false
           set item_exp_count = 0
-          set not_taken_expansion = null
           return
         endif
-      elseif item_exp_count > 3 or not shop_ordered then
-        call Trace("Item expansion state 0 - but item timeout")
+        set shop_wanted = 1
+        set shop_distance_limit = raceshop_distance_limit
+        set shop_ordered = true
+        set expitem_buy = true
+        call TQAddJob(2, BUY_ITEM, race_item_expansion_item_id)
+      elseif item_exp_count > 4 or not shop_ordered then
+        call Trace("Item expansion state 0 - buy item timeout")
         set item_expanding = false
         set expitem_buy = false
         set item_exp_count = 0
-        set not_taken_expansion = null
         return
-      else
-        set item_exp_count = item_exp_count + 1
       endif
+      set item_exp_count = item_exp_count + 1
       call TQAddJob(16, ITEM_EXPANSION, 0)
       return
     endif
@@ -116,7 +110,7 @@ function ItemExpansionJob takes nothing returns nothing
     else
       call Trace("Item expansion state 1 - Wait rush Expansion")
       set item_exp_count = item_exp_count + 1
-      set time_next_try = 20
+      set time_next_try = 10
     endif
   elseif item_exp_state == 2 then
     set exp_item = GetItemOfType(exp_item,race_item_expansion_item_id)
@@ -124,6 +118,7 @@ function ItemExpansionJob takes nothing returns nothing
     if itemhero != null and exp_item != null and not CheckExpansionTaken(current_expansion) then
       call RemoveGuardPosition(itemhero)
       set time_next_try = 2
+      set item_attack_ruard = true
       if DistanceBetweenUnits(itemhero, current_expansion) > 800 then
         call CreateDebugTag("Item expansion state 2 - move to expansion", 10, itemhero, 3.00, 1.50)
         call IssuePointOrder(itemhero, "move", GetUnitX(current_expansion), GetUnitY(current_expansion))
