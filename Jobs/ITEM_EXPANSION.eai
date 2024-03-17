@@ -8,6 +8,13 @@
 #ELSE
 
 function ItemExpansionReset takes nothing returns nothing
+  local item t = null
+  local unit u = null
+  set t = GetItemOfType(t,race_item_expansion_item_id)
+  set u = GetItemHero(t)
+  if u != null and itemhero != null and u != itemhero and UnitAlive(u) then
+    call RecycleGuardPosition(u)  //prevent hero change
+  endif
   if itemhero != null and UnitAlive(itemhero) then
     call RecycleGuardPosition(itemhero)
   endif
@@ -17,6 +24,8 @@ function ItemExpansionReset takes nothing returns nothing
   set item_exp_count = 0
   set not_taken_expansion = null
   set itemhero = null
+  set u = null
+  set t = null
 endfunction
 
 function UseExpansionItem takes item t returns nothing
@@ -42,6 +51,11 @@ function ItemExpansionJob takes nothing returns nothing
   local item exp_item = null
   local integer time_next_try = 1
   call DisplayToAllJobDebug("ITEM_EXPANSION JOB STARTED")
+  if itemhero != null and UnitAlive(itemhero) and GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero) == null then
+    call TQAddUnitJob(1, RESET_GUARD_POSITION_ONLY, 50, itemhero)  //prevent item change hero
+    set exp_item = GetItemOfType(exp_item,race_item_expansion_item_id)
+    set itemhero = GetItemHero(exp_item)
+  endif
   if (itemhero != null and GetUnitState(itemhero, UNIT_STATE_LIFE) <= GetUnitState(itemhero, UNIT_STATE_MAX_LIFE) * 0.3) or town_threatened or current_expansion == null then
     call Trace("Item expansion : Cannot Expansion or no expansion")  // no call ChooseExpansion() , this is passive expansion , avoidance buy repeat item
     call ItemExpansionReset()
@@ -86,7 +100,7 @@ function ItemExpansionJob takes nothing returns nothing
     endif
     set itemhero = GetItemHero(exp_item)
     call SetItemDroppable(exp_item, false)  //prevent droppable
-    call SetItemPawnable(exp_item, false)  //prevent selling
+    call SetItemPawnable(exp_item, false)  //prevent sell
     set not_taken_expansion = current_expansion
     set item_exp_count = 0
     set exp_item = null
@@ -113,8 +127,6 @@ function ItemExpansionJob takes nothing returns nothing
       set time_next_try = 10
     endif
   elseif item_exp_state == 2 then
-    set exp_item = GetItemOfType(exp_item,race_item_expansion_item_id)
-    set itemhero = GetItemHero(exp_item)  //prevent hero not item
     if itemhero != null and exp_item != null and not CheckExpansionTaken(current_expansion) then
       call RemoveGuardPosition(itemhero)
       set time_next_try = 3
