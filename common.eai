@@ -1053,7 +1053,7 @@ globals
     boolean current_expansion_iswater = false
     unit current_expansion = null
     boolean first_expansion_chosen = false
-    unit not_taken_expansion = null
+    unit not_taken_expansion = null  // used to MultipleMinefix , militai expansion , ancient expansion and item expansion system
     boolean pathing_done = false
 
     integer confirm_count = 0
@@ -8610,7 +8610,7 @@ function InitAMAI takes nothing returns nothing
   if own_town_mine[0] != null then
     set mine_loc = GetUnitLoc(own_town_mine[0])
   endif
-  set firstattackhp = c_enemy_user_total > 0 and (c_ally_total + c_enemy_total >= 10 or mapSize > 3 or (mapSize < 3 and c_enemy_user_total < 3))
+  set firstattackhp = c_enemy_user_total > 0 and (c_ally_total + c_enemy_total >= 10 or mapSize > 3 or (mapSize < 3 and c_enemy_user_total < 3))  // player too much or big map , first attack HumanPlayer
 //    call DebugSequenceStart("DebugRun")
 
 endfunction
@@ -10643,27 +10643,27 @@ function IsWaterExpansion takes unit u returns boolean
 endfunction
 
 //============================================================================
-function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
+function BuildMovePeonZeppelin takes unit peon, unit target, boolean waterexp returns boolean
+  local real d = race_max_expa_mine_distance
   if IsUnitInTransport(peon, build_zeppelin) then
-    if DistanceBetweenUnits(build_zeppelin, target) > race_max_expa_mine_distance then
-      call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + GetRandomReal(-200,200), GetUnitY(target) + GetRandomReal(-200,200))
-    else
+    if DistanceBetweenUnits(build_zeppelin, target) < d then
       call IssueImmediateOrder(build_zeppelin, "stop")
       call IssueTargetOrder(build_zeppelin, "unload", peon)
       call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, build_zeppelin)
       call Sleep(0.5)
-      call IssueImmediateOrder(peon, "stop")
       return true
     endif
+    call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + GetRandomReal(-200,200), GetUnitY(target) + GetRandomReal(-200,200))
   else
-    if DistanceBetweenUnits(peon, target) < race_max_expa_mine_distance then
+    if not waterexp then
+      set d = d * 2
+    endif
+    if DistanceBetweenUnits(peon, target) < d then
       call RecycleGuardPosition(build_zeppelin)
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
-      call IssueImmediateOrder(peon, "stop")
       return true
-    else
-      call IssueTargetOrder(peon, "smart", build_zeppelin)
     endif
+    call IssueTargetOrder(peon, "smart", build_zeppelin)
   endif
   return false
 endfunction
@@ -10743,7 +10743,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
 
   set take_exp = (GetExpFoe(u) != null)
   set u = null
-  if take_exp or total_gold <= 0 or total_wood <= 0 then  // not taken used in the MultipleMinefix , militai expansion , ancient expansion and item expansion system
+  if take_exp or total_gold <= 0 or total_wood <= 0 then
     return BUILT_SOME
   endif
 
@@ -10776,9 +10776,14 @@ function StartExpansionAM takes integer qty, integer hall returns integer
         call Trace("AMAIStartexpa: Water expansion required waiting to create a zeppelin")
         return BUILT_SOME
       endif
-      if (build_zeppelin != null and not BuildMovePeonZeppelin(expansion_peon, current_expansion)) then
-        call Trace("AMAIStartexpa: Expanding via a zeppelin")
-        return BUILT_SOME
+      if build_zeppelin != null then
+        if not BuildMovePeonZeppelin(expansion_peon, current_expansion, w) then
+          call Trace("AMAIStartexpa: Expanding via a zeppelin")
+          return BUILT_SOME
+        endif
+        call RemoveGuardPosition(expansion_peon)  //Prevent being controll away from mine
+        call TQAddUnitJob(2, RESET_GUARD_POSITION, 50, expansion_peon)
+        call IssuePointOrder(expansion_peon, "move", GetUnitX(current_expansion), GetUnitY(current_expansion))
       endif
     endif
     if race_uses_mine_expansion then
@@ -13058,13 +13063,13 @@ if not creeping_only then	// Do the normal attack sequence
       call Trace("An Ancient Expansion - Final stage")
       call FormGroupAM(3)
       //call AddAssault(1, old_id[racial_hall[1]])
-      call SetCaptainHome(BOTH_CAPTAINS,GetUnitX(ancient_exp_unit),GetUnitY(ancient_exp_unit))
+      //call SetCaptainHome(BOTH_CAPTAINS,GetUnitX(ancient_exp_unit),GetUnitY(ancient_exp_unit))
       set creep = GetExpFoe(creep)
-      //if DistanceBetweenUnits(ancient_exp_unit, creep) <= 500 then
-      call AttackMoveKillCreep(creep)
-      //else
-      //call AttackMoveKillXYAAM(R2I(GetUnitX(ancient_exp_unit)), R2I(GetUnitY(ancient_exp_unit)))
-      //endif
+      if DistanceBetweenUnits(ancient_exp_unit, creep) <= race_max_expa_mine_distance then
+        call AttackMoveKillCreep(creep)
+      else
+        call AttackMoveKillXYAAM(R2I(GetUnitX(ancient_exp_unit)), R2I(GetUnitY(ancient_exp_unit)))
+      endif
       set ancient_attack_running = false
       set creep = null
       return
@@ -13150,9 +13155,11 @@ if not creeping_only then	// Do the normal attack sequence
   endif
 
   if not no_player_attack then
-    if firstattackhp then  // player too much or big map , first attack HumanPlayer
+    if firstattackhp then
       set humanhall = GetNearHumanPlayerEnemy(humanhall)
-      set firstattackhp = (tier > 2 and (GetRandomInt(0,4) < 2)) or humanhall != null  // attack no longer working , the human player survived
+      if tier > 2 or humanhall == null then  // Closing mechanism
+        set firstattackhp = false
+      endif
       if humanhall != null then
         call Chat(C_Attack)
         call Trace("Attack real human player")
