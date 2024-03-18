@@ -834,6 +834,7 @@ globals
     real array pj_frequency
     integer array pj_jid
     integer array pj_par
+    integer array pj_remove
 
     boolean attack_running = false
     boolean no_attack_allowed = false
@@ -7678,10 +7679,45 @@ function CheckAllNeutralsQuick takes nothing returns nothing
 endfunction
 
 //============================================================================
+function CopyPJ takes integer jid, integer par returns boolean
+  local integer i = 1
+  loop
+    exitwhen i > pj_length
+    if pj_jid[i] == jid and pj_par[i] == par then
+      loop
+        exitwhen i > pj_length
+        set pj_time[i] = pj_time[i + 1]
+        set pj_frequency[i] = pj_frequency[i + 1]
+        set pj_jid[i] = pj_jid[i + 1]
+        set pj_par[i] = pj_par[i + 1]
+        set pj_remove[c] = pj_remove[i + 1]
+        set i = i + 1
+      endloop
+      set pj_length = pj_length - 1
+    endif
+    set i = i + 1
+  endloop
+endfunction
+
+function RemovePJ takes integer jid, integer par returns boolean
+  if pj_jid[t] == NEUTRAL_GUARDED then
+    if not neutral_guarded[par] or nearest_neutral[par] == null then
+      call CopyPJ(jid, par)
+    endif
+  else
+    if not UnitAlive(nearest_neutral[par]) or nearest_neutral[par] == null then
+      call CopyPJ(jid, par)
+    endif
+  endif
+endfunction
+
 function PJHandleOnce takes integer t returns boolean
   if TimerGetElapsed(tq_timer) - pj_time[t] >= pj_frequency[t] then
    call TQDoJob(pj_jid[t], pj_par[t], null, null, null)
    set pj_time[t] = TimerGetElapsed(tq_timer)
+   if pj_remove[t] >= 0 then
+     call RemovePJ(pj_jid[t], pj_par[t])
+   endif
    call CreateDebugTagLoc("path sys runjob : " + Int2Str(pj_jid[t]), 10, GetLocationX(home_location), GetLocationY(home_location), 2.00, 1.00)
    return true
   endif
@@ -7689,38 +7725,51 @@ function PJHandleOnce takes integer t returns boolean
   return false
 endfunction
 
-function PathingJobEx takes real frequency, integer jid, integer par returns nothing
+function PathingJobEx takes real frequency, integer jid, integer par, boolean remove returns nothing
   set pj_length = pj_length + 1
   set pj_time[pj_length] = TimerGetElapsed(tq_timer)
   set pj_frequency[pj_length] = frequency
   set pj_jid[pj_length] = jid
   set pj_par[pj_length] = par
+  if pj_remove then
+    set pj_remove[pj_length] = jid
+  else
+    set pj_remove[pj_length] = -1
+  endif
 endfunction
 
 function PJInitJobs takes nothing returns nothing
   local integer i = 0
-  call PathingJobEx(6, CHAT_VARS, 0)                                                      //ChatVarsJob()
-  call PathingJobEx(15, REPAIR_CONTROL, 0)                                                //RepairControlJob()
+  call PathingJobEx(6, CHAT_VARS, 0, false)                                                       //ChatVarsJob()
+  call PathingJobEx(15, REPAIR_CONTROL, 0, false)                                                 //RepairControlJob()
   if race_has_power_build then
-    call PathingJobEx(10, FAST_BUILD, 0)                                                  //FastBuild()
+    call PathingJobEx(10, FAST_BUILD, 0, false)                                                   //FastBuild()
   endif
   if race_sell_ziggurats then
-    call PathingJobEx(30, SELL_ZIGGURATS, 0)                                              //SellZigguratJob()
+    call PathingJobEx(30, SELL_ZIGGURATS, 0, false)                                               //SellZigguratJob()
   endif
-  call PathingJobEx(60, CLEANUP_BLOCKS, 0)                                                //CleanupBlocksJob
-  call PathingJobEx(160, ITEM_REPEAT_CHECK, 0)                                            //ItemRepeatCheck
-  call PathingJobEx(sleep_multiplier * 5, STRUCTURE_CONTROL, 0)                           //StructureControlJob
-  call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALING_FOUNTAIN)  //NeutralEnemyCheckJob
-  call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_MANA_FOUNTAIN)     //NeutralEnemyCheckJob
-  call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_POWER_FOUNTAIN)    //NeutralEnemyCheckJob
-  call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEAL_WARD)         //NeutralEnemyCheckJob
-  call PathingJobEx(10 * sleep_multiplier, DETECT_DOUBLE_EXP, 0)                          //DetectDoubleExpJob
-  call PathingJobEx(13 * sleep_multiplier, DETECT_DEFEAT, 0)                              //DetectDefeatJob
-  call PathingJobEx(15 * sleep_multiplier, UPDATE_STRENGTH, 0)                            //UpdateStrengthJob
+  call PathingJobEx(60, CLEANUP_BLOCKS, 0, false)                                                 //CleanupBlocksJob
+  call PathingJobEx(160, ITEM_REPEAT_CHECK, 0, false)                                             //ItemRepeatCheck
+  call PathingJobEx(sleep_multiplier * 5, STRUCTURE_CONTROL, 0, false)                            //StructureControlJob
+  if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null then
+    call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALING_FOUNTAIN, true)  //NeutralEnemyCheckJob
+  endif
+  if nearest_neutral[NEUTRAL_MANA_FOUNTAIN] != null then
+    call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_MANA_FOUNTAIN, true)     //NeutralEnemyCheckJob
+  endif
+  if nearest_neutral[NEUTRAL_POWER_FOUNTAIN] != null then
+    call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_POWER_FOUNTAIN, true)    //NeutralEnemyCheckJob
+  endif
+  if nearest_neutral[NEUTRAL_HEAL_WARD] != null then
+    call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEAL_WARD, true)         //NeutralEnemyCheckJob
+  endif
+  call PathingJobEx(10 * sleep_multiplier, DETECT_DOUBLE_EXP, 0, false)                           //DetectDoubleExpJob
+  call PathingJobEx(13 * sleep_multiplier, DETECT_DEFEAT, 0, false)                               //DetectDefeatJob
+  call PathingJobEx(15 * sleep_multiplier, UPDATE_STRENGTH, 0, false)                             //UpdateStrengthJob
   loop
     exitwhen i >= NEUTRAL_COUNT
     if neutral_guarded[i] and nearest_neutral[i] != null and UnitAlive(nearest_neutral[i]) then
-      call PathingJobEx(30 * sleep_multiplier, NEUTRAL_GUARDED, i)                        //NeutralGuardedJob
+      call PathingJobEx(30 * sleep_multiplier, NEUTRAL_GUARDED, i, true)                          //NeutralGuardedJob
     endif
     set i = i + 1
   endloop
@@ -10117,10 +10166,10 @@ function GetNeutralHero takes integer unitid returns integer
 
   if not neutral_available[NEUTRAL_TAVERN] then
     call Trace("No Tavern Available")
+    set recalculate_heros = true
     if buy_type[unitid] == BT_HERO then
       call SetProduce(1,old_id[unitid],-1)
     endif
-    set recalculate_heros = true
     return BUILT_ALL
   endif
   if nearest_neutral[NEUTRAL_TAVERN] == null or neutral_guarded[NEUTRAL_TAVERN] then
@@ -10128,10 +10177,10 @@ function GetNeutralHero takes integer unitid returns integer
     // Should switch to using transportation to get to it
     // Not Yet Implemented - will instead just build standard heroes
     call Trace("Tavern not usable: Getting standard hero")
-    if buy_type[unitid] == BT_HERO then
-      call SetProduce(1,old_id[unitid],-1)
-    endif
     set recalculate_heros = true
+    if buy_type[unitid] == BT_HERO and SetProduce(1,old_id[unitid],-1) then
+        return BUILT_ALL
+    endif
     //set first_choosable_hero = ver_neutral_hero_number
     //loop
     //	exitwhen i > hero_number
@@ -10167,9 +10216,8 @@ function GetNeutralHero takes integer unitid returns integer
     if not b then
       if SetProduce(1,old_id[unitid],-1) then
         return BUILT_ALL
-      else
-        return CANNOT_BUILD
       endif
+      return CANNOT_BUILD
     endif
   endif
 
@@ -10650,7 +10698,7 @@ function BuildMovePeonZeppelin takes unit peon, unit target, boolean waterexp re
       call IssueImmediateOrder(build_zeppelin, "stop")
       call IssueTargetOrder(build_zeppelin, "unload", peon)
       call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, build_zeppelin)
-      call Sleep(0.5)
+      call Sleep(0.5)  // unload time
       return true
     endif
     call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + GetRandomReal(-200,200), GetUnitY(target) + GetRandomReal(-200,200))
