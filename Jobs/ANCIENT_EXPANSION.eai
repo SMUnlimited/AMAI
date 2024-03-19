@@ -85,7 +85,7 @@ endif
 
 if current_expansion == null or (ancient_exp_unit != null and GetUnitState(ancient_exp_unit, UNIT_STATE_LIFE) <= 0) then
 	// Found out so no point trying ancient expansion again
-	call SetCaptainHome(BOTH_CAPTAINS,GetLocationX(front_loc[0]),GetLocationY(front_loc[0]))
+	//call SetCaptainHome(BOTH_CAPTAINS,GetLocationX(front_loc[0]),GetLocationY(front_loc[0]))
 	call GroupRecycleGuardPositionInstant(CopyGroup(ancient_exp_group,g))
 	call AncientExpansionReset()
 	set gold_buffer = 0
@@ -106,7 +106,7 @@ if ancient_exp_state == 0 then
 		set ancient_exp_count = 0
 		call Trace("Expansion State 0 - no resources expansion , wait check mine")
 		set u = null
-		if TownCountDone(racial_expansion) > 0 and (TownCount(racial_peon) == 0 or (race_manual_loading and (TownCount(race_manual_loading_mine) == 0 or TownCountDone(racial_expansion) > TownCountDone(race_manual_loading_mine))) or (not race_manual_loading and (GetMinesOwned() == 0 or TownCountDone(racial_expansion) > GetMinesOwned()))) then
+		if TownCountDone(racial_expansion) > 0 and (GetResourceAmount(current_expansion) < GetUnitGoldCost2(racial_expansion) * 2 or TownCount(racial_peon) == 0 or (race_manual_loading and (TownCount(race_manual_loading_mine) == 0 or TownCountDone(racial_expansion) > TownCountDone(race_manual_loading_mine))) or (not race_manual_loading and (GetMinesOwned() == 0 or TownCountDone(racial_expansion) > GetMinesOwned()))) then
 			call Trace("Expansion State 0 - no resources expansion and no mine , wait move tree")
 			set ancient_exp_state = 1
 			call TQAddJob(1, ANCIENT_EXPANSION, 0)
@@ -171,23 +171,21 @@ elseif ancient_exp_state == 1 then
 	call TQAddJob(1, ANCIENT_EXPANSION, 0)
 elseif ancient_exp_state == 2 then
 	call CreateDebugTag("Expansion State 2: Uproot Tree", 10, ancient_exp_unit, 3.00, 1.50)
+	call GroupAddUnit(ancient_exp_group, ancient_exp_unit)
+	set l = GetUnitLoc(ancient_exp_unit)
 	call RemoveGuardPosition(ancient_exp_unit)
 	call IssueImmediateOrderById(ancient_exp_unit, OrderIdCancel)
 	call IssueImmediateOrder(ancient_exp_unit, "unroot")
-	call GroupAddUnit(ancient_exp_group, ancient_exp_unit)
-	set l = GetUnitLoc(ancient_exp_unit)
-	if TownCountDone(racial_expansion) == 1 or DistanceBetweenPoints(l, home_location) < 800 then
+	if TownCountDone(racial_expansion) < 2 or DistanceBetweenPoints(l, home_location) < 800 then
 		set g = CreateGroup()
 		call GroupEnumUnitsInRangeOfLoc(g, l, 1800, null)
 		call GroupRemoveUnit(g, ancient_exp_unit)
-		set g = SelectByPlayer(g, ai_player, true)
-		call SelectByHidden(g, false)
-		call SelectByAlive(g, true)
 		loop
 			set u = FirstOfGroup(g)
 			exitwhen u == null
-			if IsUnitType(u, UNIT_TYPE_ANCIENT) then  // take other tree , guardians ancient_exp_unit or not blocking ancient_exp_unit
+			if IsUnitType(u, UNIT_TYPE_ANCIENT) and GetOwningPlayer(u) == ai_player and UnitAlive(u) and not IsUnitHidden(u) then  // take other tree , guardians ancient_exp_unit or not blocking ancient_exp_unit
 				call RemoveGuardPosition(u)
+				call IssueImmediateOrderById(u, OrderIdCancel)
 				call IssueImmediateOrder(u, "unroot")
 			endif
 			call GroupRemoveUnit(g, u)
@@ -199,18 +197,20 @@ elseif ancient_exp_state == 2 then
 	call RemoveLocation(l)
 	set l = null
 	set ancient_exp_state = 3
-	call TQAddJob(3, ANCIENT_EXPANSION, 0)
+	call TQAddJob(1, ANCIENT_EXPANSION, 0)
 elseif ancient_exp_state == 3 then
 	call CreateDebugTag("Expansion State 3: Awaiting Hero", 10, ancient_exp_unit, 3.00, 1.50)
 	//set isstrong = GetOwnStrength() > GetExpansionStrength()
 	call ClearCaptainTargets()
-	call SetCaptainHome(BOTH_CAPTAINS,R2I(GetUnitX(ancient_exp_unit)),R2I(GetUnitY(ancient_exp_unit)))
+	//call SetCaptainHome(BOTH_CAPTAINS,R2I(GetUnitX(ancient_exp_unit)),R2I(GetUnitY(ancient_exp_unit)))
 	if IsUnitInRange(hero_unit[1],ancient_exp_unit,750) or IsUnitInRange(hero_unit[2],ancient_exp_unit,750) or IsUnitInRange(hero_unit[3],ancient_exp_unit,750) or u == null then
 		if ancient_exp_maintree then
 			set g = CreateGroup()
 			call GroupEnumUnitsInRange(g, GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit), 2000, null)
+			set g = SelectByPlayer(g, ai_player, true)
 			set g = SelectUnittype(g, UNIT_TYPE_ANCIENT, true)
 			set g = SelectByAlive(g, true)
+			set g = SelectByHidden(g, false)
 			call GroupPointOrder(g, "move", GetUnitX(current_expansion), GetUnitY(current_expansion))
 			call DestroyGroup(g)
 			set g = null
@@ -229,7 +229,7 @@ elseif ancient_exp_state == 3 then
 	else
 		if ancient_exp_count < 4 then
 			set ancient_exp_count = ancient_exp_count + 1
-			call TQAddJob(12, ANCIENT_EXPANSION, 0)
+			call TQAddJob(16, ANCIENT_EXPANSION, 0)
 		else
 			call Trace("Expansion State 3: maybe not Hero")
 			call AncientExpansionReset()
@@ -242,14 +242,17 @@ elseif ancient_exp_state == 3 then
 	call TQAddJob(1, ANCIENT_EXPANSION, 0)
 elseif ancient_exp_state == 4 then
 	call CreateDebugTag("Expansion State 4: Attacking and taking expansion", 10, ancient_exp_unit, 3.00, 1.50)
-	call SetCaptainHome(BOTH_CAPTAINS,R2I(GetUnitX(ancient_exp_unit)),R2I(GetUnitY(ancient_exp_unit)))
+	//call SetCaptainHome(BOTH_CAPTAINS,R2I(GetUnitX(ancient_exp_unit)),R2I(GetUnitY(ancient_exp_unit)))
 	if u == null then
-		call CreateDebugTag("Expansion State 4: expansion done", 10, ancient_exp_unit, 3.00, 1.50)
+		//call CreateDebugTag("Expansion State 4: expansion done", 10, ancient_exp_unit, 3.00, 1.50)
 		if ancient_exp_maintree then  //  Prevent blocking ancient_exp_unit
 			set g = CreateGroup()
 			call GroupEnumUnitsInRange(g, GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit), 2000, null)
+			call GroupRemoveUnit(g, ancient_exp_unit)
+			set g = SelectByPlayer(g, ai_player, true)
 			set g = SelectUnittype(g, UNIT_TYPE_ANCIENT, true)
 			set g = SelectByAlive(g, true)
+			set g = SelectByHidden(g, false)
 			call GroupPointOrder(g, "move", GetLocationX(home_location), GetLocationY(home_location))
 			call GroupRecycleGuardPositionDelay(g, 10)
 		endif
@@ -259,7 +262,7 @@ elseif ancient_exp_state == 4 then
 		call GroupRecycleGuardPositionInstant(CopyGroup(ancient_exp_group,g))
 		//set no_attack_allowed = false
 		call AncientExpansionReset()
-		call SetCaptainHome(BOTH_CAPTAINS,GetLocationX(front_loc[0]),GetLocationY(front_loc[0]))
+		//call SetCaptainHome(BOTH_CAPTAINS,GetLocationX(front_loc[0]),GetLocationY(front_loc[0]))
 		set g = null
 	else
 		//call GroupAddTypeAndRemoveGuard(ancient_exp_group, race_ancient_expansion_help_id, ai_player)
