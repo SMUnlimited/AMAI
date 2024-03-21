@@ -15,9 +15,9 @@ function AncientExpansionGetExp takes nothing returns nothing
 	local real d = 0
 	loop
 		exitwhen i >= expansion_list_length
-		if GetResourceAmount(expansion_list[i]) > 0 and not CheckExpansionTaken(expansion_list[i]) then
+		if GetResourceAmount(expansion_list[i]) > 0 then
 			set d = DistanceBetweenPoints_kd(home_location,GetUnitLoc(expansion_list[i]))
-			if d < dmax then
+			if d < dmax and not CheckExpansionTaken(expansion_list[i]) then
 				set c = i
 				set dmax = d
 			endif
@@ -33,18 +33,13 @@ function AncientExpansionCheck takes nothing returns nothing
 	local unit u = null
 	call DisplayToAllJobDebug("ANCIENT_EXPANSION_CHECK JOB START")
 	if not ancient_expanding then
-//      call DisplayToAll("Ancient Expansion Check")
-//		if ai_time > 60 then     // 5 mins
-//      call DisplayToAll("Past time to expand with ancient")
-//			set ancient_expanding = false
-//		if GetExpansionStrength() < race_ancient_expansion_strength and u != null and (hero[1] == race_ancient_expansion_hero1 or hero[1] == race_ancient_expansion_hero2) then
-		if current_expansion == null or CheckExpansionTaken(current_expansion) then
-			call AncientExpansionGetExp()  // ELF can move tree , so no need check gold mine
+		if ((race_manual_loading and TownCountDone(racial_expansion) > TownCountDone(race_manual_loading_mine)) or (not race_manual_loading and TownCountDone(racial_expansion) > GetMinesOwned())) and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
+			call AncientExpansionGetExp()  // ELF can move tree , no need check gold resource
 		endif
 		if current_expansion != null and not CheckExpansionTaken(current_expansion) and not IsUnitInGroup(current_expansion,water_expansion) and not_taken_expansion == null then
 			set u = GetExpFoe(u)
 			call Trace("expansion free")
-			if ((u != null and GetExpansionStrength() < race_ancient_expansion_strength) or u == null) and hero_rush_bonus[hero[1]] >= race_ancient_expansion_hero_rush_level then
+			if ((u != null and GetExpansionStrength() < race_ancient_expansion_strength) or u == null) and (hero_rush_bonus[hero[1]] + hero_rush_bonus[hero[2]] + hero_rush_bonus[hero[3]]) >= race_ancient_expansion_hero_rush_level then
 				call Trace("Ancient expansion - Begin Job")
 				if ancient_exp_loc != null then
 					call RemoveLocation(ancient_exp_loc)
@@ -52,8 +47,8 @@ function AncientExpansionCheck takes nothing returns nothing
 				set ancient_exp_loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_expansion], GetUnitLoc(current_expansion), ver_creeps_attack_buildings_dist + 500, true)
 				set ancient_expanding = true
 				call TQAddJob(1, ANCIENT_EXPANSION, 0)
-			elseif hero_rush_bonus[hero[1]] < race_ancient_expansion_hero_rush_level then
-				call Trace("Ancient Expansion not possible with hero")
+			elseif (hero_rush_bonus[hero[1]] + hero_rush_bonus[hero[2]] + hero_rush_bonus[hero[3]]) < race_ancient_expansion_hero_rush_level then
+				call Trace("Ancient Expansion not possible with hero level")
 			endif
 			set u = null
 		else
