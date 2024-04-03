@@ -1007,22 +1007,28 @@ function FindCommand takes nothing returns integer
 
 endfunction
 
+function SaveLanguageStr takes string textkey, string text returns nothing
+  call SaveStr(translation, StringHash(language), StringHash(textkey), text)
+  if backlanguage == language then
+    // set backup language if translation missing
+    call SaveStr(translation, StringHash(backlanguage), StringHash(textkey), text)
+  endif
+endfunction
+
 #INCLUDETABLE <Languages.txt> #EFR
 function initLanguage%1 takes nothing returns nothing
 #INCLUDETABLE <Languages\%1\Commander.txt> #ENC:%4 #EFR
   set %1 = "%2"
-#ENDINCLUDE
-// English backup if translation missing
-#INCLUDETABLE <Languages\English\Commander.txt> #ENC:%4 #EFR
-  if %1 == null or %1 == "" then
-    set %1 = "%2"
+  call SaveLanguageStr(%1, "%2")
+  if (%1 == null or %1 == "") and HaveSavedString(translation, StringHash(backlanguage), StringHash(%1)) then
+    set %1 = LoadStr(translation, StringHash(backlanguage), StringHash(%1))
   endif
 #ENDINCLUDE
 #INCLUDETABLE <Languages\%1\CommandsTrans.txt> #ENC:%4 #EFR
-  call SaveStr(translation, StringHash(language), StringHash("%1"), "%2")
+  call SaveLanguageStr("%1", "%2")
 #ENDINCLUDE
 #INCLUDETABLE <Languages\%1\Strategy.txt> #ENC:%4 #EFR
-  call SaveStr(translation, StringHash(language), StringHash("%1"), "%2")
+  call SaveLanguageStr("%1", "%2")
 #ENDINCLUDE
 endfunction
 #ENDINCLUDE
@@ -1159,9 +1165,8 @@ function Translation takes string s returns string
     call TraceToAll("Cannot translate:" + s + " to " + language)
     set translate = null
     return s
-  else
-    return translate
   endif
+  return translate
 endfunction
 
 function reTranslateCommands takes nothing returns nothing
@@ -1178,10 +1183,6 @@ endfunction
 
 function CommanderLanguageResponse takes nothing returns nothing
   local button b = GetClickedButton()
-  if language != backlanguage and language != "" and b != null then
-    set language = backlanguage
-    call initLanguageEnglish()  // After more than one language change the english backup would not be applied for any missing entries in the new language as they may be set to the old language.
-  endif
   if false then
 #INCLUDETABLE <Languages.txt> #EFR
   elseif b == %1_button then
@@ -2010,8 +2011,12 @@ endfunction
 
 function SyncBackLanguage takes nothing returns nothing
   if backlanguage == null or backlanguage == "" then
+    set backlanguage = "English"
+  endif
+  if false then
 #INCLUDETABLE <Languages.txt> #EFR
   elseif backlanguage == "%1" then
+    call initLanguage%1()
     call SendToAllAIs(72,#EVAL{%row-1})
 #ENDINCLUDE
   endif
@@ -2019,10 +2024,6 @@ endfunction
 
 function LanguageDlgResponse takes nothing returns nothing
   local button b = GetClickedButton()
-  if language != "" and b != null and language != backlanguage then
-    set language = backlanguage
-    call SyncBackLanguage()  // After more than one language change the back language would not be applied for any missing entries in the new language as they may be set to the old language.
-  endif
   if false then
 #INCLUDETABLE <Languages.txt> #EFR
   elseif b == %1_button then
