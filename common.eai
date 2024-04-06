@@ -11864,17 +11864,17 @@ endfunction
 
 //============================================================================
 function AttackMoveTowerRush takes nothing returns nothing
+	local integer x = R2I(enemy_point_x)
+	local integer y = R2I(enemy_point_y)
 	local integer attack_length_counter = 0
 	local real threat = teleport_low_threat * 1.5
-	local real x = 0
-	local real y = 0
 	local boolean upattack = false
 	local group g = CreateGroup()
 	loop
 		exitwhen not towerrush
 		exitwhen town_threatened and town_threat[most_threatened_town] >= threat
 		exitwhen break_attack
-		exitwhen CaptainIsEmpty()       // all units died
+		exitwhen CaptainIsEmpty()  // all units died
 		if tower_attack_run != true and (GetUnitCountDone(old_id[hero[1]]) + GetUnitCountDone(old_id[hero[2]]) + GetUnitCountDone(old_id[hero[3]])) > 0 and (race_tower_item_must != true or (race_tower_item_must == true and (builder[0] != null or tower_used_item))) then
 			set tower_attack_run = true
 			set attack_running = true
@@ -11882,7 +11882,6 @@ function AttackMoveTowerRush takes nothing returns nothing
 			if not town_threatened then
 				call SetAllianceTargetIfLead(builder[10])
 			endif
-			call Sleep(0.05)
 		elseif tower_attack_run then
 			if builder[10] == null or GetUnitState(builder[10], UNIT_STATE_LIFE) <= 0 then
 				call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1200, null)
@@ -11897,37 +11896,30 @@ function AttackMoveTowerRush takes nothing returns nothing
 			endif
 			if towers_built < 4 then
 				if tower_peon_inplace then
-				call AttackMoveXY(R2I(first_tower_point_x), R2I(first_tower_point_y))
-				elseif tower_peon_point_x != 0 and tower_peon_point_y != 0  then
+					call AttackMoveXY(R2I(first_tower_point_x),R2I(first_tower_point_y))
+				elseif tower_peon_point_x != 0 and tower_peon_point_y != 0 then
 					if ModuloInteger(attack_length_counter,2) == 0 and not town_threatened then
-				call GroupEnumUnitsInRange(g, tower_peon_point_x, tower_peon_point_y, 1200, null)
+						call GroupEnumUnitsInRange(g, tower_peon_point_x, tower_peon_point_y, 1200, null)
 						set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
 						set g = SelectByPlayer(g, ai_player, true)
 						set g = SelectByAlive(g, true)
 						set g = SelectByHidden(g,false)
-						if FirstOfGroup(g) != null then
-							call SetAllianceTargetIfLead(FirstOfGroup(g))
-						endif
-						call GroupClear(g)
 					endif
-					call AttackMoveXY(R2I(tower_peon_point_x),R2I(tower_peon_point_y))
-				else  // no peon
-					call CaptainGoHome()
+					if FirstOfGroup(g) != null then
+						call AttackMoveXY(R2I(GetUnitX(FirstOfGroup(g))),R2I(GetUnitY(FirstOfGroup(g))))
+					else
+						call AttackMoveXY(R2I(GetUnitX(builder[1])),R2I(GetUnitY(builder[1])))
+					endif
+					call GroupClear(g)
 				endif
 			elseif towers_built < 7 then
-				call AttackMoveXY(R2I(second_attack_point_x), R2I(second_attack_point_y))
+				call AttackMoveXY(R2I(second_attack_point_x),R2I(second_attack_point_y))
 			else
-				if not upattack then
-					set x = enemy_point_x
-					set y = enemy_point_y
-				endif
-				call AttackMoveXY(R2I(x),R2I(y))
+				call AttackMoveXY(x,y)
 			endif
 			set attack_length_counter = attack_length_counter + 1
-			call Sleep(RMin(sleep_multiplier,0.5))
-		else
-			call Sleep(0.5)
 		endif
+		call Sleep(1)
 		//call AttackMoveKill(builder[20])
 		//if towers_built == 0 then
 			//call CreateDebugTag("Reform protect peon", 10, builder[1], 2.00, 1.50)
@@ -11948,15 +11940,15 @@ function AttackMoveTowerRush takes nothing returns nothing
 			set attack_length_counter = 0
 			call FormGroupAM(0)
 			if towers_built >= 7 then
-				set upattack = true
 				call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1800, null)
-				set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
 				set g = SelectByEnemy(g, ai_player, true)
+				set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
 				set g = SelectByAlive(g, true)
 				set g = SelectByHidden(g,false)
 				if FirstOfGroup(g) != null then
-					set x = GetUnitX(FirstOfGroup(g))
-					set y = GetUnitY(FirstOfGroup(g))
+					set upattack = true
+					set x = R2I(GetUnitX(FirstOfGroup(g)))
+					set y = R2I(GetUnitY(FirstOfGroup(g)))
 				endif
 				call GroupClear(g)
 			endif
@@ -11968,7 +11960,6 @@ function AttackMoveTowerRush takes nothing returns nothing
 	call DestroyGroup(g)
 	set g = null
 	set attack_running = false
-	set break_attack = true
 endfunction
 
 //============================================================================
