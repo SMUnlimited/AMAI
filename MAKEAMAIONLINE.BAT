@@ -63,14 +63,7 @@ pjass REFORGED\common.j AMAI\REFORGED\common.ai AMAI\REFORGED\undead.ai
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
 pjass REFORGED\common.j AMAI\Blizzard_REFORGED.j
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
-ECHO _____________________________
-if "%RESULTMAKEREF%"=="1" (
-  ECHO 编译失败，附件重制版不可用--请耐心等待新的在线编译附件
-  echo 附件重制版不可用--请勿安装并等待新的在线编译附件 > AMAI\重制版脚本不可用.txt
-) else (
-  ECHO 编译成功，附件重制版可用--请按教程安装
-  echo 附件重制版可用--请按教程安装（为减少压缩包体积，代码已优化且失去阅读性）...仅支持1.33+，平衡性1.36.1 > AMAI\重制版脚本可用.txt
-)
+ECHO 重制版编译完成，编译结果在日志最后输出
 ECHO =============================
 ECHO 编译经典版
 SET RESULTMAKETFT=0
@@ -135,12 +128,23 @@ pjass TFT\common.j AMAI\TFT\common.ai AMAI\TFT\undead.ai
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
 pjass TFT\common.j AMAI\Blizzard_TFT.j
 if "%errorlevel%"=="1" SET RESULTMAKETFT=1
+ECHO 经典版编译完成，编译结果在日志最后输出
+ECHO =============================
+ECHO 编译结果
+ECHO _____________________________
+if "%RESULTMAKEREF%"=="1" (
+  ECHO 重制版编译失败，附件重制版不可用--请耐心等待新的在线编译附件
+  echo 附件重制版不可用--请勿安装并等待新的在线编译附件 > AMAI\重制版脚本不可用.txt
+) else (
+  ECHO 重制版编译成功，重制版附件可用--请按教程安装
+  echo 重制版附件可用--请按教程安装（为减少压缩包体积，代码已优化且失去阅读性）...仅支持1.33+，平衡性1.36.1 > AMAI\重制版脚本可用.txt
+)
 ECHO _____________________________
 if "%RESULTMAKETFT%"=="1" (
-  ECHO 编译失败，附件经典版不可用--请耐心等待新的在线编译附件
+  ECHO 经典版编译失败，附件经典版不可用--请耐心等待新的在线编译附件
   echo 附件经典版不可用--请勿安装并等待新的在线编译附件 > AMAI\经典版脚本不可用.txt
 ) else (
-  ECHO 编译成功，附件经典版可用--请按教程安装
-  echo 附件经典版可用--请按教程安装（为减少压缩包体积，代码已优化且失去阅读性）...支持冰封王座1.24e+，平衡性1.24e > AMAI\经典版脚本可用.txt
+  ECHO 经典版编译成功，经典版附件可用--请按教程安装
+  echo 经典版附件可用--请按教程安装（为减少压缩包体积，代码已优化且失去阅读性）...支持冰封王座1.24e+，平衡性1.24e > AMAI\经典版脚本可用.txt
 )
 ECHO =============================
