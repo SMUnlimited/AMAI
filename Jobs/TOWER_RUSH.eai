@@ -228,13 +228,13 @@ function TowerRushJob takes nothing returns nothing
 		else
 			set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 660)
 		endif
-		if first_tower_point_x == 0 then
+		if first_tower_point_x == 0 or first_tower_point_y == 0 then
 			set first_tower_point_x = GetLocationX(t)
 			set first_tower_point_y = GetLocationY(t)
 		endif
 	elseif towers_built <= 6 then
 		set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 200)
-		if second_attack_point_x == 0 then
+		if second_attack_point_x == 0 or second_attack_point_y == 0 then
 			set second_attack_point_x = GetLocationX(t)
 			set second_attack_point_y = GetLocationY(t)
 		endif
@@ -242,9 +242,7 @@ function TowerRushJob takes nothing returns nothing
 		set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, -400)
 		if race_tower_move then
 			call GroupClear(g)
-			call RemoveLocation(t)
-			set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 200)
-			call GroupEnumUnitsInRangeOfLoc(g, t, 650, null)
+			call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 700, null)
 			set g = SelectByEnemy(g, ai_player, true)
 			set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), false)
 			set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
@@ -256,7 +254,7 @@ function TowerRushJob takes nothing returns nothing
 			endif
 		endif
 	endif
-	call CreateDebugTagLoc("build loc", 10, GetLocationX(t), GetLocationY(t), 60.00, 55.00)
+	call CreateDebugTagLoc("build tower loc", 10, GetLocationX(t), GetLocationY(t), 60.00, 55.00)
 	//call Trace("Getting ready to tower rush")
 	if GetLocationX(t) != 0 and GetLocationY(t) != 0 and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) != 0 then
 		set CloseJob = town_threatened and town_threat[most_threatened_town] >= teleport_low_threat * 1.5
@@ -264,8 +262,7 @@ function TowerRushJob takes nothing returns nothing
 		if not CloseJob then
 			set EnemyStrength = GetLocationNonCreepStrength(GetLocationX(t), GetLocationY(t), 1200)
 			set OwnStrength = GetOwnStrength() + towers_attck + towers_built * 0.3  //  tower have strength
-			set CloseJob = CloseJob or (EnemyStrength > OwnStrength * 2 and towers_built_count > 6 * race_tower_peon and towers_built < 2)  //  6 job cycles
-			set CloseJob = CloseJob or (EnemyStrength > OwnStrength * 4)
+			set CloseJob = (EnemyStrength > OwnStrength * 4) or (EnemyStrength > OwnStrength * 2 and towers_built_count > 6 * race_tower_peon and towers_built < 2)  //  6 job cycles
 		endif
 	endif
 	if GetPlayerSlotState(rushedplayer) != PLAYER_SLOT_STATE_PLAYING or GetLocationEnemyStrength(enemy_point_x, enemy_point_y, 1600, false) == 0 or CloseJob == true then  //or (builder[1] != null and (GetUnitState(builder[1], UNIT_STATE_LIFE) <= 0  and GetUnitState(builder[3], UNIT_STATE_LIFE) <= 0 and GetUnitState(builder[2], UNIT_STATE_LIFE) <= 0)) then
@@ -437,10 +434,8 @@ function TowerRushJob takes nothing returns nothing
 					call IssueImmediateOrder(builder[i], "autoharvestgold")
 				endif
 			elseif i > 43 then
-				set id = GetUnitCurrentOrder(builder[i])
 				call CreateDebugTag("TRush: harvest gold peon", 10, u, 4.00, 2.00)
-				if id == OrderId("resumeharvesting") then  // no need do anything , maybe resume gold
-				else
+				if GetUnitCurrentOrder(builder[i]) != OrderId("resumeharvesting") then
 					call IssueImmediateOrder(builder[i], "autoharvestgold")
 				endif
 			endif
@@ -456,10 +451,8 @@ function TowerRushJob takes nothing returns nothing
 		loop
 			set u = FirstOfGroup(tempg)
 			exitwhen u == null
-			set id = GetUnitCurrentOrder(u)
 			call CreateDebugTag("TRush: harvest lumber peon", 10, u, 4.00, 2.00)
-			if id == OrderId("resumeharvesting") then  // no need do anything , maybe resume gold
-			elseif not IsUnitInGroup(u, tower_rush_power) then
+			if GetUnitCurrentOrder(u) != OrderId("resumeharvesting") and not IsUnitInGroup(u, tower_rush_power) then
 				call RemoveGuardPosition(u)
 				call GroupAddUnit(tower_rush_power,u)
 				call IssueImmediateOrder(u, "autoharvestlumber")
