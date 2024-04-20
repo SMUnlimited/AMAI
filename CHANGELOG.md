@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 - Fixed issue with boolean check of third mine timing.
-- Fixed issue where mine required for ancient or item expansions could be nulled mid use which would break the logic.
+- Fixed issue where mine required for ancient or item expansions could be nulled mid use which would break the logic. (jzy-chitong56)
 
 ## [3.3.4] - 2024-03-10
 
