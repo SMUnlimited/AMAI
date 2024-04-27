@@ -48,10 +48,7 @@ function TrackArmy takes integer num returns boolean
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and GetOwningPlayer(u) == Player(p) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitInGroup(u, in_army_group) then
-      if u == major_hero then
-        set main_army = num
-      endif
+    if GetOwningPlayer(u) == Player(p) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitInGroup(u, in_army_group) then
       call GroupAddUnit(army_group[num], u)
       call GroupAddUnit(in_army_group, u)
       set x = x + GetUnitX(u)  // Prevent loc exceeding map range
@@ -89,6 +86,9 @@ function TrackArmy takes integer num returns boolean
   set army_loc[num] = Location(x, y)
   set army_future[num] = GetSumLoc_kd(army_loc[num], GetMultipleLoc(army_dir[num], army_future_mult))
   if Player(p) == ai_player then 
+    if IsUnitInGroup(major_hero, army_group[num]) then
+      set main_army = num
+    endif
     call CreateDebugTagLoc("Tracked Army: " + Int2Str(num) + " Strength:" + Int2Str(R2I(army_strength[num])), 10, x, y, 8.00, 3.00)
   endif
   // if army_strength[num] != 0 then
@@ -202,8 +202,8 @@ function UpdateSpecificTownThreat takes integer num returns nothing
     endif
     set i = i + 1
   endloop
-  if IsPlayerAlly(p, ai_player) or p == ai_player then
-    if (most_threatened_town == -1 or town_threat[most_threatened_town] < town_threat[num]) and town_count[num] > 0 then
+  if (IsPlayerAlly(p, ai_player) or p == ai_player) and town_count[num] > 0 then
+    if most_threatened_town == -1 or town_threat[most_threatened_town] < town_threat[num] then
       if town_can_tp[num] == true or p == ai_player then
         set most_threatened_town = num
       endif
@@ -256,14 +256,11 @@ function ArmyTrackJob takes nothing returns nothing
   call GroupClear(in_army_group)
   if mode == 0 then
     call TrackExistingArmies()
-  endif
-  if mode == 1 then
+  elseif mode == 1 then
     call SeedNewArmies()
-  endif
-  if mode == 2 then
+  elseif mode == 2 then
     call UpdateTownThreat()
-  endif
-  if mode == 3 then
+  else  // 3
     set mode = 0
     call TQAddJob(14 + 1 * sleep_multiplier, TOWN_TRACK, 0)
   endif
