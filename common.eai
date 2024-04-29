@@ -5373,9 +5373,9 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
       else
         set strength = GetUnitStrength(u)
         set sum = sum + strength
-        if IsUnitType(u, UNIT_TYPE_FLYING) then
-          set airsum = airsum + strength
-        endif
+      endif
+      if IsUnitType(u, UNIT_TYPE_FLYING) then
+        set airsum = airsum + strength
       endif
     endif
     call GroupRemoveUnit(g,u)
@@ -5411,16 +5411,16 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
       else
         set strength = GetUnitStrength(u)
         set sum = sum + strength
-        if IsUnitType(u, UNIT_TYPE_FLYING) then
-          set airsum = airsum + strength
-        endif
+      endif
+      if IsUnitType(u, UNIT_TYPE_FLYING) then
+        set airsum = airsum + strength
       endif
     endif
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
   set g = null
-  set air_strength = Min(0, R2I(airsum + 0.5))  // structures no air strength
+  set air_strength = R2I(airsum + 0.5)
   return sum
 endfunction
 
@@ -7067,7 +7067,7 @@ endfunction
 //============================================================================
 function GetHeroToBuyItem takes unit shop, real limit, boolean is_healing_included, integer itemid, boolean itemstacking, boolean moreshop returns unit
   local integer i = 1
-  local integer r = -1
+  local integer r = 0
   local real d = 0
   local real dmin = 0
   loop
@@ -7079,18 +7079,16 @@ function GetHeroToBuyItem takes unit shop, real limit, boolean is_healing_includ
         else
           if moreshop then
             return hero_unit[i]  // more own shop , take first hero , wait find close shop
-          else
-            if dmin < d then
-              set dmin = d
-              set r = i
-            endif
+          elseif dmin < d then
+            set dmin = d
+            set r = i
           endif
         endif
       endif
     endif
     set i = i + 1
   endloop
-  if r > -1 then
+  if r > 0 then
     return hero_unit[r]  // one shop or not own shop , take close hero
   endif
   return null
@@ -7717,10 +7715,10 @@ function PJHandleOnce takes integer t returns boolean
   if TimerGetElapsed(tq_timer) - pj_time[t] >= pj_frequency[t] then
    call TQDoJob(pj_jid[t], pj_par[t], null, null, null)
    set pj_time[t] = TimerGetElapsed(tq_timer)
+   call CreateDebugTagLoc("path sys runjob : " + Int2Str(pj_jid[t]), 10, GetLocationX(home_location), GetLocationY(home_location), 2.00, 1.00)
    if pj_remove[t] then
      call RemovePJ(pj_jid[t], pj_par[t])
    endif
-   call CreateDebugTagLoc("path sys runjob : " + Int2Str(pj_jid[t]), 10, GetLocationX(home_location), GetLocationY(home_location), 2.00, 1.00)
    return true
   endif
   call CreateDebugTagLoc("path sys runjob : not job", 10, GetLocationX(home_location), GetLocationY(home_location), 2.00, 1.00)
@@ -8205,7 +8203,7 @@ function InitCheckHarvest takes nothing returns nothing
         set s = s + 1
       endif
     endif
-    if GetOwningPlayer(u) != ai_player and (IsUnitType(u, UNIT_TYPE_TOWNHALL) or m == 1) then
+    if GetOwningPlayer(u) != ai_player and (IsUnitType(u, UNIT_TYPE_TOWNHALL) or m > 0) then
       set p = p + 1  // have more player , need fix harvest , but maybe no need fix expensive
     endif
     call GroupRemoveUnit(g, u)
@@ -9944,11 +9942,11 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
       call SaveReal(additional_info, key, STRENGTH_LIMIT, LoadReal(additional_info, key, STRENGTH_LIMIT) + strength_limit)
       call SaveReal(additional_info, key, FLEE_PERCENT, LoadReal(additional_info, key, FLEE_PERCENT) + flee_percent)
       call SaveInteger(additional_info, key, FLEE_NUMBER, LoadInteger(additional_info, key, FLEE_NUMBER) + flee_number)
-      call DestroyGroup(harasser)
       set g = null
     //else  // maybe RETREAT
     endif
   endif
+  call DestroyGroup(harasser)
   set harasser = null
 endfunction
 
@@ -10698,7 +10696,7 @@ function BuildMovePeonZeppelin takes unit peon, unit target, boolean waterexp re
       call Sleep(0.5)  // unload time
       return true
     endif
-    call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + GetRandomReal(-200,200), GetUnitY(target) + GetRandomReal(-200,200))
+    call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + ISign() * GetRandomReal(200,300), GetUnitY(target) + ISign() * GetRandomReal(200,300))
   else
     if not waterexp then
       set d = d * 2
