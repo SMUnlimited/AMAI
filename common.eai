@@ -901,6 +901,7 @@ globals
     constant integer STATE_RETREAT = 9
     constant integer WINDWALK_COUNT = 10
     constant integer HARASS_GROUP = 11
+    constant integer START_STRENGTH_TEMP = 12
     hashtable com = InitHashtable()
     constant integer TEAM_STATEGY_INUSE = 1
     constant integer IS_AMAI = 2
@@ -4054,6 +4055,7 @@ function GroupRemoveGuardPositionInstant takes group g returns nothing
     set u = FirstOfGroup(ug)
     exitwhen u == null
     call RemoveGuardPosition(u)
+    call CreateDebugTag("Remove Guard Position Instant", 10, u, 3.00, 1.50)
     call GroupRemoveUnit(ug,u)
   endloop
   call DestroyGroup(ug)
@@ -4803,22 +4805,22 @@ endfunction
 //==========================================================================
 // (AMAI)	UnitAliveInGroup
 //==========================================================================
-function UnitAliveInGroup takes group g returns boolean
+function UnitAliveInGroup takes group rg returns boolean
   local unit u = null
+  local group g = null
+  set g = CopyGroup(rg, g)
   loop
     set u = FirstOfGroup(g)
-    if u == null then
-      call DestroyGroup(g)
-      return false
+    exitwhen u == null
+    if not UnitAlive(u) then
+      call GroupRemoveUnit(rg, u)
+      call GroupRemoveUnit(unit_harassing, u)
     endif
-    if UnitAlive(u) then
-      set u = null
-      return true
-    endif
-    call GroupRemoveUnit(g,u)
+    call GroupRemoveUnit(g, u)
   endloop
-  set u = null
-  return true // never reached
+  call DestroyGroup(g)
+  set g = null
+  return FirstOfGroup(rg) != null
 endfunction
 
 //==========================================================================
@@ -9876,7 +9878,7 @@ function AddHarassUnittype takes integer groupnum, integer harassnum, group g, g
   endloop
   call DestroyGroup(cg)
   set cg = null
-  call SaveReal(additional_info, key, START_STRENGTH, player_sum)
+  call SaveReal(additional_info, key, START_STRENGTH_TEMP, player_sum)
   return harasser
 endfunction
 
@@ -9893,6 +9895,9 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectByHidden(g, false)
   set g = SelectByFullHealth(g, true)
+  if HaveSavedHandle(additional_info, key, HARASS_GROUP) then
+    set t = BlzGroupGetSize(LoadGroupHandle(additional_info, key, HARASS_GROUP))
+  endif
   loop
     exitwhen i >= harass_size[groupnum] or FirstOfGroup(g) == null or t >= 12
     set qty = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_QTY)
@@ -9905,15 +9910,15 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     endif
     if qty > 0 then
       set harasser = AddHarassUnittype(groupnum, i, g, harasser, qty, uid, key)
-      set strength = strength + LoadReal(additional_info, key, START_STRENGTH)
+      set strength = strength + LoadReal(additional_info, key, START_STRENGTH_TEMP)
     endif
     set i = i + 1
   endloop
   call DestroyGroup(g)
-  set g = null
   if FirstOfGroup(harasser) == null or strength <= 0 then
-    call GroupRecycleHarrassPositionInstant(harasser)
+    call GroupRecycleGuardPositionInstant(harasser)
     set harasser = null
+    set g = null
     return
   endif
   if not HaveSavedHandle(additional_info, key, HARASS_GROUP) then
@@ -9932,22 +9937,18 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     call SaveReal(additional_info, key, LOCX, lx)
     call SaveReal(additional_info, key, LOCY, ly)
     call TQAddGroupJob(0, HARASS, harass_target, null, harasser)
-  else
-    if LoadBoolean(additional_info, key, STATE_ATTACKING) == true then  //The group still working no need to initiate it repeatedly
-      call GroupRemoveGuardPositionInstant(harasser)
-      call GroupAddGroup(unit_harassing, harasser)
-      set g = LoadGroupHandle(additional_info, key, HARASS_GROUP)
-      call GroupAddGroup(g,harasser)
-      call SaveReal(additional_info, key, START_STRENGTH, getstrength + strength)
-      call SaveReal(additional_info, key, STRENGTH_LIMIT, LoadReal(additional_info, key, STRENGTH_LIMIT) + strength_limit)
-      call SaveReal(additional_info, key, FLEE_PERCENT, LoadReal(additional_info, key, FLEE_PERCENT) + flee_percent)
-      call SaveInteger(additional_info, key, FLEE_NUMBER, LoadInteger(additional_info, key, FLEE_NUMBER) + flee_number)
-      set g = null
-    //else  // maybe RETREAT
-    endif
+  elseif LoadBoolean(additional_info, key, STATE_ATTACKING) == true then  //The group still working no need to initiate it repeatedly
+    call GroupRemoveGuardPositionInstant(harasser)
+    call GroupAddGroup(unit_harassing, harasser)
+    set g = LoadGroupHandle(additional_info, key, HARASS_GROUP)
+    call GroupAddGroup(g, harasser)
+    call SaveReal(additional_info, key, START_STRENGTH, getstrength + strength)
+    call DestroyGroup(harasser)
+  else  // maybe RETREAT
+    call GroupRecycleGuardPositionInstant(harasser)
   endif
-  call DestroyGroup(harasser)
   set harasser = null
+  set g = null
 endfunction
 
 function GetHarassGroupStrength takes integer groupnum returns real
@@ -11981,8 +11982,8 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
         set lastcaptainx = GetLocationX(ally_loc)
         set lastcaptainy = GetLocationY(ally_loc)
         //call SetCaptainHome(, lastcaptainx, lastcaptainy)
-        call AttackMoveXY(R2I(GetLocationX(ally_loc)), R2I(GetLocationY(ally_loc)))
-        call CreateDebugTagLoc("Reform until ally target dead", 10, GetLocationX(ally_loc), GetLocationY(ally_loc), 1.00, 0.80)
+        call AttackMoveXY(R2I(lastcaptainx), R2I(lastcaptainy))
+        call CreateDebugTagLoc("Reform until ally target dead", 10, lastcaptainx, lastcaptainy, 1.00, 0.80)
       else
         call AttackMoveKill(target)
         set lastcaptainx = GetUnitX(target)
@@ -12227,8 +12228,14 @@ function AttackMoveTowerRush takes nothing returns nothing
 	local integer x = R2I(enemy_point_x)
 	local integer y = R2I(enemy_point_y)
 	local integer attack_length_counter = 0
+	local integer i = 0
 	local real threat = teleport_low_threat * 1.5
+	local real d = 0
+	local real md = 10000
 	local group g = CreateGroup()
+	local location l = GetStartLocationLoc(GetPlayerStartLocation(rushedplayer))
+	local unit mine = null
+	local unit u = null
 	loop
 		exitwhen not towerrush
 		exitwhen town_threatened and town_threat[most_threatened_town] >= threat
@@ -12242,16 +12249,42 @@ function AttackMoveTowerRush takes nothing returns nothing
 				call SetAllianceTargetIfLead(builder[10])
 			endif
 		elseif tower_attack_run then
-			if builder[10] == null or GetUnitState(builder[10], UNIT_STATE_LIFE) <= 0 then
-				call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1200, null)
-				set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-				set g = SelectByAlive(g, true)
-				set g = SelectByHidden(g,false)
-				set builder[10] = FirstOfGroup(g)
-				call GroupClear(g)
+			if take_exp and GetMinesOwned() < 2 and (mine == null or CheckExpansionTaken(mine)) then
+				loop
+					exitwhen i >= expansion_list_length
+					if GetResourceAmount(expansion_list[i]) > 0 and not CheckExpansionTaken(expansion_list[i]) then
+						set d = DistanceBetweenPoints_dk(GetUnitLoc(expansion_list[i]), l)
+						if d < md then
+							set md = d
+							set mine = expansion_list[i]
+						endif
+					endif
+					set i = i + 1
+				endloop
+				if mine != null then
+					set current_expansion = mine
+					set u = GetExpFoe(mine)
+				endif
+				set i = 0
 			endif
-			if ModuloInteger(attack_length_counter,5) == 0 and not town_threatened then
-				call SetAllianceTargetIfLead(builder[10])
+			if mine != null and u != null and GetPlayerStrength(rushedplayer) < 3 then
+				call CreateDebugTag("TRush: take mine", 10, u, 4.00, 2.00)
+				call Trace("TR : take mine" )
+				call AttackMoveKillCreep(u)
+				set u = null
+			endif
+			if not town_threatened then
+				if builder[10] == null or not UnitAlive(builder[10]) then
+					call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1200, null)
+					set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+					set g = SelectByAlive(g, true)
+					set g = SelectByHidden(g,false)
+					set builder[10] = FirstOfGroup(g)
+					call GroupClear(g)
+				endif
+				if ModuloInteger(attack_length_counter,5) == 0 then
+					call SetAllianceTargetIfLead(builder[10])
+				endif
 			endif
 			if towers_built < 4 then
 				if tower_peon_inplace then
@@ -12314,9 +12347,9 @@ function AttackMoveTowerRush takes nothing returns nothing
 	endloop
 	call DestroyGroup(g)
 	set g = null
-	set lastcaptainx = 0
-	set lastcaptainy = 0
-	call SleepInCombatAM()
+	call RemoveLocation(l)
+	set l = null
+	set u = null
 	set attack_running = false
 endfunction
 
@@ -13368,6 +13401,7 @@ endfunction
 function GetArmyHealthState takes nothing returns real
   local group g = CreateGroup()
   local unit u = null
+  local unit ward = null
   local real health_sum = 0.0
   local integer count = 0
   local real uhs = 0.0
@@ -13391,6 +13425,9 @@ function GetArmyHealthState takes nothing returns real
       set ward_cast = true
     endif
     if UnitAlive(u) and not (IsUnitHidden(u) or IsUnitType(u, UNIT_TYPE_PEON) or IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitIllusion(u)) then
+      if GetUnitAbilityLevel(u, 'Ahwd') > 0 and ward == null then
+        set ward = u
+      endif
       if IsUnitType(u, UNIT_TYPE_MECHANICAL) or IsUnitType(u, UNIT_TYPE_SUMMONED) then
         set health_sum = health_sum + 1 // Because is not currently handled by healing and we don't want army to run away if only 1 human unit is hurt
         set uhs = 1
@@ -13423,6 +13460,10 @@ function GetArmyHealthState takes nothing returns real
   else
     set fountain_available = (neutral_night_buy[hFountainID] and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6)) or not neutral_guarded[hFountainID]
   endif
+  if not ward_cast and ward != null then
+    set ward_cast = IssuePointOrder(ward, "healingward", GetUnitX(ward), GetUnitY(ward))
+  endif
+  set ward = null
   if count == 0 then
     return 1.0
   endif
@@ -13518,6 +13559,7 @@ function HealArmy takes nothing returns nothing
   local real hs = 0.0
   local unit u = null
   local integer mh_item = 0
+  local integer i = 0
   local item mh_i = null
   local boolean mass_healed = false
   local boolean global_heal = false
@@ -13526,6 +13568,16 @@ function HealArmy takes nothing returns nothing
   local integer sleepFrequency = 0
   loop
     set hs = GetArmyHealthState()
+    if ward_cast then
+      loop
+        exitwhen player_defeated or town_threatened or ver_heroes == false or i > 7
+        set i = i + 1
+        call Sleep(0.5)
+      endloop
+      if not (player_defeated or town_threatened or ver_heroes == false) then
+        set hs = GetArmyHealthState()
+      endif
+    endif
     exitwhen sleepFrequency >= 3 and hs > healthTrigger // Tried to heal but overall still strong so exit loop
     exitwhen urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger
     exitwhen player_defeated or town_threatened or ver_heroes == false
