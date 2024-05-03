@@ -1,5 +1,30 @@
 #IFDEF GLOBAL
+  location TRrecovery = null
+  unit sellbuild = null
+  unit sellpeon = null
 #ELSE
+
+function RecoveryTRBuild takes group g returns nothing
+  if sellbuild == null or not UnitAlive(sellbuild) then
+    call GroupEnumUnitsInRange(g, GetLocationX(TRrecovery), GetLocationY(TRrecovery), 2000, null)
+    set g = SelectByPlayer(g, ai_player, true)
+    set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+    set g = SelectByAlive(g, true)
+    set g = SelectByHidden(g, false)
+    set sellbuild = FirstOfGroup(g)
+  endif
+  if sellpeon == null or not UnitAlive(sellpeon) then
+    set sellpeon = GetExpansionPeon2(sellpeon)
+  endif
+  if sellbuild != null and sellpeon != null then
+    call IssueTargetOrder(sellpeon, "unsummon", sellbuild)
+  elseif sellbuild == null then
+    call RemoveLocation(TRrecovery)
+    set TRrecovery = null
+    set sellbuild = null
+    set sellpeon = null
+  endif
+endfunction
 
 function SelectByZiggurat takes group rg returns group
   local unit u = null
@@ -45,16 +70,30 @@ function SellZigguratJob takes nothing returns nothing
   //local integer i = 0
 
   call DisplayToAllJobDebug("SELL_ZIGGURATS JOB START")
-  call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  set g = SelectByAlive(g, true)
-  set g = SelectByHidden(g, false)
-  set g = SelectByZiggurat(g)
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    call CheckSellZiggurat(u)
-    call GroupRemoveUnit(g,u)
-  endloop
+  if not towerrush then
+    if TRrecovery == null then
+      call GroupEnumUnitsOfPlayer(g, ai_player, null)
+      set g = SelectByAlive(g, true)
+      set g = SelectByHidden(g, false)
+      set g = SelectByZiggurat(g)
+      loop
+        set u = FirstOfGroup(g)
+        exitwhen u == null
+        call CheckSellZiggurat(u)
+        call GroupRemoveUnit(g,u)
+      endloop
+    else
+      if sellbuild != null and UnitAlive(sellbuild) and sellpeon != null and UnitAlive(sellpeon) then
+        call IssueTargetOrder(sellpeon, "unsummon", sellbuild)
+      else
+        call RecoveryTRBuild(g)
+      endif
+      call DestroyGroup(g)
+      set g = null
+      call TQAddJob(2, SELL_ZIGGURATS, 0)
+      return
+    endif
+  endif
   call DestroyGroup(g)
   set g = null
   if not pathing_done then

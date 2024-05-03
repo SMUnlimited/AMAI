@@ -10,7 +10,7 @@ function TowerRushHeroControl_k takes unit u, location t returns nothing
 	local location l = GetUnitLoc(u)
 	call RemoveGuardPosition(u)
 	if not tower_peon_inplace then
-		call IssuePointOrder(u, "move", GetUnitX(builder[1]), GetUnitY(builder[1]))
+		call IssuePointOrder(u, "move", tower_peon_point_x, tower_peon_point_y)
 	elseif DistanceBetweenPoints(l, t) > 200 then
 		call CreateDebugTag("TRush: hero moving", 10, u, 4.00, 2.00)
 		call IssuePointOrderLoc(u, "move", t)
@@ -256,7 +256,7 @@ function TowerRushJob takes nothing returns nothing
 	endif
 	call CreateDebugTagLoc("build tower loc", 10, GetLocationX(t), GetLocationY(t), 60.00, 55.00)
 	//call Trace("Getting ready to tower rush")
-	if GetLocationX(t) != 0 and GetLocationY(t) != 0 and (TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3])) != 0 then
+	if GetLocationX(t) != 0 and GetLocationY(t) != 0 and (hero_built[1] or hero_built[2] or hero_built[3]) then
 		set CloseJob = town_threatened and town_threat[most_threatened_town] >= teleport_low_threat * 1.5
 		set CloseJob = CloseJob or (race_tower_item_must and not tower_used_item and hero_unit[2] != null and builder[0] == null)  //  too longer time not buy item , but item must
 		if not CloseJob then
@@ -264,6 +264,11 @@ function TowerRushJob takes nothing returns nothing
 			set OwnStrength = GetOwnStrength() + towers_attck + towers_built * 0.3  //  tower have strength
 			set CloseJob = (EnemyStrength > OwnStrength * 4) or (EnemyStrength > OwnStrength * 2 and towers_built_count > 6 * race_tower_peon and towers_built < 2)  //  6 job cycles
 		endif
+		if CloseJob and TRrecovery != null then
+			call RemoveLocation(TRrecovery)
+			set TRrecovery = null
+		endif
+		call Trace("TR Close state : " + B2S(CloseJob))
 	endif
 	if GetPlayerSlotState(rushedplayer) != PLAYER_SLOT_STATE_PLAYING or GetLocationEnemyStrength(enemy_point_x, enemy_point_y, 1600, false) == 0 or CloseJob == true then  //or (builder[1] != null and (GetUnitState(builder[1], UNIT_STATE_LIFE) <= 0  and GetUnitState(builder[3], UNIT_STATE_LIFE) <= 0 and GetUnitState(builder[2], UNIT_STATE_LIFE) <= 0)) then
 		//maybe enemy give up the Location,so temporary no need built
@@ -307,7 +312,7 @@ function TowerRushJob takes nothing returns nothing
 				set u = FirstOfGroup(g)
 				exitwhen u == null
 				if GetOwningPlayer(u) == ai_player then
-					call IssueImmediateOrderById( u, 851976 )  //Cancel can recycling resources and prevent AI run FAST BUILD
+					call IssueImmediateOrderById( u, 851976)  //Cancel can recycling resources and prevent AI run FAST BUILD
 				endif
 				call GroupRemoveUnit(g,u)
 			endloop
@@ -462,7 +467,7 @@ function TowerRushJob takes nothing returns nothing
 	endif
 
 	if tower_attack_run == true then
-		if GetItemNumberOnUnit(race_tower_item, builder[0]) > 0 then
+		if builder[0] != null and GetItemNumberOnUnit(race_tower_item, builder[0]) > 0 then
 			call TowerRushHeroControl_k(builder[0], t)
 			if GetItemNumberOnUnit(race_tower_item, builder[0]) == 0 or GetUnitState(builder[0], UNIT_STATE_LIFE) < GetUnitState(builder[0], UNIT_STATE_MAX_LIFE) * 0.5 or teleporting or town_threatened then
 				call RecycleGuardPosition(builder[0])
