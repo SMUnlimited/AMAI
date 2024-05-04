@@ -1,7 +1,6 @@
 #IFDEF GLOBAL
   integer blockstate = 0
   integer movetotal = 0
-  real bolckdistance = 0
   location ancientrootloc = Location(0, 0)
   unit blockpathunit = null
   unit blockancient = null
@@ -10,7 +9,7 @@
 
 // ######################## Fix Block ###############################
 // Created by JZY 15/04/24.
-// blockstate : 0 check home block , 1 check altar and tavern block , 2 check other block
+// blockstate : 0 check home block , 1 & 2 check altar and tavern block , 3 check other block
 // fix mode : 0 and 2 move ancient or kill build and with compensation , 1 harvest or attack tree , 2 give path unit move aside or check other block
 // ##################################################################
 function CheckAttackTreeUnit takes unit u, integer id, location l returns nothing
@@ -164,7 +163,6 @@ function FindTree takes real x, real y returns nothing
   call UnitApplyTimedLife(blockpathunit, 'BTLF', 18)
   call SetUnitMoveSpeed(blockpathunit, 300)  // unable use fastest speed
   call IssueImmediateOrder(blockpathunit, "autoharvestlumber")
-  set bolckdistance = front_base_distance
 endfunction
 
 function FixBlockJob takes nothing returns nothing
@@ -194,7 +192,7 @@ function FixBlockJob takes nothing returns nothing
     set blockunit = null
     call TQAddJob(1, FIX_BLOCK, 0)  // tree must close
     return
-  elseif blockpathunit != null and UnitAlive(blockpathunit) and DistanceBetweenPoints_kd(home_location, GetUnitLoc(blockpathunit)) < bolckdistance then
+  elseif blockpathunit != null and UnitAlive(blockpathunit) and DistanceBetweenPoints_kd(home_location, GetUnitLoc(blockpathunit)) < front_base_distance then
     if GetUnitTypeId(blockpathunit) == 'ewsp' then
       set l = GetUnitLoc(blockpathunit)
       if GetUnitCurrentOrder(blockpathunit) == OrderId("harvest") then
@@ -215,11 +213,10 @@ function FixBlockJob takes nothing returns nothing
   call RemoveBlockPathUnit()
   set blockancient = null
   set blockunit = null
-  set bolckdistance = front_base_distance
   set movetotal = 0
   call DisplayToAllJobDebug("Fix_Block Job Start, state : " + Int2Str(blockstate))
   call CreateDebugTagLoc("Fix Block state : " + Int2Str(blockstate), 8, GetLocationX(home_location) - 300, GetLocationY(home_location) + 300, 60.00, 55.00)
-  call TryFixBlock(2, home_location, 1000, true, blockstate != 2)
+  call TryFixBlock(2, home_location, 1000, true, blockstate != 3)  // 3 check other block , maybe pathing sys will always led unit go one loc , but loc blind alley , this block unable to handle , like map lastmanstanding - when hero no block , but maybe new train unit wiil go tavern
   if blockstate == 0 then
     set l = GetPlayerStartLocationLoc(enemy_force[0])
     set blockpathunit = CreatePathingUnitFull(blockpathunit, Player(PLAYER_NEUTRAL_PASSIVE), 'hbew', GetLocationX(home_location), GetLocationY(home_location))  // must big unit and can not revive
@@ -227,12 +224,11 @@ function FixBlockJob takes nothing returns nothing
     call IssuePointOrderLoc(blockpathunit, "move", l)
     call RemoveLocation(l)
     set l = null
-    set blockstate = 1
-  elseif blockstate == 1 then  // check hero - altar block or tavern to close maybe block , like map lastmanstanding
+  elseif blockstate == 2 then  // 1 wait hero move , 2 check hero - altar block or tavern to close maybe block , like map lastmanstanding
     loop
       exitwhen i > 3
       set u = hero_unit[i]
-      if hero_built[i] and UnitAlive(u) and not IsUnitLoaded(u) and not IsUnitBuying(u) and IsStandardUnit(u) and (DistanceBetweenPoints_kd(home_location, GetUnitLoc(u)) < front_base_distance or (nearest_neutral[NEUTRAL_TAVERN] != null and DistanceBetweenUnits(u, nearest_neutral[NEUTRAL_TAVERN]) < 1000)) then
+      if hero_built[i] and UnitAlive(u) and not IsUnitLoaded(u) and not IsUnitBuying(u) and IsStandardUnit(u) and (DistanceBetweenPoints_kd(home_location, GetUnitLoc(u)) < front_base_distance or (nearest_neutral[NEUTRAL_TAVERN] != null and DistanceBetweenPoints_kd(home_location, GetUnitLoc(nearest_neutral[NEUTRAL_TAVERN])) < front_base_distance and DistanceBetweenUnits(u, nearest_neutral[NEUTRAL_TAVERN]) < 1000)) then
         call CreateDebugTagLoc("hero block", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
         call TeleportFixBlock(u)
         set i = 3  // once check one
@@ -240,8 +236,9 @@ function FixBlockJob takes nothing returns nothing
       set i = i + 1
     endloop
     set u = null
-    set blockstate = 2
-  else  // check other block , maybe pathing sys will always led unit go one loc , but loc blind alley , this block unable to handle , like map lastmanstanding - when hero no block , but maybe new train unit wiil go tavern
+  endif
+  set blockstate = blockstate + 1
+  if blockstate > 3 then
     set blockstate = 0
   endif
   call TQAddJob(240 - Min(blockstate, 1) * 230, FIX_BLOCK, 0)

@@ -147,70 +147,71 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
       if town_threatened and GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 1500) > 0 then  // only need to control the unit if it is attacked nearby, otherwise will be killed
         call CreateDebugTag("SEND_HOME town_threatened", 10, u, 3.00, 1.50)
         call RecycleGuardPosition(u)   // Gives unit control for only a little bit but dosn't remove from healing group
-      elseif GetUnitAbilityLevel(u, 'Ashm') > 0 and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6) and not IsUnitType(u, UNIT_TYPE_HERO) then
-        call IssueImmediateOrder(u, "ambush")
-        call CreateDebugTag("SEND_HOME hide", 10, u, 3.00, 1.50)
-      elseif GetUnitAbilityLevel(u, 'Abur') > 0 and not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
-        call IssueImmediateOrder(u, "burrow")
-        call CreateDebugTag("SEND_HOME burrow", 10, u, 3.00, 1.50)
-      elseif GetUnitAbilityLevel(u, 'Astn') > 0 and GetUnitAbilityLevel(u, 'ACmi') == 0 then
-        call IssueImmediateOrder(u, "stoneform")
-        call CreateDebugTag("SEND_HOME stone", 10, u, 3.00, 1.50)
-      elseif (GetUnitAbilityLevel(u, 'Ahwd') > 0 or GetUnitAbilityLevel(u, 'AChw') > 0) and not ward_cast then
-        set ward_cast = IssuePointOrder(u, "healingward", GetUnitX(u), GetUnitY(u))
-        call CreateDebugTag("SEND_HOME use healingward " + B2S(ward_cast), 10, u, 3.00, 1.50)
-      elseif GetUnitAbilityLevel(u, 'Ahea') > 0 or GetUnitAbilityLevel(u, 'Anhe') > 0 or GetUnitAbilityLevel(u, 'Anh1') > 0 or GetUnitAbilityLevel(u, 'Anh2') > 0 then
-        call IssueImmediateOrder(u, "healon")
-        call CreateDebugTag("SEND_HOME heal", 10, u, 3.00, 1.50)
-      elseif GetUnitAbilityLevel(u, 'Arpb') > 0 or GetUnitAbilityLevel(u, 'Arpl') > 0 then
-        call IssueImmediateOrder(u, "replenishlifeon")
-        call IssueImmediateOrder(u, "replenishon")
-        call CreateDebugTag("SEND_HOME replenish", 10, u, 3.00, 1.50)
-      elseif GetUnitAbilityLevel(u, 'AChv') > 0 or GetUnitAbilityLevel(u, 'AOhw') > 0 or GetUnitAbilityLevel(u, 'ANhw') > 0 then
-        call IssueTargetOrder(u, "healingwave", u)
-        call CreateDebugTag("SEND_HOME heal wave", 10, u, 3.00, 1.50)
-      elseif GetUnitAbilityLevel(u, 'ANhs') > 0 then
-        call IssuePointOrder(u, "healingspray", GetUnitX(u), GetUnitY(u))
-        call CreateDebugTag("SEND_HOME heal spray", 10, u, 3.00, 1.50)
-      elseif GetUnitCurrentOrder(u) != OrderId("cannibalize") and (GetUnitAbilityLevel(u, 'Acn2') > 0 or GetUnitAbilityLevel(u, 'Acan') > 0 or GetUnitAbilityLevel(u, 'ACcn') > 0) then
-        if GetUpgradeLevel(old_id[UPG_CANNIBALIZE]) > 0 then
-          set g = CreateGroup()
-          call GroupEnumUnitsInRangeOfLoc(g, exist_town[p], 1000, null)
-          loop
-            set corpse = FirstOfGroup(g)
-            exitwhen corpse == null
-            exitwhen not UnitAlive(corpse) and IsUnitType(corpse, UNIT_TYPE_DEAD) and not IsUnitType(corpse, UNIT_TYPE_STRUCTURE)
-            call GroupRemoveUnit(g, corpse)
-          endloop
-        endif
-        if (GetUnitAbilityLevel(u, 'Ahrl') == 0 or (GetWood() > 500 and GetUnitCurrentOrder(u) != OrderId("cannibalize"))) and corpse != null then  // 'Ahrl' Ghoul Harvest lumber ability
-          call IssueTargetOrder(u, "move" , corpse)
-          call IssueImmediateOrder(u, "cannibalize")
-          call CreateDebugTag("SEND_HOME cannibalize", 10, u, 3.00, 1.50)
-          set corpse = null
-        else
-          call GroupClear(g)
-          call GroupEnumUnitsInRangeOfLoc(g, exist_town[p], 1000, null)
-          loop
-            set corpse = FirstOfGroup(g) // Not a corpse, is it a town hall we can return wood too?
-            exitwhen corpse == null
-            exitwhen UnitAlive(corpse) and (IsUnitType(corpse, UNIT_TYPE_TOWNHALL) or GetUnitTypeId(corpse) == old_id[racial_lumber])
-            call GroupRemoveUnit(g, corpse)
-          endloop
-          if corpse != null then
-            if GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == OrderId("resumeharvesting") then
-            else
-              call IssueImmediateOrder(u, "autoharvestlumber")
-            endif
-            call CreateDebugTag("SEND_HOME harvest lumber", 10, u, 3.00, 1.50)
-          else
-            call CreateDebugTag("SEND_HOME cannibalize", 10, u, 3.00, 1.50)
-            call IssueImmediateOrder(u, "cannibalize")
+      // elseif GetUnitAbilityLevel(u, 'Ashm') > 0 and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6) and not IsUnitType(u, UNIT_TYPE_HERO) then
+      //   call IssueImmediateOrder(u, "ambush")  // no need control
+      //   call CreateDebugTag("SEND_HOME hide", 10, u, 3.00, 1.50)
+      elseif GetUnitState(u, UNIT_STATE_MANA) > 200 then  //Note : this writing may not be compatible with custom maps
+        if (GetUnitAbilityLevel(u, 'Ahwd') > 0 or GetUnitAbilityLevel(u, 'AChw') > 0) and not ward_cast then
+          set ward_cast = IssuePointOrder(u, "healingward", GetUnitX(u), GetUnitY(u))
+          call CreateDebugTag("SEND_HOME use healingward " + B2S(ward_cast), 10, u, 3.00, 1.50)
+        elseif GetUnitAbilityLevel(u, 'AChv') > 0 or (IsUnitType(u, UNIT_TYPE_HERO) and (GetUnitAbilityLevel(u, 'AOhw') > 0 or GetUnitAbilityLevel(u, 'ANhw') > 0)) then
+          call IssueTargetOrder(u, "healingwave", u)
+          call CreateDebugTag("SEND_HOME heal wave", 10, u, 3.00, 1.50)
+        elseif GetUnitAbilityLevel(u, 'ANhs') > 0 then
+          call IssuePointOrder(u, "healingspray", GetUnitX(u), GetUnitY(u))
+          call CreateDebugTag("SEND_HOME heal spray", 10, u, 3.00, 1.50)
+        elseif GetUnitAbilityLevel(u, 'Arej') > 0 or GetUnitAbilityLevel(u, 'ACrj') > 0 or GetUnitAbilityLevel(u, 'ACr2') > 0 then
+          if GetUnitAbilityLevel(u, 'Abrf') > 0 then
+            call IssueImmediateOrder(u, "unbearform")
           endif
+          call IssueTargetOrder(u, "rejuvination", u)
         endif
-        set corpse = null
-        call DestroyGroup(g)
-        set g = null
+      else
+        if GetUnitAbilityLevel(u, 'Abur') > 0 and not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+          call IssueImmediateOrder(u, "burrow")
+          call CreateDebugTag("SEND_HOME burrow", 10, u, 3.00, 1.50)
+        elseif GetUnitAbilityLevel(u, 'Astn') > 0 and GetUnitAbilityLevel(u, 'ACmi') == 0 then
+          call IssueImmediateOrder(u, "stoneform")
+          call CreateDebugTag("SEND_HOME stone", 10, u, 3.00, 1.50)
+        elseif (GetUnitAbilityLevel(u, 'Acn2') > 0 or GetUnitAbilityLevel(u, 'Acan') > 0 or GetUnitAbilityLevel(u, 'ACcn') > 0) and GetUnitCurrentOrder(u) != OrderId("cannibalize") then
+          if GetUpgradeLevel(old_id[UPG_CANNIBALIZE]) > 0 then
+            set g = CreateGroup()
+            call GroupEnumUnitsInRangeOfLoc(g, exist_town[p], 1000, null)
+            loop
+              set corpse = FirstOfGroup(g)
+              exitwhen corpse == null
+              exitwhen not UnitAlive(corpse) and IsUnitType(corpse, UNIT_TYPE_DEAD) and not IsUnitType(corpse, UNIT_TYPE_STRUCTURE)
+              call GroupRemoveUnit(g, corpse)
+            endloop
+          endif
+          if (GetUnitAbilityLevel(u, 'Ahrl') == 0 or (GetWood() > 500 and GetUnitCurrentOrder(u) != OrderId("cannibalize"))) and corpse != null then  // 'Ahrl' Ghoul Harvest lumber ability
+            call IssueTargetOrder(u, "move" , corpse)
+            call IssueImmediateOrder(u, "cannibalize")
+            call CreateDebugTag("SEND_HOME cannibalize", 10, u, 3.00, 1.50)
+          else
+            call GroupClear(g)
+            call GroupEnumUnitsInRangeOfLoc(g, exist_town[p], 1000, null)
+            loop
+              set corpse = FirstOfGroup(g) // Not a corpse, is it a town hall we can return wood too?
+              exitwhen corpse == null
+              exitwhen UnitAlive(corpse) and (IsUnitType(corpse, UNIT_TYPE_TOWNHALL) or GetUnitTypeId(corpse) == old_id[racial_lumber])
+              call GroupRemoveUnit(g, corpse)
+            endloop
+            if corpse != null then
+              if GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == OrderId("resumeharvesting") then
+              else
+                call IssueImmediateOrder(u, "autoharvestlumber")
+              endif
+              call CreateDebugTag("SEND_HOME harvest lumber", 10, u, 3.00, 1.50)
+            else
+              call CreateDebugTag("SEND_HOME cannibalize", 10, u, 3.00, 1.50)
+              call IssueImmediateOrder(u, "cannibalize")
+            endif
+          endif
+          set corpse = null
+          call DestroyGroup(g)
+          set g = null
+        endif
       endif
     endif
     call TQAddUnitJob(4, SEND_HOME, p, u)
