@@ -12,7 +12,7 @@
 // blockstate : 0 check home block , 1 & 2 check altar and tavern block , 3 check other block
 // fix mode : 0 and 2 move ancient or kill build and with compensation , 1 harvest or attack tree , 2 give path unit move aside or check other block
 // ##################################################################
-function CheckAttackTreeUnit takes unit u, integer id, location l returns nothing
+function TryAttackTree takes unit u, integer id, location l returns nothing
   if id == 'ebal' or id == 'hmtm' or id == 'ocat' or id == 'umtw' or id == 'ncat' then
     call RemoveGuardPosition(u)
     call IssuePointOrderLoc(u, "attackground", l)
@@ -68,7 +68,7 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean atta
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null or blockancient != null or (GetPlayerRace(ai_player) != RACE_NIGHTELF and utemp != null)  // first move ancient
-      if GetOwningPlayer(u) == ai_player and not IsUnitType(u, UNIT_TYPE_TOWNHALL) and IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and not IsUnitHidden(u) then
+      if GetOwningPlayer(u) == ai_player and IsUnitType(u, UNIT_TYPE_STRUCTURE) not IsUnitType(u, UNIT_TYPE_TOWNHALL) and and UnitAlive(u) and not IsUnitHidden(u) then
         if IsUnitType(u, UNIT_TYPE_ANCIENT) then
           call MoveAncient(u)
           set blockancient = u
@@ -92,8 +92,8 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean atta
       loop
         set u = FirstOfGroup(g)
         exitwhen u == null
-        if GetOwningPlayer(u) == ai_player and not IsUnitType(u, UNIT_TYPE_PEON) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitBuying(u) and IsStandardUnit(u) and not IsUnitLoaded(u) and not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
-          call CheckAttackTreeUnit(u, GetUnitTypeId(u), l)
+        if GetOwningPlayer(u) == ai_player and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitBuying(u) and not IsUnitLoaded(u) and not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+          call TryAttackTree(u, GetUnitTypeId(u), l)
         endif
         call GroupRemoveUnit(g,u)
       endloop
@@ -120,7 +120,7 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean atta
           if IsStandardUnit(u) then
             call AddAssault(10,GetUnitTypeId(u))
           elseif GetUnitCurrentOrder(u) != OrderId("cannibalize") then
-            call IssuePointOrderLoc(u, "move", front_loc[front_loc_num -1])  // no need send to home_location
+            call IssuePointOrderLoc(u, "move", front_loc[0])  // no need send to home_location
           endif
           call CreateDebugTagLoc("move aside", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
         endif
@@ -133,7 +133,7 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean atta
         set p = GetOwningPlayer(u)
         if p == ai_player and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_FLYING) and GetUnitTypeId(u) != 'ngir' and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitBuying(u) and IsStandardUnit(u) and not IsUnitLoaded(u) then
           call CreateDebugTagLoc("other block", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
-          call AddAssault(10,GetUnitTypeId(u))
+          call AddAssault(1,GetUnitTypeId(u))
           set blockunit = u
         elseif p != ai_player and IsPlayerAlly(ai_player, p) and GetPlayerController(p) == MAP_CONTROL_COMPUTER and IsUnitType(u, UNIT_TYPE_HERO) and not town_threatened and not IsUnitHidden(u) then
           call CreateDebugTagLoc("ally hero block", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
@@ -159,7 +159,7 @@ endfunction
 function FindTree takes real x, real y returns nothing
   call RemoveBlockPathUnit()
   call TryFixBlock(2, home_location, 1000, true, true)  //Move aside
-  set blockpathunit = CreatePathingUnitFull(blockpathunit, Player(PLAYER_NEUTRAL_PASSIVE), 'ewsp', x, y)
+  set blockpathunit = CreatePathingUnitFull(blockpathunit, ai_player, 'ewsp', x, y)
   call UnitApplyTimedLife(blockpathunit, 'BTLF', 18)
   call SetUnitMoveSpeed(blockpathunit, 300)  // unable use fastest speed
   call IssueImmediateOrder(blockpathunit, "autoharvestlumber")
@@ -196,7 +196,7 @@ function FixBlockJob takes nothing returns nothing
     if GetUnitTypeId(blockpathunit) == 'ewsp' then
       set l = GetUnitLoc(blockpathunit)
       if GetUnitCurrentOrder(blockpathunit) == OrderId("harvest") then
-        call TryFixBlock(1, l, 1200, (race_no_wood_harvest or GetPlayerRace(ai_player) == RACE_NIGHTELF) and (GetUnitCountDone('ebal') + GetUnitCountDone('hmtm') + GetUnitCountDone('ocat') + GetUnitCountDone('umtw') + GetUnitCountDone('ncat') + GetUnitCountDone('Ekee') > 0), true)
+        call TryFixBlock(1, l, 1200, race_no_wood_harvest or GetPlayerRace(ai_player) == RACE_NIGHTELF, true)
       else
         call TryFixBlock(0, l, 300, true, true)
       endif
