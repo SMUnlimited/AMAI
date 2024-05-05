@@ -1661,7 +1661,7 @@ function Trace takes string s returns nothing
 endfunction
 
 //============================================================================
-function TraceI takes string s, integer val returns nothing	
+function TraceI takes string s, integer val returns nothing
 	if debugging then
 		call UpdateDebugPlayer()
 		call DisplayToAllFromPlayer(s+":"+Int2Str(val), debug_player, false)
@@ -6897,13 +6897,13 @@ function ComputeFrontPoints takes nothing returns nothing
     call Sleep(0.1)
   endloop
   if front_loc[0] == null or front_loc_num == 0 then
-    call Trace("fix front_loc[0]" )
     if Player(0) != ai_player then
       set l = GetPlayerStartLocationLoc(Player(0))
     else
       set l = GetPlayerStartLocationLoc(Player(1))
     endif
     set front_loc[0] = GetLocationInDistanceFromBaseToLoc(l, front_base_distance)
+    call CreateDebugTagLoc("fix front_loc[0]", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
     if front_loc_num == 0 then
       set front_loc_num = front_loc_num + 1
     endif
@@ -9709,10 +9709,12 @@ endfunction
 
 #INCLUDETABLE <$VER$\Strengths.txt>
 function AddUnitToAnti%1 takes integer u, integer percent returns nothing
-	set dyanti_%1[totalanti_%1]= u
-	set dychance_%1[totalanti_%1]= percent
-	set totalanti_%1 = totalanti_%1 + 1
-	set totalchance_%1 = totalchance_%1 + percent
+	if percent > 0 then
+		set dyanti_%1[totalanti_%1]= u
+		set dychance_%1[totalanti_%1]= percent
+		set totalanti_%1 = totalanti_%1 + 1
+		set totalchance_%1 = totalchance_%1 + percent
+	endif
 endfunction
 #ENDINCLUDE
 
@@ -9915,10 +9917,10 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     set i = i + 1
   endloop
   call DestroyGroup(g)
+  set g = null
   if FirstOfGroup(harasser) == null or strength <= 0 then
     call GroupRecycleGuardPositionInstant(harasser)
     set harasser = null
-    set g = null
     return
   endif
   if not HaveSavedHandle(additional_info, key, HARASS_GROUP) then
@@ -9928,7 +9930,6 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     call SaveGroupHandle(additional_info, key, HARASS_GROUP, harasser)
     call SaveReal(additional_info, key, START_STRENGTH, strength)
     call SaveBoolean(additional_info, key, AVOID_TOWERS, avoid_towers)
-    //if avoid_towers and GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_tower_check_radius) > 0
     call SaveReal(additional_info, key, STRENGTH_LIMIT, strength_limit)
     call SaveBoolean(additional_info, key, STATE_ATTACKING, true)
     call SaveReal(additional_info, key, FLEE_PERCENT, flee_percent)
@@ -9940,15 +9941,13 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   elseif LoadBoolean(additional_info, key, STATE_ATTACKING) == true then  //The group still working no need to initiate it repeatedly
     call GroupRemoveGuardPositionInstant(harasser)
     call GroupAddGroup(unit_harassing, harasser)
-    set g = LoadGroupHandle(additional_info, key, HARASS_GROUP)
-    call GroupAddGroup(g, harasser)
+    call GroupAddGroup(LoadGroupHandle(additional_info, key, HARASS_GROUP), harasser)
     call SaveReal(additional_info, key, START_STRENGTH, getstrength + strength)
     call DestroyGroup(harasser)
   else  // maybe RETREAT
     call GroupRecycleGuardPositionInstant(harasser)
   endif
   set harasser = null
-  set g = null
 endfunction
 
 function GetHarassGroupStrength takes integer groupnum returns real
@@ -12435,7 +12434,7 @@ function CreepAttack takes integer str returns nothing
 
   if target == null then
     call Trace("No creep target found")
-    call Sleep(20)
+    call Sleep(sleep_multiplier)
     return
   endif
   if air_strength > 15 then
@@ -12727,7 +12726,7 @@ function ChooseEnemyBaseTarget takes unit u returns unit
   local integer c = 0
   call StartGetEnemyBase()
   loop
-    exitwhen not WaitGetEnemyBase()
+    exitwhen not WaitGetEnemyBase() or town_threatened or isfleeing or CaptainRetreating() or CaptainIsEmpty()
     if c > 4 then
       return null
     endif
@@ -12892,6 +12891,7 @@ endfunction
 //============================================================================
 function SleepUntilTownDefended takes integer ai_strength returns nothing
   local integer defense_length_counter = 0
+  local boolean b = false
   set own_strength = ai_strength
   call Trace("==Sleep Defend Town==" )
   loop
@@ -12901,6 +12901,7 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
       //     call AttackMoveXY(R2I(GetLocationX(town_loc[most_threatened_town])), R2I(GetLocationY(town_loc[most_threatened_town])))
       //   endif
       // endif
+      call CreateDebugTagLoc("Sleep Defend Town" , 8, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]), 60.00, 55.00)
       call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
     else
       //call Trace("Town threatened - retreat" )
@@ -12914,10 +12915,12 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
           call FormGroupAM(0)
         endif
       //endif
-      call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
       //call ClearCaptainTargets()
-      if not CaptainIsHome() then
+      call CreateDebugTagLoc("Sleep Defend Town" , 8, GetLocationX(home_location), GetLocationY(home_location), 60.00, 55.00)
+      if not b then
+        set b = CaptainIsHome()
         call CaptainGoHome()
+        call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
       endif
     endif
     // if not CaptainIsHome() then
@@ -13145,17 +13148,15 @@ if not creeping_only then	// Do the normal attack sequence
   //
   if item_expanding then
     call Trace("An Item Expansion Attack or Guard")
-    if item_exp_state == 1 then
-      set creep = GetExpFoe(creep)
-      if creep != null then
-        call FormGroupAM(3)
-        call AttackMoveKillCreep(creep)
-        set creep = null
-      endif
-    elseif item_attack_ruard then
-      call AttackMoveKillXYAAM(R2I(GetLocationX(item_exp_guard_loc)),R2I(GetLocationY(item_exp_guard_loc)))  //Prevent the army from leaving before using the item , so no set item_attack_running
-      set item_attack_ruard = false
+    set creep = GetExpFoe(creep)
+    if creep != null then
+      call FormGroupAM(3)
+      call AttackMoveKillCreep(creep)
+      set creep = null
     endif
+    // elseif item_attack_ruard then
+    //   call AttackMoveKillXYAAM(R2I(GetLocationX(item_exp_guard_loc)),R2I(GetLocationY(item_exp_guard_loc)))  //Prevent the army from leaving before using the item , so no set item_attack_running
+    //   set item_attack_ruard = false
     return
   endif
 
