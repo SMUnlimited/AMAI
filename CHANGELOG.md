@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issue where mine required for ancient or item expansions could be nulled mid use which would break the logic. (jzy-chitong56)
 - Fixed Mark of Talon upgrade only requires adept training from 1.36.1 war3 patch.
 - Tweak expansion relocation logic to calculate when its likely already building so don't change location.
+- (Classic) Goblin alchemist not learning abilities.
 
 ## [3.3.4] - 2024-03-10
 
