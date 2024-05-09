@@ -8,7 +8,7 @@
 #ELSE
 
 function ItemExpansionReset takes nothing returns nothing
-  if itemhero != null and UnitAlive(itemhero) then
+  if itemhero != null and UnitAlive(itemhero) and not IsStandardUnit(itemhero) then
     call RecycleGuardPosition(itemhero)
   endif
   set item_expanding = false
@@ -20,14 +20,13 @@ function ItemExpansionReset takes nothing returns nothing
 endfunction
 
 function UseExpansionItem takes item t returns nothing
-  local boolean b = false
   local unit u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
   local location loc = GetUnitLoc(current_expansion)
   local location l = GetUnitLoc(u)
   //local location rl = AIGetProjectedLoc(loc, l, 850, 0)  //Guarding position
   call RemoveUnit(u)
   if DistanceBetweenPoints_kd(l, loc) <= race_max_expa_mine_distance then
-    set b = UnitUseItemPoint(itemhero, t, GetLocationX(l), GetLocationY(l))
+    call UnitUseItemPoint(itemhero, t, GetLocationX(l), GetLocationY(l))
     //call MoveLocation(item_exp_guard_loc, GetLocationX(rl), GetLocationY(rl))
   endif
   set loc = null
@@ -36,27 +35,25 @@ function UseExpansionItem takes item t returns nothing
   call RemoveLocation(l)
   set l = null
   set u = null
-  if b then
-    call ItemExpansionReset()
-  endif
 endfunction
 
 function ItemExpansionJob takes nothing returns nothing
   local unit u = null
   local item exp_item = null
-  local integer time_next_try = 1
+  local real trytime = 1
   call DisplayToAllJobDebug("ITEM_EXPANSION JOB STARTED")
-  if itemhero != null and UnitAlive(itemhero) and GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero) == null then
-    call TQAddUnitJob(1, RESET_GUARD_POSITION_ONLY, 50, itemhero)  //prevent item change hero
+  if itemhero != null and UnitAlive(itemhero) and GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero) == null then  //prevent item change hero
+    if not IsStandardUnit(itemhero) then
+      call RecycleGuardPosition(itemhero)
+    endif
     set itemhero = GetItemHero(GetItemOfType(exp_item,race_item_expansion_item_id))
   endif
   if (itemhero != null and GetUnitState(itemhero, UNIT_STATE_LIFE) <= GetUnitState(itemhero, UNIT_STATE_MAX_LIFE) * 0.3) or town_threatened or current_expansion == null then
-    call Trace("Item expansion : Cannot Expansion or no expansion")  // no call ChooseExpansion() , this is passive expansion , avoidance buy repeat item
+    call Trace("Item expansion : Cannot Expansion or no Expansion")  // no need ChooseExpansion() , this is passive expansion , avoidance buy repeat item
     call ItemExpansionReset()
     return
   endif
   set exp_time_count = ai_time
-  set u = GetExpFoe(u)
   if item_exp_state == 0 then
     call Trace("Item expansion state 0 - Check Expansion Hero and Location , Distance :" + Int2Str(R2I(GetExpansionDistance())))
     set exp_item = GetItemOfType(exp_item,race_item_expansion_item_id)
@@ -92,48 +89,40 @@ function ItemExpansionJob takes nothing returns nothing
     call SetItemDroppable(exp_item, false)  //prevent droppable
     call SetItemPawnable(exp_item, false)  //prevent sell
     set exp_item = null
-    if u == null then
-      call CreateDebugTag("Item expansion state 0 to 2", 10, itemhero, 3.00, 1.50)
-      set item_exp_state = 2
-    else
-      call CreateDebugTag("Item expansion state 0 to 1", 10, itemhero, 3.00, 1.50)
-      set item_exp_state = 1
-    endif
+    call CreateDebugTag("Item expansion state 0 to 1", 10, itemhero, 3.00, 1.50)
+    set item_exp_state = 1
   elseif item_exp_state == 1 then
-    if u == null then
-      call Trace("Item expansion state 2 - Rush Expansion done")
-      //set item_attack_ruard = true
-      set item_exp_state = 2
-    else
-      call Trace("Item expansion state 1 - Wait rush Expansion")
-      set time_next_try = 10
-    endif
-  elseif item_exp_state == 2 then
-    if itemhero != null and exp_item != null and not CheckExpansionTaken(current_expansion) and GetLocationNonCreepStrength(GetUnitX(itemhero), GetUnitY(itemhero), 1200) <= 0 then
-      call RemoveGuardPosition(itemhero)
-      set time_next_try = 3
-      if DistanceBetweenUnits(itemhero, current_expansion) > race_max_expa_mine_distance then
-        call CreateDebugTag("Item expansion state 2 - move to expansion", 10, itemhero, 3.00, 1.50)
-        call IssuePointOrder(itemhero, "move", GetUnitX(current_expansion), GetUnitY(current_expansion))
+    if GetExpFoe(u) == null then
+      call Trace("Item expansion state 1 - Rush Expansion done")
+      set exp_item = GetItemOfType(exp_item,race_item_expansion_item_id)
+      if itemhero != null and exp_item != null and not CheckExpansionTaken(current_expansion) and GetLocationNonCreepStrength(GetUnitX(itemhero), GetUnitY(itemhero), 1200) <= 0 then
+        call RemoveGuardPosition(itemhero)
+        if DistanceBetweenUnits(itemhero, current_expansion) > race_max_expa_mine_distance then
+          call CreateDebugTag("Item expansion state 1 - move to expansion", 10, itemhero, 3.00, 1.50)
+          call IssuePointOrder(itemhero, "move", GetUnitX(current_expansion), GetUnitY(current_expansion))
+          call TQAddJob(3, ITEM_EXPANSION, 0)
+          set exp_item = null
+          return
+        else
+          call CreateDebugTag("Item expansion state 1 - use item", 10, itemhero, 3.00, 1.50)
+          call UseExpansionItem(exp_item)
+        endif
       else
-        call CreateDebugTag("Item expansion state 2 - use item", 10, itemhero, 3.00, 1.50)
-        call UseExpansionItem(exp_item)
+        call Trace("Item expansion state 1 - End")
+        if exp_item != null then
+          call Trace("Item expansion state 1 - End , not use item")
+          call SetItemDroppable(exp_item, true)  //can droppable
+          call SetItemPawnable(exp_item, true)  //can selling
+        endif
       endif
-    else
-      call Trace("Item expansion state 2 - End")
       call ItemExpansionReset()
-      if exp_item != null then
-        call Trace("Item expansion state 2 - End , not use item")
-        call SetItemDroppable(exp_item, true)  //can droppable
-        call SetItemPawnable(exp_item, true)  //can selling
-        set exp_item = null
-      endif
-      set u = null
+      set exp_item = null
       return
     endif
+    call Trace("Item expansion state 1 - Wait rush Expansion")
+    set trytime = 16
+    set u = null
   endif
-  set exp_item = null
-  set u = null
-  call TQAddJob(time_next_try, ITEM_EXPANSION, 0)
+  call TQAddJob(trytime, ITEM_EXPANSION, 0)
 endfunction
 #ENDIF
