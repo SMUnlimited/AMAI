@@ -7748,7 +7748,7 @@ function PJInitJobs takes nothing returns nothing
   endif
   call PathingJobEx(60, CLEANUP_BLOCKS, 0, false)                                                 //CleanupBlocksJob
   call PathingJobEx(160, ITEM_REPEAT_CHECK, 0, false)                                             //ItemRepeatCheck
-  call PathingJobEx(360, REVEAL_ENEMY, 0, false)                                                  //RevealEnemyJob
+  call PathingJobEx(1200, REVEAL_ENEMY, 0, false)                                                  //RevealEnemyJob
   call PathingJobEx(sleep_multiplier * 5, STRUCTURE_CONTROL, 0, false)                            //StructureControlJob
   if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null then
     call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALING_FOUNTAIN, true)  //NeutralEnemyCheckJob
@@ -12123,7 +12123,6 @@ function BRRush takes nothing returns nothing
   set attack_running = true
   if i != 1 and GetUnitState(utemp, UNIT_STATE_LIFE) >= GetUnitState(utemp, UNIT_STATE_MAX_LIFE) * 0.65 then
     set l = GetUnitLoc(utemp)
-    call RemoveGuardPosition(utemp)
     call IssueImmediateOrderById(utemp, 851976) // Cancel building order
     call IssueImmediateOrder(utemp, "unroot")  //try unroot
     call Sleep(2.8)  //unroot time
@@ -12139,7 +12138,6 @@ function BRRush takes nothing returns nothing
     call IssuePointOrderLoc(utemp, "move", l)  //prevent inability cannot root
     call Sleep(0.02)
     call IssuePointOrderLoc(utemp, "root", l)  //root tree
-    call TQAddUnitJob(GetTimeToReachLoc(utemp, l) + 2, RESET_GUARD_POSITION, 0, u)
     call RemoveLocation(l)
     set l = null
   else
@@ -12434,7 +12432,7 @@ function CreepAttack takes integer str returns nothing
 
   if target == null then
     call Trace("No creep target found")
-    call Sleep(sleep_multiplier)
+    call Sleep(3 * sleep_multiplier)
     return
   endif
   if air_strength > 15 then
@@ -12887,6 +12885,31 @@ function Militia_Expansion takes integer m returns nothing
 endfunction
 
 //============================================================================
+// Ancient Expansion melee guard
+//============================================================================
+function Ancient_Expansion takes nothing returns nothing
+  local integer i = 1
+  if ancient_exp_maintree then
+    loop
+      exitwhen desperation_assault or break_attack
+      exitwhen town_threat_break and town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat
+      exitwhen ancient_exp_unit == null or not UnitAlive(ancient_exp_unit) or not ancient_exp_maintree
+      exitwhen isfleeing or CaptainRetreating() or CaptainIsEmpty()
+      if ModuloInteger(i, 1) == 0 then
+        call AttackMoveXY(R2I(GetUnitX(ancient_exp_unit)) + ISign() * GetRandomInt(200, 400),R2I(GetUnitY(ancient_exp_unit)) + ISign() * GetRandomInt(200, 400))
+        call CreateDebugTag("guard tree", 10, ancient_exp_unit, 1.00, 0.80)
+      endif
+      set i = i + 1
+      call Sleep(2 * sleep_multiplier)
+      if i > 8 then
+        call FormGroupAM(0)
+        set i = 1
+      endif
+    endloop
+  endif
+endfunction
+
+//============================================================================
 // (AMAI) Defending
 //============================================================================
 function SleepUntilTownDefended takes integer ai_strength returns nothing
@@ -13119,28 +13142,17 @@ if not creeping_only then	// Do the normal attack sequence
   // ancient expansion attack
   //
   if ancient_expanding then
-    if ancient_exp_state == 2 or ancient_exp_state == 3 then
-      call Trace("An Ancient Expansion Attack")
-      //call FormGroupAM(3)
-      //call AddAssault(1, old_id[racial_hall[1]])
-      call SetCaptainHome(BOTH_CAPTAINS,GetUnitX(ancient_exp_unit),GetUnitY(ancient_exp_unit))
-      //call AttackMoveKillXYAAM(R2I(GetUnitX(ancient_exp_unit)), R2I(GetUnitY(ancient_exp_unit)))
-    elseif ancient_exp_state == 4 then
-      set ancient_attack_running = true
-      call Trace("An Ancient Expansion - Final stage")
-      call FormGroupAM(3)
-      //call AddAssault(1, old_id[racial_hall[1]])
-      //call SetCaptainHome(BOTH_CAPTAINS,GetUnitX(ancient_exp_unit),GetUnitY(ancient_exp_unit))
-      set creep = GetExpFoe(creep)
-      if creep != null and DistanceBetweenUnits(ancient_exp_unit, creep) <= race_max_expa_mine_distance then
-        call AttackMoveKillCreep(creep)
-        call SetCaptainHome(BOTH_CAPTAINS,GetLocationX(front_loc[0]),GetLocationY(front_loc[0]))  //  Prevent blocking ancient_exp_unit
-      else
-        call AttackMoveKillXYAAM(R2I(GetUnitX(ancient_exp_unit)), R2I(GetUnitY(ancient_exp_unit)))
-      endif
-      set ancient_attack_running = false
-      set creep = null
+    call Trace("An Ancient Expansion Attack")
+    call FormGroupAM(3)
+    set creep = GetExpFoe(creep)
+    if creep != null then
+      call AttackMoveKillCreep(creep)
     endif
+    if ancient_attack_running then
+      call Ancient_Expansion()
+    endif
+    set ancient_attack_running = false
+    set creep = null
     return
   endif
 
