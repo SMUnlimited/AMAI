@@ -7713,17 +7713,17 @@ function RemovePJ takes integer jid, integer par returns nothing
   endif
 endfunction
 
-function PJHandleOnce takes integer t returns boolean
+function PJHandleOnce takes integer t, texttag tt returns boolean
   if TimerGetElapsed(tq_timer) - pj_time[t] >= pj_frequency[t] then
    call TQDoJob(pj_jid[t], pj_par[t], null, null, null)
    set pj_time[t] = TimerGetElapsed(tq_timer)
-   call CreateDebugTagLoc("path sys runjob : " + Int2Str(pj_jid[t]), 10, GetLocationX(home_location), GetLocationY(home_location), 2.00, 1.00)
+   call UpdateDebugTextTag(tt, "path job sys : " + Int2Str(pj_jid[t]), 10, GetLocationX(home_location) + 300, GetLocationY(home_location))
    if pj_remove[t] then
      call RemovePJ(pj_jid[t], pj_par[t])
    endif
    return true
   endif
-  call CreateDebugTagLoc("path sys runjob : not job", 10, GetLocationX(home_location), GetLocationY(home_location), 2.00, 1.00)
+  call UpdateDebugTextTag(tt, "path job sys : not job", 10, GetLocationX(home_location) + 300, GetLocationY(home_location))
   return false
 endfunction
 
@@ -7778,6 +7778,10 @@ endfunction
 function PathingThread takes nothing returns nothing
   local integer i = 0
   local integer t = 1
+  local texttag tt = CreateTextTag()
+  if debugging then
+    call SetTextTagPermanent(tt, true)
+  endif
   call StaggerSleep(1,5)
   call SetAIArray()
   //  set command_wait = 0.5
@@ -7802,7 +7806,7 @@ function PathingThread takes nothing returns nothing
   call StaggerSleep(1,RMax(5,sleep_multiplier))
   loop
     exitwhen player_defeated
-    if pj_length == 0 or not PJHandleOnce(t) then
+    if pj_length == 0 or not PJHandleOnce(t, tt) then
       call Sleep(1)
     else
       call Sleep(RMin(1, GetRandomReal(0.5, 0.8) * sleep_multiplier))
@@ -7819,6 +7823,7 @@ function PathingThread takes nothing returns nothing
       endif
     endif
   endloop
+  call UpdateDebugTextTag(tt, "path job sys : end", 10, GetLocationX(home_location) + 300, GetLocationY(home_location))
 endfunction
 
 //============================================================================
@@ -12914,7 +12919,7 @@ endfunction
 //============================================================================
 function SleepUntilTownDefended takes integer ai_strength returns nothing
   local integer defense_length_counter = 0
-  local boolean b = false
+  local real t = 2 * sleep_multiplier
   set own_strength = ai_strength
   call Trace("==Sleep Defend Town==" )
   loop
@@ -12924,7 +12929,7 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
       //     call AttackMoveXY(R2I(GetLocationX(town_loc[most_threatened_town])), R2I(GetLocationY(town_loc[most_threatened_town])))
       //   endif
       // endif
-      call CreateDebugTagLoc("Sleep Defend Town" , 8, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]), 60.00, 55.00)
+      call CreateDebugTagLoc("Sleep Defend Town" , 8, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]), t, 55.00)
       call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
     else
       //call Trace("Town threatened - retreat" )
@@ -12939,19 +12944,18 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
         endif
       //endif
       //call ClearCaptainTargets()
-      call CreateDebugTagLoc("Sleep Defend Town" , 8, GetLocationX(home_location), GetLocationY(home_location), 60.00, 55.00)
-      if not b then
-        set b = CaptainIsHome()
+      call CreateDebugTagLoc("Sleep Defend Town" , 8, GetLocationX(home_location), GetLocationY(home_location), t, 55.00)
+      if not CaptainIsHome() then
         call CaptainGoHome()
-        call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
+        call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location) - 400, GetLocationY(home_location))
       endif
     endif
     // if not CaptainIsHome() then
     //   call CaptainGoHome()
     // endif
-    exitwhen not town_threatened and not TownThreatened() and not CaptainInCombat(false)
+    exitwhen not town_threatened and not TownThreatened() and CaptainInCombat(false)
     exitwhen player_defeated
-    call Sleep(2*sleep_multiplier)
+    call Sleep(t)
     set own_strength = GetOwnStrength()
   endloop
   call Trace("==exit Sleep Defend Town==")
@@ -13724,7 +13728,7 @@ endfunction
 //============================================================================
 // (AMAI) Universal peon assignment
 //============================================================================
-function ForcedHarves takes nothing returns boolean
+function ForcedHarvest takes nothing returns boolean
   local integer T = 0
   local integer i = 0
   if ((FoodUsed() <= 20 and hero_built[3]) or GetMinesOwned() < 1) and GetGold() <= 2500 and Forced_Harvest_total == 0 then  // later stages of the game, AI may not be harvest
@@ -13739,7 +13743,7 @@ function ForcedHarves takes nothing returns boolean
     endloop
   endif
   if Forced_Harvest_total >= 3 then
-    set Forced_Harvest_total = 0  //Prevent excessive intervention from leading to excessive worker collection
+    set Forced_Harvest_total = 0  //Prevent peon excessive harvest
   else
     set Forced_Harvest_total = Forced_Harvest_total + 1
   endif
@@ -13808,7 +13812,7 @@ function universal_peon_assignment takes nothing returns nothing
 
   set T = Max(T + 3,TownCountDone(racial_expansion))
   call CreateDebugTagLoc("MINES:" + Int2Str(GetMinesOwned()), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
-  if not ForcedHarves() then
+  if not ForcedHarvest() then
     loop
       exitwhen i > T
       if T != i and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then
