@@ -120,6 +120,7 @@ endfunction
 function AncientExpansionJob takes nothing returns nothing
 local group g = null
 local unit u = null
+local integer i = 0
 call DisplayToAllJobDebug("ANCIENT_EXPANSION JOB STARTED")
 
 if current_expansion == null then
@@ -186,37 +187,40 @@ if ancient_exp_state == 0 then
 	endif
 elseif ancient_exp_state == 1 then
 	call CheckMine()
-	if ancient_exp_unit == null then
-		call Trace("Expansion State 1 - cannot expansion , no tree")
+	if ancient_exp_unit == null or GetLocationNonCreepStrength(GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit), 1200) > 0 then
+		call Trace("Expansion State 1 - cannot expansion , no tree or have threatened")
 		call AncientExpansionReset()
 		return
 	endif
 	set ancient_exp_state = 2
+	call RemoveLocation(ancient_exp_tree)
+	set ancient_exp_tree = GetUnitLoc(ancient_exp_unit)
 	call Trace("Expansion State 1 - get tree done , unroot")
 	call CreateDebugTag("Expansion State 2: Unroot Tree", 10, ancient_exp_unit, 3.00, 1.50)
-	call RemoveLocation(ancient_exp_tree) 
-	set ancient_exp_tree = GetUnitLoc(ancient_exp_unit)
 	call RemoveGuardPosition(ancient_exp_unit)
 	call IssueImmediateOrderById(ancient_exp_unit, OrderIdCancel)
 	call IssueImmediateOrder(ancient_exp_unit, "unroot")
-	if DistanceBetweenPoints(ancient_exp_tree, home_location) < 800 then
-		call GroupClear(ancient_exp_group)
-		set g = CreateGroup()
-		call GroupEnumUnitsInRangeOfLoc(g, ancient_exp_tree, 1400, null)
-		call GroupRemoveUnit(g, ancient_exp_unit)
-		loop
-			set u = FirstOfGroup(g)
-			exitwhen u == null
-			if IsUnitType(u, UNIT_TYPE_ANCIENT) and GetOwningPlayer(u) == ai_player and UnitAlive(u) and not IsUnitHidden(u) then  // take other tree , guardians ancient_exp_unit or not blocking ancient_exp_unit
-				call IssueImmediateOrderById(u, OrderIdCancel)
-				call IssueImmediateOrder(u, "unroot")
-				call GroupAddUnit(ancient_exp_group, u)  // if RemoveGuardPosition , then tree cannot automatic root
-			endif
-			call GroupRemoveUnit(g, u)
-		endloop
-		call DestroyGroup(g)
-		set g = null
+	call GroupClear(ancient_exp_group)
+	set g = CreateGroup()
+	call GroupEnumUnitsInRangeOfLoc(g, ancient_exp_tree, 1400, null)
+	call GroupRemoveUnit(g, ancient_exp_unit)
+	loop
+		set u = FirstOfGroup(g)
+		exitwhen u == null
+		if IsUnitType(u, UNIT_TYPE_ANCIENT) and GetOwningPlayer(u) == ai_player and UnitAlive(u) and not IsUnitHidden(u) then  // take other tree , guardians ancient_exp_unit or not blocking ancient_exp_unit
+			call GroupAddUnit(ancient_exp_group, u)  // if RemoveGuardPosition , then tree cannot automatic root
+			set i = i + 1
+		endif
+		call GroupRemoveUnit(g, u)
+	endloop
+	call DestroyGroup(g)
+	set g = null
+	if i > 4 then
 		set ancient_exp_maintree = true
+		call GroupImmediateOrderById(ancient_exp_group, OrderIdCancel)
+		call GroupImmediateOrder(ancient_exp_group, "unroot")
+	else
+		call GroupClear(ancient_exp_group)
 	endif
 	set ancient_exp_maintree = ancient_exp_maintree or TownCountDone(racial_expansion) < 3
 	call TQAddJob(2, ANCIENT_EXPANSION, 0)  //  wait unroot
