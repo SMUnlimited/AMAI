@@ -22,8 +22,7 @@ function TowerRushHeroControl_k takes unit u, location t returns nothing
 	set l = null
 endfunction
 
-function TowerRushBuilderFirstControl_d takes unit u, unit hall returns nothing
-	call RemoveGuardPosition(u)
+function TowerRushBuilderFirstControl takes unit u, unit hall returns integer
 	if hall != null and DistanceBetweenUnits(u, hall) < 1000 then
 		if (GetUnitAbilityLevel(u, 'ANha') != 0 or GetUnitAbilityLevel(u, 'Ahar') != 0 or GetUnitAbilityLevel(u, 'Ahr3') != 0) then
 			call IssueImmediateOrder( u, "returnresources" )
@@ -31,7 +30,9 @@ function TowerRushBuilderFirstControl_d takes unit u, unit hall returns nothing
 		if race_militia_available and DistanceBetweenPoints_kd(toweringplayerloc, GetUnitLoc(u)) > 6800 then
 			call IssueImmediateOrder( u, race_militia_unitstring )
 		endif
+		return 1
 	endif
+	return 0
 endfunction
 
 function TowerRushBuilderControl_k takes unit u, location t returns nothing
@@ -89,9 +90,7 @@ function TowerRushBuilderControl_k takes unit u, location t returns nothing
 				call RemoveLocation(unitloc)
 				call RemoveUnit(loccheck)
 				if not IsTerrainPathable(builder_x, builder_y, PATHING_TYPE_BUILDABILITY) then
-					if IssueBuildOrderById(u, old_id[race_tower_id], builder_x, builder_y) and towers_built == 0 then
-						set towers_built_count = towers_built_count + 1
-					endif
+					call IssueBuildOrderById(u, old_id[race_tower_id], builder_x, builder_y)
 					if towers_built != 0 then
 						call CreateDebugTag("TRush: Building", 10, u, 4.00, 2.00)
 					else
@@ -464,12 +463,21 @@ function TowerRushJob takes nothing returns nothing
 		endif
 		set i = 1
 		if tower_peon_run != true then
+			call GroupClear(g)
+			call GroupEnumUnitsOfPlayer(g, ai_player, null)
+			set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+			set g = SelectByAlive(g, true)
 			loop
 				exitwhen i > race_tower_peon
-				call GroupClear(g)
-				call GroupEnumUnitsInRange(g, GetUnitX(builder[i]),GetUnitY(builder[i]), 1000 ,null)
-				set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
-				call TowerRushBuilderFirstControl_d(builder[i], FirstOfGroup(g))
+				call RemoveGuardPosition(builder[i])
+				call GroupClear(tempg)
+				set tempg = CopyGroup(g,tempg)
+				loop
+					set u = FirstOfGroup(tempg)
+					exitwhen u == null or s > 0
+					set s = TowerRushBuilderFirstControl(builder[i], u)
+					call GroupRemoveUnit(tempg,u)
+				endloop
 				set i = i + 1
 			endloop
 			set tower_peon_run = true
@@ -482,6 +490,7 @@ function TowerRushJob takes nothing returns nothing
 				set y = GetUnitY(builder[i])
 				set i = i + 1
 			endloop
+			set towers_built_count = towers_built_count + 1
 			set tower_peon_point_x = x / Max(1, i - 1)
 			set tower_peon_point_y = y / Max(1, i - 1)
 			set time_next_try = 1
