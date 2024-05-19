@@ -877,11 +877,13 @@ globals
 	constant integer USE_SPECIAL_RACES = 5
 	constant integer PROFILE_SELECTION = 6
 	constant integer NEUTRAL_GUARDS = 7
+  constant integer TYPECASTING = 8
 
   gamecache amaiCache = InitGameCache("AMAI_AI.w3v")
   constant integer PROFILE_USED = 0
   constant integer GREETINGS_NUM = 1
   constant integer CHAT_LOCK = 2
+  constant integer ALLIANCE_TARGET = 3
 
 	//gamecache settings = InitGameCache("AMAI_Set.w3v")
 
@@ -1081,6 +1083,11 @@ endglobals
 //  return h
 //  return 0
 //endfunction
+
+function I2U takes integer i returns unit
+    call SaveFogStateHandle(com, TYPECASTING, 0, ConvertFogState(i))
+    return LoadUnitHandle(com, TYPECASTING, 0)
+endfunction
 
 //function SetHandleHandle takes handle subject, string name, handle value returns nothing
 //    if value==null then
@@ -11580,26 +11587,26 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     //exitwhen captain_flee and CaptainRetreating()
     exitwhen isfleeing and (CaptainRetreating() or CaptainIsHome()) and not desperation_assault
     exitwhen CaptainIsEmpty() and not desperation_assault
-    if (c_ally_total > 0 and GetAllianceTarget() != null) then // If alliance target exists this overrides hardcoded attack controls regardless of unit you pass, so reconfigure attack to be aware of this
-      set target = GetAllianceTarget()
-    endif
+    //if (c_ally_total > 0 and GetAllianceTarget() != null) then // If alliance target exists this overrides hardcoded attack controls regardless of unit you pass, so reconfigure attack to be aware of this
+    //  set target = GetAllianceTarget()
+    //endif
     exitwhen target == null // Fail safe
-    //exitwhen not UnitAlive(target) and CaptainIsHome()  // A fail safe mechanism if getlocationnoncreepstrength malfunctions: not needed as issue now fixed
-    if IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player)) then
-      set g = CreateGroup()
-      call GroupEnumUnitsInRange(g,GetUnitX(target), GetUnitY(target),battle_radius,null)
-      set g = SelectByAlive(g,true)
-      set g = SelectByEnemy(g,ai_player, true)
-      if not UnitAlive(target) or UnitInvis(target) then
-        set g = SelectByVisible(g,ai_player,true)  // to find enemies that ai has noticed
-      endif
-      if iscreeping then
-        set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)  // if creeping and unit invisible see if any other creeps targetable
-      endif
-      set target = FirstOfGroup(g)
-      call DestroyGroup(g)
-    endif
-    exitwhen target == null
+    exitwhen IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player))
+    //if IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player)) then
+    //  set g = CreateGroup()
+    //  call GroupEnumUnitsInRange(g,GetUnitX(target), GetUnitY(target),battle_radius,null)
+    //  set g = SelectByAlive(g,true)
+    //  set g = SelectByEnemy(g,ai_player, true)
+    //  if not UnitAlive(target) or UnitInvis(target) then
+    //    set g = SelectByVisible(g,ai_player,true)  // to find enemies that ai has noticed
+    //  endif
+    //  if iscreeping then
+    //    set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)  // if creeping and unit invisible see if any other creeps targetable
+    //  endif
+    //  set target = FirstOfGroup(g)
+    //  call DestroyGroup(g)
+    //endif
+    //exitwhen target == null
     //if not iscreeping then
        //	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationEnemyStrength(unitx, unity, battle_radius, true) <= 0 // enemies are dead and target dead
     //else
@@ -11607,28 +11614,21 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     //	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationCreepStrength(unitx, unity, 500) <= 0			
     //endif
     set dist = DistanceBetweenPoints_kd(ally_loc, GetUnitLoc(target))
-    if c_ally_total > 0 and dist > 1300 and dist < 2500 then
-      if CheckAttackWait(target) then
-        set lastcaptainx = GetLocationX(ally_loc)
-        set lastcaptainy = GetLocationY(ally_loc)
-        //call SetCaptainHome(, lastcaptainx, lastcaptainy)
-        call AttackMoveXY(R2I(GetLocationX(ally_loc)), R2I(GetLocationY(ally_loc)))
-        call CreateDebugTagLoc("Reform until ally target dead", 10, GetLocationX(ally_loc), GetLocationY(ally_loc), 1.00, 0.80)
-      else
-        call AttackMoveKill(target)
-        set lastcaptainx = GetUnitX(target)
-        set lastcaptainy = GetUnitY(target)
-        if (GetAllianceTarget() == target) then
-          call CreateDebugTag("Reform until ally dead", 10, target, 1.00, 0.80)
-        else
-          call CreateDebugTag("Reform until target dead", 10, target, 1.00, 0.80)
-        endif
-      endif
+    if c_ally_total > 0 and dist > 1300 and dist < 2500 and CheckAttackWait(target) then
+      set lastcaptainx = GetLocationX(ally_loc)
+      set lastcaptainy = GetLocationY(ally_loc)
+      //call SetCaptainHome(, lastcaptainx, lastcaptainy)
+      call AttackMoveXY(R2I(GetLocationX(ally_loc)), R2I(GetLocationY(ally_loc))) // Override and help nearby ally
+      call CreateDebugTagLoc("Reform near ally", 10, GetLocationX(ally_loc), GetLocationY(ally_loc), 1.00, 0.80)
     else
-      call AttackMoveKill(target)
       set lastcaptainx = GetUnitX(target)
       set lastcaptainy = GetUnitY(target)
-      if (c_ally_total > 0 and GetAllianceTarget() == target) then
+      //if (GetAllianceTarget() == target) then
+        call AttackMoveKill(target)
+      //else 
+      //  call AttackMoveXY(R2I(lastcaptainx), R2I(lastcaptainy)) // Override and ignore the alliance target
+      //endif
+      if (c_ally_total > 0 and I2U(GetStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0")) == target) then
         call CreateDebugTag("Reform until ally dead", 10, target, 1.00, 0.80)
       else
         call CreateDebugTag("Reform until target dead", 10, target, 1.00, 0.80)
@@ -11713,18 +11713,24 @@ function SetChatVarsAttack takes unit u returns nothing
 endfunction
 
 function SetAllianceTargetIfLead takes unit u returns nothing
-  if (GetAllianceTarget() == null or u == null) then // if leadally
-    call SetAllianceTarget(u)
+  if (not HaveStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0") and u != null) then // if leadally
+    call StoreInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0", GetHandleId(u))
+    //call SetAllianceTarget(u)
+  endif
+  if (HaveStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0") and u == null) then
+    call FlushStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0")
   endif
 endfunction
 
 function SetAllianceTargetIfLeadAndChat takes unit u, integer chat returns nothing
-  if (GetAllianceTarget() == null) then // if leadally
-    call SetAllianceTarget(u)
+  if (not HaveStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0") and u != null) then // if leadally
+    call StoreInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0", GetHandleId(u))
+    //call SetAllianceTarget(u)
     call SetChatVarsAttack(u)
     call Chat(chat)
-  elseif (u == null) then
-    call SetAllianceTarget(u)
+  elseif (HaveStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0") and u == null) then
+    //call SetAllianceTarget(u)
+    call FlushStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0")
   endif
 endfunction
 
@@ -12474,7 +12480,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
     if c_ally_total > 0 then
       call SetLeadAlly()
       if difficulty != EASY then
-        set common = GetAllianceTarget()
+        set common = I2U(GetStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0")) //GetAllianceTarget()
         if common != null then
           call Trace("===Desperation Attack Alliance Target===")
           //call Chat(C_Ally)
@@ -12704,10 +12710,13 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
 
     // coordinate with allies
     //
+
+      
+    
     if c_ally_total > 0 then
       call SetLeadAlly()
       if difficulty != EASY then
-        set common = GetAllianceTarget()
+        set common = I2U(GetStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0")) //GetAllianceTarget()
         if common != null then
           call Trace("Attack Alliance Target")
           //call Chat(C_Ally)
