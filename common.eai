@@ -3451,7 +3451,7 @@ endfunction
 function SetNearestEnemy takes nothing returns nothing
   local integer i = 0
   local real nr = 0
-  local real humanrange = 20000  // preventing long-distance attacks
+  local real humanrange = Max(3, mapSize) * 3200  // preventing long-distance attacks
   loop
     exitwhen i >= c_enemy_total
     if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
@@ -11115,7 +11115,7 @@ endfunction
 
 //============================================================================
 function BuildPeons takes integer number returns nothing
-  if towerrush and (TownCount(hero[1]) + TownCount(hero[2]) + TownCount(hero[3])) != 0 then  // towerrush compensate
+  if towerrush then  // towerrush compensate
     if not race_has_ghouls and TownCount(racial_peon) < 14 then
       set number = number + race_tower_peon
     elseif race_has_ghouls and TownCount(racial_peon) < 5 + race_tower_peon then
@@ -11293,7 +11293,7 @@ if mines < 1 or gold_left < 2500 or exp_prepared then
   else
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_prio)
   endif
-elseif active_expansion and mines < 4 and GetRandomInt(0, 100) < 18 and GetGold() > 1000 and GetWood() > 700 and not TownThreatened() and not teleporting and not CaptainRetreating() and not isfleeing then
+elseif active_expansion and GetNextExpansion() >= 0 and GetExpansionFoe() == null and mines < 4 and GetRandomInt(0, 100) < 48 and GetGold() > 1000 and GetWood() > 700 and not TownThreatened() and not teleporting and not CaptainRetreating() and not isfleeing then
   set u = GetExpansionPeon()
   if u != null and u != expansion_peon and not_taken_expansion == null then
     call SetExpansion(u, old_id[racial_expansion])
@@ -11304,12 +11304,34 @@ endif
 endfunction
 
 //============================================================================
+#DEFINE $SKINSTART$ 3
+#DEFINE $SKINEND$ 9
+function GetHeroSkin takes integer hn returns nothing
+  local integer i = 0
+  local integer array heroskin
+  if GetBJMaxPlayers() < 24 or p_rare[profile] < 1 or GetRandomInt(0, 100) < 36 then  // not fully use new skin , random int use original skin - 0 : change skin will change proper name (AI Scripts cannot use GetHeroProperName and BlzSetHeroProperName)
+    return
+  #INCLUDETABLE <HeroSlin.txt> #EFR
+  elseif old_id[hero[hn]] == '%2' then
+    #FOR $X$ FROM $SKINSTART$ TO $SKINEND$
+    set heroskin[#EVAL{$X$-2}] = '%$X$'
+    #ENDFOR
+    set i = GetRandomInt(1, %1)
+    #AFTERINCLUDE
+  #ENDINCLUDE
+  endif
+  call BlzSetUnitSkinAMAI(hero_unit[hn], heroskin[i])  // set skin API at 1.33+ , only 1.33+ WE make map can use - so just in case check max player num
+endfunction
+#UNDEF $SKINSTART$
+#UNDEF $SKINEND$
+
 function InitHeroInfo takes integer hn returns nothing
   set hero_loc[hn] = GetUnitLoc(hero_unit[hn])
   set hero_dir[hn] = Location(0,0)
   set hero_enemy_loc[hn] = Location(0,0)
   set hero_ally_loc[hn] = Location(0,0)
   set hero_hp[hn] = 1
+  call GetHeroSkin(hn)
 endfunction
 
 function HeroReviver takes nothing returns nothing
@@ -12290,23 +12312,30 @@ function AttackMoveTowerRush takes nothing returns nothing
 					set builder[10] = FirstOfGroup(g)
 					call GroupClear(g)
 				endif
-				if ModuloInteger(attack_length_counter,5) == 0 then
+				if ModuloInteger(attack_length_counter + 1,6) == 0 then
 					call SetAllianceTargetIfLead(builder[10])
 				endif
 			endif
 			if towers_built < 4 then
 				if tower_peon_inplace then
-					call AttackMoveXY(R2I(first_tower_point_x),R2I(first_tower_point_y))
+					if towers_built_count + force_number - 1 > 35 and towers_built < 2 then  //Prevent cannot build tower , but Enemy army is weak (maybe have ally attack), and AI not attack Enemy home
+						call AttackMoveXY(R2I(second_attack_point_x),R2I(second_attack_point_y))
+					elseif towers_built_count + force_number - 1 > 50 and towers_built < 2 then
+						call AttackMoveXY(x,y)
+					else
+						call AttackMoveXY(R2I(first_tower_point_x),R2I(first_tower_point_y))
+					endif
 				else
-					if tower_peon_point_x != 0 and tower_peon_point_y != 0 and ModuloInteger(attack_length_counter,2) == 0 and not town_threatened then
+					if tower_peon_point_x != 0 and tower_peon_point_y != 0 and ModuloInteger(attack_length_counter + 1,6) == 0 and not town_threatened then
 						call GroupEnumUnitsInRange(g, tower_peon_point_x, tower_peon_point_y, 1200, null)
 						set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
 						set g = SelectByPlayer(g, ai_player, true)
 						set g = SelectByAlive(g, true)
 						set g = SelectByHidden(g,false)
 					endif
-					if FirstOfGroup(g) != null then
-						call AttackMoveXY(R2I(GetUnitX(FirstOfGroup(g))),R2I(GetUnitY(FirstOfGroup(g))))
+					set u = FirstOfGroup(g)  // Ensure always give U a value
+					if u != null then
+						call AttackMoveXY(R2I(GetUnitX(u)),R2I(GetUnitY(u)))
 					else
 						call AttackMoveXY(R2I(GetUnitX(builder[1])),R2I(GetUnitY(builder[1])))
 					endif
@@ -12339,15 +12368,16 @@ function AttackMoveTowerRush takes nothing returns nothing
 		if attack_length_counter > attack_reform_length then
 			set attack_length_counter = 0
 			call FormGroupAM(0)
-			if towers_built >= 7 then
+			if towers_built >= 7 or (towers_built_count + force_number - 1 > 50 and towers_built < 2) then
 				call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1800, null)
 				set g = SelectByEnemy(g, ai_player, true)
 				set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
 				set g = SelectByAlive(g, true)
 				set g = SelectByHidden(g,false)
-				if FirstOfGroup(g) != null then
-					set x = R2I(GetUnitX(FirstOfGroup(g)))
-					set y = R2I(GetUnitY(FirstOfGroup(g)))
+				set u = FirstOfGroup(g)
+				if u != null then
+					set x = R2I(GetUnitX(u))
+					set y = R2I(GetUnitY(u))
 				endif
 				call GroupClear(g)
 			endif
@@ -12359,6 +12389,7 @@ function AttackMoveTowerRush takes nothing returns nothing
 	set l = null
 	set u = null
 	set attack_running = false
+  call ClearCaptainTargets()
 endfunction
 
 //============================================================================
@@ -13328,9 +13359,6 @@ function SkillArraysAM takes nothing returns integer
     set max_hero_level = level
   endif
   if skillfix == true then    //Assisted Hero Learning Skills , for war3 1.31 bug
-    if hero_unit[hn] == null then
-      set hero_unit[hn] = GetOneOfId(hero_unit[hn], ai_player, old_id[hero[hn]])
-    endif
     call SelectHeroSkill(hero_unit[hn], skills[(hn - 1) * HERO_LEVEL_NUMBER + level])
   endif
   return skills[(hn - 1) * HERO_LEVEL_NUMBER + level]
