@@ -56,6 +56,7 @@ globals
     integer array skills4
     boolean HarvestFix          = false
     unit town_mine          = null
+    unit array laboratory
     unit array herounit
 endglobals
 
@@ -996,6 +997,40 @@ function MineCheck takes nothing returns nothing
     set g = null
 endfunction
 
+function GetLaboratory takes nothing returns nothing
+    local group g = CreateGroup()
+    local unit u = null
+    local integer i = 0
+    if GetPlayerController(Player(12)) == MAP_CONTROL_CREEP then
+      call GroupEnumUnitsOfPlayer(g, Player(15), null)
+    else
+      call GroupEnumUnitsOfPlayer(g, Player(27), null)
+    endif
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      if GetUnitTypeId(u) == 'ngad' and  UnitAlive(u) and not IsUnitHidden(u) then
+        set laboratory[i] = u
+        set i = i + 1
+      endif
+    endloop
+    set laboratory[i] = null
+    call DestroyGroup(g)
+    set g = null
+endfunction
+
+function BuyShredder takes nothing returns nothing
+    local integer i = 0
+    if GetWood() > 200 and GetGold() > 800 and FoodSpace() > 5 and GetUnitCountDone('ngir') < 1 then
+      set i = 0
+      loop
+        exitwhen laboratory[i] == null or GetUnitCountDone('ngir') > 0
+        call IssueNeutralImmediateOrderById(ai_player, laboratory[i], 'ngir')
+        set i = i + 1
+      endloop
+    endif
+endfunction
+
 function peon_assignment takes nothing returns nothing
     local integer T
     local integer c = 0
@@ -1021,6 +1056,7 @@ function peon_assignment takes nothing returns nothing
         call HarvestWood(0,15)
 
         call build_sequence()
+        call BuyShredder()
         call Sleep(GetRandomInt(1,3))
     endloop
 endfunction
@@ -1032,6 +1068,7 @@ function main takes nothing returns nothing
     call PickMeleeHero(RACE_HUMAN)
     call set_skills()
     call InitMineCheck()  // now home_location distance 1500 have more mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix
+    call GetLaboratory()
     call StandardAI(function SkillArraysfix, function peon_assignment, function attack_sequence)
     call StartThread(function set_vars)
     call PlayGame()

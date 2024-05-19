@@ -64,6 +64,7 @@ globals
     integer array skills4
     boolean HarvestFix          = false
     unit town_mine          = null
+    unit array laboratory
     unit array herounit
 endglobals
 
@@ -264,7 +265,7 @@ endfunction
 // fix 1.31 hero cannot Learning Skills
 function SetHeroUint takes unit u, integer id returns unit
     local group g = CreateGroup()
-    call GroupEnumUnitsOfPlayer(g, Player(GetAiPlayer()), null)
+    call GroupEnumUnitsOfPlayer(g, ai_player), null)
     loop
         set u = FirstOfGroup(g)
         exitwhen u == null
@@ -927,7 +928,7 @@ function HarvestMineFix takes unit mine returns nothing
   if c_acolyte >= 5 then
     set delaypeon = 5
   endif
-  call GroupEnumUnitsOfPlayer(g, Player(GetAiPlayer()), null)
+  call GroupEnumUnitsOfPlayer(g, ai_player), null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or i >= delaypeon
@@ -966,13 +967,14 @@ function MineCheck takes nothing returns nothing
     local unit w = null
     local integer i = 0
     local integer c = 0
-    local location l = GetStartLocationLoc(GetPlayerStartLocation(Player(GetAiPlayer())))
+    local integer x = 0
+    local location l = GetStartLocationLoc(GetPlayerStartLocation(ai_player)))
     call GroupEnumUnitsInRangeOfLoc(g, l, 1800, null)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
       if UnitAlive(u) and not IsUnitHidden(u) then
-        if GetUnitTypeId(u) == 'ugol' and GetOwningPlayer(u) == Player(GetAiPlayer()) then
+        if GetUnitTypeId(u) == 'ugol' and GetOwningPlayer(u) == ai_player) then
           call HarvestMineFix(u)
           if um == null then
             set um = u
@@ -983,7 +985,7 @@ function MineCheck takes nothing returns nothing
           if m == null then
             set m = u
           endif
-        elseif GetOwningPlayer(u) == Player(GetAiPlayer()) and IsUnitType(u, UNIT_TYPE_PEON) then
+        elseif GetOwningPlayer(u) == ai_player) and IsUnitType(u, UNIT_TYPE_PEON) then
           if w == null and (GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == 0) then
             set w = u
           endif
@@ -1007,6 +1009,39 @@ function MineCheck takes nothing returns nothing
     set w = null
 endfunction
 
+function GetLaboratory takes nothing returns nothing
+    local group g = CreateGroup()
+    local unit u = null
+    local integer i = 0
+    if GetPlayerController(Player(12)) == MAP_CONTROL_CREEP then
+      call GroupEnumUnitsOfPlayer(g, Player(15), null)
+    else
+      call GroupEnumUnitsOfPlayer(g, Player(27), null)
+    endif
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      if GetUnitTypeId(u) == 'ngad' and  UnitAlive(u) and not IsUnitHidden(u) then
+        set laboratory[i] = u
+        set i = i + 1
+      endif
+    endloop
+    set laboratory[i] = null
+    call DestroyGroup(g)
+    set g = null
+endfunction
+
+function BuyShredder takes nothing returns nothing
+    local integer i = 0
+    if GetWood() > 200 and GetGold() > 800 and FoodSpace() > 5 and GetUnitCountDone('ngir') < 1 then
+      set i = 0
+      loop
+        exitwhen laboratory[i] == null or GetUnitCountDone('ngir') > 0
+        call IssueNeutralImmediateOrderById(ai_player, laboratory[i], 'ngir')
+        set i = i + 1
+      endloop
+    endif
+endfunction
 
 function peon_assignment takes nothing returns nothing
     loop
@@ -1022,7 +1057,7 @@ function peon_assignment takes nothing returns nothing
         call HarvestWood(0,WG)
 
         call build_sequence()
-
+        call BuyShredder()
         call Sleep(GetRandomInt(1 ,3))
     endloop
 endfunction
@@ -1034,6 +1069,7 @@ function main takes nothing returns nothing
     call PickMeleeHero(RACE_UNDEAD)
     call set_skills()
     call InitMineCheck()  // now home_location distance 1500 have more mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix
+    call GetLaboratory()
     call StandardAI(function SkillArraysfix, function peon_assignment, function attack_sequence)
     call StartThread(function set_vars)
     call PlayGame()
