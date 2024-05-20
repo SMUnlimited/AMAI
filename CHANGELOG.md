@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - AMAI now takes direct control of alliance targets instead of using the hardcoded logic. This will enable better control and allow us to ignore the alliance target in some situations.
 
 ### Fixed
+- Fixed factory rate to build extra buildings was always too low as didn't take account of building cost vs income correctly.
 - Fixed issue with boolean check of third mine timing.
 - Fixed issue where mine required for ancient or item expansions could be nulled mid use which would break the logic. (jzy-chitong56)
 - Fixed Mark of Talon upgrade only requires adept training from 1.36.1 war3 patch.

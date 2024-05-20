@@ -478,7 +478,7 @@ globals
     integer total_food              = 0
     integer wood_buffer             = 0
     real    gold_income             = 0
-    integer income_per_mine         = 3000
+    integer income_per_mine         = 50
     real    gold_unit_percentage    = 0.9
     boolean take_all_ghouls_along = false
 
@@ -8212,7 +8212,7 @@ function InitBuildArrayAM takes nothing returns nothing
     set build_length = 0
     loop
       exitwhen i >= building_length
-      set income_percentage[building[i]] = 1 / I2R(building_length)
+      set income_percentage[building[i]] = 0
       set i = i + 1
     endloop
     call ReleaseBuildLock()
@@ -9025,28 +9025,31 @@ function GetMinesHarvested takes nothing returns integer
 endfunction
 
 //============================================================================
+// Total excepted income per second (plus spare gold)
 function GetGoldIncome takes nothing returns real
   local integer inc = GetMinesHarvested()*income_per_mine
   if inc > GetGoldOwned() then
     set inc = GetGoldOwned()
   endif
-  return I2R(inc + GetGold())/300
+  return I2R(inc + GetGold())
 endfunction
 
 //============================================================================
 function GetIncomePercentage takes integer qty returns real
-  if qty == 0 then
+  if qty <= 3 then
     return 0.0
   endif
   return 1 - 1/I2R(qty)
 endfunction
 
 //============================================================================
+// in_percent = gold cost building / income rate
+// gold_income = (GetGoldRate of mines + current gold) * 0.9
 function GetFactoryQty takes integer qty, integer build_time, integer gold_cost, real in_percentage returns integer
-  local real gip = GetIncomePercentage(qty) * gold_income * in_percentage
+  local real gip = GetIncomePercentage(qty) * gold_income * (1-in_percentage)
   local real gic = I2R(Max(gold_cost,1))/I2R(Max(build_time, 1))
 //  call DisplayToAll("factory number returned: "+Int2Str(Max(Min(R2I(gip/gic), difficulty),1)))
-  return Max(Min(R2I(gip/gic), difficulty),1)
+  return Max(Min(R2I(gip/gic), difficulty),1) // Difficulty no more than 3 on insane, 2 on normal
 endfunction
 
 //============================================================================
@@ -11106,7 +11109,7 @@ function FactoryNumberUpdate takes nothing returns nothing
   loop
     exitwhen i >= building_length
     set j = building[i]
-    set income_percentage[j] = I2R(gold_sum[j]) / I2R(g_sum)
+    set income_percentage[j] = I2R(gold_sum[j]) / gold_income
     if build_num[j] > 0 then
       call BuildUnit(GetFactoryQty(build_num[j], build_time_sum[j] / build_num[j], gold_sum[j] / build_num[j], income_percentage[j]), j, prio_sum[j] / build_num[j])
     endif
