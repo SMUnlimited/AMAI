@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Added
 - AMAI now takes direct control of alliance targets instead of using the hardcoded logic. This will enable better control and allow us to ignore the alliance target in some situations.
 
+### Changed
+- Retreat Control will now protect own towns first over allied towns.
+
 ### Fixed
 - Fixed factory rate to build extra buildings was always too low as didn't take account of building cost vs income correctly.
 - Fixed issue with boolean check of third mine timing.
