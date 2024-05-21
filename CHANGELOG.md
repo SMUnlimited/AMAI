@@ -12,11 +12,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Retreat Control will now protect own towns first over allied towns.
 
 ### Fixed
-- Fixed factory rate to build extra buildings was always too low as didn't take account of building cost vs income correctly.
+- Fixed factory rate to build extra production buildings as was too low as didn't take account of building cost vs income correctly.
 - Fixed issue with boolean check of third mine timing.
 - Fixed issue where mine required for ancient or item expansions could be nulled mid use which would break the logic. (jzy-chitong56)
 - Fixed Mark of Talon upgrade only requires adept training from 1.36.1 war3 patch.
 - Tweak expansion relocation logic to calculate when its likely already building so don't change location.
+- Fixed issues with multiple mines at home base logic. (jzy-chitong56)
+- AMAI will not expand fast unless there is twice as many mines as players.
 - (Classic) Goblin alchemist not learning abilities.
 
 ## [3.3.4] - 2024-03-10
