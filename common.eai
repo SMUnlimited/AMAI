@@ -9298,7 +9298,15 @@ endfunction
 
 //============================================================================
 function BuildUnit takes integer qty, integer unitid, integer prio returns nothing
-    call SetBuildAllAM(BUILD_UNIT,qty,unitid,-1, BLOC_STD, prio)
+  local integer i = BLOC_STD
+  if buy_type[unitid] == BT_BUILDING and not IsRacialHallId(unitid , 1) and GetRacialBuildHallLV(unitid) > 1 then
+    if minebuild then
+      set i = BLOC_MINE
+    elseif not homebuild and not shredderbuild then
+      set i = BLOC_FRONT
+    endif
+  endif
+  call SetBuildAllAM(BUILD_UNIT,qty,unitid,-1, i, prio)
 endfunction
 
 //============================================================================
@@ -10014,11 +10022,12 @@ endfunction
 
 //============================================================================
 function GetBuildLocation takes integer bloc returns location
-  if bloc == BLOC_MINE then
+  local integer i = Max(GetRandomInt(0, front_loc_num - 1),0)
+  if bloc == BLOC_MINE and mine_loc != null then
     return mine_loc
   endif
-  if front_loc[0] != null then
-    return front_loc[GetRandomInt(0, front_loc_num - 1)]
+  if front_loc[i] != null then
+    return front_loc[i]
   endif
   return home_location
 endfunction
@@ -10114,15 +10123,29 @@ endfunction
 
 //============================================================================
 function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc returns integer
-  local unit u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], GetBuildLocation(bloc), 270.0)
-  local location l = GetUnitLoc(u)
   local unit peon = GetExpansionPeon()
-
-  if peon == null then
-    set peon = GetExpansionPeon2(peon)	// In case we can't get the expansion peon
+  local unit utemp1 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], home_location, 270.0)
+  local unit utemp2 = null  //utemp is seat, leave a passage , unit can ensure correct position
+  local unit u = null
+  local location l = null
+  local real d = 0
+  local integer i = 0
+  if bloc != BLOC_MINE then
+    set utemp2 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], GetBuildLocation(bloc), 270.0)
+  endif
+  set u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], GetBuildLocation(bloc), 270.0)
+  set l = GetUnitLoc(u)
+  call RemoveUnit(utemp1)
+  set utemp1 = null
+  if utemp2 != null then
+    call RemoveUnit(utemp2)
+    set utemp2 = null
   endif
   call RemoveUnit(u)
   set u = null
+  if peon == null then
+    set peon = GetExpansionPeon2(peon)  // In case we can't get the expansion peon
+  endif
   if l == null then
     //call Trace("BuildatspecialLoc: No location found")
     //call RemoveLocation(l)
@@ -10133,15 +10156,32 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
     call Trace("BuildatspecialLoc: No peon available")
     call RemoveLocation(l)
     set l = null
-    return CANNOT_BUILD	
-  elseif not IssuePointOrderByIdLoc(peon, old_id[unitid], l) then
-    //call Trace("Building at special point")
-  //else
-    // call Trace("BuildatspecialLoc: Not able to build here")
-    call RemoveLocation(l)
-    set l = null
-    set peon = null
     return CANNOT_BUILD
+  else
+    if bloc == BLOC_FRONT then
+      set d = DistanceBetweenPoints(l,home_location)
+      if d >= front_base_distance + 400 or d < 600 then
+        call Trace("BuildatspecialLoc: Build loc too far or close, fix build loc")
+        if front_loc_num > 0 then
+          set i = GetRandomInt(0, front_loc_num - 1)
+          call RemoveLocation(l)
+          if front_loc[i] != null then
+            set l = AIGetProjectedLoc(front_loc[i], home_location, 200, 0)
+          else
+            set l = AIGetProjectedLoc(front_loc[0], home_location, GetRandomInt(100, 200), GetRandomInt(-90, 90))
+          endif
+        endif
+      endif
+    endif
+    if not IssuePointOrderByIdLoc(peon, old_id[unitid], l) then
+      //call Trace("Building at special point")
+    //else
+      // call Trace("BuildatspecialLoc: Not able to build here")
+      call RemoveLocation(l)
+      set l = null
+      set peon = null
+      return CANNOT_BUILD
+    endif
   endif
   call RemoveLocation(l)
   set l = null
