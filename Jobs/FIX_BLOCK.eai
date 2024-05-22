@@ -1,0 +1,244 @@
+#IFDEF GLOBAL
+  integer blockstate = 0
+  integer movetotal = 0
+  location ancientrootloc = Location(0, 0)
+  unit blockpathunit = null
+  unit blockancient = null
+  unit blockunit = null
+#ELSE
+
+// ######################## Fix Block ###############################
+// Created by JZY 15/04/24.
+// blockstate : 0 check home block , 1 & 2 check altar and tavern block , 3 check other block
+// fix mode : 0 and 2 move ancient or kill build and with compensation , 1 harvest or attack tree , 2 give path unit move aside or check other block
+// ##################################################################
+function TryAttackTree takes unit u, integer id, location l returns nothing
+  if id == 'ebal' or id == 'hmtm' or id == 'ocat' or id == 'umtw' or id == 'ncat' then
+    call RemoveGuardPosition(u)
+    call IssuePointOrderLoc(u, "attackground", l)
+    call TQAddUnitJob(6, RESET_GUARD_POSITION_ONLY, 0, u)
+    call CreateDebugTag("fix block : attack tree", 10, u, 3.00, 1.50)
+  elseif id == 'Ekee' then
+    call IssuePointOrderLoc(u, "forceofnature", l)
+    call CreateDebugTag("fix block : use skill to tree", 10, u, 3.00, 1.50)
+  endif
+endfunction
+
+function MoveAncient takes unit u returns nothing
+  local unit utemp = null
+  if GetUnitCurrentOrder(u) != OrderId("root") then
+    set utemp = CreateUnitAtLoc(ai_player, GetUnitTypeId(u), front_loc[0], 270)
+    call IssueImmediateOrder(u, "cancel")
+    call IssueImmediateOrder(u, "unroot")
+    call RemoveLocation(ancientrootloc)
+    set ancientrootloc = GetUnitLoc(utemp)
+    call RemoveUnit(utemp)
+    set utemp = null
+  endif
+  call CreateDebugTagLoc("fix block : root here", 10, GetLocationX(ancientrootloc), GetLocationY(ancientrootloc), 3.00, 1.50)
+  call IssuePointOrderLoc(u, "root", ancientrootloc)  // build no n need RESET GUARD POSITION
+  set movetotal = movetotal + 1
+endfunction
+
+function RootAncient takes nothing returns nothing
+  call RemoveLocation(ancientrootloc)
+  set ancientrootloc = GetUnitLoc(blockancient)
+  call IssuePointOrderLoc(blockancient, "root", ancientrootloc)
+  set blockancient = null
+endfunction
+
+function TeleportFixBlock takes unit u returns nothing
+  if GetSlotsFreeOnUnit(u) == 0 then
+    call SetItemPosition(UnitItemInSlot(u, 0), GetLocationX(home_location), GetLocationY(home_location))
+  endif
+  call UnitUseItemPoint(u, UnitAddItemById(u, old_id[tp_item]), GetLocationX(home_location), GetLocationY(home_location))
+endfunction
+
+function TryFixBlock takes integer fixmode, location l, real range, boolean attacktree, boolean moveaside returns nothing
+  local group g = CreateGroup()
+  local unit u = null
+  local unit utemp = null
+  local player p = null
+  local integer i = 0
+  call GroupEnumUnitsInRangeOfLoc(g, l, range, null)
+  call GroupRemoveUnit(g, blockpathunit)
+  if fixmode == 0 then
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null or blockancient != null or (GetPlayerRace(ai_player) != RACE_NIGHTELF and utemp != null)  // first move ancient
+      if GetOwningPlayer(u) == ai_player and IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_TOWNHALL) and UnitAlive(u) and not IsUnitHidden(u) then
+        if IsUnitType(u, UNIT_TYPE_ANCIENT) then
+          call MoveAncient(u)
+          set blockancient = u
+        endif
+        set i = GetUnitTypeId(u)  // Prevent kill mine , altar , lumber
+        if blockancient == null and utemp == null and i != old_id[racial_expansion] and i != old_id[racial_altar] and i != old_id[racial_lumber] then
+          set utemp = u
+        endif
+      endif
+      call GroupRemoveUnit(g,u)
+    endloop
+    if blockancient == null and utemp != null then
+      call CreateDebugTag("fix block : kill build", 10, utemp, 3.00, 1.50)
+      call KillUnit(utemp)
+      call SetPlayerGold(ai_player, GetPlayerState(ai_player,PLAYER_STATE_RESOURCE_GOLD) + GetUnitGoldCost(GetUnitTypeId(utemp)) * 2)  // Prevent training unit or research technology
+      call SetPlayerGold(ai_player, GetPlayerState(ai_player,PLAYER_STATE_RESOURCE_LUMBER) + GetUnitWoodCost(GetUnitTypeId(utemp)) * 2)
+    endif
+    set utemp = null
+  elseif fixmode == 1 then
+    if attacktree then
+      loop
+        set u = FirstOfGroup(g)
+        exitwhen u == null
+        if GetOwningPlayer(u) == ai_player and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitBuying(u) and not IsUnitLoaded(u) and not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+          call TryAttackTree(u, GetUnitTypeId(u), l)
+        endif
+        call GroupRemoveUnit(g,u)
+      endloop
+    else
+      loop
+        set u = FirstOfGroup(g)
+        exitwhen u == null or i > 2
+        if GetOwningPlayer(u) == ai_player and UnitAlive(u) and not IsUnitHidden(u) and GetUnitCurrentOrder(u) == OrderId("harvest") and not IsUnitBuying(u) and not IsUnitLoaded(u) then
+          call RemoveGuardPosition(u)
+          call IssuePointOrderLoc(u, "move", l)  // hope harvest near tree
+          call TQAddUnitJob(4, RESET_GUARD_POSITION, 0, u)
+          call CreateDebugTag("fix block : harvest tree", 10, u, 3.00, 1.50)
+          set i = i + 1
+        endif
+        call GroupRemoveUnit(g,u)
+      endloop
+    endif
+  else
+    if moveaside then
+      loop
+        set u = FirstOfGroup(g)
+        exitwhen u == null
+        if GetOwningPlayer(u) == ai_player and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_FLYING) and GetUnitTypeId(u) != 'ngir' and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitBuying(u) and not IsUnitLoaded(u) and not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+          if IsStandardUnit(u) then
+            call AddAssault(10,GetUnitTypeId(u))
+          elseif GetUnitCurrentOrder(u) != OrderId("cannibalize") then
+            call IssuePointOrderLoc(u, "move", front_loc[0])  // no need send to home_location
+          endif
+          call CreateDebugTagLoc("move aside", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
+        endif
+        call GroupRemoveUnit(g,u)
+      endloop
+    else  // check other block , once check one
+      loop
+        set u = FirstOfGroup(g)
+        exitwhen u == null or blockunit != null
+        set p = GetOwningPlayer(u)
+        if p == ai_player and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_FLYING) and GetUnitTypeId(u) != 'ngir' and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitBuying(u) and IsStandardUnit(u) and not IsUnitLoaded(u) then
+          call CreateDebugTagLoc("other block", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
+          call AddAssault(1,GetUnitTypeId(u))
+          set blockunit = u
+        elseif p != ai_player and IsPlayerAlly(ai_player, p) and GetPlayerController(p) == MAP_CONTROL_COMPUTER and IsUnitType(u, UNIT_TYPE_HERO) and not town_threatened and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitLoaded(u) then
+          call CreateDebugTagLoc("ally hero block", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
+          call TeleportFixBlock(u)
+        endif
+        call GroupRemoveUnit(g,u)
+      endloop
+      set p = null
+    endif
+  endif
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+endfunction
+
+function RemoveBlockPathUnit takes nothing returns nothing
+  if blockpathunit != null and UnitAlive(blockpathunit) then
+    call RemoveUnit(blockpathunit)
+  endif
+  set blockpathunit = null
+endfunction
+
+function FindTree takes real x, real y returns nothing
+  call RemoveBlockPathUnit()
+  call TryFixBlock(2, home_location, 1000, true, true)  //Move aside
+  set blockpathunit = CreatePathingUnitFull(blockpathunit, ai_player, 'ewsp', x, y)
+  call UnitApplyTimedLife(blockpathunit, 'BTLF', 18)
+  call SetUnitMoveSpeed(blockpathunit, 300)  // unable use fastest speed
+  call IssueImmediateOrder(blockpathunit, "autoharvestlumber")
+endfunction
+
+function FixBlockJob takes nothing returns nothing
+  local location l = null
+  local unit u = null
+  local integer i = 1
+  if TownThreatened() or CaptainIsHome() or towerrush or teleporting or not pathing_done or water_map then  // army no at home is key , town_threatened include ally so not check
+    if blockancient != null and UnitAlive(blockancient) then
+      call RootAncient()  // case townthreatened
+    endif
+    call RemoveBlockPathUnit()
+    set blockunit = null
+    call TQAddJob(240, FIX_BLOCK, 0)
+    return
+  endif
+  if blockancient != null and UnitAlive(blockancient) then
+    if movetotal > 3 or DistanceBetweenPoints_kd(ancientrootloc, GetUnitLoc(blockancient)) < 300 then
+      call RootAncient()
+    else
+      call MoveAncient(blockancient)
+      call TQAddJob(4, FIX_BLOCK, 0)
+      return
+    endif
+  elseif blockunit != null and UnitAlive(blockunit) and DistanceBetweenPoints_kd(home_location, GetUnitLoc(blockunit)) < front_base_distance then
+    call CreateDebugTag("hero block at here", 10, blockunit, 3.00, 1.50)
+    call FindTree(GetUnitX(blockunit), GetUnitY(blockunit))
+    set blockunit = null
+    call TQAddJob(1, FIX_BLOCK, 0)  // tree must close
+    return
+  elseif blockpathunit != null and UnitAlive(blockpathunit) and DistanceBetweenPoints_kd(home_location, GetUnitLoc(blockpathunit)) < front_base_distance then
+    if GetUnitTypeId(blockpathunit) == 'ewsp' then
+      set l = GetUnitLoc(blockpathunit)
+      if GetUnitCurrentOrder(blockpathunit) == OrderId("harvest") then
+        call TryFixBlock(1, l, 1200, race_no_wood_harvest or GetPlayerRace(ai_player) == RACE_NIGHTELF, true)
+      else
+        call TryFixBlock(0, l, 300, true, true)
+      endif
+      call RemoveBlockPathUnit()
+      call RemoveLocation(l)
+      set l = null
+    else
+      call CreateDebugTag("unit block at here", 10, blockpathunit, 3.00, 1.50)
+      call FindTree(GetUnitX(blockpathunit), GetUnitY(blockpathunit))
+    endif
+    call TQAddJob(1, FIX_BLOCK, 0)
+    return
+  endif
+  call RemoveBlockPathUnit()
+  set blockancient = null
+  set blockunit = null
+  set movetotal = 0
+  call DisplayToAllJobDebug("Fix_Block Job Start, state : " + Int2Str(blockstate))
+  call CreateDebugTagLoc("Fix Block state : " + Int2Str(blockstate), 8, GetLocationX(home_location) - 300, GetLocationY(home_location) + 300, 60.00, 55.00)
+  call TryFixBlock(2, home_location, 1000, true, blockstate != 3)  // 3 check other block , maybe pathing sys will always led unit go one loc , but loc blind alley , this block unable to handle , like map lastmanstanding - when hero no block , but maybe new train unit wiil go tavern
+  if blockstate == 0 then
+    set l = GetPlayerStartLocationLoc(enemy_force[0])
+    set blockpathunit = CreatePathingUnitFull(blockpathunit, Player(PLAYER_NEUTRAL_PASSIVE), 'hbew', GetLocationX(home_location), GetLocationY(home_location))  // must big unit and can not revive
+    call UnitApplyTimedLife(blockpathunit, 'BTLF', 18)  // Prevent player defeat unit not remove or home too close then unit block pther palyer
+    call IssuePointOrderLoc(blockpathunit, "move", l)
+    call RemoveLocation(l)
+    set l = null
+  elseif blockstate == 2 then  // 1 wait hero move , 2 check hero - altar block or tavern to close maybe block , like map lastmanstanding
+    loop
+      exitwhen i > 3
+      set u = hero_unit[i]
+      if hero_built[i] and UnitAlive(u) and not IsUnitLoaded(u) and not IsUnitBuying(u) and IsStandardUnit(u) and (DistanceBetweenPoints_kd(home_location, GetUnitLoc(u)) < front_base_distance or (nearest_neutral[NEUTRAL_TAVERN] != null and DistanceBetweenPoints_kd(home_location, GetUnitLoc(nearest_neutral[NEUTRAL_TAVERN])) < front_base_distance and DistanceBetweenUnits(u, nearest_neutral[NEUTRAL_TAVERN]) < 1000)) then
+        call CreateDebugTagLoc("hero block", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
+        call TeleportFixBlock(u)
+        set i = 3  // once check one
+      endif
+      set i = i + 1
+    endloop
+    set u = null
+  endif
+  set blockstate = blockstate + 1
+  if blockstate > 3 then
+    set blockstate = 0
+  endif
+  call TQAddJob(240 - Min(blockstate, 1) * 230, FIX_BLOCK, 0)
+endfunction
+#ENDIF
