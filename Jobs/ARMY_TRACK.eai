@@ -14,6 +14,7 @@
     integer lastArmyNum = 0
     integer lastFreeNum = 0
     integer mode = 0
+    integer most_threatened_player_town = 0
 
 #ELSE
 // Army Tracker
@@ -202,9 +203,14 @@ function UpdateSpecificTownThreat takes integer num returns nothing
     endif
     set i = i + 1
   endloop
-  if (IsPlayerAlly(p, ai_player) or p == ai_player) and town_count[num] > 0 then
-    if most_threatened_town == -1 or town_threat[most_threatened_town] < town_threat[num] then
-      if town_can_tp[num] == true or p == ai_player then
+  if Player(town_owner[num]) == ai_player then
+    if (most_threatened_player_town == -1 or town_threat[most_threatened_player_town] < town_threat[num]) and town_count[num] > 0 then
+      set most_threatened_player_town = num
+    endif
+    set most_threatened_player_town = num
+  elseif IsPlayerAlly(Player(town_owner[num]), ai_player) then
+    if (most_threatened_town == -1 or town_threat[most_threatened_town] < town_threat[num]) and town_count[num] > 0 then
+      if town_can_tp[num] == true then
         set most_threatened_town = num
       endif
     endif
@@ -226,6 +232,7 @@ function UpdateTownThreat takes nothing returns nothing
     set town_threatened = false
     //call Trace("ARMY_TRACK: Town threat update")
     set most_threatened_town = -1
+    set most_threatened_player_town = -1
     set most_threatened_enemy_town = -1
   endif
   loop
@@ -238,10 +245,12 @@ function UpdateTownThreat takes nothing returns nothing
     set mode = 3
     set lastFreeNum = 0
     call Trace ("ThreatenedTownThreat:" + Real2Str(town_threat[most_threatened_town]) + " AcceptedThreatLevel:" + Real2Str(accepted_threat_level))
-    if town_threat[most_threatened_town] > accepted_threat_level then //and town_threat[most_threatened_town] > (I2R(c_ally_total + 1) / c_enemy_total) * town_threat[most_threatened_enemy_town] then
+    if town_threat[most_threatened_player_town] > accepted_threat_level then //and town_threat[most_threatened_town] > (I2R(c_ally_total + 1) / c_enemy_total) * town_threat[most_threatened_enemy_town] then
       set town_threatened = true
-    endif
-    if town_threatened then
+      set most_threatened_town = most_threatened_player_town
+      call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_player_town]), GetLocationY(town_loc[most_threatened_player_town]))
+    elseif town_threat[most_threatened_town] > accepted_threat_level * 1.2 then
+      set town_threatened = true
       call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
     endif
   else
