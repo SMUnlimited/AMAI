@@ -56,6 +56,7 @@ perl SplitBlizzardJ.pl %VER% %VSAI%
 if %VSAI% == 1 perl ejass.pl Blizzard3VAI.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
 if %VSAI% == 0 perl ejass.pl Blizzard3.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
 perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\Blizzard_%VER%.j
+copy /b/v/y "Scripts\Blizzard_%VER%.j" "Scripts\Blizzard.j"
 ECHO \Scripts\Blizzard_%VER%.j created
 pjass %VER%\common.j Scripts\Blizzard_%VER%.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1

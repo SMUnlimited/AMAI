@@ -1,6 +1,6 @@
-@call MakeREFORGED
+@call MakeRoC
 pause
 @call MakeTFT
 pause
-@call MakeRoC
+@call MakeREFORGED
 pause

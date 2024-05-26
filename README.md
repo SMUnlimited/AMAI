@@ -44,12 +44,18 @@ Improvements and fixes to the core AI engine will improve the older scripts as w
 - Alternatively for complex installs if you have `perl` installed from a commandline you can type `perl InstallToDir.pl REFORGED "C:\Documents\Warcraft III\Maps\AMAI"` and press enter to install AMAI to all maps in a directory and subdirectories.
 - You can disable the commander for this install via the `perl InstallToDir.pl REFORGED "C:\Documents\Warcraft III\Maps\AMAI" "false"`
 - After installing AMAI on your map just start Warcraft 3 and play the map against and/or with computers to make use of AMAI.
+- For linux/Mac some have been able to use WINE to use the command line scripts to install.
+
+## Manual install
+- Especially for linux/Mac systems you can manually use the included `MPQEditor.exe` with WINE to install to a single map. 
+- Copy contents of `Scripts/VER` folder to a `Scripts` directory in the map and the `Scripts/Blizzard.j` into the map under the same Scripts directory.
 
 ## Notes
 - Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on completly custom maps (e.g towerdefence), it will make no difference on such maps.
 - Custom melee maps need to be set to latest patch data. Open the map in the Warcraft editor, go to Scenario->Map Options-> and change "Game Data Set" to "Melee (Latest Patch)".
 - Lua maps do not appear to work. Open the map in the Warcraft editor, go to Scenario->Map Options-> and change "Script Language" to Jass, then install AMAI to it. If "Script Language" is disabled, please reset the "Trigger Editor" to its initial state.
 - You may need to run as an administrator if you have issues with maps not displaying any teams.
+- Note maps older than 1.24 will need resaving in the world editor for full 24 player support.
 
 # Build Requirements
 To build scripts from source code or to make custom changes you must install perl (via `strawberry` or `activestate`).
