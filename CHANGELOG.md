@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Tweak expansion relocation logic to calculate when its likely already building so don't change location.
 - Fixed issues with multiple mines at home base logic. (jzy-chitong56)
 - AMAI will not expand fast unless there is twice as many mines as players.
+- Quick fix where shop creeps were not being checked correctly to see if it was guarded or not.
 - (Classic) Goblin alchemist not learning abilities.
 
 ## [3.3.4] - 2024-03-10

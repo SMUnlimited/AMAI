@@ -6719,31 +6719,52 @@ function GetNeutralGuard takes integer nn returns nothing
   local real nearest = 10000000
   local real tempnear = 0
   local boolean can_sleep = true
-  if nearest_neutral[nn] == null or LoadInteger(com, NEUTRAL_GUARDS, 0) == 0 then
+  local group g = null
+  if nearest_neutral[nn] == null then //or LoadInteger(com, NEUTRAL_GUARDS, 0) == 0 then
     set neutral_guarded[nn] = false
     set neutral_night_buy[nn] = true
     return
   endif
   set l = GetUnitLoc(nearest_neutral[nn])
+  set g = CreateGroup()
+  set g = CheckCreepsByRadius(g, nearest_neutral[nn], 750)
   loop
-    exitwhen i > LoadInteger(com, NEUTRAL_GUARDS, 0)
-    set i = i + 1
-    set u = LoadUnitHandle(com, NEUTRAL_GUARDS, i)
-    if u != null then
-      set tempnear = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
-      if UnitAlive(u) then
-        if not UnitCanSleep(u) then
-          set can_sleep = false
-        endif
-        if tempnear < nearest then
-          set nearunit = u
-          set nearest = tempnear
-        endif
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    set tempnear = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
+    if UnitAlive(u) then
+      if not UnitCanSleep(u) then
+        set can_sleep = false
+      endif
+      if tempnear < nearest then
+        set nearunit = u
+        set nearest = tempnear
       endif
     endif
+    set i = i + 1
+    call GroupRemoveUnit(g, u)
   endloop
+  //loop
+  //  exitwhen i > LoadInteger(com, NEUTRAL_GUARDS, 0)
+  //  set i = i + 1
+  //  set u = LoadUnitHandle(com, NEUTRAL_GUARDS, i)
+  //  if u != null then
+  //    set tempnear = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
+  //    if UnitAlive(u) then
+  //      if not UnitCanSleep(u) then
+  //        set can_sleep = false
+  //      endif
+  //      if tempnear < nearest then
+  //        set nearunit = u
+  //        set nearest = tempnear
+  //      endif
+  //    endif
+  //  endif
+  //endloop
   call RemoveLocation(l)
   set l = null
+  call DestroyGroup(g)
+  set g = null
   set neutral_guarded[nn] = (nearunit != null)
   set neutral_night_buy[nn] = can_sleep
   set u = null
@@ -7662,7 +7683,7 @@ function PathingThread takes nothing returns nothing
     if t == 5 then
       loop
         exitwhen i >= NEUTRAL_COUNT
-        if neutral_guarded[i] and nearest_neutral[i] != null then
+        if nearest_neutral[i] != null then
           call NeutralGuardedJob(i)
         endif
         set i = i + 1
