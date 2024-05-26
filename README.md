@@ -36,8 +36,8 @@ Improvements and fixes to the core AI engine will improve the older scripts as w
 - **ROC** : The classic Reign of Chaos AI scripts intended for ROC **1.24+** version of warcraft 3. Has some forwards compatability support up to **1.31** including 24 player support although tech tree changes in later versions will not be available to the AI.
 
 * Avoid v1.29.x of Warcraft 3 as it breaks various things. This is just an issue with this version and you can downgrade or upgrade.
- - Prevents AMAI from chatting.
- - Heros not learning skills although we have a fix that can get applied this may not work if the map itself is too old.
+  - Prevents AMAI from chatting.
+  - Heros not learning skills although we have a fix that can get applied this may not work if the map itself is too old.
 
 ## Commandline install
 - From a windows commandline or powershell type `InstallREFORGEDToMap.bat "C:\mymap.w3m" 1` and press enter to install AMAI to maps
