@@ -8,7 +8,7 @@
 #ELSE
 
 function ItemExpansionReset takes nothing returns nothing
-  if itemhero != null and UnitAlive(itemhero) and not IsStandardUnit(itemhero) then
+  if itemhero != null and UnitAlive(itemhero) and IsStandardUnit(itemhero) then
     call RecycleGuardPosition(itemhero)
   endif
   set item_expanding = false
@@ -44,14 +44,18 @@ function ItemExpansionJob takes nothing returns nothing
   local item exp_item = null
   local real trytime = 1
   call DisplayToAllJobDebug("ITEM_EXPANSION JOB STARTED")
-  if itemhero != null and UnitAlive(itemhero) and GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero) == null then  //prevent item change hero
+  if itemhero != null and UnitAlive(itemhero) then
     if not IsStandardUnit(itemhero) then
+      call Trace("Item expansion : end jon , hero not standard")  // no need ChooseExpansion() , this is passive expansion , avoidance buy repeat item
+      call ItemExpansionReset()
+      return
+    elseif GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero) == null then  //prevent item change hero
       call RecycleGuardPosition(itemhero)
+      set itemhero = GetItemHero(GetItemOfType(exp_item,race_item_expansion_item_id))
+      set exp_item = null
     endif
-    set itemhero = GetItemHero(GetItemOfType(exp_item,race_item_expansion_item_id))
-    set exp_item = null
   endif
-  if (itemhero != null and GetUnitState(itemhero, UNIT_STATE_LIFE) <= GetUnitState(itemhero, UNIT_STATE_MAX_LIFE) * 0.3) or town_threatened or current_expansion == null then
+  if town_threatened or current_expansion == null then
     call Trace("Item expansion : Cannot Expansion or no Expansion")  // no need ChooseExpansion() , this is passive expansion , avoidance buy repeat item
     call ItemExpansionReset()
     return
@@ -117,7 +121,6 @@ function ItemExpansionJob takes nothing returns nothing
       else
         call Trace("Item expansion state 1 - End")
         if exp_item != null then
-          call Trace("Item expansion state 1 - End , not use item")
           call SetItemDroppable(exp_item, true)  //can droppable
           call SetItemPawnable(exp_item, true)  //can selling
         endif
