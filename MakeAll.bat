@@ -1,7 +1,7 @@
 SET LOG=0
-@call MakeREFORGED %LOG%
+@call MakeRoC %LOG%
 @call MakeTFT %LOG%
 SET LOG=1
-@call MakeRoC %LOG%
+@call MakeREFORGED %LOG%
 
 
