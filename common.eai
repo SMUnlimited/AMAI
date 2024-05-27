@@ -6747,36 +6747,51 @@ function GetNeutralGuard takes integer nn returns nothing
   local unit u = null
   local unit nearunit = null
   local boolean b = false
-  local integer i = 0
+  //local integer i = 0
   local real nearest = 10000000
   local real tempnear = 0
   local boolean can_sleep = true
-  if nearest_neutral[nn] == null or LoadInteger(com, NEUTRAL_GUARDS, 0) == 0 then
+  local group g = null
+  if nearest_neutral[nn] == null then  //or LoadInteger(com, NEUTRAL_GUARDS, 0) == 0 then
     set neutral_guarded[nn] = false
     set neutral_night_buy[nn] = true
     return
   endif
   set l = GetUnitLoc(nearest_neutral[nn])
+  set g = CreateGroup()
+  set g = CheckCreepsByRadius(g, nearest_neutral[nn], 750)
   loop
-    exitwhen i > LoadInteger(com, NEUTRAL_GUARDS, 0)
-    set i = i + 1
-    set u = LoadUnitHandle(com, NEUTRAL_GUARDS, i)
-    if u != null and UnitAlive(u) then
-      set tempnear = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
-      if not UnitCanSleep(u) then
-        set can_sleep = false
-      endif
-      if tempnear < nearest then
-        set nearunit = u
-        set nearest = tempnear
-      endif
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    set tempnear = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
+    if not UnitCanSleep(u) then
+      set can_sleep = false
     endif
+    if tempnear < nearest then
+      set nearunit = u
+      set nearest = tempnear
+    endif
+    call GroupRemoveUnit(g, u)
   endloop
-  // if tempnear == 0 and LoadInteger(com, NEUTRAL_GUARDS, 0) != 0 then
-  //   call SaveInteger(com, NEUTRAL_GUARDS, 0, 0)
-  // endif
+  // loop
+  //   exitwhen i > LoadInteger(com, NEUTRAL_GUARDS, 0)
+  //   set i = i + 1
+  //   set u = LoadUnitHandle(com, NEUTRAL_GUARDS, i)
+  //   if u != null and UnitAlive(u) then
+  //     set tempnear = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
+  //     if not UnitCanSleep(u) then
+  //       set can_sleep = false
+  //     endif
+  //     if tempnear < nearest then
+  //       set nearunit = u
+  //       set nearest = tempnear
+  //     endif
+  //   endif
+  // endloop
   call RemoveLocation(l)
   set l = null
+  call DestroyGroup(g)
+  set g = null
   set neutral_guarded[nn] = (nearunit != null)
   set neutral_night_buy[nn] = can_sleep
   set u = null
@@ -7705,7 +7720,7 @@ function CopyPJ takes integer jid, integer par returns nothing
 endfunction
 
 function RemovePJ takes integer jid, integer par returns nothing
-  if jid == NEUTRAL_GUARDED and (not neutral_guarded[par] or nearest_neutral[par] == null) then
+  if jid == NEUTRAL_GUARDED and nearest_neutral[par] == null then
     call CopyPJ(jid, par)
   elseif jid != NEUTRAL_GUARDED and (not UnitAlive(nearest_neutral[par]) or nearest_neutral[par] == null) then
     call CopyPJ(jid, par)
@@ -9534,7 +9549,10 @@ function BuildAdvUpgr2 takes integer qty, integer upgid, integer starttier, inte
 //set num = (R2I((100 - FoodUsed())/GetFoodUsed(old_id[])) - 1) * prio_q_inc   // build upgrade priority at priority of unit
   if tier >= starttier then
     if unitcount > 0 then
-      if GetRandomInt(1, 100) <= Min(R2I(unitcount / RMax(1, unitper)), max) then
+      if unitper == 0 then
+        set unitper = 1
+      endif
+      if GetRandomInt(1, 100) <= Min(R2I(unitcount / unitper), max) then
         if qty >= tier-starttier+1 then
           call BuildUpgr(tier-starttier + 1, upgid, prio + ((tier-starttier)*4))
         else
@@ -11273,7 +11291,7 @@ if mines < 1 or gold_left < 2500 or exp_prepared then
   else
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_prio)
   endif
-elseif active_expansion and GetNextExpansion() >= 0 and GetExpansionFoe() == null and mines < 4 and GetRandomInt(0, 100) < 48 and GetGold() > 1000 and GetWood() > 700 then
+elseif active_expansion and GetNextExpansion() >= 0 and GetExpansionFoe() == null and mines < 4 and GetRandomInt(0, 100) < 48 and GetGold() > 1000 and GetWood() > 700 and not CheckDoubleExpansionsClaimedInArea(I2R(GetExpansionX()), I2R(GetExpansionY()), false) then
   set u = GetExpansionPeon()
   if u != null and u != expansion_peon and not_taken_expansion == null then
     call SetExpansion(u, old_id[racial_expansion])
