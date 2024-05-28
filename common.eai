@@ -11503,31 +11503,43 @@ endfunction
 //============================================================================
 function SleepInCombatAM takes nothing returns nothing
     local integer count = 0
+    local integer noenemycount = 0
     local real sleep = 0.1
     //local integer attack_length_counter = 0
-    call Trace("SleepInCombat Collect Items")
-    loop
-      exitwhen count >= (8.0/sleep) or town_threatened
-      if (lastcaptainx != 0 and lastcaptainy != 0 and not CaptainIsEmpty() and ((CaptainAtGoal() and not CaptainInCombat(true)) or CaptainRetreating() or CaptainIsHome())) then
-        call TeleportCaptain(lastcaptainx, lastcaptainy) // Keep units around killed unit/target to help collect any loot
-        call AttackMoveXY(R2I(lastcaptainx), R2I(lastcaptainy))
-      endif
+    //call Trace("SleepInCombat Collect Items")
+    //loop
+    //  exitwhen count >= (8.0/sleep) or town_threatened
+    //  if (lastcaptainx != 0 and lastcaptainy != 0 and not CaptainIsEmpty() and ((CaptainAtGoal() and not CaptainInCombat(true)) or CaptainRetreating() or CaptainIsHome())) then
+    //    call TeleportCaptain(lastcaptainx, lastcaptainy) // Keep units around killed unit/target to help collect any loot
+        //call AttackMoveXY(R2I(lastcaptainx), R2I(lastcaptainy))
+    //  endif
       //if (lastcaptainx != 0 and lastcaptainy != 0 and not CaptainIsEmpty() and (CaptainAtGoal() and  or CaptainIsHome())) and not CaptainInCombat(true) then
       //  call CreateDebugTagLoc("SleepInCombat", 10, lastcaptainx, lastcaptainy, 1.00, 0.80)
       //  call AttackMoveXY(R2I(lastcaptainx), R2I(lastcaptainy)) // Keep units around killed unit/target to help collect any loot
       //endif
-      set count = count + 1
-      call Sleep(sleep)
-    endloop
+    //  set count = count + 1
+    //  call Sleep(sleep)
+    //endloop
     call Trace("SleepInCombat")
     set count = 0
     loop
-      exitwhen town_threatened
-      exitwhen break_attack
-      exitwhen not CaptainInCombat(true)  // goal is cleared
-      exitwhen CaptainIsEmpty()// duh
-      exitwhen town_threat_break
+
+      exitwhen town_threat_break and town_threatened // under attack
+      exitwhen break_attack // forced attack to end
+      exitwhen CaptainIsEmpty()// no troops so stop attack
       exitwhen R2I(count) >= 900 // Took longer than 15 mins to stop lingering something is wrong
+      if (lastcaptainx != 0 and lastcaptainy != 0) then
+        if (GetLocationNonCreepStrength(lastcaptainx, lastcaptainy, battle_radius) <= 0 and GetLocationCreepStrength(lastcaptainx, lastcaptainy, 500) <= 0) then
+          if (noenemycount < 8) then
+            set noenemycount = noenemycount + 1 // 8 seconds to pick up items on ground
+            call TeleportCaptain(lastcaptainx, lastcaptainy)
+          else
+            exitwhen true // no enemies so exit
+          endif
+        endif// Enemies still in proximity
+      endif
+      exitwhen (not CaptainInCombat(true) or CaptainRetreating() or CaptainIsHome()) and count > 180  // Fail safe using hardcoded checks
+
       //loop
         //exitwhen captain_flee and CaptainRetreating()
         //exitwhen isfleeing and CaptainRetreating()
@@ -11639,7 +11651,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     //  set target = GetAllianceTarget()
     //endif
     exitwhen target == null // Fail safe
-    exitwhen IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player))
+    exitwhen IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (UnitInvis(target) and not IsUnitVisible(target, ai_player))
     //if IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player)) then
     //  set g = CreateGroup()
     //  call GroupEnumUnitsInRange(g,GetUnitX(target), GetUnitY(target),battle_radius,null)
