@@ -4,6 +4,7 @@ SET RESULTOPTVER=0
 ECHO Optimizing %VER% Scripts
 perl Optimize.pl %VER%\common.j Scripts\%VER%\common.ai -l %VER%\Races.txt Scripts\%VER%\$2
 perl Optimize.pl -b Scripts\Blizzard_%VER%.j
+perl Optimize.pl -b Scripts\Blizzard.j
 ECHO Optimizing finished
 ECHO _____________________________
 pjass %VER%\common.j Scripts\%VER%\common.ai
