@@ -5377,7 +5377,7 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
     set u = FirstOfGroup(g)
     exitwhen u == null
     set p = GetOwningPlayer(u)
-    if IsPlayerEnemy(ai_player, p) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and not IsUnitType(u,UNIT_TYPE_STRUCTURE) and not IsUnitType(u,UNIT_TYPE_PEON) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) and UnitAlive(u) and not IsUnitHidden(u) then
+    if IsPlayerEnemy(ai_player, p) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and not IsUnitType(u,UNIT_TYPE_STRUCTURE) and not IsUnitType(u,UNIT_TYPE_PEON) and not (UnitInvis(u) and not IsUnitVisible(u, ai_player)) and UnitAlive(u) and not IsUnitHidden(u) then
       if IsUnitType(u, UNIT_TYPE_HERO) then
         set strength = GetHeroStrength(u)
       else
@@ -5465,7 +5465,7 @@ function GetLocationStrength takes real x, real y, real radius returns real
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if not IsUnitType(u,UNIT_TYPE_PEON) and not (UnitInvis(u) and not IsUnitDetected(u, ai_player)) and UnitAlive(u) and not IsUnitHidden(u) then
+    if not IsUnitType(u,UNIT_TYPE_PEON) and not (UnitInvis(u) and not IsUnitVisible(u, ai_player)) and UnitAlive(u) and not IsUnitHidden(u) then
       set strength = GetUnitStrength(u)
       set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
@@ -11281,17 +11281,21 @@ loop
   endif
   set i = i + 1
 endloop
+set i = 0
+if active_expansion then
+  set i = Max(GetPlayerUnitTypeCount(Player(PLAYER_NEUTRAL_PASSIVE),'ngol') - (c_enemy_total + c_ally_total + 1), 20)
+endif
 
 if mines < 1 or gold_left < 2500 or exp_prepared then
   call Trace("ExpansionBuilder: Putting mine on build list")
   if mines < 1 or gold_left < 2500 then
-    call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_emergency_prio)
+    call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_emergency_prio + i)
   elseif rebuild or upkeepboost then
-    call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_rebuild_prio)
+    call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_rebuild_prio + i)
   else
-    call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_prio)
+    call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_prio + i)
   endif
-elseif active_expansion and GetNextExpansion() >= 0 and HallsCompleted(racial_expansion) and GetExpansionFoe() == null and mines < 4 and GetRandomInt(0, 100) < 48 and GetGold() > 1000 and GetWood() > 700 and not CheckDoubleExpansionsClaimedInArea(I2R(GetExpansionX()), I2R(GetExpansionY()), false) then
+elseif active_expansion and GetNextExpansion() >= 0 and HallsCompleted(racial_expansion) and GetExpansionFoe() == null and mines < 4 and GetRandomInt(0, 100 - i) < 48 and GetGold() > 1000 and GetWood() > 700 and not CheckDoubleExpansionsClaimedInArea(I2R(GetExpansionX()), I2R(GetExpansionY()), false) then
   set u = GetExpansionPeon()
   if u != null and u != expansion_peon and not_taken_expansion == null then
     call SetExpansion(u, old_id[racial_expansion])
@@ -11858,7 +11862,9 @@ function SleepInCombatAM takes nothing returns nothing
   local integer count = 0
   local integer noenemycount = 0
   local real sleep = 0.1
-  //local integer attack_length_counter = 0
+  local unit u = null
+  local group g = CreateGroup()
+  local integer attack_length_counter = 0
   //call Trace("SleepInCombat Collect Items")
   //loop
   //  exitwhen count >= (8.0/sleep) or town_threatened
@@ -11880,31 +11886,37 @@ function SleepInCombatAM takes nothing returns nothing
     exitwhen CaptainIsEmpty()// no troops so stop attack
     exitwhen R2I(count) >= 900 // Took longer than 15 mins to stop lingering something is wrong
     if (lastcaptainx != 0 and lastcaptainy != 0) then
-      if (GetLocationNonCreepStrength(lastcaptainx, lastcaptainy, battle_radius) <= 0 and GetLocationCreepStrength(lastcaptainx, lastcaptainy, 500) <= 0) then
-        if (noenemycount < 8) then
-          set noenemycount = noenemycount + 1 // 8 seconds to pick up items on ground
-          call TeleportCaptain(lastcaptainx, lastcaptainy)
-        else
-          exitwhen true // no enemies so exit
-        endif
-      endif// Enemies still in proximity
+      call GroupEnumUnitsInRange(g, lastcaptainx, lastcaptainy, battle_radius,null)
+      loop
+        set u = FirstOfGroup(g)
+        exitwhen u == null
+        exitwhen UnitAlive(u) and not IsUnitHidden(u) and IsUnitVisible(u, ai_player) and IsPlayerEnemy(ai_player, GetOwningPlayer(u))
+        call GroupRemoveUnit(g, u)
+      endloop
+      call GroupClear(g)
+      if u == null and noenemycount < 8 then
+        set noenemycount = noenemycount + 1 // 8 seconds to pick up items on ground
+        call TeleportCaptain(lastcaptainx, lastcaptainy)
+      elseif u == null then
+        exitwhen true // no enemies so exit
+      endif
+    endif
+    if (u != null and (not CaptainInCombat(true) or CaptainRetreating() or CaptainIsHome())) then
+      set attack_length_counter = attack_length_counter + 1
+      if attack_length_counter > attack_reform_length then
+        set attack_length_counter = 0
+        call FormGroupAM(0)
+      endif
+      call AttackMoveKill(u)
+      //call CaptainAttack(GetLocationX(last_ally_loc), GetLocationY(last_ally_loc))
     endif
     exitwhen (not CaptainInCombat(true) or CaptainRetreating() or CaptainIsHome()) and count > 180  // Fail safe using hardcoded checks
-    //loop
-      //exitwhen captain_flee and CaptainRetreating()
-      //exitwhen isfleeing and CaptainRetreating()
-      //call CaptainAttack(GetLocationX(last_ally_loc), GetLocationY(last_ally_loc))
-      //call Sleep(1 * sleep_multiplier)
-      //set attack_length_counter = attack_length_counter + 1
-      //if attack_length_counter > attack_reform_length then
-        //set attack_length_counter = 0
-        //call FormGroupAM(2)
-      //endif
-    //endloop
-    //call Sleep(1)
     set count = count + 1
     call Sleep(1)
   endloop
+  call DestroyGroup(g)
+  set g = null
+  set u = null
   call Trace("exit SleepInCombat")
 endfunction
 
@@ -12143,7 +12155,7 @@ function SetAllianceTargetIfLeadAndChat takes unit u, integer chat returns nothi
 endfunction
 
 function ClearAllianceTarget takes unit old returns nothing
-  if old == null or not UnitAlive(old) or (UnitInvis(old) and not IsUnitDetected(old, ai_player)) or GetHandleId(old) == GetStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0") then
+  if old == null or GetHandleId(old) == GetStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0") then
     call SetAllianceTargetIfLead(null)
   endif
 endfunction
@@ -12186,9 +12198,9 @@ function BRRush takes nothing returns nothing
     call Chat(C_Done)
     call SleepInCombatAM()
     call Trace("===BR Finished===")
-    call IssuePointOrderLoc(utemp, "move", l)  // no remove GuardPosition , no need send root order
-    //call Sleep(0.02)
-    //call IssuePointOrderLoc(utemp, "root", l)  //root tree
+    if not IssuePointOrderLoc(utemp, "root", l) then  //root tree
+      call IssuePointOrderLoc(utemp, "move", l)  // no remove GuardPosition , no need send root order
+    endif
     call RemoveLocation(l)
     set l = null
   else
