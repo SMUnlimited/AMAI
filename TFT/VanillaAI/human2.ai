@@ -16,6 +16,7 @@ globals
     integer c_arcane            = 0
     integer c_aviary_done       = 0
     integer c_breaker_done      = 0
+    integer c_barracks_done     = 0
     integer c_castle_done       = 0
     integer c_food_made         = 0
     integer c_food_used         = 0
@@ -58,6 +59,7 @@ globals
     unit town_mine          = null
     unit array laboratory
     unit array herounit
+    location homeloc = GetStartLocationLoc(GetPlayerStartLocation(Player(GetAiPlayer())))
 endglobals
 
 //--------------------------------------------------------------------------------------------------
@@ -269,7 +271,7 @@ endfunction
 // fix 1.31 hero cannot Learning Skills
 function SetHeroUint takes unit u, integer id returns unit
     local group g = CreateGroup()
-    call GroupEnumUnitsOfPlayer(g, Player(GetAiPlayer()), null)
+    call GroupEnumUnitsOfPlayer(g, ai_player, null)
     loop
         set u = FirstOfGroup(g)
         exitwhen u == null
@@ -472,6 +474,7 @@ function init_vars takes nothing returns nothing
     set c_arcane            = GetUnitCount(ARCANE_TOWER)
     set c_aviary_done       = GetUnitCountDone(AVIARY)
     set c_breaker_done      = GetUnitCountDone(SPELL_BREAKER)
+    set c_barracks_done     = GetUnitCountDone(BARRACKS)
     set c_castle_done       = TownCountDone(CASTLE)
     set c_footman_done      = GetUnitCountDone(FOOTMAN)
     set c_gold              = GetGold()
@@ -573,8 +576,9 @@ function do_upgrades takes nothing returns nothing
             endif
         endif
     endif
-
-    call SetBuildUpgr( 1, UPG_DEFEND )
+    if c_barracks_done > 0 then
+        call SetBuildUpgr( 1, UPG_DEFEND )
+    endif
 
     if c_smith_done >= 1 then
         call SetBuildUpgr( 1, UPG_ARMOR     )
@@ -596,11 +600,11 @@ function do_upgrades takes nothing returns nothing
             endif
         endif
     endif
-    if c_castle_done > 0 and c_knight_done > 3 and JASS_MAX_ARRAY_SIZE > 8192 then
+    if c_castle_done > 0 and c_barracks_done > 0 and c_knight_done > 3 and JASS_MAX_ARRAY_SIZE > 8192 then
         call SetBuildUpgr( 1, 'Rhsb'   )
     endif
 
-    if c_rifleman_done >= 1 and c_castle_done >= 1 then
+    if c_barracks_done > 0 and c_rifleman_done >= 1 and c_castle_done >= 1 then
         call SetBuildUpgr( 1, UPG_GUN_RANGE )
     endif
 
@@ -918,8 +922,7 @@ function InitMineCheck takes nothing returns nothing
     local integer c = 0
     local integer n = 0
     local integer p = 1
-    local location l = GetStartLocationLoc(GetPlayerStartLocation(Player(GetAiPlayer())))
-    call GroupEnumUnitsInRangeOfLoc(g, l, 1800, null)
+    call GroupEnumUnitsInRangeOfLoc(g, homeloc, 1800, null)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
@@ -943,21 +946,19 @@ function InitMineCheck takes nothing returns nothing
     call DestroyGroup(g)
     set g = null
     call HarvestGold(0,3)
-    call HarvestWood(0,2)  // Early triggering Harvest , convenient HARVEST_CHECK job check peon
-    call RemoveLocation(l)
-    set l = null
+    call HarvestWood(0,2)  // Early triggering Harvest
 endfunction
 
-function HarvestMineFix takes unit mine, location l returns nothing
+function HarvestMineFix takes unit mine returns nothing
     local group g = CreateGroup()
     local unit u = null
     local integer i = 0
     local integer delaypeon = 2
-    call GroupEnumUnitsInRangeOfLoc(g, l, 1800, null)
+    call GroupEnumUnitsInRangeOfLoc(g, homeloc, 1800, null)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null or i >= delaypeon
-      if UnitAlive(u) and IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitHidden(u) and GetOwningPlayer(u) == Player(GetAiPlayer()) then
+      if UnitAlive(u) and IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitHidden(u) and GetOwningPlayer(u) == ai_player then
         if GetUnitCurrentOrder(u) == 0 or GetUnitCurrentOrder(u) == OrderId("harvest") then  // no get other order peon , maybe the peon go buy unit or build some
           call IssueTargetOrder(u, "harvest", mine)
           set i = i + 1
@@ -971,33 +972,33 @@ function HarvestMineFix takes unit mine, location l returns nothing
 endfunction
 
 function MineCheck takes nothing returns nothing
-    local group g = CreateGroup()
+    local group g = null
     local unit u = null
     local integer i = 0
-    local location l = GetStartLocationLoc(GetPlayerStartLocation(Player(GetAiPlayer())))
-    call GroupEnumUnitsInRangeOfLoc(g, l, 1800, null)
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null
-      if UnitAlive(u) and not IsUnitHidden(u) and GetUnitTypeId(u) == 'ngol' and GetResourceAmount(u) > 0 then
-        if town_mine == null or GetResourceAmount(town_mine) <= 0 then  // find mine
-          set town_mine = u
+    if town_mine == null or GetResourceAmount(town_mine) <= 0 then  // find mine
+        set g = CreateGroup()
+        call GroupEnumUnitsInRangeOfLoc(g, homeloc, 1800, null)
+        loop
+        set u = FirstOfGroup(g)
+        exitwhen u == null
+        if GetUnitTypeId(u) == 'ngol' and GetResourceAmount(u) > 0 and UnitAlive(u) and not IsUnitHidden(u) then
+            if town_mine == null or GetResourceAmount(town_mine) <= 0 then  // find mine
+                set town_mine = u
+            endif
+            set i = i + 1
         endif
-        set i = i + 1
-      endif
-      call GroupRemoveUnit(g, u)
-    endloop
+        call GroupRemoveUnit(g, u)
+        endloop
+        call DestroyGroup(g)
+        set g = null
+    endif
     set HarvestFix = i > 0  // home_location no mine
     if HarvestFix and town_mine != null and GetResourceAmount(town_mine) > 0 and c_peasant_done > 11 then
-      call HarvestMineFix(town_mine,l)
+      call HarvestMineFix(town_mine)
     endif
-    call RemoveLocation(l)
-    set l = null
-    call DestroyGroup(g)
-    set g = null
 endfunction
 
-function GetLaboratory takes nothing returns nothing
+function InitLaboratory takes nothing returns nothing
     local group g = CreateGroup()
     local unit u = null
     local integer i = 0
@@ -1020,12 +1021,14 @@ function GetLaboratory takes nothing returns nothing
     set g = null
 endfunction
 
-function BuyShredder takes nothing returns nothing
+function BuyShredder takes integer c returns nothing
     local integer i = 0
-    if GetWood() > 200 and GetGold() > 800 and FoodSpace() > 5 and GetUnitCountDone('ngir') < 1 then
+    if GetWood() > 200 and GetGold() > 800 and FoodSpace() > 5 and GetUnitCountDone('ngir') < 1 and c > GetRandomInt(0, 4) then
       loop
         exitwhen laboratory[i] == null or GetUnitCountDone('ngir') > 0
-        call IssueNeutralImmediateOrderById(ai_player, laboratory[i], 'ngir')
+        if IsVisibleToPlayer(GetUnitX(laboratory[i]), GetUnitY(laboratory[i]), ai_player) then
+            call IssueNeutralImmediateOrderById(ai_player, laboratory[i], 'ngir')
+        endif
         set i = i + 1
       endloop
     endif
@@ -1056,7 +1059,7 @@ function peon_assignment takes nothing returns nothing
         call HarvestWood(0,15)
 
         call build_sequence()
-        call BuyShredder()
+        call BuyShredder(c)
         call Sleep(GetRandomInt(1,3))
     endloop
 endfunction
@@ -1067,8 +1070,8 @@ endfunction
 function main takes nothing returns nothing
     call PickMeleeHero(RACE_HUMAN)
     call set_skills()
-    call InitMineCheck()  // now home_location distance 1500 have more mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix
-    call GetLaboratory()
+    call InitMineCheck()  // if home_location distance 1500 have more mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix
+    call InitLaboratory()
     call StandardAI(function SkillArraysfix, function peon_assignment, function attack_sequence)
     call StartThread(function set_vars)
     call PlayGame()
