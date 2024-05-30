@@ -17,6 +17,7 @@ globals
     integer c_aviary_done       = 0
     integer c_breaker_done      = 0
     integer c_barracks_done     = 0
+    integer c_cannon            = 0
     integer c_castle_done       = 0
     integer c_food_made         = 0
     integer c_food_used         = 0
@@ -24,6 +25,7 @@ globals
     integer c_gold              = 0
     integer c_gold_owned        = 0
     integer c_gryphon_done      = 0
+    integer c_guard             = 0
     integer c_gyro_done         = 0
     integer c_hall              = 0
     integer c_hall_done         = 0
@@ -49,14 +51,13 @@ globals
     integer c_tank_done         = 0
     integer c_watch             = 0
     integer c_watch_done        = 0
-    integer c_guard             = 0
+    integer c_vault_done             = 0
     integer c_workshop_done     = 0
-    integer c_cannon       = 0
     integer c_zep               = 0
     integer hero_id4            = 0
     integer array skills4
     boolean HarvestFix          = false
-    unit town_mine          = null
+    unit town_mine              = null
     unit array laboratory
     unit array herounit
     location homeloc = GetStartLocationLoc(GetPlayerStartLocation(Player(GetAiPlayer())))
@@ -475,11 +476,13 @@ function init_vars takes nothing returns nothing
     set c_aviary_done       = GetUnitCountDone(AVIARY)
     set c_breaker_done      = GetUnitCountDone(SPELL_BREAKER)
     set c_barracks_done     = GetUnitCountDone(BARRACKS)
+    set c_cannon            = GetUnitCount(CANNON_TOWER)
     set c_castle_done       = TownCountDone(CASTLE)
     set c_footman_done      = GetUnitCountDone(FOOTMAN)
     set c_gold              = GetGold()
     set c_gold_owned        = GetGoldOwned()
     set c_gryphon_done      = GetUnitCountDone(GRYPHON)
+    set c_guard             = GetUnitCount(GUARD_TOWER)
     set c_gyro_done         = GetUnitCountDone(COPTER)
     set c_hall              = TownCount(TOWN_HALL)
     set c_hall_done         = TownCountDone(TOWN_HALL)
@@ -507,10 +510,11 @@ function init_vars takes nothing returns nothing
     set c_sorceress_done    = GetUnitCountDone(SORCERESS)
     set c_tank              = GetUnitCount(TANK) + GetUnitCount(ROCKET_TANK)
     set c_tank_done         = GetUnitCountDone(TANK) + GetUnitCountDone(ROCKET_TANK)
+    set c_vault_done        = GetUnitCountDone(ARCANE_VAULT)
     set c_watch             = TownCount(WATCH_TOWER)
     set c_watch_done        = TownCountDone(WATCH_TOWER)
-    set c_guard             = GetUnitCount(GUARD_TOWER)
-    set c_cannon            = GetUnitCount(CANNON_TOWER)
+
+
     set c_workshop_done     = GetUnitCountDone(WORKSHOP)
     set c_zep               = GetUnitCount(ZEPPELIN)
     set c_food_made         = GetUnitCountDone(TOWN_HALL) * GetFoodMade(TOWN_HALL) + GetUnitCountDone(KEEP) * GetFoodMade(KEEP) + GetUnitCountDone(CASTLE) * GetFoodMade(CASTLE) + c_house_done * GetFoodMade(HOUSE)
@@ -523,7 +527,7 @@ function init_vars takes nothing returns nothing
     set b_knights_ok        = c_castle_done>=1 and c_mill_done>=1 and c_smith_done>=1
     set b_tank_ok           = GetUpgradeLevel(UPG_TANK) > 0
 
-    if basic_opening and (b_hero2_done or (MeleeDifficulty() == MELEE_NEWBIE and c_castle_done >= 1)) then
+    if basic_opening and (b_hero2_done or (MeleeDifficulty() == MELEE_NEWBIE and c_keep_done >= 1)) then
         set basic_opening = false
     endif
 endfunction
@@ -546,14 +550,6 @@ function do_upgrades takes nothing returns nothing
     if c_keep_done >= 1 then
 
         call SetBuildUpgr( 1, UPG_WOOD )
-
-        if c_castle_done >= 1 then
-            call SetBuildUpgr( 2, UPG_WOOD )
-        endif
-
-        if b_knights_ok then
-            call SetBuildUpgr( 1, UPG_BREEDING )
-        endif
         if c_sanctum_done >= 1 then
             if c_priest_done >= 1 then
                 call SetBuildUpgr( 1, UPG_PRAYING )
@@ -562,17 +558,19 @@ function do_upgrades takes nothing returns nothing
                 call SetBuildUpgr( 1, UPG_SORCERY )
             endif
         endif
-        if c_castle_done >= 1 then
+    endif
+    if b_knights_ok and c_barracks_done > 0 then
+        call SetBuildUpgr( 1, UPG_BREEDING )
+    endif
+    if c_castle_done >= 1 then
+        call SetBuildUpgr( 2, UPG_WOOD )
 
-            call SetBuildUpgr( 2, UPG_WOOD )
-
-            if c_sanctum_done >= 1 then
-                if c_priest_done >= 1 then
-                    call SetBuildUpgr( 2, UPG_PRAYING )
-                endif
-                if c_sorceress_done >= 1 then
-                    call SetBuildUpgr( 2, UPG_SORCERY )
-                endif
+        if c_sanctum_done >= 1 then
+            if c_priest_done >= 1 then
+                call SetBuildUpgr( 2, UPG_PRAYING )
+            endif
+            if c_sorceress_done >= 1 then
+                call SetBuildUpgr( 2, UPG_SORCERY )
             endif
         endif
     endif
@@ -604,13 +602,15 @@ function do_upgrades takes nothing returns nothing
         call SetBuildUpgr( 1, 'Rhsb'   )
     endif
 
-    if c_barracks_done > 0 and c_rifleman_done >= 1 and c_castle_done >= 1 then
+    if c_smith_done > 0 and c_rifleman_done >= 1 and c_castle_done >= 1 then
         call SetBuildUpgr( 1, UPG_GUN_RANGE )
     endif
 
-    if c_workshop_done >= 1 and c_mortar_done >= 1 then 
-        call SetBuildUpgr( 1, UPG_FRAGS )
-        if c_mortar_done > 4 then
+    if c_workshop_done >= 1 and c_mortar_done >= 1 then
+        if c_castle_done >= 1 then
+            call SetBuildUpgr( 1, UPG_FRAGS )
+        endif
+        if c_mortar_done > 4 and c_keep_done > 0 then
             call SetBuildUpgr( 1, UPG_SIGHT )
         endif
     endif
@@ -622,26 +622,24 @@ function do_upgrades takes nothing returns nothing
         endif
     endif
 
-    if c_workshop_done >= 1 and c_gyro_done >= 1 then
-        if c_castle_done >= 1 then
-            call SetBuildUpgr( 1, UPG_FLAK )
-        endif
+    if c_workshop_done >= 1 and c_gyro_done >= 1 and c_castle_done >= 1 then
+        call SetBuildUpgr( 1, UPG_FLAK )
         call SetBuildUpgr( 1, UPG_BOMBS )
     endif
 
-    if c_aviary_done >= 1 and c_gryphon_done >= 1 then
+    if c_aviary_done >= 1 and c_gryphon_done >= 1 and c_castle_done > 0 then
         call SetBuildUpgr( 1, UPG_HAMMERS )
     endif
 
-    if c_sanctum_done >= 1 and c_breaker_done >= 1 then
+    if c_sanctum_done >= 1 and c_breaker_done >= 1 and c_vault_done > 0 and c_castle_done > 0 then
         call SetBuildUpgr( 1, UPG_CONT_MAGIC )
     endif
 
-    if c_aviary_done >= 1 and c_hawk_done >= 1 then
+    if c_aviary_done >= 1 and c_hawk_done >= 1 and c_castle_done > 0 and c_vault_done > 0 then
         call SetBuildUpgr( 1, UPG_CLOUD )
     endif
 
-    if c_workshop_done >= 1 and c_tank_done >= 1 then
+    if c_workshop_done >= 1 and c_tank_done >= 1 and c_castle_done > 0 then
         call SetBuildUpgr( 1, UPG_TANK )
     endif
 endfunction
@@ -685,11 +683,17 @@ function build_sequence takes nothing returns nothing
         call SetBuildUnit(  5, HOUSE        )
         call SetBuildUnit(  8, FOOTMAN      )
         call SetBuildUnit(  6, HOUSE        )
-        call SetBuildUnit(  2, RIFLEMAN     )
+        if c_smith_done > 0 and c_barracks_done > 0 then
+            call SetBuildUnit(  2, RIFLEMAN     )
+        endif
         call SetBuildUnit(  7, HOUSE        )
-        call SetBuildUnit(  3, RIFLEMAN     )
+        if c_smith_done > 0 and c_barracks_done > 0 then
+            call SetBuildUnit(  3, RIFLEMAN     )
+        endif
         call SetBuildUnit(  1, ARCANE_VAULT )
-        call SetBuildUnit(  4, RIFLEMAN     )
+        if c_smith_done > 0 and c_barracks_done > 0 then
+            call SetBuildUnit(  4, RIFLEMAN     )
+        endif
         call SetBuildUnit(  1, LUMBER_MILL  )
         call SetBuildUnit(  1, KEEP         )
         call BasicExpansion( c_mines < 2, TOWN_HALL )
@@ -708,9 +712,9 @@ function build_sequence takes nothing returns nothing
         elseif c_mill_done > 0 and c_watch_done - c_arcane - c_guard - c_cannon > 0 then
             call GuardSecondary( 0, 1, GUARD_TOWER  )
         endif
+        call SetBuildUnit(  8, HOUSE        )
         call SetBuildUpgr(  1, UPG_DEFEND   )
         call SetBuildUpgr(  1, UPG_ARMOR    )
-        call SetBuildUnit(  7, HOUSE        )
         call SetBuildUpgr(  1, UPG_MELEE    )
 
         if c_keep_done < 1 then
@@ -723,11 +727,13 @@ function build_sequence takes nothing returns nothing
             call SetBuildUnit(  1, hero_id2 )
         endif
 
-        call SetBuildUpgr(  1, UPG_RANGED   )
         call SetBuildUnit(  1, SANCTUM      )
-        call SetBuildUnit(  2, MORTAR       )
+        if c_workshop_done > 0 then
+            call SetBuildUnit( 2, MORTAR    )
+        endif
         call SetBuildUpgr(  1, UPG_WOOD     )
-        call SetBuildUpgr(  2, UPG_ARMOR    )
+        call SetBuildUpgr(  1, UPG_RANGED   )
+        call SetBuildUpgr(  1, UPG_LEATHER  )
         call SetBuildUpgr(  2, UPG_WOOD     )
         return
     endif
@@ -806,7 +812,7 @@ function build_sequence takes nothing returns nothing
     // minimum melee defense
     //
     call SetBuildUnit( 1, BARRACKS )
-    if b_knights_ok then
+    if b_knights_ok and c_castle_done > 0 then
         call SetBuildUnit( 2, KNIGHT    )
     else
         call SetBuildUnit( 4, FOOTMAN   )
@@ -814,12 +820,13 @@ function build_sequence takes nothing returns nothing
 
     // minimum ranged/air defense
     //
-    if c_aviary_done >= 1 then
+    if c_aviary_done >= 1 and c_castle_done > 0 then
         call SetBuildUnit( 3, GRYPHON    )
     else
-        call SetBuildUnit( 1, BLACKSMITH )
-        if c_smith_done >= 1 or c_gold < 1000 then
+        if (c_barracks_done > 0 and c_smith_done >= 1) or c_gold < 1000 then
             call SetBuildUnit( 4, RIFLEMEN   )
+        elseif c_smith_done == 0 then
+            call SetBuildUnit( 1, BLACKSMITH )
         endif
     endif
 
@@ -827,7 +834,9 @@ function build_sequence takes nothing returns nothing
     //
     call SetBuildUnit( 1, KEEP      )
     call SetBuildUnit( 1, WORKSHOP  )
-    call SetBuildUnit( 2, MORTAR    )
+    if c_workshop_done > 0 then
+        call SetBuildUnit( 2, MORTAR    )
+    endif
 
     call SetBuildUnit( c_watch_done - c_arcane, GUARD_TOWER )
     
@@ -863,18 +872,24 @@ function build_sequence takes nothing returns nothing
 
     // full up with more troops in general
     //
-    if b_knights_ok then
+    if b_knights_ok and c_barracks_done > 0 then
         call SetBuildNext( 4, KNIGHT )
     endif
 
     if c_sanctum_done >= 1 then
         call SetBuildNext( 2, PRIEST        )
         call SetBuildNext( 1, SORCERESS     )
-        call SetBuildNext( 1, SPELL_BREAKER )
+        if c_keep_done > 0 and c_vault_done > 0 then
+            call SetBuildNext( 1, SPELL_BREAKER )
+        endif
 
         if c_aviary_done >= 1 then
-            call SetBuildNext( 4, GRYPHON           )
-            call SetBuildNext( 2, HUMAN_DRAGON_HAWK )
+            if c_castle_done > 0 then
+                call SetBuildNext( 4, GRYPHON           )
+            endif
+            if c_vault_done > 0 then
+                call SetBuildNext( 2, HUMAN_DRAGON_HAWK )
+            endif
         endif
 
         if c_workshop_done >= 1 then
@@ -892,7 +907,9 @@ function build_sequence takes nothing returns nothing
         endif
 
         call SetBuildNext( 2, SORCERESS     )
-        call SetBuildNext( 1, SPELL_BREAKER )
+        if c_keep_done > 0 and c_vault_done > 0 then
+            call SetBuildNext( 1, SPELL_BREAKER )
+        endif
     endif
 
     if c_gold_owned < 10000 then

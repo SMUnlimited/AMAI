@@ -439,7 +439,7 @@ function attack_sequence takes nothing returns nothing
         set wave = wave + 1
         if wave == 2 then
             loop
-                exitwhen c_archer_done >= 4
+                exitwhen c_archer_done >= 4 or not basic_opening
                 call Sleep(2)
             endloop
         endif
@@ -553,6 +553,10 @@ function basics takes integer food returns nothing
     local integer archers
     local integer hunts
 
+    if c_war_done == 0 then
+        return
+    endif
+
     if archer_opening or c_hunt_hall_done < 1 then
 
         set archers = food / 2
@@ -581,17 +585,17 @@ endfunction
 //--------------------------------------------------------------------------------------------------
 function do_upgrades takes nothing returns nothing
 
-    if c_tree_etern_done >= 1 and c_hunt_hall_done >= 1 then
-        call SetBuildUpgr( 1, UPG_WELL_SPRING )
-    endif
     if c_tree_etern_done >= 1 then
-        call SetBuildUpgr( 1, UPG_BLESSING    )
-        if c_archer + c_hippo_done > 6 then
-          call SetBuildUpgr( 1, UPG_HIPPO_TAME  )
+        if c_hunt_hall_done >= 1 then
+            call SetBuildUpgr( 1, UPG_WELL_SPRING )
         endif
+        call SetBuildUpgr( 1, UPG_BLESSING    )
     endif
     if c_dryad >= 1 and c_lore_done >= 1 then
         call SetBuildUpgr( 1, UPG_ABOLISH     )
+    endif
+    if c_wind_done > 0 and c_archer + c_hippo_done > 6 then
+        call SetBuildUpgr( 1, UPG_HIPPO_TAME  )
     endif
 
     if c_roost_done >= 1 then
@@ -640,9 +644,13 @@ function do_upgrades takes nothing returns nothing
 
     if c_war_done >= 1 then
 
-        if c_huntress >= 3 and c_tree_etern_done >= 1 and c_hunt_hall_done >= 1 then
-            call SetBuildUpgr( 1, UPG_GLAIVE      )
-            call SetBuildUpgr( 1, UPG_SCOUT       )
+        if c_huntress >= 3 and c_hunt_hall_done >= 1 then
+            if c_tree_etern_done >= 1 then
+                call SetBuildUpgr( 1, UPG_GLAIVE      )
+            endif
+            if c_tree_ages_done > 0 then
+                call SetBuildUpgr( 1, UPG_SCOUT       )
+            endif
         endif
 
         if c_archer >= 3 then
@@ -654,32 +662,30 @@ function do_upgrades takes nothing returns nothing
                 endif
             endif
         endif
-        if c_ballista >= 1 then
+        if c_ballista >= 1 and c_tree_ages_done >= 1 and c_hunt_hall_done >= 1 then
             call SetBuildUpgr( 1, 'Repb'        )
         endif
+    endif
+    if c_hunt_hall_done > 0 then
         call SetBuildUpgr( 1, UPG_ULTRAVISION )
     endif
 
-    if c_lore_done >= 1 then
+    if c_lore_done >= 1 and c_bear >= 1 then
 
-        if c_bear >= 1 then
+        call SetBuildUpgr( 1, UPG_DRUID_CLAW  )
 
-            call SetBuildUpgr( 1, UPG_DRUID_CLAW  )
-
-            if c_tree_etern_done >= 1 then
-                call SetBuildUpgr( 2, UPG_DRUID_CLAW  )
-                call SetBuildUpgr( 1, UPG_MARK_CLAW   )
-            endif
+        if c_tree_etern_done >= 1 then
+            call SetBuildUpgr( 2, UPG_DRUID_CLAW  )
+            call SetBuildUpgr( 1, UPG_MARK_CLAW   )
         endif
+    endif
+    if c_wind_done > 0 and c_talon >= 1 then
 
-        if c_talon >= 1 then
+        call SetBuildUpgr( 1, UPG_DRUID_TALON )
 
-            call SetBuildUpgr( 1, UPG_DRUID_TALON )
-
-            if c_tree_etern_done >= 1 then
-                call SetBuildUpgr( 2, UPG_DRUID_TALON )
-                call SetBuildUpgr( 1, UPG_MARK_TALON  )
-            endif
+        if c_tree_etern_done >= 1 then
+            call SetBuildUpgr( 2, UPG_DRUID_TALON )
+            call SetBuildUpgr( 1, UPG_MARK_TALON  )
         endif
     endif
 endfunction
@@ -811,7 +817,9 @@ function build_sequence takes nothing returns nothing
     //
     else
         call SetBuildUnit( 1, ANCIENT_WAR   )
-        call SetBuildNext( 3, HUNTRESS      )
+        if c_hunt_hall_done > 0 and c_war_done > 0 then
+            call SetBuildNext( 3, HUNTRESS      )
+        endif
     endif
 
     // the primary ranged force is the dryad
@@ -830,7 +838,7 @@ function build_sequence takes nothing returns nothing
     //
     if b_acid_breath and c_roost_done >= 1 then
         call SetBuildUnit( 2, CHIMAERA )
-    elseif c_mtn_giant < 1 then
+    elseif c_war_done > 0 and c_mtn_giant < 1 and c_hunt_hall_done > 0 then
         call SetBuildUnit( 2, BALLISTA )
     endif
 
@@ -877,7 +885,7 @@ function build_sequence takes nothing returns nothing
     //
     if primary_melee then
         call SetBuildNext( 3, MOUNTAIN_GIANT )
-    else
+    elseif c_hunt_hall_done > 0 and c_war_done > 0 then
         call SetBuildNext( 7, HUNTRESS )
     endif
 
