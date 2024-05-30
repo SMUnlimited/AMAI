@@ -23,6 +23,7 @@ globals
     integer c_citadel_done      = 0
     integer c_fiend             = 0
     integer c_fiend_done        = 0
+    integer c_crypt_done        = 0
     integer c_food_made         = 0
     integer c_food_used         = 0
     integer c_garg              = 0
@@ -491,6 +492,7 @@ function init_vars takes nothing returns nothing
     set c_banshee_done      = GetUnitCountDone(BANSHEE)
     set c_boneyard_done     = GetUnitCountDone(BONEYARD)
     set c_citadel_done      = GetUnitCountDone(NECROPOLIS_3)
+    set c_crypt_done        = GetUnitCount(CRYPT)
     set c_fiend             = GetUnitCount(CRYPT_FIEND)
     set c_fiend_done        = GetUnitCountDone(CRYPT_FIEND) + GetUnitCountDone('ucrm')
     set c_garg              = TownCount(GARGOYLE)
@@ -576,12 +578,16 @@ endfunction
 //--------------------------------------------------------------------------------------------------
 function do_upgrades takes nothing returns nothing
 
-    if c_fiend >= 1 and c_halls_done > 0 then
+    if c_crypt_done > 0 and c_fiend >= 1 and c_halls_done > 0 and c_grave_done > 0 then
         call SetBuildUpgr( 1, UPG_BURROWING )
-        call SetBuildUpgr(  1, UPG_FIEND_WEB    )
+        call SetBuildUpgr( 1, UPG_FIEND_WEB)
     endif
 
-    if c_grave_done >= 1 and c_citadel_done >= 1 then
+    if c_crypt_done > 0 and c_abom + c_ghoul_done > 4 then
+        call SetBuildUpgr( 1, UPG_CANNIBALIZE)
+    endif
+
+    if c_crypt_done > 0 and c_grave_done >= 1 and c_citadel_done >= 1 then
         if c_garg >= 1 then
             call SetBuildUpgr( 1, UPG_STONE_FORM  )
         endif
@@ -598,7 +604,7 @@ function do_upgrades takes nothing returns nothing
             call SetBuildUpgr( 1, UPG_NECROS )
             if c_citadel_done >= 1 then
                 call SetBuildUpgr( 2, UPG_NECROS        )
-                call SetBuildUpgr( 2, UPG_SKEL_MASTERY  )
+                call SetBuildUpgr( 1, UPG_SKEL_MASTERY  )
             endif
         endif
 
@@ -612,7 +618,7 @@ function do_upgrades takes nothing returns nothing
         if c_necro >= 1 then
             call SetBuildUpgr( 1, UPG_SKEL_LIFE )
         endif
-        if c_necro > 5 then
+        if c_necro > 5 and c_slaughter_done > 0 and c_halls_done > 0 then
             call SetBuildUpgr( 1, UPG_EXHUME )
         endif
     endif
@@ -682,16 +688,25 @@ function build_sequence takes nothing returns nothing
         call SetBuildUnit(  1, NECROPOLIS_2     )
         call SetBuildUnit(  3, ZIGGURAT_1       )
         call SetBuildUnit(  8, GHOUL            )
-        call SetBuildUnit(  2, CRYPT_FIEND      )
+        if c_crypt_done > 0 and c_grave_done > 0 then
+            call SetBuildUnit(  2, CRYPT_FIEND      )
+        endif
         call SetBuildUnit(  1, TOMB_OF_RELICS   )
-        call SetBuildUnit(  3, CRYPT_FIEND      )
-
-        if MeleeDifficulty() != MELEE_NEWBIE then
-            call SetBuildUnit(  1, hero_id2     )
+        if c_crypt_done > 0 and c_grave_done > 0 then
+            call SetBuildUnit(  3, CRYPT_FIEND      )
+        endif
+        if c_zif < 1 and c_zig_done - c_spirit - c_zif > 0 then
+            call SetBuildUnit(  1, ZIGGURAT_FROST       )
         endif
 
         call undead_mine(1)
         call BasicExpansion( c_mines < 2, UNDEAD_MINE )
+
+        if MeleeDifficulty() != MELEE_NEWBIE then
+            call SetBuildUnit(  1, hero_id2     )
+        endif
+        call SetBuildUpgr(  1, UPG_UNHOLY_STR    )
+        call SetBuildUpgr(  1, UPG_UNHOLY_ARMOR  )
         if MeleeDifficulty() != MELEE_NEWBIE then
             call GuardSecondary( 1, 2, ZIGGURAT_1  )
             if c_zif < 2 and c_zig_done - c_spirit - c_zif > 0 then
@@ -700,11 +715,14 @@ function build_sequence takes nothing returns nothing
                 call GuardSecondary( 1, 1, ZIGGURAT_2  )
             endif
         endif
-        if c_zif < 1 and c_zig_done - c_spirit - c_zif > 0 then
+        if c_zif < 2 and c_zig_done - c_spirit - c_zif > 0 then
             call GuardSecondary( 0, 1, ZIGGURAT_FROST )
         elseif c_zig_done - c_spirit - c_zif > 0 and c_grave_done > 0 then
             call GuardSecondary( 0, 1, ZIGGURAT_2  )
         endif
+        call SetBuildUnit(  4, ZIGGURAT_1       )
+        call SetBuildUpgr(  1, UPG_CR_ATTACK    )
+        call SetBuildUpgr(  1, UPG_CR_ARMOR     )
         return
     endif
 
@@ -785,11 +803,15 @@ function build_sequence takes nothing returns nothing
     // minimum ranged/air defense
     //
     call SetBuildUnit( 1, GRAVEYARD )
-    if c_citadel_done >= 1 then
-        call SetBuildNext( 4, GARGOYLE )
+    if c_crypt_done > 0 then
+        if c_halls_done >= 1 and c_grave_done > 0 then
+            call SetBuildNext( 4, GARGOYLE )
+            call SetBuildNext( 2, CRYPT_FIEND   )
+        elseif c_grave_done > 0 then
+            call SetBuildNext( 3, CRYPT_FIEND   )
+        endif
     else
         call SetBuildUnit( 1, CRYPT         )
-        call SetBuildNext( 3, CRYPT_FIEND   )
     endif
 
     // siege attackers
@@ -805,7 +827,7 @@ function build_sequence takes nothing returns nothing
 
         call SetBuildUnit( 1, NECROPOLIS_2      )
         call SetBuildUnit( 1, SLAUGHTERHOUSE    )
-        call SetBuildNext( 2, MEAT_WAGON        )
+        //call SetBuildNext( 2, MEAT_WAGON        )
     endif
 
     // if we have a lot of gold then advance the tech tree
@@ -852,7 +874,7 @@ function build_sequence takes nothing returns nothing
 
     // extra troops
     //
-    if c_citadel_done >= 1 and c_tomb_done >= 1 then
+    if c_slaughter_done > 0 and c_tomb_done >= 1 then
         call SetBuildUnit( 2, OBS_STATUE )
         if b_sphinx_ok then
             call Conversions( 1, BLK_SPHINX )
@@ -864,7 +886,7 @@ function build_sequence takes nothing returns nothing
         call SetBuildUnit( 2, BANSHEE   )
     endif
 
-    if c_citadel_done >= 1 and c_tomb_done >= 1 and b_sphinx_ok then
+    if c_statue_done >= 1 and b_sphinx_ok then
         call Conversions( 1, BLK_SPHINX )
     endif
 
@@ -883,11 +905,11 @@ function build_sequence takes nothing returns nothing
     if c_food_used >= 60 and c_zep < 3 then
         call GetZeppelin()
     endif
-    if c_food_made > 100 and c_food_made - c_food_used < 4 then  // can build more food
-        call SetBuildUnit( c_zig + 1, ZIGGURAT_1 )
-    endif
     if c_zig_done - c_spirit - c_zif > 0 and c_gold > 800 then
         call SetBuildUnit( 1, ZIGGURAT_FROST )
+    endif
+    if c_food_made > 100 and c_food_made - c_food_used < 4 then  // can build more food
+        call SetBuildUnit( c_zig + 1, ZIGGURAT_1 )
     endif
 endfunction
 
