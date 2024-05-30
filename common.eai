@@ -8178,12 +8178,12 @@ function CheckUpkeepAllowed takes integer food returns nothing
 endfunction
 
 //===========================================================================
-function ApplyUpkeepCheck takes integer afford_food, integer food, integer food_cost, integer cost_qty, integer need_qty returns integer
+function ApplyUpkeepCheck takes integer afford_food, integer food, integer food_cost, integer need_qty returns integer
   local integer mines = GetMinesOwned()
   local integer i = 0
   loop
     exitwhen i >= UPKEEP_NUM
-    if food + food_cost * cost_qty > upkeep_border[i] then
+    if food + food_cost * need_qty > upkeep_border[i] then
       if upkeep_allowed[i] == UPKEEP_UNDECIDED then
         if total_gold > upkeep_resistance[i] or mines >= upkeep_mines_needed[i] then // Saved enough gold or got enough mines to support early tier up
           set upkeep_allowed[i] = UPKEEP_ALLOWED
@@ -9796,24 +9796,18 @@ function StartUpgradeAM takes integer level, integer upgid returns integer
   set gold_cost = GetUpgradeGoldCost(old_id[upgid])
   set wood_cost = GetUpgradeWoodCost(old_id[upgid])
 
-  set build_free[needed1[upgid]] = build_free[needed1[upgid]] - 1
-  if build_free[needed1[upgid]] >= 0 then
+  if total_gold - gold_cost < 0 and gold_cost > 0 then
+    return NOT_ENOUGH_RES
+  endif
+
+  if total_wood - wood_cost < 0 and wood_cost > 0 then
+    return NOT_ENOUGH_RES
+  endif
+  
+  if build_free[needed1[upgid]] >= 1 then // If needed1 building exists then remove gold from total, otherwise ignore and below setupgrade will fail
+    set build_free[needed1[upgid]] = build_free[needed1[upgid]] - 1
     set total_gold = total_gold - gold_cost
     set total_wood = total_wood - wood_cost
-    if total_gold < 0 then
-      set total_gold = 0
-    endif
-    if total_wood < 0 then
-      set total_wood = 0
-    endif
-  endif
-
-  if total_gold <= 0 and not (gold_cost == 0) then
-    return NOT_ENOUGH_RES
-  endif
-
-  if total_wood <= 0 and not (wood_cost == 0) then
-    return NOT_ENOUGH_RES
   endif
 
   if SetUpgrade(old_id[upgid]) then
@@ -10188,14 +10182,17 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
     local integer nn = GetNeutralNumber(unitid)
 
+    // If specified town not built ignore town specific requests
     if town != -1 and (not town_built[town] or (unitid != racial_expansion and TownCountTown(racial_expansion, town) <= 0)) then
         return BUILT_ALL
     endif
 
+    // If merc must wait for appropiate time to buy, otherwise ignore
     if buy_type[unitid] > BT_RACIAL_ITEM and (ai_time < available_time[unitid] or (neutral_guarded[nn] and ((daytime >= 5 and daytime < 18) or not neutral_night_buy[nn] or (buy_type[unitid] != BT_NEUTRAL_HERO and not ver_mercs_night_buy)))) then
       return BUILT_SOME
     endif
 
+    // Previous upgrade will set some time aside while upgrading, during which time requests are ignored till time has expired
     if needed3[unitid] == UPGRADED and town != -1 and ai_time < available_time[unitid] then
       return BUILT_SOME
     endif
@@ -10246,19 +10243,34 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       set afford_qty = afford_food
     endif
 
-    //------------------------------------------------------------------------
-    // whether we make right now what we're requesting or not, assume we will
-    // and deduct the cost of the units from our fake gold total right away
-    //
+    // Check if allowed to go over upkeep limit otherwise restrict qty
+    if (food_cost > 0) then
+      set afford_food = ApplyUpkeepCheck(afford_food, ver_food_limit - total_food, food_cost, afford_qty)
+      call ApplyUpkeepSaving()
+      call UpdateLastUpkeep()
+    endif
+
+    set afford_qty = Min(afford_qty, afford_food)
+
+    // if not enough resources gold, wood, food or spare buildings to build even 1 unit then block
+    if afford_qty <= 0 then
+      return NOT_ENOUGH_RES
+    endif
+    //if (need_qty > 3 and afford_qty + have_qty < 3 and have_qty == 0) then
+    //  return NOT_ENOUGH_RES // For large build orders ensure built some before building the next items in queue
+    //endif
+    
     if (buy_type[unitid] == BT_UNIT or buy_type[unitid] == BT_HERO) and CheckNotBuiltFrom(unitid) then
-      set cost_qty = build_free[n1]
-      if cost_qty > need_qty then
+    // If enough needed1 building exists and isn't building something else then remove gold from total for what we can build right now
+    // Note doesn't actually matter to much as SetProduce will only build what it can, but it would always return fail, but this ensures we can return success partly
+      if build_free[n1] >= need_qty then 
         set cost_qty = need_qty
+        set build_free[n1] = build_free[n1] - need_qty
+      else
+        set cost_qty = build_free[n1]
+        set build_free[n1] = 0
       endif
-      if cost_qty < 0 then
-        set cost_qty = 0
-      endif
-      set build_free[n1] = build_free[n1] - need_qty
+      // Set various variables for evaluating additional factory buildings
       if unitid != racial_peon then
         set gold_sum[n1] = gold_sum[n1] + need_qty * gold_cost
         set build_time_sum[n1] = build_time_sum[n1] + need_qty * GetUnitBuildTime(old_id[unitid])
@@ -10268,38 +10280,17 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     else
       set cost_qty = need_qty
     endif
+    set afford_qty = Min(cost_qty, afford_qty) // Apply what we can actually build from free buildings this time, this occurs after resource limit so it doesn't block as may already be building this unit
+    
+    // If haven't started building this unit ever then block
+    //if afford_qty <= 0 and have_qty == 0 then
+    //  return NOT_ENOUGH_RES
+    //endif
 
-    set cost_qty = Min(cost_qty, afford_food)
+    set total_gold = total_gold - gold_cost * afford_qty
+    set total_wood = total_wood - wood_cost * afford_qty
+    set total_food = total_food - food_cost * afford_qty
 
-    set afford_food = ApplyUpkeepCheck(afford_food, ver_food_limit - total_food, food_cost, cost_qty, need_qty)
-    call ApplyUpkeepSaving()
-    call UpdateLastUpkeep()
-
-    set cost_qty = Min(cost_qty, afford_food)
-    set afford_qty = Min(afford_qty, cost_qty)
-
-    set total_gold = total_gold - gold_cost * cost_qty
-    set total_wood = total_wood - wood_cost * cost_qty
-    set total_food = total_food - food_cost * cost_qty
-
-    if total_gold < 0 then
-      set total_gold = 0
-    endif
-    if total_wood < 0 then
-      set total_wood = 0
-    endif
-    if total_food < 0 then
-      set total_food = 0
-    endif
-
-    // if we're waiting on gold and wood; pause build orders
-    if total_gold <= 0 and not (gold_cost == 0) then
-      return NOT_ENOUGH_RES
-    elseif total_wood <= 0 and not (wood_cost == 0) then
-      return NOT_ENOUGH_RES
-    elseif afford_qty <= 0 then
-      return BUILT_SOME
-    endif
 
     //------------------------------------------------------------------------
     // give the AI a chance to make the units (it may not be able to right now
@@ -10313,10 +10304,11 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       endif
     endif
 
+// If research has modified the unit permanently into a different unit
   #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "UPGRADED_TO"
     if unitid == %1 and GetUpgradeLevel(o%4) >= %5 then
       if SetProduce(afford_qty,o%3,town) then
-        if (afford_qty == need_qty) and (need_qty == cost_qty) then
+        if (afford_qty + have_qty == need_qty) then
           return BUILT_ALL
         else
           return BUILT_SOME
@@ -10327,11 +10319,12 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     endif
   #ENDINCLUDE
 
+// Unit must be built/transformed from another unit
   #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "BUILT_FROM"
     if unitid == %1 then
       if GetUpgradeLevel(o%4) >= %5 then
         if ConvertUnits(afford_qty + have_qty, o%3) then
-          if (afford_qty == need_qty) and (need_qty == cost_qty) then
+          if (afford_qty + have_qty == need_qty) then
             return BUILT_ALL
           else
             return BUILT_SOME
@@ -10372,7 +10365,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       return UpgradeBuilding(afford_qty, unitid, town, bloc)
     endif
 
-    if unitid == racial_lumber and TownCount(racial_lumber) < 1 then
+    if unitid == racial_lumber and have_qty < 1 then
       if BuildLumberMillAtBase() then
         return BUILT_SOME
       else
@@ -10380,10 +10373,12 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       endif
     endif
 
+    // Shouldn't be needed as needed extra handled elsewhere, and setproduce will just fail already when it can't build it
+    //if not CanBuildUnit(unitid) then
+    //  return CANNOT_BUILD
+    //endif
+
     if bloc != BLOC_STD then
-      if not CanBuildUnit(unitid) then
-        return CANNOT_BUILD
-      endif
       if bloc == BLOC_FRONT and not front_locs_computed then
         return BUILT_SOME
       endif
@@ -10396,7 +10391,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       if needed3[unitid] == UPGRADED then
         set available_time[unitid] = ai_time + GetUnitBuildTime(old_id[unitid]) / 5 + 1
       endif
-      if (afford_qty == need_qty) and (need_qty == cost_qty) then
+      if (afford_qty + have_qty == need_qty)  then
         return BUILT_ALL
       else
         return BUILT_SOME
@@ -10522,28 +10517,18 @@ function StartExpansionAM takes integer qty, integer hall returns integer
 
   set total_gold = total_gold - gold_cost
   set total_wood = total_wood - wood_cost
-
-  if total_gold < 0 then
-    set total_gold = 0
-  endif
-  if total_wood < 0 then
-    set total_wood = 0
-  endif
-  if mines != 0 then
-    if total_gold <= 0 and not (gold_cost == 0) then
-      return NOT_ENOUGH_RES
-    endif
-    if total_wood <= 0 and not (wood_cost == 0) then
-      return NOT_ENOUGH_RES
-    endif
-  elseif GetGold() < gold_cost or GetWood() < wood_cost then  //fix priority , if have rescources and not mine , ensure expansion
-    return NOT_ENOUGH_RES
-  endif
-
+  
   set take_exp = (GetExpFoe(u) != null)
   set u = null
-  if take_exp or total_gold <= 0 or total_wood <= 0 then
-    return BUILT_SOME
+  if take_exp then
+    return BUILT_SOME // If creeps need clearing save the gold but don't block building at the moment as may need troops
+  endif
+
+  if total_gold < 0 and gold_cost > 0 then
+    return NOT_ENOUGH_RES
+  endif
+  if total_wood < 0 and wood_cost > 0 then
+    return NOT_ENOUGH_RES
   endif
 
  // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion rescources sorted")
@@ -10700,18 +10685,11 @@ function StartEmergencyItem takes integer ask_qty, integer itemid returns intege
   set gold = gold - gold_cost
   set wood = wood - wood_cost
 
-  if gold < 0 then
-    set gold = 0
-  endif
-  if wood < 0 then
-    set wood = 0
-  endif
-
-  if gold <= 0 and not (gold_cost == 0) then
+  if gold < 0 and gold_cost > 0 then
     return NOT_ENOUGH_RES
   endif
 
-  if wood <= 0 and not (wood_cost == 0) then
+  if wood < 0 and wood_cost > 0 then
     return NOT_ENOUGH_RES
   endif
 
@@ -10754,18 +10732,11 @@ function StartItem takes integer ask_qty, integer itemid returns integer
   set total_gold = total_gold - gold_cost
   set total_wood = total_wood - wood_cost
 
-  if total_gold < 0 then
-    set total_gold = 0
-  endif
-  if total_wood < 0 then
-    set total_wood = 0
-  endif
-
-  if total_gold <= 0 and not (gold_cost == 0) then
+  if total_gold < 0 and (gold_cost > 0) then
     return NOT_ENOUGH_RES
   endif
 
-  if total_wood <= 0 and not (wood_cost == 0) then
+  if total_wood < 0 and (wood_cost > 0) then
     return NOT_ENOUGH_RES
   endif
 

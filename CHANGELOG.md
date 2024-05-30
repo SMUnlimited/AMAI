@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - AMAI will not expand fast unless there is twice as many mines as players.
 - Quick fix where shop creeps were not being checked correctly to see if it was guarded or not.
 - Fixed an issue where when hero was at the home base it would cause AMAI to partly stop retreating.
+- Fixed some minor issues with build logic and calculating accurate resources available.
 - (Classic) Goblin alchemist not learning abilities.
 
 ## [3.3.4] - 2024-03-10
