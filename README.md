@@ -22,6 +22,7 @@ On windows make sure the maps to install onto are not in a protected UAC locatio
 - Or run installer as an administrator
 
 ## AMAI installer
+- The installer only works on Windows 7/8/10
 - The installer has to be downloaded separately as its much larger compared to the AI package.
 - Unzip the contents of the installer to a folder of your choice.
 - Double-click amai-electron-manager.exe to open the installer.
