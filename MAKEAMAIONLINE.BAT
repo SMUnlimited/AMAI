@@ -130,7 +130,7 @@ pjass TFT\common.j AMAI\Blizzard_TFT.j
 if "%errorlevel%"=="1" SET RESULTMAKETFT=1
 ECHO 经典版编译完成，编译结果在日志最后输出
 ECHO =============================
-ECHO 编译结果
+ECHO 输出编译结果
 ECHO _____________________________
 if "%RESULTMAKEREF%"=="1" (
   ECHO 重制版编译失败，附件重制版不可用--请耐心等待新的在线编译附件
