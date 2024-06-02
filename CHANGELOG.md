@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 - AMAI now takes direct control of alliance targets instead of using the hardcoded logic. This will enable better control and allow us to ignore the alliance target in some situations.
+- (Installer) New UI improvements to select install options rather than using the toolbar menu. (jzy-chitong56)
 - (DevTools) The scripts folder will include a Blizzard.j of the last version compiled as well as just the versioned copied so its easier to manually include into maps.
 
 ### Changed
