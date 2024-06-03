@@ -33,8 +33,8 @@ On windows make sure the maps to install onto are not in a protected UAC locatio
 There are multiple editions of AMAI available to install based on your warcraft 3 version you run with. You must use the correct abrievation to install the correct scripts.
 Improvements and fixes to the core AI engine will improve the older scripts as well.
 - **REFORGED** : The AI scripts intended for the latest version of warcraft 3 **1.36+** (regardless if its **reforged** or not)
-- **TFT** : The classic Frozen Throne AI scripts intended for TFT **1.24+** version of warcraft 3. Has some forwards compatability support up to **1.31** including 24 player support although tech tree changes in later versions will not be available to the AI.
-- **ROC** : The classic Reign of Chaos AI scripts intended for ROC **1.24+** version of warcraft 3. Has some forwards compatability support up to **1.31** including 24 player support although tech tree changes in later versions will not be available to the AI.
+- **TFT** : The classic Frozen Throne AI scripts intended for TFT **1.24+** version of warcraft 3. Has some forwards compatability support up to **1.31** including 24 player support although tech tree changes in later versions will not be available to the AI so may not perform as well as it could.
+- **ROC** : The classic Reign of Chaos AI scripts intended for ROC **1.24+** version of warcraft 3. Has some forwards compatability support up to **1.31** including 24 player support although tech tree changes in later versions will not be available to the AI so may not perform as well as it could.
 
 * Avoid v1.29.x of Warcraft 3 as it breaks various things. This is just an issue with this version and you can downgrade or upgrade.
   - Prevents AMAI from chatting.
