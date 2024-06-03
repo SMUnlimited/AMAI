@@ -52,17 +52,17 @@ ECHO 优化代码以减小压缩包体积
 perl Optimize.pl REFORGED\common.j AMAI\REFORGED\common.ai -l REFORGED\Races.txt AMAI\REFORGED\$2
 perl Optimize.pl -b AMAI\Blizzard_REFORGED.j
 pjass REFORGED\common.j AMAI\REFORGED\common.ai
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
+if "%errorlevel%"=="1" SET RESULTMAKEREF=1
 pjass REFORGED\common.j AMAI\REFORGED\common.ai AMAI\REFORGED\elf.ai
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
+if "%errorlevel%"=="1" SET RESULTMAKEREF=1
 pjass REFORGED\common.j AMAI\REFORGED\common.ai AMAI\REFORGED\human.ai
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
+if "%errorlevel%"=="1" SET RESULTMAKEREF=1
 pjass REFORGED\common.j AMAI\REFORGED\common.ai AMAI\REFORGED\orc.ai
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
+if "%errorlevel%"=="1" SET RESULTMAKEREF=1
 pjass REFORGED\common.j AMAI\REFORGED\common.ai AMAI\REFORGED\undead.ai
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
+if "%errorlevel%"=="1" SET RESULTMAKEREF=1
 pjass REFORGED\common.j AMAI\Blizzard_REFORGED.j
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
+if "%errorlevel%"=="1" SET RESULTMAKEREF=1
 ECHO 重制版编译完成，编译结果在日志最后输出
 ECHO =============================
 ECHO 编译经典版
@@ -117,15 +117,15 @@ ECHO 优化代码以减小压缩包体积
 perl Optimize.pl TFT\common.j AMAI\TFT\common.ai -l TFT\Races.txt AMAI\TFT\$2
 perl Optimize.pl -b AMAI\Blizzard_TFT.j
 pjass TFT\common.j AMAI\TFT\common.ai
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
+if "%errorlevel%"=="1" SET RESULTMAKETFT=1
 pjass TFT\common.j AMAI\TFT\common.ai AMAI\TFT\elf.ai
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
+if "%errorlevel%"=="1" SET RESULTMAKETFT=1
 pjass TFT\common.j AMAI\TFT\common.ai AMAI\TFT\human.ai
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
+if "%errorlevel%"=="1" SET RESULTMAKETFT=1
 pjass TFT\common.j AMAI\TFT\common.ai AMAI\TFT\orc.ai
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
+if "%errorlevel%"=="1" SET RESULTMAKETFT=1
 pjass TFT\common.j AMAI\TFT\common.ai AMAI\TFT\undead.ai
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
+if "%errorlevel%"=="1" SET RESULTMAKETFT=1
 pjass TFT\common.j AMAI\Blizzard_TFT.j
 if "%errorlevel%"=="1" SET RESULTMAKETFT=1
 ECHO 经典版编译完成，编译结果在日志最后输出
