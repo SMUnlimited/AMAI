@@ -32,13 +32,19 @@ On windows make sure the maps to install onto are not in a protected UAC locatio
 ## Warcraft Requirements and Versions
 There are multiple editions of AMAI available to install based on your warcraft 3 version you run with. You must use the correct abrievation to install the correct scripts.
 Improvements and fixes to the core AI engine will improve the older scripts as well.
-- **REFORGED** : The AI scripts intended for the latest version of warcraft 3 **1.36+** (regardless if its **reforged** or not)
-- **TFT** : The classic Frozen Throne AI scripts intended for TFT **1.24+** version of warcraft 3. Has some forwards compatability support up to **1.31** including 24 player support although tech tree changes in later versions will not be available to the AI so may not perform as well as it could.
-- **ROC** : The classic Reign of Chaos AI scripts intended for ROC **1.24+** version of warcraft 3. Has some forwards compatability support up to **1.31** including 24 player support although tech tree changes in later versions will not be available to the AI so may not perform as well as it could.
 
-* Avoid v1.29.x of Warcraft 3 as it breaks various things. This is just an issue with this version and you can downgrade or upgrade.
-  - Prevents AMAI from chatting.
-  - Heros not learning skills although we have a fix that can get applied this may not work if the map itself is too old.
+| AMAI Scripts      | Recommended Version | Supported Version      |
+| ----------------- | ------------------- | ------------------|
+| **REFORGED** | **1.36** | 1.33+ |
+| **TFT** | **1.24** | 1.24+ |
+| **ROC** | **1.24** | 1.24 - 1.31 |
+
+*Recommended* version is based on the tech tree this edition is based on. The larger the version difference the more likely it will affect the AIs ability to build, usually just unoptimal build order but worst case it can no longer build anything.
+Classic AI scripts have some forward compatibility built in to fix some issues in later versions including 24 player support.
+
+Avoid v1.29.x of Warcraft 3 and either upgrade or downgrade as it breaks various things including but not limited to: 
+  - Preventing AMAI from chatting.
+  - Heros not learning skills although we have a fix that can get applied, this may not work if the map itself is too old.
 
 ## Commandline install
 - From a windows commandline or powershell type `InstallREFORGEDToMap.bat "C:\mymap.w3m" 1` and press enter to install AMAI to maps
@@ -50,7 +56,8 @@ Improvements and fixes to the core AI engine will improve the older scripts as w
 - For linux/Mac some have been able to use WINE to use the command line scripts to install.
 
 ## Manual install
-- Especially for linux/Mac systems you can manually use the included `MPQEditor.exe` with WINE to install to a single map. 
+- You can manually use the included `MPQEditor.exe` to install to a single map. 
+- You can use this with WINE to install on linux/Mac systems too. 
 - Copy contents of `Scripts/VER` folder to a `Scripts` directory in the map and the `Scripts/Blizzard.j` into the map under the same Scripts directory.
 
 ## Notes
