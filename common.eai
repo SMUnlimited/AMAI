@@ -11867,8 +11867,14 @@ function AttackMoveTowerRush takes nothing returns nothing
 	local integer x = R2I(enemy_point_x)
 	local integer y = R2I(enemy_point_y)
 	local integer attack_length_counter = 0
+	local integer i = 0
 	local real threat = teleport_low_threat * 1.5
+	local real d = 0
+	local real md = 10000
 	local group g = CreateGroup()
+	local location l = GetStartLocationLoc(GetPlayerStartLocation(rushedplayer))
+	local unit mine = null
+	local unit u = null
 	loop
 		exitwhen not towerrush
 		exitwhen town_threatened and town_threat[most_threatened_town] >= threat
@@ -11882,30 +11888,63 @@ function AttackMoveTowerRush takes nothing returns nothing
 				call SetAllianceTargetIfLead(builder[10])
 			endif
 		elseif tower_attack_run then
-			if builder[10] == null or GetUnitState(builder[10], UNIT_STATE_LIFE) <= 0 then
-				call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1200, null)
-				set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-				set g = SelectByAlive(g, true)
-				set g = SelectByHidden(g,false)
-				set builder[10] = FirstOfGroup(g)
-				call GroupClear(g)
+			if take_exp and GetMinesOwned() < 2 and (mine == null or CheckExpansionTaken(mine)) then
+				loop
+					exitwhen i >= expansion_list_length
+					if GetResourceAmount(expansion_list[i]) > 0 and not CheckExpansionTaken(expansion_list[i]) then
+						set d = DistanceBetweenPoints_dk(GetUnitLoc(expansion_list[i]), l)
+						if d < md then
+							set md = d
+							set mine = expansion_list[i]
+						endif
+					endif
+					set i = i + 1
+				endloop
+				if mine != null then
+					set current_expansion = mine
+					set u = GetExpFoe(mine)
+				endif
+				set i = 0
 			endif
-			if ModuloInteger(attack_length_counter,5) == 0 and not town_threatened then
-				call SetAllianceTargetIfLead(builder[10])
+			if mine != null and u != null and GetPlayerStrength(rushedplayer) < 3 then
+				call CreateDebugTag("TRush: take mine", 10, u, 4.00, 2.00)
+				call Trace("TR : take mine" )
+				call AttackMoveKillCreep(u)
+				set u = null
+			endif
+			if not town_threatened then
+				if builder[10] == null or not UnitAlive(builder[10]) then
+					call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1200, null)
+					set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+					set g = SelectByAlive(g, true)
+					set g = SelectByHidden(g,false)
+					set builder[10] = FirstOfGroup(g)
+					call GroupClear(g)
+				endif
+				if ModuloInteger(attack_length_counter + 1,6) == 0 then
+					call SetAllianceTargetIfLead(builder[10])
+				endif
 			endif
 			if towers_built < 4 then
 				if tower_peon_inplace then
-					call AttackMoveXY(R2I(first_tower_point_x),R2I(first_tower_point_y))
+					if towers_built_count + force_number - 1 > 35 and towers_built < 2 then  //Prevent cannot build tower , but Enemy army is weak (maybe have ally attack), and AI not attack Enemy home
+						call AttackMoveXY(R2I(second_attack_point_x),R2I(second_attack_point_y))
+					elseif towers_built_count + force_number - 1 > 50 and towers_built < 2 then
+						call AttackMoveXY(x,y)
+					else
+						call AttackMoveXY(R2I(first_tower_point_x),R2I(first_tower_point_y))
+					endif
 				else
-					if tower_peon_point_x != 0 and tower_peon_point_y != 0 and ModuloInteger(attack_length_counter,2) == 0 and not town_threatened then
+					if tower_peon_point_x != 0 and tower_peon_point_y != 0 and ModuloInteger(attack_length_counter + 1,6) == 0 and not town_threatened then
 						call GroupEnumUnitsInRange(g, tower_peon_point_x, tower_peon_point_y, 1200, null)
 						set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
 						set g = SelectByPlayer(g, ai_player, true)
 						set g = SelectByAlive(g, true)
 						set g = SelectByHidden(g,false)
 					endif
-					if FirstOfGroup(g) != null then
-						call AttackMoveXY(R2I(GetUnitX(FirstOfGroup(g))),R2I(GetUnitY(FirstOfGroup(g))))
+					set u = FirstOfGroup(g)  // Ensure always give U a value
+					if u != null then
+						call AttackMoveXY(R2I(GetUnitX(u)),R2I(GetUnitY(u)))
 					else
 						call AttackMoveXY(R2I(GetUnitX(builder[1])),R2I(GetUnitY(builder[1])))
 					endif
@@ -11938,15 +11977,16 @@ function AttackMoveTowerRush takes nothing returns nothing
 		if attack_length_counter > attack_reform_length then
 			set attack_length_counter = 0
 			call FormGroupAM(0)
-			if towers_built >= 7 then
+			if towers_built >= 7 or (towers_built_count + force_number - 1 > 50 and towers_built < 2) then
 				call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1800, null)
 				set g = SelectByEnemy(g, ai_player, true)
 				set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
 				set g = SelectByAlive(g, true)
 				set g = SelectByHidden(g,false)
-				if FirstOfGroup(g) != null then
-					set x = R2I(GetUnitX(FirstOfGroup(g)))
-					set y = R2I(GetUnitY(FirstOfGroup(g)))
+				set u = FirstOfGroup(g)
+				if u != null then
+					set x = R2I(GetUnitX(u))
+					set y = R2I(GetUnitY(u))
 				endif
 				call GroupClear(g)
 			endif
@@ -11954,10 +11994,12 @@ function AttackMoveTowerRush takes nothing returns nothing
 	endloop
 	call DestroyGroup(g)
 	set g = null
-	set lastcaptainx = 0
-	set lastcaptainy = 0
-	call SleepInCombatAM()
+	call RemoveLocation(l)
+	set l = null
+	set u = null
 	set attack_running = false
+	call ClearAllianceTarget(null)
+	call ClearCaptainTargets()
 endfunction
 
 //============================================================================
