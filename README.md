@@ -9,7 +9,10 @@ Official Release Links available from: https://www.hiveworkshop.com/threads/adva
 As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601
 
 # How to Play
-AMAI release comes with the standard AI scripts pre-built for you.
+AMAI release has the standard AI scripts pre-built for you. You just need to install the scripts to maps or your game.
+
+## Map Extraction
+Most install options require installing onto maps, so these may need extraction first. 
 
 It is suggested to create a subfolder in your "maps" folder like `C:\Users\<username>\Documents\Warcraft III\Maps\AMAI` and copy the maps you intend to use AMAI with there.
 
@@ -21,30 +24,30 @@ On windows make sure the maps to install onto are not in a protected UAC locatio
 - This may mean you have to install to maps in a different directory then copy into your Maps folder afterwards 
 - Or run installer as an administrator
 
-## AMAI installer
+## Warcraft Requirements and Versions
+There are multiple editions of AMAI available to install based on your warcraft 3 version you run with. Some install methods you must use the correct abrievation in the table to install the correct scripts.
+Improvements and fixes to the core AI engine will improve the older scripts as well.
+
+| AMAI Scripts      | Optimal Version | Supported Version      |
+| ----------------- | ------------------- | ------------------|
+| **REFORGED** | **1.36** | 1.33+ |
+| **TFT** | **1.24** | 1.24+ |
+| **ROC** | **1.24** | 1.24 - 1.31 |
+
+*Optimal* version is based on the warcraft tech tree this edition is based on. Use a version further away from the optimal the more likely it will affect the AIs ability to build, usually just unoptimal build order but worst case it can no longer build at all.
+Classic AI scripts do have some forward compatibility built in to fix some major issues in later versions including 24 player support.
+
+Avoid v1.29.x of Warcraft 3 and either upgrade or downgrade as it breaks various things including but not limited to: 
+  - Preventing AMAI from chatting.
+  - Heros not learning skills although we have a fix that can get applied, this may not work if the map itself is too old.
+
+## AMAI UI installer
 - The installer only works on Windows 7/8/10 64bit.
 - The installer has to be downloaded separately as its much larger compared to the AI package.
 - Unzip the contents of the installer to a folder of your choice.
 - Double-click amai-electron-manager.exe to open the installer.
 - You can install to a single map or a whole directory.
 ![installer](installer.jpg)
-
-## Warcraft Requirements and Versions
-There are multiple editions of AMAI available to install based on your warcraft 3 version you run with. You must use the correct abrievation to install the correct scripts.
-Improvements and fixes to the core AI engine will improve the older scripts as well.
-
-| AMAI Scripts      | Recommended Version | Supported Version      |
-| ----------------- | ------------------- | ------------------|
-| **REFORGED** | **1.36** | 1.33+ |
-| **TFT** | **1.24** | 1.24+ |
-| **ROC** | **1.24** | 1.24 - 1.31 |
-
-*Recommended* version is based on the tech tree this edition is based on. The larger the version difference the more likely it will affect the AIs ability to build, usually just unoptimal build order but worst case it can no longer build anything.
-Classic AI scripts have some forward compatibility built in to fix some issues in later versions including 24 player support.
-
-Avoid v1.29.x of Warcraft 3 and either upgrade or downgrade as it breaks various things including but not limited to: 
-  - Preventing AMAI from chatting.
-  - Heros not learning skills although we have a fix that can get applied, this may not work if the map itself is too old.
 
 ## Commandline install
 - From a windows commandline or powershell type `InstallREFORGEDToMap.bat "C:\mymap.w3m" 1` and press enter to install AMAI to maps
@@ -60,12 +63,22 @@ Avoid v1.29.x of Warcraft 3 and either upgrade or downgrade as it breaks various
 - You can use this with WINE to install on linux/Mac systems too. 
 - Copy contents of `Scripts/VER` folder to a `Scripts` directory in the map and the `Scripts/Blizzard.j` into the map under the same Scripts directory.
 
+## Manual Mod Install
+You can install the scripts locally to your game folder to enable the AI for any map you play and to avoid extracting the official maps.
+
+- Change registry key: `HKEY_CURRENT_USER\Software\Blizzard Entertainment\Warcraft III" - Allow Local Files"=dword:00000001`
+- Create a Scripts folder locally and include the `*.ai` files and `Blizzard.j` for the VERSION you want.
+  - Pre 1.30 you can try and use the [WC3 Mod Manager](https://www.hiveworkshop.com/threads/wc3-mod-manager-v1-1-1.308948/) to enable.
+  - 1.30.0~1.31.x : Create Scripts folder in the game `root` directory
+  - 1.32.0 + : Create Scripts folder in the game `_retail_` directory
+- Run game and play a custom game on a standard melee map.
+
 ## Notes
 - Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on completly custom maps (e.g towerdefence), it will make no difference on such maps.
 - Custom melee maps need to be set to latest patch data. Open the map in the Warcraft editor, go to Scenario->Map Options-> and change "Game Data Set" to "Melee (Latest Patch)".
 - Lua maps do not appear to work. Open the map in the Warcraft editor, go to Scenario->Map Options-> and change "Script Language" to Jass, then install AMAI to it. If "Script Language" is disabled, please reset the "Trigger Editor" to its initial state.
 - You may need to run as an administrator if you have issues with maps not displaying any teams.
-- Note maps older than 1.24 will need resaving in the world editor for full 24 player support.
+- Note maps older than 1.24 will need resaving in the world editor if you want full 24 player support.
 
 # Build Requirements
 To build scripts from source code or to make custom changes you must install perl (via `strawberry` or `activestate`).
