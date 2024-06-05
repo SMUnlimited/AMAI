@@ -31,8 +31,8 @@ Improvements and fixes to the core AI engine will improve the older scripts as w
 | AMAI Scripts      | Optimal Version | Supported Version      |
 | ----------------- | ------------------- | ------------------|
 | **REFORGED** | **1.36.2** | 1.33+ |
-| **TFT** | **1.24** | 1.24+ |
-| **ROC** | **1.24** | 1.24 - 1.31 |
+| **TFT** | **1.24-1.28** | 1.24+ |
+| **ROC** | **1.24-1.28** | 1.24 - 1.31 |
 
 *Optimal* version is based on the warcraft tech tree this edition is based on. Use a version further away from the optimal the more likely it will affect the AIs ability to build, usually just unoptimal build order but worst case it can no longer build at all.
 Classic AI scripts do have some forward compatibility built in to fix some major issues in later versions including 24 player support.
