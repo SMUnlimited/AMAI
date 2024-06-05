@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) The scripts folder will include a Blizzard.j of the last version compiled as well as just the versioned copied so its easier to manually include into maps.
 
 ### Changed
+- Support tech tree changes for 1.36.2.
 - Better clarity on which versions of warcraft 3 to run AMAI on and whats optimal.
 - Retreat Control will now protect own towns first over allied towns.
 
