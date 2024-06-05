@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [Unreleased]
+## [3.3.5] - 2024-06-05
 
 ### Added
 - AMAI now takes direct control of alliance targets instead of using the hardcoded logic. This will enable better control and allow us to ignore the alliance target in some situations.
