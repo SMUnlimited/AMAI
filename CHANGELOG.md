@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## Unreleased
+
+### Fixed
+- Fixed an issue where the undead meat fiend strategy hero wasn't built first which blocked anything from building for the first minute.
+
 ## [3.3.5] - 2024-06-05
 
 ### Added
