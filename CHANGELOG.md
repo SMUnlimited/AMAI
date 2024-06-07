@@ -3,10 +3,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## Unreleased
+## [3.3.5a] - 2024-06-07
+
+### Changed
+- If AI is not strong enough to creep an expansion it won't save resources and instead use them to buy more units.
 
 ### Fixed
 - Fixed an issue where the undead meat fiend strategy hero wasn't built first which blocked anything from building for the first minute.
+- Fixed an issue where AI would expand less consistently because it decided it wanted to expand to an existing expansion. 
+- Disabled elf building farms on the front line as it too often causes blockages until we can work out a solution.
 
 ## [3.3.5] - 2024-06-05
 

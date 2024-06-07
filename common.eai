@@ -5992,6 +5992,8 @@ function CheckExpansionTaken takes unit expa returns boolean
   local unit u = null
   local integer claimedMines = 0
   local integer minecount = 0
+  local integer ownedmines = 0
+  local boolean mineclaimed = true
   if expa == null then
     return false
   elseif expa == not_taken_expansion then // Used in the ancient expansion and item expansion system
@@ -6002,7 +6004,6 @@ function CheckExpansionTaken takes unit expa returns boolean
   endif
   set g = CreateGroup()
   call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
-  call GroupRemoveUnit(g, expa)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), false)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   //set g = SelectByAlive(g, true)
@@ -6010,25 +6011,34 @@ function CheckExpansionTaken takes unit expa returns boolean
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
+    // Enemy holds the area
     if IsPlayerEnemy(GetOwningPlayer(u), ai_player) then
       call DestroyGroup(g)
       set g = null
       set u = null
       return true
     endif
-    if IsUnitGoldMine(u) or IsUnitType(u,UNIT_TYPE_TOWNHALL) then
-      if IsValidMineClaimed(u) and DistanceBetweenUnits(u, expa) < race_max_expa_mine_distance then
+    if u == expa then
+      set mineclaimed = false // Mine not been captured by elf or undead
+    endif
+    if IsUnitGoldMine(u) then // This is just informative doesnt affect check
+      if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_PASSIVE) then
+        set minecount = minecount + 1
+      else
+        set ownedmines = ownedmines + 1
+      endif  
+    endif
+    // A single town hall of humans and orcs can capture close enough mines
+    // For now elf will also claim the mines, due to elf mine has to wait for tree of ages to be built so don't want allies to grab mine before its complete.
+    if IsUnitType(u,UNIT_TYPE_TOWNHALL) and GetUnitTypeId(u) != old_id[NECROPOLIS_1] and GetUnitTypeId(u) != old_id[NECROPOLIS_2] and GetUnitTypeId(u) != old_id[NECROPOLIS_3] and DistanceBetweenUnits(u, expa) < race_max_expa_mine_distance then
         set claimedMines = claimedMines + 1
-      endif
-      if not IsUnitType(u, UNIT_TYPE_TOWNHALL) then
-        set minecount = minecount + 1 // Informative but not used
-      endif
     endif
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
   set g = null
-  return claimedMines >= 1 // While there may be extra mines, we focusing on is this mine taken
+  call CreateDebugTagLoc("Mines:" + Int2Str(minecount) +" Taken:" + Int2Str(claimedMines) + " Own:" + Int2Str(ownedmines), 10, GetUnitX(expa), GetUnitY(expa), 10.00, 1.80)
+  return claimedMines >= 1 or mineclaimed// While there may be extra mines, we focusing on is this mine taken
 endfunction
 
 // Prevent some map creeps too far away
@@ -10476,20 +10486,28 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   local boolean f = false
   local boolean w = false
   if countdone >= qty then
+    call Trace("AMAIStartexpa: Built All Expansions")
     return BUILT_ALL
   endif
-  if (count > countdone) or town_threatened then
+  if (count > countdone) then
+    call Trace("AMAIStartexpa: All Expansions being built")
+    return BUILT_SOME
+  endif
+  
+  if town_threatened then
+    call Trace("AMAIStartexpa: Town threatened")
     return BUILT_SOME
   endif
 
   if first_town_mine > 1 and MultipleMinefix() then
+    call Trace("AMAIStartexpa: Built All MultiMineFix")
     return BUILT_ALL
   endif
 
   if current_expansion == null or CheckExpansionTaken(current_expansion) then
     call ChooseExpansion()
     if current_expansion == null then
-     call Trace("AMAIStartexpa: Expansion Not Found")
+      call Trace("AMAIStartexpa: Expansion Not Found")
       return BUILT_ALL
     endif
   endif
@@ -10523,6 +10541,12 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   set take_exp = (GetExpFoe(u) != null)
   set u = null
   if take_exp then
+    if GetOwnStrength() <= GetExpansionStrength() then
+      // Not strong enough to take mine so don't save gold and wood for expansion, use to build more troops instead
+      set total_gold = total_gold + gold_cost
+      set total_wood = total_wood + wood_cost
+    endif
+    call Trace("AMAIStartexpa: Need to remove creeps from expansion")
     return BUILT_SOME // If creeps need clearing save the gold but don't block building at the moment as may need troops
   endif
 
@@ -10876,6 +10900,7 @@ local unit u = null
 local boolean upkeepboost = false
 
 if not first_expansion_chosen then
+  call Trace("ExpansionBuilder: First expansion not chosen")
   return
 endif
 if current_expansion == null or CheckExpansionTaken(current_expansion) then
@@ -10949,6 +10974,7 @@ endloop
 
 if mines < 1 or gold_left < 2500 or exp_prepared then
   call Trace("ExpansionBuilder: Putting mine on build list")
+  call CreateDebugTagLoc("Current Expansion", 10, GetUnitX(current_expansion), GetUnitY(current_expansion), 1.00, 0.80)
   if mines < 1 or gold_left < 2500 then
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_emergency_prio)
   elseif rebuild or upkeepboost then
@@ -10956,6 +10982,8 @@ if mines < 1 or gold_left < 2500 or exp_prepared then
   else
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_prio)
   endif
+else
+  call Trace("ExpansionBuilder: Not ready to build mine")
 endif
 
 endfunction
@@ -12806,11 +12834,9 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
 
         set hall = ChooseAttackTarget(hall)
         if hall != null and UnitAlive(hall) then
-          call SetAllianceTargetIfLeadAndChat(alli_target, C_Attack) // This technically won't work as the new attack move in the sleep loop will redirect this player as well to this target
-          //set alli_target = null
+          call SetAllianceTargetIfLeadAndChat(alli_target, C_Attack)
           call FormGroupAM(3)
           call AttackMoveKillAAM(hall)
-          call ClearAllianceTarget(hall)
           set hall = null
           return
         endif
@@ -13294,7 +13320,9 @@ function universal_peon_assignment takes nothing returns nothing
   if (desperation_assault) then
     return
   endif
-
+  
+  call Trace("Harvest Gold at Town:" + Int2Str(T) )
+  call CreateDebugTagLoc("MINES:" + Int2Str(GetMinesOwned()) + ":" + Int2Str(T), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
   call HarvestGold(T,ver_optimal_gold - 1)
   call HarvestWood(0,1)
   call HarvestGold(T,1)
@@ -13302,7 +13330,7 @@ function universal_peon_assignment takes nothing returns nothing
   call HarvestWood(0,swh)
 
   set T = Max(T + 3,TownCountDone(racial_expansion))
-  call CreateDebugTagLoc("MINES:" + Int2Str(GetMinesOwned()), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
+  //call CreateDebugTagLoc("MINES:" + Int2Str(GetMinesOwned()), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
   loop
     exitwhen i > T
     if T != i and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then
