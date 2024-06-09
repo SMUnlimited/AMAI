@@ -147,4 +147,15 @@ if "%RESULTMAKETFT%"=="1" (
   ECHO 经典版编译成功，经典版附件可用--请按教程安装
   echo 经典版附件可用--请按教程安装（为减少压缩包体积，代码已优化且失去阅读性）...支持冰封王座1.24e+，平衡性为1.24e > AMAI\经典版脚本可用.txt
 )
-ECHO =============================
+ECHO _____________________________
+SET RESULTMAKEALL=0
+for /f "delims=" %%a in ('cmd /c echo %RESULTMAKEREF%*%RESULTMAKETFT%') do set RESULTMAKEALL=%%a
+if "%RESULTMAKEALL%"=="2" (
+  exit /b %RESULTMAKEALL%
+)
+if "%RESULTMAKEREF%"=="1" (
+  exit /b %RESULTMAKEREF%
+)
+if "%RESULTMAKETFT%"=="1" (
+  exit /b %RESULTMAKETFT%
+)
