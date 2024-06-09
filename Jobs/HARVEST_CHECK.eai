@@ -66,9 +66,9 @@ function PeonMineCheck takes unit mine returns boolean
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null or i >= delaywisps
-      if GetUnitCurrentOrder(u) == OrderId("harvest") and DistanceBetweenUnits(u,mine) < 225 then  // UD harvest gold max Distance is 221
+      if GetUnitCurrentOrder(u) == OrderId("harvest") and DistanceBetweenUnits(u,mine) < 300 then  // UD harvest gold max standard distance is 221
         set i = i + 1
-      elseif (GetUnitCurrentOrder(u) == 0 or (GetUnitCurrentOrder(u) == OrderId("move") and peond < 6)) and not IsUnitBuying(u) then
+      elseif (GetUnitCurrentOrder(u) == 0 or (GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE))) and not IsUnitBuying(u) then
         call GroupAddUnit(tempg,u)  // prevent the mine harvest peon more than 5
       endif
       call GroupRemoveUnit(g, u)
@@ -90,17 +90,28 @@ function PeonMineCheck takes unit mine returns boolean
     set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
     set g = SelectByAlive(g, true)
     set g = SelectByHidden(g, false)
-    set g = GetNearestSubGroupOfGroup(g, unitloc, 5)
+    if TownCount(racial_hall[1]) > 1 then
+      set g = GetNearestSubGroupOfGroup(g, unitloc, 5)
+    endif
+    if peon < 8 then
+      set peon = 3
+    else
+      set peon = 2
+    endif
     loop
       set u = FirstOfGroup(g)
-      exitwhen u == null or i >= 3
-      if (GetUnitCurrentOrder(u) == 0 or GetUnitCurrentOrder(u) == OrderId("harvest") or (GetUnitCurrentOrder(u) == OrderId("move") and peond < 6)) and not IsUnitBuying(u) then  // no get other order peon , maybe the peon go buy unit or build some
+      exitwhen u == null or i >= peon
+      if (GetUnitCurrentOrder(u) == 0 or GetUnitCurrentOrder(u) == OrderId("harvest") or (GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE))) and not IsUnitBuying(u) then  // no get other order peon , maybe the peon go buy unit or build some
         call IssueTargetOrder(u, "harvest", mine)
         set i = i + 1
       endif
       call GroupRemoveUnit(g, u)
     endloop
-    set i = delaywisps  //human and orc no need full
+    if peond < 7 then
+      set i = -1  // At the beginning of the game, pay more attention
+    else
+      set i = delaywisps  //human and orc no need full
+    endif
   endif
   call RemoveLocation(unitloc)
   set unitloc = null
@@ -121,7 +132,7 @@ function HarvestCheckJob takes nothing returns nothing
   if first_town_mine == -1 then
     return  // home_location no more mine , ORC and HUMAN no need run
   endif
-  if (GetGold() > 1600 or GetWood() < 200 or GetRandomInt(0,6) > 5) and not race_manual_loading and not race_uses_mine_expansion then  // human and orc
+  if (GetGold() > 1600 or (GetWood() < 200 and hero_built[1])) and not race_manual_loading and not race_uses_mine_expansion then  // human and orc
     call TQAddJob(32, HARVEST_CHECK, 0)  // Prevent too many peon harvest
     return
   endif
@@ -135,7 +146,7 @@ function HarvestCheckJob takes nothing returns nothing
       call GroupEnumUnitsInRangeOfLoc(g, home_location, 1500, null)
       set g = SelectByPlayer(g, ai_player, true)
       set g = SelectById(g, old_id[racial_expansion], true)
-    elseif fixmine != null and GetResourceAmount(fixmine) > 0 and (TownCountDone(racial_peon) > 8 or GetGold() < 200) then  //human and orc
+    elseif fixmine != null and GetResourceAmount(fixmine) > 0 and (TownCountDone(racial_peon) > 8 or (GetUnitCount(old_id[hero[1]]) < 0 and not hero_built[1]) or GetGold() < 300) then  //human and orc
       call GroupAddUnit(g, fixmine)  // get fixmine on MultipleMinefix , prevention all peon harvest so only one mine
       if GetResourceAmount(fixmine) < 300 then
         set timeifx = 36

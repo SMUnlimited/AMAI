@@ -3,29 +3,39 @@
 function ZeppelinFollowJob takes nothing returns nothing
   local real dist = 0
   local location l = null
-  local group g = null
+  local group g = CreateGroup()
+  local group cg = null
+  local unit u = null
   local location heroloc = null
   call DisplayToAllJobDebug("ZEPPELIN_FOLLOW Start")
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectById(g, old_id[neutral_zeppelin], true)
+  //set g = SelectByOrderOr(g, 0, order_attack, true)
+  set g = SelectByUnitStandard(g, true)
+  set g = SelectByUnitFree(g, true)
+  call cg = CopyGroup(g, cg)
   if follow_zeppelin == null or not UnitAlive(follow_zeppelin) then
-    //call GroupEnumUnitsOfType(g, "goblinzeppelin", null)
-    set g = CreateGroup()
-    call GroupEnumUnitsOfPlayer(g, ai_player, null)
-    set g = SelectById(g, old_id[neutral_zeppelin], true)
-    //set g = SelectByOrderOr(g, 0, order_attack, true)
-    set g = SelectByUnitStandard(g, true)
-    set g = SelectByUnitFree(g, true)
-    //if FirstOfGroup(g) != null then
-    //  call GroupPointOrderLoc(g, "attack", home_location)
-    //endif
     if major_hero != null and UnitAlive(major_hero) then
       set heroloc = GetUnitLoc(major_hero)
       set follow_zeppelin = GetNearestOfGroup(follow_zeppelin, g, heroloc)
       call RemoveLocation(heroloc)
       set heroloc = null
     endif 
-    call DestroyGroup(g)
-    set g = null
   endif
+  call GroupRemoveUnit(cg,follow_zeppelin)
+  loop
+    set u = FirstOfGroup(cg)
+    exitwhen u == null
+    if GetUnitCurrentOrder(u) == 0 or GetUnitCurrentOrder(u) == OrderId("stop") then  // Prevent stuck in can not repair areas or other unknown situations
+      call IssuePointOrder(u, "move", GetUnitX(u) + GetRandomReal(-200,200), GetUnitY(u) + GetRandomReal(-200,200))
+      call RecycleGuardPosition(u)
+    endif
+    call GroupRemoveUnit(cg,u)
+  endloop
+  call DestroyGroup(cg)
+  set cg = null
+  call DestroyGroup(g)
+  set g = null
   if follow_zeppelin == null or IsUnitBuying(follow_zeppelin) or not UnitAlive(follow_zeppelin) or IsUnitInGroup(follow_zeppelin, unit_rescueing) or IsUnitInGroup(follow_zeppelin, unit_zepplin_move) then
     set follow_zeppelin = null
     call TQAddJob(10, ZEPPELIN_FOLLOW, 0)
