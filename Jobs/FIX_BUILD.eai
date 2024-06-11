@@ -1,0 +1,91 @@
+#IFDEF GLOBAL
+boolean fixbuild = false
+#ELSE
+
+// ######################## Fix Build #################
+// #  Created by JZY 11/06/24.
+// #  fix some mine to close map , AI can not build at home , but build here player home , if the player not ally , AI maybe can not build .
+// ##################################################################
+
+function FixBuildJob takes nothing returns nothing
+  local group g = null
+  local unit u = null
+  local unit array peon
+  local unit array build
+  local integer i = 0
+  local integer array id
+  local real x = 0
+  local real y = 0
+  local boolean b = false
+  if GetUnitCount(old_id[racial_altar]) < 1 or GetUnitCount(old_id[racial_farm]) < 2 then  // if have ho other player
+    call DisplayToAllJobDebug("Fix Build Job Start")
+    set g = CreateGroup()
+    call GroupEnumUnitsInRangeOfLoc(g, home_location, 3000, null)
+    call GroupRemoveUnit(g, expansion_peon)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null or i >= 3
+      if not IsUnitHidden(u) and GetOwningPlayer(u) == ai_player and IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitLoaded(u) and UnitAlive(u) and not IsUnitBuying(u) then
+        set peon[i] = u
+        set i = i + 1
+        if GetUnitCurrentOrder(u) == racial_rushcreep then
+          set b = true
+        elseif DistanceBetweenPoints_kd(home_location,GetUnitLoc(u)) > 800 or GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) then
+          call IssuePointOrderByIdLoc(u, 851987, home_location)
+        endif
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+    call DestroyGroup(g)
+    set g = null
+    set u = null
+    if GetUnitCount(old_id[racial_altar]) < 1 then  // must create all build
+      set build[0] = CreateUnit(ai_player, old_id[racial_altar], GetLocationX(home_location) + GetRandomReal(-650, 650), GetLocationY(home_location) + GetRandomReal(-650, 650), 270)
+      set id[0] = old_id[racial_altar]
+      call CreateDebugTag("fix build altar", 10, build[0], 5.00, 3.00)
+    endif
+    if own_race == R_ELF then
+      if racial_rushcreep > 0 and not b then
+        set racial_rushcreep = -1  // abnormal , no build rushcreep
+      endif
+      set id[1] = 'eaom'
+    elseif own_race == R_HUMAN then
+      set id[1] = 'hbar'
+    elseif own_race == R_ORC then
+      set id[1] = 'obar'
+    elseif own_race == R_UNDEAD then
+      set id[1] = 'usep'
+    endif
+    if GetUnitCount(id[1]) < 2 then
+      set build[1] = CreateUnit(ai_player, id[1], GetLocationX(home_location) + GetRandomReal(-650, 650), GetLocationY(home_location) + GetRandomReal(-650, 650), 270)
+      call CreateDebugTag("fix build Barracks", 10, build[1], 5.00, 3.00)
+    endif
+    if GetUnitCount(old_id[racial_farm]) < 1 or (GetUnitCount(id[1]) > 0 and GetUnitCount(old_id[racial_farm]) < 2) then
+      set build[2] = CreateUnit(ai_player, old_id[racial_farm], GetLocationX(home_location) + GetRandomReal(-650, 650), GetLocationY(home_location) + GetRandomReal(-650, 650), 270)
+      set id[2] = old_id[racial_farm]
+      call CreateDebugTag("fix build farm", 10, build[2], 5.00, 3.00)
+    endif
+    set i = 0
+    set b = false
+    call SetPlayerGold(ai_player, GetPlayerState(ai_player,PLAYER_STATE_RESOURCE_GOLD) + 120)  // Prevent can not build
+    call SetPlayerGold(ai_player, GetPlayerState(ai_player,PLAYER_STATE_RESOURCE_LUMBER) + 80)
+    loop
+      exitwhen i >= 3
+      if build[i] != null then
+        set x = GetUnitX(build[i])
+        set y = GetUnitY(build[i])
+        call RemoveUnit(build[i])
+        set build[i] = null
+        if peon[i] != null then
+          set b = IssuePointOrderById(peon[i], id[i], x, y)
+        endif
+      endif
+      set peon[i] = null
+      set i = i + 1
+    endloop
+    if not b or GetUnitCount(old_id[racial_farm]) < 2 then
+      call TQAddJob(2, FIX_BUILD, 0)
+    endif
+  endif
+endfunction
+#ENDIF
