@@ -10,7 +10,10 @@
   integer GameTimeSec = 0
   timer ClockTimer = null
   #ELSE
-
+  boolean W3CClock = true
+  real GameTimeSec = 0
+  timer ClockTimer = null
+  timerdialog W3CTimerDialog = null
   #ENDIF
   #UNDEF VER
 #ELSE
@@ -71,7 +74,7 @@ function CreateW3CMiniMapIcons takes nothing returns nothing
   local real maxMinimapDist = RMaxBJ(GetCameraBoundMaxX() - GetCameraBoundMinX() + 768 , GetCameraBoundMaxY() - GetCameraBoundMinY() + 512) / 2
   local real xCenter = (GetCameraBoundMaxX() + GetCameraBoundMinX()) / 2
   local real yCenter = (GetCameraBoundMaxY() + GetCameraBoundMinY()) / 2
-  if W3CIcons == false or not IsMapFlagSet(MAP_FOG_HIDE_TERRAIN) then
+  if W3CIcons == false or IsMapFlagSet(MAP_FOG_HIDE_TERRAIN) then
     return
   endif
   set g = CreateGroup()
@@ -110,12 +113,24 @@ function CreateW3CMiniMapIcons takes nothing returns nothing
   call W3CMiniMapIcons()
 endfunction
 
-function SetClockText takes string s, integer i returns string
-  local integer timeMin = i / 60
-  local integer timeSec = i - (timeMin * 60)
-  if timeMin < 100 then
-    set s = s + " "
+function UpdateW3CClock takes nothing returns nothing
+  local string s = "Time: "
+  local integer timeHour = 0
+  local integer timeMin = 0
+  local integer timeSec = 0
+  set GameTimeSec = GameTimeSec + 1
+  if GameTimeSec >= 360000 then  // 5999 minutes in seconds
+    set GameTimeSec = 359999  // Cap at 999:59:59
   endif
+  set timeHour = GameTimeSec / 3600
+  set timeMin = (GameTimeSec - (timeHour * 3600)) / 60
+  set timeSec = GameTimeSec - (timeHour * 3600) - (timeMin * 60)
+  // set timeMin = GameTimeSec / 60
+  // set timeSec = GameTimeSec - (timeMin * 60)
+  if timeHour < 10 then
+    set s = s + "0"
+  endif
+  set s = s + I2S(timeHour) + " : "
   if timeMin < 10 then
     set s = s + "0"
   endif
@@ -124,18 +139,8 @@ function SetClockText takes string s, integer i returns string
     set s = s + "0"
   endif
   set s = s + I2S(timeSec)
-  return s
-endfunction
-
-function UpdateClock takes nothing returns nothing
-  local string timeString = "Time: "
-  set GameTimeSec = GameTimeSec + 1
-  if GameTimeSec >= 60000 then  // 1000 minutes in seconds
-    set GameTimeSec = 59999  // Cap at 999:59
-  endif
-  set timeString = SetClockText(timeString, GameTimeSec)
-  call BlzFrameSetText(clock, timeString)
-  set timeString = null
+  call BlzFrameSetText(clock, s)
+  set s = null
 endfunction
 
 function SetW3CClock takes nothing returns nothing
@@ -156,12 +161,12 @@ function CreateW3CClock takes nothing returns nothing
   local integer i = 0
   if clock == null then
     set clock = BlzCreateFrameByType("TEXT", "GameTime", BlzGetOriginFrame(ORIGIN_FRAME_GAME_UI, 0), "", 0)
-    call BlzFrameSetAbsPoint(clock, FRAMEPOINT_CENTER, 0.475, 0.561)  //0.465, 0.563
+    call BlzFrameSetAbsPoint(clock, FRAMEPOINT_CENTER, 0.488, 0.561)  //0.465, 0.563
     call BlzFrameSetScale(clock, 1.2)
-    call BlzFrameSetText(clock, "Time:  00:00")
+    call BlzFrameSetText(clock, "Time: 00 : 00 : 00")
     call BlzFrameSetTextColor(clock, BlzConvertColor(255, 205, 205, 50))
     set ClockTimer = CreateTimer()
-    call TimerStart(ClockTimer, 1, true, function UpdateClock)
+    call TimerStart(ClockTimer, 1, true, function UpdateW3CClock)
   endif
   loop
     exitwhen i >= GetBJMaxPlayers()
@@ -175,13 +180,50 @@ function CreateW3CClock takes nothing returns nothing
 endfunction
 
   #ELSE
-  // old war3 cannot use
-function CreateW3CMiniMapIcons takes nothing returns nothing
 
+function CreateW3CMiniMapIcons takes nothing returns nothing
+  // old war3 cannot use
+endfunction
+
+function UpdateW3CClock takes nothing returns nothing
+  if W3CTimerDialog == null then
+    set W3CTimerDialog = CreateTimerDialogBJ( null, "Time: " )
+    call TimerDialogDisplayBJ(W3CClock, W3CTimerDialog)
+  endif
+  set GameTimeSec = GameTimeSec + 0.5
+  call TimerDialogSetRealTimeRemaining(W3CTimerDialog,I2R(R2I(GameTimeSec)))
+endfunction
+
+function SetW3CClock takes nothing returns nothing
+  if GetTriggerPlayer() != null then
+    if W3CClock == false then
+      set W3CClock = true
+      call DisplayTimedTextToForce(GetPlayersAll(), 7.00, "Game time clock |cff00ff00[on]|r")
+    else
+      set W3CClock = false
+      call DisplayTimedTextToForce(GetPlayersAll(), 7.00, "Game time clock |cfffd0000[off]|r")
+    endif
+    if W3CTimerDialog != null then
+      call TimerDialogDisplayForPlayerBJ(W3CClock, W3CTimerDialog, GetTriggerPlayer())
+    endif
+  endif
 endfunction
 
 function CreateW3CClock takes nothing returns nothing
-
+  local trigger t = CreateTrigger()
+  local integer i = 0
+  if ClockTimer == null then
+    set ClockTimer = CreateTimer()
+    call TimerStart(ClockTimer, 0.5, true, function UpdateW3CClock)
+  endif
+  loop
+    exitwhen i >= GetBJMaxPlayers()
+    if GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER then
+      call TriggerRegisterPlayerChatEvent(t, Player(i), "-clock", true)
+    endif
+    set i = i + 1
+  endloop
+  call TriggerAddAction(t, function SetW3CClock)
 endfunction
 
   #ENDIF
