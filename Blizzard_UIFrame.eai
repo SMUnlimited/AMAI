@@ -13,6 +13,7 @@
   boolean W3CClock = true
   real GameTimeSec = 0
   timer ClockTimer = null
+  timer ClockTimerTemp = null
   timerdialog W3CTimerDialog = null
   #ENDIF
   #UNDEF VER
@@ -186,10 +187,6 @@ function CreateW3CMiniMapIcons takes nothing returns nothing
 endfunction
 
 function UpdateW3CClock takes nothing returns nothing
-  if W3CTimerDialog == null then
-    set W3CTimerDialog = CreateTimerDialogBJ( null, "Time: " )
-    call TimerDialogDisplayBJ(W3CClock, W3CTimerDialog)
-  endif
   set GameTimeSec = GameTimeSec + 0.5
   call TimerDialogSetRealTimeRemaining(W3CTimerDialog,I2R(R2I(GameTimeSec)))
 endfunction
@@ -203,9 +200,16 @@ function SetW3CClock takes nothing returns nothing
       set W3CClock = false
       call DisplayTimedTextToForce(GetPlayersAll(), 7.00, "Game time clock |cfffd0000[off]|r")
     endif
-    if W3CTimerDialog != null then
-      call TimerDialogDisplayForPlayerBJ(W3CClock, W3CTimerDialog, GetTriggerPlayer())
-    endif
+    call TimerDialogDisplayForPlayerBJ(W3CClock, W3CTimerDialog, GetTriggerPlayer())
+  endif
+endfunction
+
+function CreateW3CClockDialog takes nothing returns nothing
+  if W3CTimerDialog == null then
+    call DestroyTimer(ClockTimerTemp)
+    set ClockTimerTemp = null
+    set W3CTimerDialog = CreateTimerDialogBJ( null, "Time: " )
+    call TimerDialogDisplayBJ(W3CClock, W3CTimerDialog)
   endif
 endfunction
 
@@ -214,7 +218,9 @@ function CreateW3CClock takes nothing returns nothing
   local integer i = 0
   if ClockTimer == null then
     set ClockTimer = CreateTimer()
+    set ClockTimerTemp = CreateTimer()
     call TimerStart(ClockTimer, 0.5, true, function UpdateW3CClock)
+    call TimerStart(ClockTimerTemp, 0.01, false, function CreateW3CClockDialog)
   endif
   loop
     exitwhen i >= GetBJMaxPlayers()
