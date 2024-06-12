@@ -133,7 +133,9 @@ ECHO =============================
 ECHO 输出编译结果
 ECHO _____________________________
 if "%RESULTMAKEREF%"=="1" (
-  ECHO 重制版编译失败，附件重制版不可用--请耐心等待新的在线编译附件
+  ECHO 重制版编译失败，附件重制版不可用--请改天再来
+  rmdir /s /q "AMAI\REFORGED"  
+  del /s /q /f "AMAI\Blizzard_REFORGED.j"
   echo 附件重制版不可用--请勿安装并等待新的在线编译附件 > AMAI\重制版脚本不可用.txt
 ) else (
   ECHO 重制版编译成功，重制版附件可用--请按教程安装
@@ -141,7 +143,9 @@ if "%RESULTMAKEREF%"=="1" (
 )
 ECHO _____________________________
 if "%RESULTMAKETFT%"=="1" (
-  ECHO 经典版编译失败，附件经典版不可用--请耐心等待新的在线编译附件
+  ECHO 经典版编译失败，附件经典版不可用--请改天再来
+  rmdir /s /q "AMAI\TFT"  
+  del /s /q /f "AMAI\Blizzard_TFT.j"
   echo 附件经典版不可用--请勿安装并等待新的在线编译附件 > AMAI\经典版脚本不可用.txt
 ) else (
   ECHO 经典版编译成功，经典版附件可用--请按教程安装
