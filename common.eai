@@ -3477,33 +3477,37 @@ endfunction
 //============================================================================
 function countAllyEnemy takes nothing returns nothing
   local integer i = 0
+  local integer ai_total = 0
+  local integer force_num = 0
+  local integer ally = 0
+  local integer ally_user = 0
+  local integer enemy = 0
+  local integer enemy_user = 0
   local boolean self_came = false
   local boolean next_came = false
   local boolean first_ai = true
   local integer next_ai = 0
   local player p = null
-
   loop
     exitwhen i > RACE_NUMBER
     set c_ally[i] = 0
     set c_enemy[i] = 0
     set i = i + 1
   endloop
-
   set i = 0
   loop
     exitwhen i >= GetBJMaxPlayers()
     set p = Player(i)
     if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(p) then
       if GetPlayerController(p) == MAP_CONTROL_COMPUTER then
-        set c_ai_total = c_ai_total + 1
+        set ai_total = ai_total + 1
       endif
       if IsPlayerAlly(ai_player,p) then
         if i == GetAiPlayer() then
           set self_came = true
           set next_came = true
-          set own_force[force_number] = p
-          set force_number = force_number + 1
+          set own_force[force_num] = p
+          set force_num = force_num + 1
         else
           if GetPlayerController(p) == MAP_CONTROL_COMPUTER then
             if not self_came then
@@ -3512,28 +3516,34 @@ function countAllyEnemy takes nothing returns nothing
               set next_ai = i
               set next_came = false
             endif
-            set own_force[force_number] = p
-            set force_number = force_number + 1
+            set own_force[force_num] = p
+            set force_num = force_num + 1
           else
             set no_ally_ctrl = false
-            set c_ally_user_total = c_ally_user_total + 1
+            set ally_user = ally_user + 1
           endif
           set c_ally[player_race[i]] = c_ally[player_race[i]] + 1
-          set ally_force[c_ally_total] = p
-          set c_ally_total = c_ally_total + 1
+          set ally_force[ally] = p
+          set ally = ally + 1
         endif
       elseif IsPlayerEnemy(ai_player,p) then
         if GetPlayerController(p) != MAP_CONTROL_COMPUTER then
-          set c_enemy_user_total = c_enemy_user_total + 1
+          set enemy_user = enemy_user + 1
         endif
         set c_enemy[player_race_pref[i]] = c_enemy[player_race_pref[i]] + 1
-        set enemy_force[c_enemy_total] = p
-        set c_enemy_total = c_enemy_total + 1
+        set enemy_force[enemy] = p
+        set enemy = enemy + 1
       endif
     endif
     set i = i + 1
   endloop
   set p = null
+  set c_ai_total = ai_total
+  set force_number = force_num
+  set c_ally_total = ally
+  set c_ally_user_total = ally_user
+  set c_enemy_total = enemy
+  set c_enemy_user_total = enemy_user
   set no_ai_ally = first_ai and next_ai == 0
 endfunction
 
@@ -5356,6 +5366,9 @@ function GetLocationCreepAirStrength takes real x, real y, real radius returns i
     if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsUnitType(u, UNIT_TYPE_FLYING) and UnitAlive(u) and not IsUnitHidden(u) then
       set airsum = airsum + GetUnitStrength(u)
     endif
+    if UnitCanSleep(u) then
+      set no_sleep = true
+    endif
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
@@ -5391,8 +5404,8 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
   endloop
   call DestroyGroup(g)
   set g = null
-  set air_strength = R2I(airsum + 0.5)
   set p = null
+  set air_strength = R2I(airsum + 0.5)
   return R2I(sum + 0.5)
 endfunction
 
@@ -5413,8 +5426,12 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
     if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) then
       if IsUnitType(u, UNIT_TYPE_HERO) then
         set sum = sum + GetHeroStrength(u)
-      elseif IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) and not IsUnitType(u, UNIT_TYPE_MELEE_ATTACKER) then
-        set sum = sum + 0.5
+      elseif IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+        if not IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) and not IsUnitType(u, UNIT_TYPE_MELEE_ATTACKER) then
+          set sum = sum + 0.5
+        else
+          set sum = sum + 1
+        endif
       else
         set sum = sum + GetUnitStrength(u)
       endif
@@ -6113,7 +6130,6 @@ function AddExpansion takes unit u, real d returns nothing
   endloop
   call DestroyGroup(g)
   set g = null
-  set creep = null
   call SaveInteger(expansion_creeps, expansion_list_length, 0, i) // Store size in first element
   if first_expansion_chosen == false then
     set first_expansion_chosen = d > front_base_distance and not CheckExpansionTaken(u)
@@ -6142,7 +6158,6 @@ function AddWaterExpansion takes unit u, real d returns nothing
   endloop
   call DestroyGroup(g)
   set g = null
-  set creep = null
   call SaveInteger(water_expansion_creeps, water_expansion_list_length, 0, i) // Store size in first element
   set water_expansion_list_length = water_expansion_list_length + 1
 endfunction
@@ -7735,17 +7750,15 @@ function RemovePJ takes integer jid, integer par returns nothing
   endif
 endfunction
 
-function PJHandleOnce takes integer t, texttag tt returns boolean
+function PJHandleOnce takes integer t returns boolean
   if TimerGetElapsed(tq_timer) - pj_time[t] >= pj_frequency[t] then
     call TQDoJob(pj_jid[t], pj_par[t], null, null, null)
     set pj_time[t] = TimerGetElapsed(tq_timer)
-    call UpdateDebugTextTag(tt, "path job sys : " + Int2Str(pj_jid[t]), 10, GetLocationX(home_location) + 300, GetLocationY(home_location))
     if pj_remove[t] then
       call RemovePJ(pj_jid[t], pj_par[t])
     endif
     return true
   endif
-  call UpdateDebugTextTag(tt, "path job sys : not job", 10, GetLocationX(home_location) + 300, GetLocationY(home_location))
   return false
 endfunction
 
@@ -7824,25 +7837,39 @@ function PathingThread takes nothing returns nothing
   call PJInitJobs()  // this job no need run on job system , help job system more focused on combat
   set pathing_done = true
   call StaggerSleep(1,RMax(5,sleep_multiplier))
-  loop
-    exitwhen player_defeated
-    if pj_length == 0 or not PJHandleOnce(t, tt) then
+  if pj_length > 0 then
+    loop
+      exitwhen player_defeated
+      if PJHandleOnce(t) then
+        call UpdateDebugTextTag(tt, "path job sys : " + Int2Str(pj_jid[t]), 10, GetLocationX(home_location) + 300, GetLocationY(home_location))
+        call Sleep(RMin(1, GetRandomReal(0.5, 0.8) * sleep_multiplier))
+      else
+        call UpdateDebugTextTag(tt, "path job sys : not job", 10, GetLocationX(home_location) + 300, GetLocationY(home_location))
+        call Sleep(1)
+      endif
+      set t = t + 1
+      if t > pj_length then
+        set t = 1
+      endif
+      if active_expansion then
+        set i = i + 1
+        if i >= 120 then
+          set i = 0
+          set active_expansion = GetPlayerUnitTypeCount(Player(PLAYER_NEUTRAL_PASSIVE),'ngol') >= (c_enemy_total + c_ally_total + 1) * 2
+        endif
+      endif
+    endloop
+  elseif active_expansion then
+    loop
+      exitwhen player_defeated or not active_expansion
       call Sleep(1)
-    else
-      call Sleep(RMin(1, GetRandomReal(0.5, 0.8) * sleep_multiplier))
-    endif
-    set t = t + 1
-    if t > pj_length then
-      set t = 1
-    endif
-    if active_expansion then
       set i = i + 1
-      if i >= 60 then
+      if i >= 120 then
         set i = 0
         set active_expansion = GetPlayerUnitTypeCount(Player(PLAYER_NEUTRAL_PASSIVE),'ngol') >= (c_enemy_total + c_ally_total + 1) * 2
       endif
-    endif
-  endloop
+    endloop
+  endif
   call UpdateDebugTextTag(tt, "path job sys : end", 10, GetLocationX(home_location) + 300, GetLocationY(home_location))
 endfunction
 
@@ -9840,10 +9867,10 @@ function ExecuteAirDistribute takes group g, boolean anti returns nothing
     exitwhen u == null or c >= i
     set id = GetUnitTypeId(u)
     if (id == 'edot' or id == 'edtm') and IsStandardUnit(u) and not IsUnitBuying(u) then
-      call IssueImmediateOrderById( u, order)
+      call IssueImmediateOrderById(u, order)
       set c = c + 1
     elseif id == 'ugar' and AatpAbility and (GetUnitAbilityLevel(u, 'Batp') == 0) == anti and IsStandardUnit(u) and not IsUnitBuying(u) then  // check 'ugar' Ability ,  prevent war3 is old ver or map is ROC
-      call IssueImmediateOrderById( u, 852677)
+      call IssueImmediateOrderById(u, 852677)
       set c = c + 1
     endif
     call GroupRemoveUnit(g, u)
@@ -11939,7 +11966,7 @@ function GetNearAlliedStrength takes unit target returns real
   local real dist = DistanceBetweenPoints(unitloc, ally_loc) + 600
   loop
     exitwhen i >= army_num
-    if Player(army_owner[i]) != ai_player and IsPlayerAlly(ai_player, Player(army_owner[i])) then
+    if IsPlayerAlly(ai_player, Player(army_owner[i])) and Player(army_owner[i]) != ai_player then
       if army_loc[i] != null and army_future[i] != null and DistanceBetweenPoints(unitloc, army_loc[i]) > dist and DistanceBetweenPoints(unitloc, army_future[i]) < 1300 then
         set sum = sum + army_strength[i]
       endif
@@ -11959,7 +11986,7 @@ function GetNearerAlliedStrength takes unit target returns real
   local real dist = DistanceBetweenPoints(unitloc, ally_loc) + 600
   loop
     exitwhen i >= army_num
-    if Player(army_owner[i]) != ai_player and IsPlayerAlly(ai_player, Player(army_owner[i])) then
+    if IsPlayerAlly(ai_player, Player(army_owner[i])) and Player(army_owner[i]) != ai_player then
       if army_loc[i] != null and army_future[i] != null and DistanceBetweenPoints(unitloc, army_loc[i]) <= dist and DistanceBetweenPoints(unitloc, army_future[i]) < 1600 then
         set sum = sum + army_strength[i]
       endif
@@ -12977,8 +13004,8 @@ function Ancient_Expansion takes nothing returns nothing
   if ancient_exp_maintree then
     loop
       exitwhen desperation_assault or break_attack
-      exitwhen town_threat_break and town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat
-      exitwhen ancient_exp_unit == null or not UnitAlive(ancient_exp_unit) or not ancient_exp_maintree
+      exitwhen town_threat_break and town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat and TownCount(racial_expansion) > 1
+      exitwhen ancient_exp_unit == null or not UnitAlive(ancient_exp_unit) or not ancient_exp_maintree or TownCount(racial_expansion) < 1
       exitwhen isfleeing or CaptainRetreating() or CaptainIsEmpty()
       if ModuloInteger(i, 7) == 0 then
         call AttackMoveXY(R2I(GetUnitX(ancient_exp_unit)) + ISign() * GetRandomInt(200, 400),R2I(GetUnitY(ancient_exp_unit)) + ISign() * GetRandomInt(200, 400))
@@ -13357,7 +13384,7 @@ if not creeping_only then	// Do the normal attack sequence
     endif
 
     if GetHeroXP(hero_unit[1]) < GetRandomInt(50,150) or GetHeroXP(hero_unit[1]) > GetRandomInt(300,850) or GetHeroXP(hero_unit[2]) > 450 or FoodUsed() > GetRandomInt(40,60) then
-
+      set alli_target = null
       set hall = ChooseAttackTarget(hall)
       if hall != null and UnitAlive(hall) then
         call SetAllianceTargetIfLeadAndChat(alli_target, C_Attack)
@@ -13365,11 +13392,9 @@ if not creeping_only then	// Do the normal attack sequence
         call AttackMoveKillAAM(hall)
         //call ClearAllianceTarget(null)
         set hall = null
-        set alli_target = null
         return
       endif
       set hall = null
-      set alli_target = null
     endif
   endif
 endif // if not creep only
