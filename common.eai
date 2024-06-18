@@ -3550,12 +3550,12 @@ endfunction
 //==========================================================================
 // (AMAI)	CopyGroup
 //==========================================================================
-function CopyGroup takes group sg , group copyg returns group
-  set copyg = CreateGroup()
-  if FirstOfGroup(sg) != null then
-    call BlzGroupAddGroupFast(sg,copyg)
+function CopyGroup takes group g , group gnew returns group
+  set gnew = CreateGroup()
+  if FirstOfGroup(g) != null then
+    call BlzGroupAddGroupFast(g,gnew)
   endif
-  return copyg
+  return gnew
 endfunction
 
 //==========================================================================
@@ -5366,7 +5366,7 @@ function GetLocationCreepAirStrength takes real x, real y, real radius returns i
     if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsUnitType(u, UNIT_TYPE_FLYING) and UnitAlive(u) and not IsUnitHidden(u) then
       set airsum = airsum + GetUnitStrength(u)
     endif
-    if UnitCanSleep(u) then
+    if not UnitCanSleep(u) then
       set no_sleep = true
     endif
     call GroupRemoveUnit(g,u)
@@ -5998,8 +5998,6 @@ function MultipleMinefix takes nothing returns boolean
     set b = gold <= GetUnitGoldCost2(racial_expansion) / 3 and gold > 0
   elseif c < 2 then
     set b = false
-    set current_expansion = null
-    set not_taken_expansion = null
   endif
   call DestroyGroup(g)
   set g = null
@@ -6753,8 +6751,8 @@ function GetExpFoe takes unit nearunit returns unit
       endif
     endif
   endloop
-  if tempnear == 0 and LoadInteger(t, current_expansion_creeps, 0) != 0 then
-    call SaveInteger(t, current_expansion_creeps, 0, 0)
+  if nearunit == null and LoadInteger(t, current_expansion_creeps, 0) != 0 then
+    call SaveInteger(t, current_expansion_creeps, 0, -1)
   endif
   call RemoveLocation(l)
   set l = null
@@ -7427,9 +7425,7 @@ function TQHandleOnce takes nothing returns boolean
   if TimerGetElapsed(tq_timer) >= tq_time[1] then
     set jobtimings = TimerGetElapsed(tq_timer)
     call TQRemoveRoot()
-    if debugging then
-      call UpdateDebugTextTag(debugjobtag, Int2Str(jid), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
-    endif
+    call UpdateDebugTextTag(debugjobtag, Int2Str(jid), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
     call TQDoJob(jid, par, unit_par, group_par, unit_par2)
     if jobtimings - TimerGetElapsed(tq_timer) >= 1 then
       call Trace("WARN: Job " + Int2Str(jid) + " took a long time " + Real2Str(jobtimings - TimerGetElapsed(tq_timer)) + "s")
@@ -10224,7 +10220,6 @@ function GetNeutralHero takes integer unitid returns integer
 
   if not neutral_available[NEUTRAL_TAVERN] then
     call Trace("No Tavern Available")
-    set recalculate_heros = true
     return BUILT_ALL
   endif
   if nearest_neutral[NEUTRAL_TAVERN] == null or neutral_guarded[NEUTRAL_TAVERN] then
@@ -10418,7 +10413,7 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
   endif
   call RemoveUnit(u)
   set u = null
-  if peon == null then
+  if peon == null or not UnitAlive(peon) then
     set peon = GetExpansionPeon2(peon)  // In case we can't get the expansion peon
   endif
   if l == null then
@@ -10833,7 +10828,6 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   if total_gold < 0 and gold_cost > 0 then
     return NOT_ENOUGH_RES
   endif
-
   if total_wood < 0 and wood_cost > 0 then
     return NOT_ENOUGH_RES
   endif
@@ -13838,11 +13832,14 @@ endfunction
 function ForcedHarvest takes nothing returns boolean
   local integer T = 0
   local integer i = 0
-  if ((FoodUsed() <= 20 and hero_built[3]) or GetMinesOwned() < 1) and GetGold() <= 2500 and Forced_Harvest_total == 0 then  // later stages of the game, AI may not be harvest
+  local integer c = 2
+  if Forced_Harvest_total == 0 and hero_built[2] and (FoodUsed() <= 20 or GetGold() <= 800 or TownCountDone(racial_expansion) > 1) then  // later stages of the game, AI may not be harvest
+    if race_uses_mine_expansion then
+      set c = GetUnitCountDone(old_id[racial_expansion])
+    endif
     loop
-      exitwhen i > max_towns or T > 2
-      if own_town_mine[i] != null and GetResourceAmount(own_town_mine[i]) > 0 then
-        call PeonMineCheck(own_town_mine[i])
+      exitwhen i >= max_towns or T >= c
+      if own_town_mine[i] != null and GetResourceAmount(own_town_mine[i]) > 0 and PeonMineCheck(own_town_mine[i]) then
         set T = T + 1
         call CreateDebugTag("Forced Harvest mine " + Int2Str(i), 10, own_town_mine[i], 3.00, 1.50)
       endif
