@@ -3457,6 +3457,8 @@ function SetNearestEnemy takes nothing returns nothing
   local integer i = 0
   local real nr = 0
   local real humanrange = Max(3, mapSize) * 3200  // preventing long-distance attacks
+  set nearest_enemy = null
+  set nearest_human_enemy = null
   loop
     exitwhen i >= c_enemy_total
     if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
@@ -7746,10 +7748,10 @@ function RemovePJ takes integer jid, integer par returns nothing
   endif
 endfunction
 
-function PJHandleOnce takes integer t returns boolean
-  if TimerGetElapsed(tq_timer) - pj_time[t] >= pj_frequency[t] then
+function PJHandleOnce takes integer t, real te returns boolean
+  if te - pj_time[t] >= pj_frequency[t] then
     call TQDoJob(pj_jid[t], pj_par[t], null, null, null)
-    set pj_time[t] = TimerGetElapsed(tq_timer)
+    set pj_time[t] = te
     if pj_remove[t] then
       call RemovePJ(pj_jid[t], pj_par[t])
     endif
@@ -7836,7 +7838,7 @@ function PathingThread takes nothing returns nothing
   if pj_length > 0 then
     loop
       exitwhen player_defeated
-      if PJHandleOnce(t) then
+      if PJHandleOnce(t, TimerGetElapsed(tq_timer)) then
         call UpdateDebugTextTag(tt, "path job sys : " + Int2Str(pj_jid[t]), 10, GetLocationX(home_location) + 300, GetLocationY(home_location))
         call Sleep(RMin(1, GetRandomReal(0.5, 0.8) * sleep_multiplier))
       else
@@ -12830,8 +12832,8 @@ function ChooseEnemyBaseTarget takes unit u returns unit
   local integer c = 0
   call StartGetEnemyBase()
   loop
-    exitwhen not WaitGetEnemyBase() or town_threatened or isfleeing or CaptainRetreating() or CaptainIsEmpty()
-    if c > 4 then
+    exitwhen not WaitGetEnemyBase()
+    if c > 4 or town_threatened or isfleeing or CaptainRetreating() or CaptainIsEmpty() then
       return null
     endif
     call Sleep(1)
@@ -12941,8 +12943,8 @@ function Militia_Expansion takes integer m returns nothing
   call DisplayToAlliesChat(militia_expansion_chat)
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectNumberOfId(g, 100, old_id[racial_peon])
-  set g = GetNearestSubGroupOfGroup(g, home_location, m)
   set g = SelectByAlive(g, true)
+  set g = GetNearestSubGroupOfGroup(g, home_location, m)
   //set expansion_peon = FirstOfGroup(g)
   call AddAbilityToGroup(CopyGroup(g,cg), race_militia_ability)
   call GroupImmediateOrder(g, race_militia_unitstring)
@@ -13538,12 +13540,11 @@ function GetArmyHealthState takes nothing returns real
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set id = GetUnitTypeId(u)
-    if id == 'ohwd' then
-      set ward_cast = true
-    endif
     if UnitAlive(u) and not (IsUnitHidden(u) or IsUnitType(u, UNIT_TYPE_PEON) or IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitIllusion(u)) then
-      if GetUnitAbilityLevel(u, 'Ahwd') > 0 and ward == null then
+      set id = GetUnitTypeId(u)
+      if id == 'ohwd' then
+        set ward_cast = true
+      elseif not ward_cast and ward == null and (GetUnitAbilityLevel(u, 'Ahwd') > 0 or GetUnitAbilityLevel(u, 'AChw') > 0) then
         set ward = u
       endif
       if IsUnitType(u, UNIT_TYPE_MECHANICAL) or IsUnitType(u, UNIT_TYPE_SUMMONED) then
@@ -13578,7 +13579,7 @@ function GetArmyHealthState takes nothing returns real
   else
     set fountain_available = (neutral_night_buy[hFountainID] and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6)) or not neutral_guarded[hFountainID]
   endif
-  if not ward_cast and ward != null then
+  if not ward_cast and ward != null and UnitAlive(ward) then
     set ward_cast = IssuePointOrder(ward, "healingward", GetUnitX(ward), GetUnitY(ward))
   endif
   set ward = null
@@ -13687,14 +13688,15 @@ function HealArmy takes nothing returns nothing
   loop
     set hs = GetArmyHealthState()
     if ward_cast then
+      set i = 0
       loop
-        exitwhen player_defeated or town_threatened or ver_heroes == false or i > 4
+        exitwhen player_defeated or town_threatened or i >= 4
+        call Sleep(sleep_multiplier)  // wait ward cast health
         set i = i + 1
-        call Sleep(1)
+        if i >= 4 then
+          set hs = GetArmyHealthState()
+        endif
       endloop
-      if not (player_defeated or town_threatened or ver_heroes == false) then
-        set hs = GetArmyHealthState()
-      endif
     endif
     exitwhen sleepFrequency >= 3 and hs > healthTrigger // Tried to heal but overall still strong so exit loop
     exitwhen urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger
@@ -13832,11 +13834,8 @@ endfunction
 function ForcedHarvest takes nothing returns boolean
   local integer T = 0
   local integer i = 0
-  local integer c = 2
-  if Forced_Harvest_total == 0 and hero_built[2] and (FoodUsed() <= 20 or GetGold() <= 800 or TownCountDone(racial_expansion) > 1) then  // later stages of the game, AI may not be harvest
-    if race_uses_mine_expansion then
-      set c = GetUnitCountDone(old_id[racial_expansion])
-    endif
+  local integer c = TownCountDone(racial_expansion)
+  if Forced_Harvest_total == 0 and hero_built[2] and (FoodUsed() <= 26 or GetGold() <= (800 + tier * 100) or c > 1) then  // later stages of the game, AI may not be harvest
     loop
       exitwhen i >= max_towns or T >= c
       if own_town_mine[i] != null and GetResourceAmount(own_town_mine[i]) > 0 and PeonMineCheck(own_town_mine[i]) then
