@@ -6734,7 +6734,7 @@ function GetExpFoe takes unit nearunit returns unit
   if current_expansion_iswater then
     set t = water_expansion_creeps
   endif
-  if LoadInteger(t, current_expansion_creeps , 0) == 0 then
+  if LoadInteger(t, current_expansion_creeps , 0) <= 0 then
     call Trace("GetExpFoe: No creeps in current expansion")
     set t = null
     return null
@@ -6753,7 +6753,7 @@ function GetExpFoe takes unit nearunit returns unit
       endif
     endif
   endloop
-  if nearunit == null and LoadInteger(t, current_expansion_creeps, 0) != 0 then
+  if nearunit == null and LoadInteger(t, current_expansion_creeps, 0) >= 0 then
     call SaveInteger(t, current_expansion_creeps, 0, -1)
   endif
   call RemoveLocation(l)
@@ -11890,7 +11890,7 @@ function DoDistractionAttack takes unit target returns nothing
   if d_target != null then
     call StartHarass(distraction_group, HARASS_TARGET_LOCATION, false, 15, 0.25, 1, GetUnitX(d_target), GetUnitY(d_target))
     set d_target = null
-    call Sleep(15)
+    call Sleep(3)
   endif
 endfunction
 
@@ -13026,7 +13026,8 @@ endfunction
 function SleepUntilTownDefended takes integer ai_strength returns nothing
   local integer defense_length_counter = 0
   local real t = 2 * sleep_multiplier
-  local boolean b = false
+  local boolean b = most_threatened_town > 0 and Player(town_owner[most_threatened_town]) != ai_player
+  call SetDefendPlayer(b)
   set own_strength = ai_strength
   call Trace("==Sleep Defend Town==" )
   loop
@@ -13066,6 +13067,7 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
   endloop
   call Trace("==exit Sleep Defend Town==")
   call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
+  call SetDefendPlayer(false)
 endfunction
 
 function SetLeadAlly takes nothing returns nothing
@@ -13266,8 +13268,8 @@ if not creeping_only then	// Do the normal attack sequence
       if ancient_attack_running then
         call Ancient_Expansion()
         set ancient_attack_running = false
-        return
       endif
+      return
     endif
   endif
 
@@ -13853,7 +13855,8 @@ function ForcedHarvest takes nothing returns boolean
   if Forced_Harvest_total == 0 and hero_built[2] and (FoodUsed() <= 26 or GetGold() <= (800 + tier * 100) or c > 1) then  // later stages of the game, AI may not be harvest
     loop
       exitwhen i >= max_towns or T >= c
-      if own_town_mine[i] != null and GetResourceAmount(own_town_mine[i]) > 0 and PeonMineCheck(own_town_mine[i]) then
+      if own_town_mine[i] != null and GetResourceAmount(own_town_mine[i]) > 0 then
+        call PeonMineCheck(own_town_mine[i])
         set T = T + 1
         call CreateDebugTag("Forced Harvest mine " + Int2Str(i), 10, own_town_mine[i], 3.00, 1.50)
       endif
