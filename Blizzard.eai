@@ -120,6 +120,13 @@
     trigger W3CDeny = CreateTrigger()
     trigger W3CDenyControl = CreateTrigger()
 
+    boolean W3CWorkerCount = true
+    unit array W3CMines
+    group array W3CWorkerMine
+    texttag array W3CWorkTextTag
+    integer array W3CWorkers
+    integer W3CMind_Length = 0
+
     string chat_no_ally = ""
     string you_no_gold = ""
     string i_no_gold = ""
@@ -571,6 +578,211 @@ function ShowBoard takes nothing returns nothing
 endfunction
 
 //===========================================================================
+// W3C Worker count
+//===========================================================================
+function updateMineText takes integer i returns nothing
+  if W3CWorkTextTag[i] != null then
+    call SetTextTagTextBJ(W3CWorkTextTag[i], I2S(W3CWorkers[i]) + "/5", 13)
+    call SetTextTagPos(W3CWorkTextTag[i], GetUnitX(W3CMines[i]) - 30, GetUnitY(W3CMines[i]) - 140, 0)
+    if W3CWorkers[i] == 5 then
+      call SetTextTagColorBJ(W3CWorkTextTag[i], 0, 100, 0, 100)
+    elseif W3CWorkers[i] > 5 then
+      call SetTextTagColorBJ(W3CWorkTextTag[i], 100, 0, 0, 100)
+    else
+      call SetTextTagColorBJ(W3CWorkTextTag[i], 100, 100, 30, 100)
+    endif
+    call SetTextTagVisibility(W3CWorkTextTag[i], W3CWorkerCount and W3CWorkers[i] > 0 and (IsPlayerObserver(GetLocalPlayer()) or not IsPlayerEnemy(GetTriggerPlayer(), GetLocalPlayer())))
+  endif
+endfunction
+
+function addMineExist takes unit u returns integer
+  set W3CWorkerMine[W3CMind_Length] = CreateGroup()
+  set W3CMines[W3CMind_Length] = u
+  set W3CWorkers[W3CMind_Length] = 0
+  set W3CWorkTextTag[W3CMind_Length] = CreateTextTag()
+  set W3CMind_Length = W3CMind_Length + 1
+  return W3CMind_Length - 1
+endfunction
+
+function removeWorkerFromMine takes unit u returns nothing
+  local integer i = 0
+  loop
+    exitwhen i >= W3CMind_Length
+    if IsUnitInGroup(u, W3CWorkerMine[i]) then
+      call GroupRemoveUnit(W3CWorkerMine[i], u)
+      set W3CWorkers[i] = W3CWorkers[i] - 1
+      call updateMineText(i)
+    endif
+    set i = i + 1
+  endloop
+endfunction
+
+function isMineExist takes unit u returns integer
+  local integer i = 0
+  loop
+    exitwhen i >= W3CMind_Length
+    if u == W3CMines[i] then
+      return i
+    endif
+    set i = i + 1
+  endloop
+  return -1
+endfunction
+
+function unitCanGatherAppropriateGoldMine takes unit mine, integer id returns boolean
+  if id == 'uaco' then
+    return GetUnitTypeId(mine) == 'ugol'
+  elseif id == 'ewsp' then
+    return GetUnitTypeId(mine) == 'egol'
+  endif
+  return GetUnitTypeId(mine) == 'ngol'
+endfunction
+
+function unitIsWorker takes unit u, integer i returns boolean
+  return IsUnitType(u, UNIT_TYPE_PEON) or i == 'ngir' or i == 'hpea' or i == 'opeo' or i == 'ewsp' or i == 'uaco' or i == 'ncpn' or i == 'ndrl'
+endfunction
+
+function targetIsGold takes integer i returns boolean
+  return i == 'ngol' or i == 'ugol' or i == 'egol'
+endfunction
+
+function unitCanGatherTarget takes unit u, unit target returns boolean
+  return unitIsWorker(u, GetUnitTypeId(u)) and targetIsGold(GetUnitTypeId(target)) and unitCanGatherAppropriateGoldMine(target, GetUnitTypeId(u))
+endfunction
+
+function W3CWorker_lossOfMine takes nothing returns nothing
+  local unit u = GetTriggerUnit()
+  local integer i = 0
+  if targetIsGold(GetUnitTypeId(u)) then
+    set i = isMineExist(u)
+    if i >= 0 then
+      call DestroyGroup(W3CWorkerMine[i])
+      call SetTextTagVisibility(W3CWorkTextTag[i], false)
+      call DestroyTextTag(W3CWorkTextTag[i])
+      loop
+        exitwhen i >= W3CMind_Length
+        set W3CWorkerMine[i] = W3CWorkerMine[i + 1]
+        set W3CMines[i] = W3CMines[i + 1]
+        set W3CWorkers[i] = W3CWorkers[i + 1]
+        set W3CWorkTextTag[i] = W3CWorkTextTag[i + 1]
+        set i = i + 1
+      endloop
+      set W3CMind_Length = W3CMind_Length - 1
+      set W3CWorkerMine[W3CMind_Length] = null
+      set W3CMines[W3CMind_Length] = null
+      set W3CWorkTextTag[W3CMind_Length] = null
+    endif
+  endif
+  set u = null
+endfunction
+
+function W3CWorker_lossOfUnit takes nothing returns nothing
+  local unit u = GetTriggerUnit()
+  if unitIsWorker(u, GetUnitTypeId(u)) then
+    call removeWorkerFromMine(u)
+  endif
+  set u = null
+endfunction
+
+function unitOrderedToGather takes integer orderId, integer id, unit u returns boolean
+  local integer target = id
+  if u != null then
+    set target = GetUnitTypeId(u)
+  endif
+  return ((orderId >= 851970 or orderId <= 852018) and target != 0) or (orderId == 851971 and targetIsGold(id))
+endfunction
+
+function W3CWorker_Order takes nothing returns nothing
+  local unit u = GetTriggerUnit()
+  local integer orderId = GetIssuedOrderId()
+  if unitIsWorker(u, GetUnitTypeId(u)) and orderId != 852017 and not unitOrderedToGather(orderId, GetUnitTypeId(GetOrderTargetUnit()), null) then
+    call removeWorkerFromMine(u)
+  endif
+  set u = null
+endfunction
+
+function W3CWorker_TargetOrderTrigger takes nothing returns nothing
+  local unit mine = GetOrderTargetUnit()
+  local unit u = GetTriggerUnit()
+  local integer i = 0
+  if mine != null then
+    if unitIsWorker(u, GetUnitTypeId(u)) and unitCanGatherTarget(u, mine) and unitOrderedToGather(GetIssuedOrderId(), GetUnitTypeId(mine), u) then
+        call removeWorkerFromMine(u)
+        set i = isMineExist(mine)
+        if i < 0 then
+          set i = addMineExist(mine)
+        endif
+        call GroupAddUnit(W3CWorkerMine[i], u)
+        set W3CWorkers[i] = W3CWorkers[i] + 1
+        call updateMineText(i)
+        set mine = null
+        set u = null
+      return
+    endif
+    if GetIssuedOrderId() != 852017 then
+      call removeWorkerFromMine(u)
+    endif
+    set mine = null
+  endif
+  set u = null
+endfunction
+
+function W3CWorker_chat takes nothing returns nothing
+  local integer i = 0
+  local player p = GetTriggerPlayer()
+  if p != null then  // Making sure local player use
+    if W3CWorkerCount == true then
+      set W3CWorkerCount = false
+      call DisplayTextToPlayer(p, 0, 0, "Worker count |cfffd0000[off]|r")
+    else
+      set W3CWorkerCount = true
+      call DisplayTextToPlayer(p, 0, 0, "Worker count |cff00ff00[on]|r")
+    endif
+    loop
+      exitwhen i >= W3CMind_Length
+      if W3CWorkTextTag[i] != null then
+        call SetTextTagVisibility(W3CWorkTextTag[i], W3CWorkerCount and W3CWorkers[i] > 0 and (IsPlayerObserver(GetLocalPlayer()) or not IsPlayerEnemy(p, GetLocalPlayer())))
+      endif
+      set i = i + 1
+    endloop
+    set p = null
+  endif
+endfunction
+
+function InitW3CWorkerCount takes nothing returns nothing
+  local integer i = 0
+  local player p = null
+  local trigger workerCountTrigger = CreateTrigger()
+  local trigger issuedTargetOrderTrigger = CreateTrigger()
+  local trigger issuedOrder = CreateTrigger()
+  local trigger issuedPointOrder = CreateTrigger()
+  local trigger lossOfUnitTrigger = CreateTrigger()
+  local trigger lossOfMineTrigger = CreateTrigger()
+  loop
+    exitwhen i >= GetBJMaxPlayers()
+    set p = Player(i)
+    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and p == GetLocalPlayer() and not IsPlayerObserver(p) and GetPlayerController(p) == MAP_CONTROL_USER then
+      call TriggerRegisterPlayerChatEvent(workerCountTrigger, p, "-workercount", true)
+      call TriggerRegisterPlayerUnitEventSimple(issuedTargetOrderTrigger, p, EVENT_PLAYER_UNIT_ISSUED_TARGET_ORDER)
+      call TriggerRegisterPlayerUnitEventSimple(issuedOrder, p, EVENT_PLAYER_UNIT_ISSUED_ORDER)
+      call TriggerRegisterPlayerUnitEventSimple(issuedOrder, p, EVENT_PLAYER_UNIT_ISSUED_UNIT_ORDER)
+      call TriggerRegisterPlayerUnitEventSimple(issuedPointOrder, p, EVENT_PLAYER_UNIT_ISSUED_POINT_ORDER)
+      call TriggerRegisterPlayerUnitEventSimple(lossOfUnitTrigger, p, EVENT_PLAYER_UNIT_DEATH)
+      call TriggerRegisterPlayerUnitEventSimple(lossOfUnitTrigger, p, EVENT_PLAYER_UNIT_CHANGE_OWNER)
+    endif
+    set i = i + 1
+  endloop
+  call TriggerAddAction(issuedTargetOrderTrigger, function W3CWorker_TargetOrderTrigger)
+  call TriggerAddAction(issuedOrder, function W3CWorker_Order)
+  call TriggerAddAction(issuedPointOrder, function W3CWorker_Order)
+  call TriggerAddAction(lossOfUnitTrigger, function W3CWorker_lossOfUnit)
+  call TriggerAddAction(workerCountTrigger, function W3CWorker_chat)
+  call TriggerRegisterPlayerUnitEventSimple(lossOfUnitTrigger, Player(PLAYER_NEUTRAL_PASSIVE), EVENT_PLAYER_UNIT_DEATH)
+  call TriggerAddAction(lossOfMineTrigger, function W3CWorker_lossOfMine)
+  set p = null
+endfunction
+
+//===========================================================================
 // W3C UNIT DENY TIP
 //===========================================================================
 function W3CDenyTip takes nothing returns nothing
@@ -612,7 +824,7 @@ function SetW3CDenyTip takes nothing returns nothing
     else
       call DisableTrigger(W3CDeny)
     endif
-    call DisplayTimedTextToForce( GetPlayersAll(), 7.00, t)
+    call DisplayTimedTextToForce(GetPlayersAll(), 7.00, t)
   endif
   set t = null
 endfunction
@@ -626,9 +838,9 @@ function W3CDenyTipControl takes nothing returns nothing
     endif
     set i = i + 1
   endloop
-  call TriggerAddAction( W3CDenyControl, function SetW3CDenyTip )
-  call TriggerRegisterAnyUnitEventBJ( W3CDeny, EVENT_PLAYER_UNIT_DEATH )
-  call TriggerAddAction( W3CDeny, function W3CDenyTip )
+  call TriggerAddAction(W3CDenyControl, function SetW3CDenyTip )
+  call TriggerRegisterAnyUnitEventBJ(W3CDeny, EVENT_PLAYER_UNIT_DEATH )
+  call TriggerAddAction(W3CDeny, function W3CDenyTip )
 endfunction
 
 //===========================================================================
@@ -2103,4 +2315,5 @@ endfunction
     call InitZoom()
     call CreateW3CMiniMapIcons()
     call W3CDenyTipControl()
+    call InitW3CWorkerCount()
 #INCLUDE <$VER$\tmp\Blizzard6.j>

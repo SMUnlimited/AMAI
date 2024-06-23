@@ -4183,32 +4183,41 @@ endfunction
 //==========================================================================
 function GetMineNearLoc takes unit u, location l, real dist returns unit
   local group g = CreateGroup()
+  local group cg = null
+  local unit mine = null
   local integer i = 0
-  local real distance = 1500
-  call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
-  //set g = SelectByAlive(g, true)
-  loop
-    if minearray == 0 then
-      call DisplayToAll("Warning - No standard gold mine set in standardunits.slk")
-      call Sleep(3)
-    endif
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    set i = 0
+  local real d1 = 0
+  local real d2 = dist
+  local boolean b = race_uses_mine_expansion or race_manual_loading
+  set u = null
+  if minearray == 0 then
+    call DisplayToAll("Warning - No standard gold mine set in standardunits.slk")
+    call Sleep(3)
+  else
+    call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
     loop
-      exitwhen i >= minearray
-      if GetUnitTypeId(u) == racial_goldmine[i] and GetResourceAmount(u) > 0 then
-        //if SetHasEntry(ver_gold_mines, GetUnitTypeId(u)) then
-        //if GetUnitTypeId(u) =='ngol' or GetUnitTypeId(u) =='egol' or GetUnitTypeId(u) == 'ugol' then
-        call Trace("GetMineNearLOC: A Mine match found")
-        call DestroyGroup(g)
-        set g = null
-        return u
-      endif
+      exitwhen i >= minearray or u != null
+      set cg = CopyGroup(g, cg)
+      loop
+        set mine = FirstOfGroup(cg)
+        exitwhen mine == null
+        if UnitAlive(mine) and GetResourceAmount(mine) > 0 and GetUnitTypeId(mine) == racial_goldmine[i] then
+          call Trace("GetMineNearLOC: A Mine match found")
+          if (not b and racial_goldmine[i] == 'ngol') or (b and GetOwningPlayer(mine) == ai_player) then
+            set d1 = DistanceBetweenPoints_dk(GetUnitLoc(mine), l)
+            if d1 <= d2 then  // get close mine
+              set d2 = d1
+              set u = mine
+            endif
+          endif
+        endif
+        call GroupRemoveUnit(cg,mine)
+      endloop
+      call DestroyGroup(cg)
       set i = i + 1
     endloop
-    call GroupRemoveUnit(g,u)
-  endloop
+    set cg = null
+  endif
   call DestroyGroup(g)
   set g = null
   return u
@@ -8231,7 +8240,7 @@ function InitCheckHarvest takes nothing returns nothing
   elseif race_uses_mine_expansion then
     set i = racial_expansion
   endif
-  call GroupEnumUnitsInRangeOfLoc(g, home_location, 2000, null)  // Some maps still need to expand distance , like friends and dustwallowkeys
+  call GroupEnumUnitsInRangeOfLoc(g, home_location, 2300, null)  // Some maps still need to expand distance , like friends and dustwallowkeys
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -9031,8 +9040,9 @@ endfunction
 //============================================================================
 function nullify_bad_strats takes nothing returns nothing
   local integer i = 0
+  local integer f = strat_persistence + FoodUsed() * strat_food_persistence
   loop
-    if rp_strat[i] < (rp_strat[strategy] - (strat_persistence + (FoodUsed() * strat_food_persistence))) * strategy_change_threshold then
+    if rp_strat[i] < (rp_strat[strategy] - f) * strategy_change_threshold then
       set rp_strat[i] = 0
     endif
     set i = i + 1
@@ -13852,7 +13862,7 @@ function ForcedHarvest takes nothing returns boolean
   local integer T = 0
   local integer i = 0
   local integer c = TownCountDone(racial_expansion)
-  if Forced_Harvest_total == 0 and hero_built[2] and (FoodUsed() <= 26 or GetGold() <= (800 + tier * 100) or c > 1) then  // later stages of the game, AI may not be harvest
+  if Forced_Harvest_total == 0 and hero_built[2] and (FoodUsed() <= 26 or GetGold() <= (800 + tier * 100) or c > 0) then  // later stages of the game, AI may not be harvest
     loop
       exitwhen i >= max_towns or T >= c
       if own_town_mine[i] != null and GetResourceAmount(own_town_mine[i]) > 0 then
