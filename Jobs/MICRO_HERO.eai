@@ -110,7 +110,7 @@ function TeleportHome takes integer hn returns nothing
   //set hero_loc = GetUnitLoc(hero_unit[hn])
   if major_hero != null and UnitAlive(major_hero) then
     loop
-      exitwhen i >= c_ally_total
+      exitwhen i >= c_ally_total or teleport_loc != null
       set p = ally_force[i]
       if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
         set start_loc = GetPlayerStartLocationLoc(p)
@@ -132,7 +132,7 @@ function TeleportHome takes integer hn returns nothing
   endif
   call ClearCaptainTargets()
   if teleport_loc != null then
-    call SetCaptainHome(BOTH_CAPTAINS, GetLocationX(teleportloc), GetLocationY(teleportloc))
+    call SetCaptainHome(BOTH_CAPTAINS, GetLocationX(teleport_loc), GetLocationY(teleport_loc))
     //call CaptainAttack(GetLocationX(teleport_loc), GetLocationY(teleport_loc))
   else
     call CaptainGoHome()
@@ -146,9 +146,9 @@ function TeleportHome takes integer hn returns nothing
     call RemoveLocation(teleportloc)
   endif
   set teleportloc = Location(GetLocationX(teleport_loc),GetLocationY(teleport_loc))  //  set new teleport job move loc
+  call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
   call RemoveLocation(teleport_loc)
   set teleport_loc = null
-  call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
   set start_loc = null
   set p = null
   //if hero_loc != null then
@@ -209,7 +209,7 @@ function ItemSingetp takes integer hn, boolean retreat returns boolean
     if t != null then
       if retreat == false then  // teleport to battle , hope don't interrupt casting
         set l = GetUnitLoc(major_hero)
-      elseif GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) / GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE) >= 0.4 then
+      elseif GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) / GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE) >= 0.4 then  // life too low cannot use singetp
         set l = Location(GetLocationX(home_location), GetLocationY(home_location))
       endif
       if l != null then
@@ -421,7 +421,7 @@ function MicroHeroJob takes integer hn returns nothing
     call MoveLocation(hero_ally_loc[hn], GetLocationX(ally_density_loc), GetLocationY(ally_density_loc))
     if (not teleporting and (current_order >= 852008 and current_order <= 852013)) or current_order == 852093 then
       if GetItemTypeId(UnitItemInSlot(hero_unit[hn], current_order - 852008)) == old_id[tp_item] or (current_order == 852093 and GetUnitAbilityLevel(hero_unit[hn], 'AHmt') > 0) then
-        if current_order == 852093 and teleportloc != null then
+        if not teleporting and teleportloc != null then
           call RemoveLocation(teleportloc)
           set teleportloc = null
         endif
