@@ -6041,7 +6041,10 @@ function CheckExpansionTaken takes unit expa returns boolean
   local integer claimedMines = 0
   local integer minecount = 0
   local integer ownedmines = 0
+  local integer id = 0
   local boolean mineclaimed = true
+  local real x = GetLocationX(home_location)
+  local real y = GetLocationY(home_location)
   if expa != null then
     if first_town_mine > 1 and DistanceBetweenPoints_dk(GetUnitLoc(expa), home_location) < expansion_taken_radius then
       return false
@@ -6073,7 +6076,8 @@ function CheckExpansionTaken takes unit expa returns boolean
         endif
         // A single town hall of humans and orcs can capture close enough mines
         // For now elf will also claim the mines, due to elf mine has to wait for tree of ages to be built so don't want allies to grab mine before its complete.
-        if IsUnitType(u,UNIT_TYPE_TOWNHALL) and GetUnitTypeId(u) != old_id[NECROPOLIS_1] and GetUnitTypeId(u) != old_id[NECROPOLIS_2] and GetUnitTypeId(u) != old_id[NECROPOLIS_3] and DistanceBetweenUnits(u, expa) < race_max_expa_mine_distance then
+        set id = GetUnitTypeId(u)
+        if IsUnitType(u,UNIT_TYPE_TOWNHALL) and id != old_id[NECROPOLIS_1] and id != old_id[NECROPOLIS_2] and id != old_id[NECROPOLIS_3] and DistanceBetweenUnits(u, expa) < race_max_expa_mine_distance then
           set claimedMines = claimedMines + 1
         endif
       endif
@@ -6082,8 +6086,10 @@ function CheckExpansionTaken takes unit expa returns boolean
     call DestroyGroup(g)
     set g = null
     set p = null
+    set x = GetUnitX(expa)
+    set y = GetUnitY(expa)
   endif
-  call CreateDebugTagLoc("Mines:" + Int2Str(minecount) +" Taken:" + Int2Str(claimedMines) + " Own:" + Int2Str(ownedmines), 10, GetUnitX(expa), GetUnitY(expa), 10.00, 1.80)
+  call CreateDebugTagLoc("Mines:" + Int2Str(minecount) +" Taken:" + Int2Str(claimedMines) + " Own:" + Int2Str(ownedmines), 10, x, y, 10.00, 1.80)
   return claimedMines >= 1 or mineclaimed// While there may be extra mines, we focusing on is this mine taken
 endfunction
 
@@ -7236,10 +7242,7 @@ endfunction
 //============================================================================
 function HealUnit takes unit healer, unit to_heal, boolean hero_heal returns nothing
   local integer id = GetHealerId(GetUnitTypeId(healer))
-  if id == -1 then
-    return
-  endif
-  if healer_type[id] != HEALER_TYPE_NO_TARGET then
+  if id != -1 and healer_type[id] != HEALER_TYPE_NO_TARGET then
     if healer_type[id] == HEALER_TYPE_WARD then
       if not ward_cast then
         call IssuePointOrderById(healer, healer_spell[id], GetUnitX(healer), GetUnitY(healer))
@@ -13013,7 +13016,7 @@ function Ancient_Expansion takes nothing returns nothing
   if ancient_exp_maintree then
     loop
       exitwhen desperation_assault or break_attack
-      exitwhen town_threat_break and town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat and TownCount(racial_expansion) > 1
+      exitwhen town_threat_break and town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_high_threat
       exitwhen ancient_exp_unit == null or not UnitAlive(ancient_exp_unit) or not ancient_exp_maintree or TownCount(racial_expansion) < 1
       exitwhen isfleeing or CaptainRetreating() or CaptainIsEmpty()
       if ModuloInteger(i, 7) == 0 then
@@ -13036,7 +13039,7 @@ endfunction
 function SleepUntilTownDefended takes integer ai_strength returns nothing
   local integer defense_length_counter = 0
   local real t = 2 * sleep_multiplier
-  local boolean b = most_threatened_town > 0 and Player(town_owner[most_threatened_town]) != ai_player
+  local boolean b = most_threatened_town >= 0 and Player(town_owner[most_threatened_town]) != ai_player
   call SetDefendPlayer(b)
   set own_strength = ai_strength
   call Trace("==Sleep Defend Town==" )
