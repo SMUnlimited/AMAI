@@ -15,19 +15,19 @@ function PeonMineCheck takes unit mine returns boolean
     set delaywisps = ver_optimal_gold
   endif
   if race_manual_loading then
+    set tempg = CreateGroup()
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
     call GroupRemoveUnit(g, expansion_peon)
-    set g = SelectById(g, old_id[race_manual_loading_wisp], true)
-    set g = SelectByAlive(g, true)
-    set tempg = CreateGroup()
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if IsUnitInTransport(u, mine) then
-        set savewisp = u
-        set i = i + 1
-      elseif not IsUnitHidden(u) then
-        call GroupAddUnit(tempg, u)
+      if GetUnitTypeId(u) == old_id[race_manual_loading_wisp] and UnitAlive(u) then
+        if IsUnitInTransport(u, mine) then
+          set savewisp = u
+          set i = i + 1
+        elseif not IsUnitHidden(u) then
+          call GroupAddUnit(tempg, u)
+        endif
       endif
       call GroupRemoveUnit(g, u)
     endloop
@@ -56,51 +56,47 @@ function PeonMineCheck takes unit mine returns boolean
     set tempg = null
     set savewisp = null
   elseif race_uses_mine_expansion then
+    set tempg = CreateGroup()
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
     call GroupRemoveUnit(g, expansion_peon)
-    set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
-    set g = SelectByAlive(g, true)
-    set g = SelectByHidden(g, false)
-    set tempg = CreateGroup()
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null or i >= delaywisps
-      if GetUnitCurrentOrder(u) == OrderId("harvest") and DistanceBetweenUnits(u,mine) < 300 then  // UD harvest gold max standard distance is 221
-        set i = i + 1
-      elseif (GetUnitCurrentOrder(u) == 0 or (GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE))) and not IsUnitBuying(u) then
-        call GroupAddUnit(tempg,u)  // prevent the mine harvest peon more than 5
+      if GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) and not IsUnitHidden(u) then
+        if GetUnitCurrentOrder(u) == OrderId("harvest") and DistanceBetweenUnits(u,mine) < 300 then  // UD harvest gold max standard distance is 221
+          set i = i + 1
+        elseif (GetUnitCurrentOrder(u) == 0 or (GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE))) and not IsUnitBuying(u) then
+          call GroupAddUnit(tempg,u)  // prevent the mine harvest peon more than 5
+        endif
       endif
       call GroupRemoveUnit(g, u)
     endloop
-    if i < delaywisps then
-      loop
-        set u = FirstOfGroup(tempg)
-        exitwhen u == null or i >= delaywisps
-        call IssueTargetOrder(u, "harvest", mine)
-        set i = i + 1
-        call GroupRemoveUnit(tempg, u)
-      endloop
-    endif
+    loop
+      set u = FirstOfGroup(tempg)
+      exitwhen u == null or i >= delaywisps
+      call IssueTargetOrder(u, "harvest", mine)
+      set i = i + 1
+      call GroupRemoveUnit(tempg, u)
+    endloop
     call DestroyGroup(tempg)
     set tempg = null
   else  //human and orc
-    call GroupEnumUnitsOfPlayer(g, ai_player, null)
-    call GroupRemoveUnit(g, expansion_peon)
-    set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
-    set g = SelectByAlive(g, true)
-    set g = SelectByHidden(g, false)
-    if TownCount(racial_hall[1]) > 1 then
-      set g = GetNearestSubGroupOfGroup(g, unitloc, 5)
-    endif
     if not hero_built[1] or GetGold() < 300 then
       set peon = 3
     else
       set peon = 2
     endif
+    call GroupEnumUnitsOfPlayer(g, ai_player, null)
+    call GroupRemoveUnit(g, expansion_peon)
+    set g = SelectById(g, old_id[racial_peon], true)
+    set g = SelectByHidden(g, false)
+    if TownCount(racial_hall[1]) > 1 then
+      set g = GetNearestSubGroupOfGroup(g, unitloc, 5)
+    endif
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null or i >= peon
-      if (GetUnitCurrentOrder(u) == 0 or GetUnitCurrentOrder(u) == OrderId("harvest") or (GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE))) and not IsUnitBuying(u) then  // no get other order peon , maybe the peon go buy unit or build some
+      if UnitAlive(u) and (GetUnitCurrentOrder(u) == 0 or GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE)) and not IsUnitBuying(u) then  // no get other order peon , maybe the peon go buy unit or build some
         call IssueTargetOrder(u, "harvest", mine)
         set i = i + 1
       endif
