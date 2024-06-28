@@ -131,31 +131,34 @@ function SaveUnit takes unit u , integer id returns nothing
   set healer = GetHealer(healer)
   //  call SetUnitUserData(u, UNIT_GOING_HOME)
   if healer != null then  //and not IsUnitType(u, UNIT_TYPE_MECHANICAL) then  //Repetitive judgment
-    set healertepy = healer_type[GetHealerId(GetUnitTypeId(healer))]
-    if not CaptainInCombat(true) or ((healertepy == HEALER_TYPE_NO_TARGET or healertepy == HEALER_TYPE_WARD) and GetUnitState(u, UNIT_STATE_LIFE) > GetUnitState(u, UNIT_STATE_MAX_LIFE) * 0.5) then
-      call CreateDebugTag("Going to Healer", 10, u, 3.00, 1.50)
-      // Captain In Combat , if healer no Immediate and extensive treatment , urgent healing need go home , avoid staying on the battlefield
-      set unitloc = GetUnitLoc(healer)
-      call RemoveGuardPosition(u)
-      if GetLocationX(last_enemy_loc) != 0 and GetLocationY(last_enemy_loc) != 0 then
-        set temploc = GetSubtractionLoc(unitloc, last_enemy_loc)
-        set l = GetProjectedLoc(unitloc, temploc, 350)
-        call TQAddUnitJob(GetTimeToReachLoc(u, l) + 1, RESET_GUARD_POSITION, 0, u)
-        call IssuePointOrderLoc(u, "move", l)
-        call RemoveLocation(temploc)
-        set temploc = null
-        call RemoveLocation(l)
-        set l = null
-      else
-        call TQAddUnitJob(GetTimeToReachLoc(u, unitloc) + 1, RESET_GUARD_POSITION, 0, u)
-        call IssuePointOrderLoc(u, "move", unitloc)
+    set healertepy = GetHealerId(GetUnitTypeId(healer))
+    if healertepy != -1 then
+      set healertepy = healer_type[healertepy]
+      if not CaptainInCombat(true) or ((healertepy == HEALER_TYPE_NO_TARGET or healertepy == HEALER_TYPE_WARD) and GetUnitState(u, UNIT_STATE_LIFE) > GetUnitState(u, UNIT_STATE_MAX_LIFE) * 0.5) then
+        call CreateDebugTag("Going to Healer", 10, u, 3.00, 1.50)
+        // Captain In Combat , if healer no Immediate and extensive treatment , urgent healing need go home , avoid staying on the battlefield
+        set unitloc = GetUnitLoc(healer)
+        call RemoveGuardPosition(u)
+        if GetLocationX(last_enemy_loc) != 0 and GetLocationY(last_enemy_loc) != 0 then
+          set temploc = GetSubtractionLoc(unitloc, last_enemy_loc)
+          set l = GetProjectedLoc(unitloc, temploc, 350)
+          call TQAddUnitJob(GetTimeToReachLoc(u, l) + 1, RESET_GUARD_POSITION, 0, u)
+          call IssuePointOrderLoc(u, "move", l)
+          call RemoveLocation(temploc)
+          set temploc = null
+          call RemoveLocation(l)
+          set l = null
+        else
+          call TQAddUnitJob(GetTimeToReachLoc(u, unitloc) + 1, RESET_GUARD_POSITION, 0, u)
+          call IssuePointOrderLoc(u, "move", unitloc)
+        endif
+        call GroupAddUnit(unit_healing, u)
+        call RemoveLocation(unitloc)
+        set unitloc = null
+        call HealUnit(healer, u, false)
+        set healer = null
+        return
       endif
-      call GroupAddUnit(unit_healing, u)
-      call RemoveLocation(unitloc)
-      set unitloc = null
-      call HealUnit(healer, u, false)
-      set healer = null
-      return
     endif
   endif
   if race_use_fountain and id != old_id[racial_ghoul] and nearest_neutral[hFountainID] != null and neutral_enemy[hFountainID] <= 0 and neutral_available[hFountainID] and (not neutral_guarded[hFountainID] or (neutral_night_buy[hFountainID] and (daytime >= 18 or daytime < 6))) then  //not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_MECHANICAL)  //Repetitive judgment
