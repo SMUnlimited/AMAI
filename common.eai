@@ -4211,7 +4211,7 @@ function GetMineNearLoc takes unit u, location l, real dist returns unit
             endif
           endif
         endif
-        call GroupRemoveUnit(cg,mine)
+        call GroupRemoveUnit(cg, mine)
       endloop
       call DestroyGroup(cg)
       set i = i + 1
@@ -4861,7 +4861,9 @@ function GetUnitToBuy takes unit ru, unit buy_place returns unit
   local real newdistance = 0
   set ru = null
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  call GroupRemoveUnit(g, follow_zeppelin)
+  if follow_zeppelin != null then
+    call GroupRemoveUnit(g, follow_zeppelin)
+  endif
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -4878,7 +4880,7 @@ function GetUnitToBuy takes unit ru, unit buy_place returns unit
   set g = null
   if ru == null then
     set ru = GetExpansionPeon()
-    if ru == null then
+    if ru == null or not UnitAlive(ru) then
       set ru = GetExpansionPeon2(ru)
     endif
   endif
@@ -5841,9 +5843,6 @@ function BuildLumberMillAtBase takes nothing returns boolean
     set buildloc = null
   endif
   set peon = null
-  if TownCount(racial_hall[2]) > 0 and GetUnitCount(racial_lumber) == 0 then
-    set racial_lumber = -1  //Prevent always cannot build
-  endif
   return b
 endfunction
 
@@ -6043,53 +6042,47 @@ function CheckExpansionTaken takes unit expa returns boolean
   local integer ownedmines = 0
   local integer id = 0
   local boolean mineclaimed = true
-  local real x = GetLocationX(home_location)
-  local real y = GetLocationY(home_location)
-  if expa != null then
-    if first_town_mine > 1 and DistanceBetweenPoints_dk(GetUnitLoc(expa), home_location) < expansion_taken_radius then
-      return false
-    endif
-    set g = CreateGroup()
-    call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null
-      // Enemy holds the area
-      set p = GetOwningPlayer(u)
-      if p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 then  // Creeps dosn't mean expansion is taken
-        if IsPlayerEnemy(p, ai_player) then
-          call DestroyGroup(g)
-          set g = null
-          set u = null
-          set p = null
-          return true
-        endif
-        if u == expa then
-          set mineclaimed = false // Mine not been captured by elf or undead
-        endif
-        if IsUnitGoldMine(u) then // This is just informative doesnt affect check
-          if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_PASSIVE) then
-            set minecount = minecount + 1
-          else
-            set ownedmines = ownedmines + 1
-          endif
-        endif
-        // A single town hall of humans and orcs can capture close enough mines
-        // For now elf will also claim the mines, due to elf mine has to wait for tree of ages to be built so don't want allies to grab mine before its complete.
-        set id = GetUnitTypeId(u)
-        if IsUnitType(u,UNIT_TYPE_TOWNHALL) and id != old_id[NECROPOLIS_1] and id != old_id[NECROPOLIS_2] and id != old_id[NECROPOLIS_3] and DistanceBetweenUnits(u, expa) < race_max_expa_mine_distance then
-          set claimedMines = claimedMines + 1
+  if first_town_mine > 1 and DistanceBetweenPoints_dk(GetUnitLoc(expa), home_location) < expansion_taken_radius then
+    return false
+  endif
+  set g = CreateGroup()
+  call GroupEnumUnitsInRange(g, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    // Enemy holds the area
+    set p = GetOwningPlayer(u)
+    if p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 then  // Creeps dosn't mean expansion is taken
+      if IsPlayerEnemy(p, ai_player) then
+        call DestroyGroup(g)
+        set g = null
+        set u = null
+        set p = null
+        return true
+      endif
+      if u == expa then
+        set mineclaimed = false // Mine not been captured by elf or undead
+      endif
+      if IsUnitGoldMine(u) then // This is just informative doesnt affect check
+        if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_PASSIVE) then
+          set minecount = minecount + 1
+        else
+          set ownedmines = ownedmines + 1
         endif
       endif
-      call GroupRemoveUnit(g, u)
-    endloop
-    call DestroyGroup(g)
-    set g = null
-    set p = null
-    set x = GetUnitX(expa)
-    set y = GetUnitY(expa)
-  endif
-  call CreateDebugTagLoc("Mines:" + Int2Str(minecount) +" Taken:" + Int2Str(claimedMines) + " Own:" + Int2Str(ownedmines), 10, x, y, 10.00, 1.80)
+      // A single town hall of humans and orcs can capture close enough mines
+      // For now elf will also claim the mines, due to elf mine has to wait for tree of ages to be built so don't want allies to grab mine before its complete.
+      set id = GetUnitTypeId(u)
+      if IsUnitType(u,UNIT_TYPE_TOWNHALL) and id != old_id[NECROPOLIS_1] and id != old_id[NECROPOLIS_2] and id != old_id[NECROPOLIS_3] and DistanceBetweenUnits(u, expa) < race_max_expa_mine_distance then
+        set claimedMines = claimedMines + 1
+      endif
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set p = null
+  call CreateDebugTagLoc("Mines:" + Int2Str(minecount) +" Taken:" + Int2Str(claimedMines) + " Own:" + Int2Str(ownedmines), 10, GetUnitX(expa), GetUnitY(expa), 10.00, 1.80)
   return claimedMines >= 1 or mineclaimed// While there may be extra mines, we focusing on is this mine taken
 endfunction
 
@@ -7257,16 +7250,22 @@ endfunction
 
 //============================================================================
 function GetHealer takes unit u returns unit
+  local group g = CreateGroup()
   local integer id = 0
   loop
     set u = FirstOfGroup(healer_group)
-    exitwhen u == null
+    exitwhen u == null or id < -1
     set id = GetHealerId(GetUnitTypeId(u))
     if id != -1 and not IsUnitLoaded(u) and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) then
-      return u
+      set id = -2
     endif
     call GroupRemoveUnit(healer_group, u)
+    call GroupAddUnit(g, u)
   endloop
+  call GroupRemoveUnit(g, u)
+  call DestroyGroup(healer_group)
+  set healer_group = g
+  set g = null
   return u
 endfunction
 
@@ -8654,8 +8653,8 @@ endfunction
 
 //===========================================================================
 function GetMaxFarms takes nothing returns integer
-  local integer fm = Max(GetFoodMade(old_id[racial_farm]), 1)
-  local integer div = ver_food_limit / fm
+  local integer fm = GetFoodMade(old_id[racial_farm])
+  local integer div = ver_food_limit / Max(fm, 1)
   if div * fm < ver_food_limit then
     set div = div + 1
   endif
@@ -9880,32 +9879,31 @@ function ExecuteAirDistribute takes group g, boolean anti returns nothing
     set u = FirstOfGroup(g)
     exitwhen u == null or c >= i
     set id = GetUnitTypeId(u)
-    if (id == 'edot' or id == 'edtm') and IsStandardUnit(u) and not IsUnitBuying(u) then
-      call IssueImmediateOrderById(u, order)
+    if (id == 'edot' or id == 'edtm') and IsStandardUnit(u) and not IsUnitBuying(u) and IssueImmediateOrderById(u, order) then
       set c = c + 1
-    elseif id == 'ugar' and AatpAbility and (GetUnitAbilityLevel(u, 'Batp') == 0) == anti and IsStandardUnit(u) and not IsUnitBuying(u) then  // check 'ugar' Ability ,  prevent war3 is old ver or map is ROC
-      call IssueImmediateOrderById(u, 852677)
+    elseif id == 'ugar' and AatpAbility and (GetUnitAbilityLevel(u, 'Batp') == 0) == anti and IsStandardUnit(u) and not IsUnitBuying(u) and IssueImmediateOrderById(u, 852677) then  // check 'ugar' Ability ,  prevent war3 is old ver or map is ROC
       set c = c + 1
     endif
     call GroupRemoveUnit(g, u)
   endloop
-  call DestroyGroup(g)
   set u = null
 endfunction
 
 function StrengthDynamicDistribute takes nothing returns nothing
   local group cg = null
   local group g = CreateGroup()
+  call Trace("Strength Dynamic Distribute")
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
-  call Trace("Strength Dynamic Distribute")
   if TownCountDone(DRUID_TALON) > 0 or TownCountDone(GARGOYLE) > 0 then
-    call ExecuteAirDistribute(CopyGroup(g,cg),dydistribute_air)  // now just have air , If possible , please add , one strength one function
+    set cg = CopyGroup(g, cg)
+    call ExecuteAirDistribute(cg, dydistribute_air)  // now just have air , If possible , please add , one strength one function
+    call DestroyGroup(cg)
+    set cg = null
   endif
   call DestroyGroup(g)
   set g = null
-  set cg = null
 endfunction
 
 //============================================================================
@@ -9976,12 +9974,13 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   local integer qty = 0
   local integer uid = 0
   local boolean b = HaveSavedHandle(additional_info, key, HARASS_GROUP)
-  call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  set g = SelectByHidden(g, false)
-  set g = SelectByFullHealth(g, true)
+  call Trace("StartHarass : get harass unit" )
   if b then
     set t = BlzGroupGetSize(LoadGroupHandle(additional_info, key, HARASS_GROUP))
   endif
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectByHidden(g, false)
+  set g = SelectByFullHealth(g, true)
   loop
     exitwhen i >= harass_size[groupnum] or FirstOfGroup(g) == null or t >= 12
     set qty = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_QTY)
@@ -10003,6 +10002,7 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   if FirstOfGroup(harasser) == null or strength <= 0 then
     call DestroyGroup(harasser)
     set harasser = null
+    call Trace("StartHarass : get harass unit fail" )
     return
   endif
   if not b then
@@ -10020,14 +10020,17 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     call SaveReal(additional_info, key, LOCX, lx)
     call SaveReal(additional_info, key, LOCY, ly)
     call TQAddGroupJob(0, HARASS, harass_target, null, harasser)
+    call Trace("StartHarass : start harass job" )
   elseif LoadBoolean(additional_info, key, STATE_ATTACKING) == true then  //The group still working no need to initiate it repeatedly
     call GroupRemoveGuardPositionInstant(harasser)
     call GroupAddGroup(unit_harassing, harasser)
     call GroupAddGroup(LoadGroupHandle(additional_info, key, HARASS_GROUP), harasser)
     call SaveReal(additional_info, key, START_STRENGTH, getstrength + strength)
     call DestroyGroup(harasser)
+    call Trace("StartHarass : add new unit to harass job" )
   else  // maybe RETREAT
     call DestroyGroup(harasser)
+    call Trace("StartHarass : harass job maybe RETREAT" )
   endif
   set harasser = null
 endfunction
@@ -10435,7 +10438,7 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
     set peon = GetExpansionPeon2(peon)  // In case we can't get the expansion peon
   endif
   if l == null then
-    //call Trace("BuildatspecialLoc: No location found")
+    call Trace("BuildatspecialLoc: No location found")
     //call RemoveLocation(l)
     //set l = null
     set peon = null
@@ -10464,7 +10467,7 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
     if not IssuePointOrderByIdLoc(peon, old_id[unitid], l) then
       //call Trace("Building at special point")
     //else
-      // call Trace("BuildatspecialLoc: Not able to build here")
+      call Trace("BuildatspecialLoc: Not able to build here")
       call RemoveLocation(l)
       set l = null
       set peon = null
@@ -10474,6 +10477,7 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
   call RemoveLocation(l)
   set l = null
   set peon = null
+  call Trace("BuildatspecialLoc: build done")
   return BUILT_SOME
 endfunction
 
@@ -10657,11 +10661,11 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     if unitid == racial_rushcreep then
       if CreepsOnMap() and not towerrush then
         if BuildBRAtCreep() then
-          set racial_rushcreep = -1 
+          set racial_rushcreep = 0
           return BUILT_SOME  // Success
         endif
       endif
-      set racial_rushcreep = -1  //just run once
+      set racial_rushcreep = 0  //just run once
     endif
 
     if buy_type[unitid] > BT_RACIAL_ITEM and buy_type[unitid] <= BT_MERCHANT_ITEM then
@@ -10677,7 +10681,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       return UpgradeBuilding(afford_qty, unitid, town, bloc)
     endif
 
-    if unitid == racial_lumber and have_qty < 1 then
+    if unitid == racial_lumber and TownCount(unitid) < 1 then
       if BuildLumberMillAtBase() then
         return BUILT_SOME
       else
@@ -11084,10 +11088,12 @@ function StartItem takes integer ask_qty, integer itemid returns integer
     return NOT_ENOUGH_RES
   endif
   if BuyItem(have_qty + 1, itemid) then
+    call Trace("buy item")
     return BUILT_SOME
   else
     if IsHealingItem(old_id[itemid]) and buy_type[itemid] == BT_RACIAL_ITEM and c_ally_total > 0 and GetGold() > 1000 then
       if BuyAllyShopItem(have_qty + 1,itemid) then  //return false just run next time
+        call Trace("buy item from ally")
         return BUILT_SOME
       endif
     endif
@@ -11122,6 +11128,7 @@ endfunction
 //============================================================================
 function MercBuilder takes integer unitid1, integer unitid2 returns nothing
   if FoodSpace() > 4 and GetGold() > 400 and GetWood() > 300 and neutral_available[NEUTRAL_MERC_CAMP] then
+    call Trace("Build Merc")
     if GetRandomInt(0, 100) >= 30 then
       call BuildUnit(1, unitid1, 25 + tier * 10)
     else
@@ -11133,8 +11140,10 @@ endfunction
 function DragonAndMercBuilder takes nothing returns nothing
   if GetGold() > 600 and GetWood() > 500 then
     if FoodSpace() > 4 and GetRandomInt(0, 100) >= 30 and neutral_available[NEUTRAL_DRAGON_ROOST] then
+      call Trace("Build Dragon And Merc : Dragon")
       call BuildUnit(1, dragons[Min(tier, 3)], 25 + tier * 10)
     elseif FoodSpace() > (2 + (tier - 1) * 3) and neutral_available[NEUTRAL_MERC_CAMP] then
+      call Trace("Build Dragon And Merc : Merc")
       call BuildUnit(1, merc_unit[GetRandomInt(0, 3)], 25 + tier * 10)
     endif
   endif
@@ -11146,6 +11155,7 @@ function ShredderBuilder takes nothing returns nothing
   local real w = Max(GetWood(),1)
   local real gdivw = g / w
   if neutral_available[NEUTRAL_OBSERVATORY] and gdivw > 4 and g - w > 500 and w < 550 and g > GetUnitGoldCost2(neutral_shredder) and w > GetUnitWoodCost2(neutral_shredder) and ai_time - available_time[neutral_shredder] >= -1 then
+    call Trace("Build Shredder")
     if (race_has_ghouls) then
       call BuildUnit(1, neutral_shredder, Max(ghoul_prio - 4,1))
     else
@@ -11341,18 +11351,18 @@ if mines < 1 or gold_left < 2500 or exp_prepared then
   else
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_prio + i)
   endif
-elseif active_expansion and GetNextExpansion() >= 0 and HallsCompleted(racial_expansion) and GetExpansionFoe() == null and mines < 4 and GetRandomInt(0, 100 - i) < 48 and GetGold() > 1000 and GetWood() > 700 and not CheckDoubleExpansionsClaimedInArea(I2R(GetExpansionX()), I2R(GetExpansionY()), false) then
+elseif active_expansion and GetNextExpansion() >= 0 and HallsCompleted(racial_expansion) and GetExpansionFoe() == null and mines < 4 and GetRandomInt(0, 100 - i) < 48 and GetGold() > 1000 and GetWood() > 700 and GetExpansionX() != -1 and GetExpansionY() != -1 and not CheckDoubleExpansionsClaimedInArea(I2R(GetExpansionX()), I2R(GetExpansionY()), false) then
   set u = GetExpansionPeon()
-  if u != null and u != expansion_peon and not_taken_expansion == null then
+  if u != null and UnitAlive(u) and u != expansion_peon and not_taken_expansion == null then
     call SetExpansion(u, old_id[racial_expansion])
     call CreateDebugTag("chaos expansion", 10, u, 3.00, 1.50)
-  else
-    call Trace("ExpansionBuilder: Not ready to build mine")
+    set u = null
+    call Trace("ExpansionBuilder: chaos expansion")
+    return
   endif
   set u = null
-else
-  call Trace("ExpansionBuilder: Not ready to build mine")
 endif
+call Trace("ExpansionBuilder: Not ready to build mine")
 endfunction
 
 //============================================================================
@@ -11496,6 +11506,7 @@ endfunction
 function CheckTownBuilt takes nothing returns nothing
   local integer i = 0
   local integer c = 1
+  call Trace("CheckTownBuilt")
   loop
     exitwhen i >= max_towns
     if not town_built[i] then
@@ -13040,9 +13051,9 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
   local integer defense_length_counter = 0
   local real t = 2 * sleep_multiplier
   local boolean b = most_threatened_town >= 0 and Player(town_owner[most_threatened_town]) != ai_player
-  call SetDefendPlayer(b)
-  set own_strength = ai_strength
   call Trace("==Sleep Defend Town==" )
+  call SetDefendPlayer(b)
+  //set own_strength = ai_strength
   loop
     //if town_loc[most_threatened_town] != null and LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] then
       // if town_threat[most_threatened_town] >= teleport_low_threat then
@@ -13069,14 +13080,14 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
     endif
     if not b then
       set b = CaptainIsHome()
-      if not CaptainRetreating() then
+      if not b and not CaptainRetreating() then
         call CaptainGoHome()
       endif
     endif
     exitwhen not town_threatened and not TownThreatened() and not CaptainInCombat(false)
     exitwhen player_defeated
     call Sleep(t)
-    set own_strength = GetOwnStrength()
+    //set own_strength = GetOwnStrength()
   endloop
   call Trace("==exit Sleep Defend Town==")
   call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
@@ -13457,7 +13468,7 @@ function SkillArraysAM takes nothing returns integer
   if level > max_hero_level then
     set max_hero_level = level
   endif
-  if skillfix == true then    //Assisted Hero Learning Skills , for war3 1.31 bug
+  if skillfix == true and hero_unit[hn] != null and UnitAlive(hero_unit[hn]) then    //Assisted Hero Learning Skills , for war3 1.31 bug
     call SelectHeroSkill(hero_unit[hn], skills[(hn - 1) * HERO_LEVEL_NUMBER + level])
   endif
   return skills[(hn - 1) * HERO_LEVEL_NUMBER + level]
@@ -13721,6 +13732,7 @@ function HealArmy takes nothing returns nothing
       set i = 0
       loop
         exitwhen player_defeated or town_threatened or i >= 4
+        call Trace("function HealArmy: wait ward cast heal" + Int2Str(i))
         call Sleep(sleep_multiplier)  // wait ward cast health
         set i = i + 1
         if i >= 4 then
@@ -13866,6 +13878,7 @@ function ForcedHarvest takes nothing returns boolean
   local integer i = 0
   local integer c = TownCountDone(racial_expansion)
   if Forced_Harvest_total == 0 and hero_built[2] and (FoodUsed() <= 26 or GetGold() <= (800 + tier * 100) or c > 0) then  // later stages of the game, AI may not be harvest
+    call Trace("Run ForcedHarvest")
     loop
       exitwhen i >= max_towns or T >= c
       if own_town_mine[i] != null and GetResourceAmount(own_town_mine[i]) > 0 then
@@ -13881,6 +13894,7 @@ function ForcedHarvest takes nothing returns boolean
   else
     set Forced_Harvest_total = Forced_Harvest_total + 1
   endif
+  call Trace("ForcedHarvest mine num : " + Int2Str(T))
   return T > 0
 endfunction
 
@@ -13938,7 +13952,7 @@ function universal_peon_assignment takes nothing returns nothing
     return
   endif
 
-  call Trace("Harvest Gold at Town:" + Int2Str(T) )
+  call Trace("Harvest Gold at Town:" + Int2Str(T))
   call CreateDebugTagLoc("MINES:" + Int2Str(GetMinesOwned()) + ":" + Int2Str(T), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
   call HarvestGold(T,ver_optimal_gold - 1)
   call HarvestWood(0,1)
