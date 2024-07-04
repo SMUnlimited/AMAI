@@ -519,6 +519,7 @@ globals
     integer racial_highbuild_lv3_total = 2
     integer neutral_shredder = 0
     integer neutral_zeppelin = 0
+    integer neutral_ship = 0
     integer tp_item = 0
     integer sanctuary_item = 0
     integer preservation_item = 0
@@ -5423,7 +5424,7 @@ function GetLocationNonCreepStrength takes real x, real y, real radius returns i
 endfunction
 
 //============================================================================
-function GetLocationEnemyStrength takes real x, real y, real radius, boolean only_structures returns real
+function GetLocationEnemyStrength takes real x, real y, real radius, boolean only_structures returns integer
   local group g = CreateGroup()
   local real sum = 0
   local unit u = null
@@ -5437,9 +5438,8 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
     set u = FirstOfGroup(g)
     exitwhen u == null
     if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) then
-      if IsUnitType(u, UNIT_TYPE_HERO) then
-        set sum = sum + GetHeroStrength(u)
-      elseif IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+      set sum = sum + GetHeroStrength(u)
+      if IsUnitType(u, UNIT_TYPE_STRUCTURE) then
         if not IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) and not IsUnitType(u, UNIT_TYPE_MELEE_ATTACKER) then
           set sum = sum + 0.5
         else
@@ -5448,12 +5448,16 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
       else
         set sum = sum + GetUnitStrength(u)
       endif
+      if IsUnitType(u, UNIT_TYPE_FLYING) then
+        set airsum = airsum + strength
+      endif
     endif
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
   set g = null
-  return sum
+  set air_strength = R2I(airsum + 0.5)
+  return R2I(sum + 0.5)
 endfunction
 
 //============================================================================
@@ -6681,7 +6685,7 @@ endfunction
 //============================================================================
 function GetRacialBuildHallLV takes integer id returns integer
   local integer i = 1
-  if id != 0 then
+  if id > 0 then
     loop
       exitwhen i > tiernum
       if racial_hall[i] != 0 and (needed1[id] == racial_hall[i] or needed2[id] == racial_hall[i] or needed3[id] == racial_hall[i]) then
@@ -7251,6 +7255,7 @@ endfunction
 //============================================================================
 function GetHealer takes unit u returns unit
   local group g = CreateGroup()
+  local group cg = null
   local integer id = 0
   loop
     set u = FirstOfGroup(healer_group)
@@ -7263,8 +7268,10 @@ function GetHealer takes unit u returns unit
     call GroupAddUnit(g, u)
   endloop
   call GroupRemoveUnit(g, u)
-  call DestroyGroup(healer_group)
+  set cg = healer_group
   set healer_group = g
+  call DestroyGroup(cg)
+  set cg = null
   set g = null
   return u
 endfunction
@@ -7526,9 +7533,8 @@ function CheckNeutral takes integer nn returns nothing
     call GetCreepGuardGroup(nn)
     call GetNeutralGuard(nn)
     // set neutral_night_buy[nn] = not no_sleep
-    call Trace("Neutral Pathing ID done: " + Int2Str(nn)) 
+    call Trace("Neutral Pathing ID done: " + Int2Str(nn))
   endif
-
 endfunction
 
 //==========================================================================
@@ -8507,6 +8513,9 @@ endfunction
 function InitNeutralSpecial takes nothing returns nothing
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\btransporter\b/
   set neutral_zeppelin = %1
+#ENDINCLUDE
+#INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\btransporter_water\b/
+  set neutral_ship = %1
 #ENDINCLUDE
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bshredder\b/
   set neutral_shredder = %1
@@ -10248,7 +10257,6 @@ function GetNeutralHero takes integer unitid returns integer
     // Should switch to using transportation to get to it
     // Not Yet Implemented - will instead just build standard heroes
     call Trace("Tavern not usable: Getting standard hero")
-    set recalculate_heros = true
     //set first_choosable_hero = ver_neutral_hero_number
     //loop
     //	exitwhen i > hero_number
@@ -10275,7 +10283,6 @@ function GetNeutralHero takes integer unitid returns integer
 
 
   if (unitid == hero[1] and hero_built[1]) or (unitid == hero[2] and hero_built[2]) or (unitid == hero[3] and hero_built[3]) then
-    call Trace("Try To Resurrect Tavern Hero")
     if SetProduce(1,old_id[unitid],-1) then
       return BUILT_ALL
     else
@@ -11351,6 +11358,7 @@ if mines < 1 or gold_left < 2500 or exp_prepared then
   else
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_prio + i)
   endif
+  return
 elseif active_expansion and GetNextExpansion() >= 0 and HallsCompleted(racial_expansion) and GetExpansionFoe() == null and mines < 4 and GetRandomInt(0, 100 - i) < 48 and GetGold() > 1000 and GetWood() > 700 and GetExpansionX() != -1 and GetExpansionY() != -1 and not CheckDoubleExpansionsClaimedInArea(I2R(GetExpansionX()), I2R(GetExpansionY()), false) then
   set u = GetExpansionPeon()
   if u != null and UnitAlive(u) and u != expansion_peon and not_taken_expansion == null then
@@ -11416,6 +11424,7 @@ function HeroReviver takes nothing returns nothing
         set neutral_ordered[NEUTRAL_TAVERN] = true
         set neutral_wanted[NEUTRAL_TAVERN] = 1
         set TavernResurrect = true
+        call Trace("Try Resurrect Hero from Tavern")
         call TQAddJob(0, BUY_NEUTRAL_HERO, hero[i])
       elseif not TavernResurrect then
         call BuildUnit(1, hero[i], hero_revive_prio[i])
@@ -12384,14 +12393,16 @@ function AttackMoveTowerRush takes nothing returns nothing
 				endloop
 				if mine != null then
 					set current_expansion = mine
+					set current_expansion_iswater = false
 					set u = GetExpFoe(mine)
 				endif
 				set i = 0
 			endif
-			if mine != null and u != null and GetPlayerStrength(rushedplayer) < 3 then
+			if mine != null and u != null and GetPlayerStrength(rushedplayer) < 3 and towers_built > 3 then
 				call CreateDebugTag("TRush: take mine", 10, u, 4.00, 2.00)
 				call Trace("TR : take mine" )
 				call AttackMoveKillCreep(u)
+				call ClearCaptainTargets()
 				set u = null
 			endif
 			if not town_threatened then
@@ -12410,7 +12421,7 @@ function AttackMoveTowerRush takes nothing returns nothing
 			if towers_built < 4 then
 				if tower_peon_inplace then
 					if towers_built_count + force_number - 1 > 35 and towers_built < 2 then  //Prevent cannot build tower , but Enemy army is weak (maybe have ally attack), and AI not attack Enemy home
-						call AttackMoveXY(R2I(second_attack_point_x),R2I(second_attack_point_y))
+						call AttackMoveXY(R2I((x + first_tower_point_x) / 3),R2I((y + first_tower_point_y) / 3))
 					elseif towers_built_count + force_number - 1 > 50 and towers_built < 2 then
 						call AttackMoveXY(x,y)
 					else
@@ -12433,7 +12444,11 @@ function AttackMoveTowerRush takes nothing returns nothing
 					call GroupClear(g)
 				endif
 			elseif towers_built < 7 then
-				call AttackMoveXY(R2I(second_attack_point_x),R2I(second_attack_point_y))
+				if second_attack_point_x != 0 and second_attack_point_y != 0 then
+					call AttackMoveXY(R2I(second_attack_point_x),R2I(second_attack_point_y))
+				else
+					call AttackMoveXY(R2I((x + first_tower_point_x) / 2),R2I((y + first_tower_point_y) / 2))
+				endif
 			else
 				call AttackMoveXY(x,y)
 			endif
@@ -13504,8 +13519,6 @@ function LoadSkills takes integer sa, integer hn, integer ta returns nothing
     set sk = HERO_SKILL_RARE
   elseif perc <= minor_hero_skill_value+rare_hero_skill_value then
     set sk = HERO_SKILL_MINOR
-  else
-    set sk = HERO_SKILL_MAJOR
   endif
   set hero_skills[sa] = sk // set global variable so we can use the fact of knowning what skill was chosen in AMAI
   call LoadSkillsExt((sa-1)*3*HERO_LEVEL_NUMBER + sk*HERO_LEVEL_NUMBER + (hn-1)*9*HERO_LEVEL_NUMBER)
@@ -13567,7 +13580,7 @@ function GetArmyHealthState takes nothing returns real
   local integer hid = 0
   local integer hFountainID = GetHealthFountainID()
   local integer id = 0
-  call GroupClear(healer_group)
+  //call GroupClear(healer_group)
   call GroupClear(urgent_healing_group)
   call GroupClear(medium_healing_group)
   call GroupClear(small_healing_group)
