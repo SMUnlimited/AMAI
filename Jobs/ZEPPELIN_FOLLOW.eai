@@ -2,41 +2,46 @@
 #ELSE
 function ZeppelinFollowJob takes nothing returns nothing
   local real dist = 0
-  local location l = null
-  local group g = CreateGroup()
+  //local location l = null
+  local group g = null
   local group cg = null
   local unit u = null
   local location heroloc = null
   call DisplayToAllJobDebug("ZEPPELIN_FOLLOW Start")
-  call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  set g = SelectById(g, old_id[neutral_zeppelin], true)
-  //set g = SelectByOrderOr(g, 0, order_attack, true)
-  set g = SelectByUnitStandard(g, true)
-  set g = SelectByUnitFree(g, true)
-  set cg = CopyGroup(g, cg)
-  if follow_zeppelin == null or not UnitAlive(follow_zeppelin) then
-    if major_hero != null and UnitAlive(major_hero) then
-      set heroloc = GetUnitLoc(major_hero)
-      set follow_zeppelin = GetNearestOfGroup(follow_zeppelin, g, heroloc)
-      call RemoveLocation(heroloc)
-      set heroloc = null
+  if GetUnitCountDone(old_id[neutral_zeppelin]) > 0 then
+    set g = CreateGroup()
+    call GroupEnumUnitsOfPlayer(g, ai_player, null)
+    set g = SelectById(g, old_id[neutral_zeppelin], true)
+    //set g = SelectByOrderOr(g, 0, order_attack, true)
+    set g = SelectByAlive(g, true)
+    set g = SelectByUnitStandard(g, true)
+    set g = SelectByUnitFree(g, true)
+    set cg = CopyGroup(g, cg)
+    if follow_zeppelin == null or not UnitAlive(follow_zeppelin) or IsUnitBuying(follow_zeppelin) or not IsStandardUnit(follow_zeppelin) then
+      if major_hero != null and UnitAlive(major_hero) then
+        set heroloc = GetUnitLoc(major_hero)
+        set follow_zeppelin = GetNearestOfGroup(follow_zeppelin, g, heroloc)
+        call RemoveLocation(heroloc)
+        set heroloc = null
+      endif
     endif
+    call GroupRemoveUnit(cg, follow_zeppelin)
+    call GroupRemoveUnit(cg, build_zeppelin)
+    loop
+      set u = FirstOfGroup(cg)
+      exitwhen u == null
+      if GetUnitCurrentOrder(u) == 0 or GetUnitCurrentOrder(u) == OrderId("stop") then  // Prevent stuck in can not repair areas or other unknown situations
+        call IssuePointOrder(u, "move", GetUnitX(u) + ISign() * GetRandomReal(100,200), GetUnitY(u) + ISign() * GetRandomReal(100,200))
+        call RecycleGuardPosition(u)
+      endif
+      call GroupRemoveUnit(cg, u)
+    endloop
+    call DestroyGroup(cg)
+    set cg = null
+    call DestroyGroup(g)
+    set g = null
   endif
-  call GroupRemoveUnit(cg, follow_zeppelin)
-  loop
-    set u = FirstOfGroup(cg)
-    exitwhen u == null
-    if UnitAlive(u) and (GetUnitCurrentOrder(u) == 0 or GetUnitCurrentOrder(u) == OrderId("stop") or GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE)) then  // Prevent stuck in can not repair areas or other unknown situations
-      call IssuePointOrder(u, "move", GetUnitX(u) + ISign() * GetRandomReal(100,200), GetUnitY(u) + ISign() * GetRandomReal(100,200))
-      call RecycleGuardPosition(u)
-    endif
-    call GroupRemoveUnit(cg, u)
-  endloop
-  call DestroyGroup(cg)
-  set cg = null
-  call DestroyGroup(g)
-  set g = null
-  if follow_zeppelin == null or IsUnitBuying(follow_zeppelin) or not UnitAlive(follow_zeppelin) or IsUnitInGroup(follow_zeppelin, unit_rescueing) or IsUnitInGroup(follow_zeppelin, unit_zepplin_move) then
+  if follow_zeppelin == null or not UnitAlive(follow_zeppelin) or IsUnitBuying(follow_zeppelin) or IsUnitInGroup(follow_zeppelin, unit_rescueing) or IsUnitInGroup(follow_zeppelin, unit_zepplin_move) then
     set follow_zeppelin = null
     call TQAddJob(10, ZEPPELIN_FOLLOW, 0)
     set zeppelin_following = false
@@ -54,15 +59,15 @@ function ZeppelinFollowJob takes nothing returns nothing
   set dist = DistanceBetweenUnits(major_hero, follow_zeppelin)
   if dist > max_follow_dist and not IsUnitLoaded(major_hero) then
     call CreateDebugTag("Zepplin follow hero", 10, follow_zeppelin, 3.00, 1.50)
-    set l = GetLocationBetweenUnits(follow_zeppelin, major_hero, (dist - 0.5 * max_follow_dist) / RMax(dist,1))
+    //set l = GetLocationBetweenUnits(follow_zeppelin, major_hero, (dist - 0.5 * max_follow_dist) / RMax(dist,1))
     //set l = GetLocationBetweenUnits(follow_zeppelin, major_hero, (dist - 0.33 * max_follow_dist))
-    if not IssuePointOrder(follow_zeppelin, "unloadall", GetLocationX(l), GetLocationY(l)) then
-      call IssuePointOrder(follow_zeppelin, "unloadall", GetLocationX(l) + ISign() * GetRandomReal(100,200), GetLocationY(l) + ISign() * GetRandomReal(100,200))
-    endif
+    // if not IssuePointOrder(follow_zeppelin, "unloadall", GetLocationX(l), GetLocationY(l)) then
+    //   call IssuePointOrder(follow_zeppelin, "unloadall", GetLocationX(l) + ISign() * GetRandomReal(100,200), GetLocationY(l) + ISign() * GetRandomReal(100,200))
+    // endif
     call IssueTargetOrder(follow_zeppelin, "move", major_hero)
     call TQAddJob(RMax((dist - max_follow_dist) / RMax(GetUnitMoveSpeed(follow_zeppelin) + GetUnitMoveSpeed(major_hero), 50), 1) * sleep_multiplier,ZEPPELIN_FOLLOW,0)
-    call RemoveLocation(l)
-    set l = null
+    //call RemoveLocation(l)
+    //set l = null
   else
     call CreateDebugTag("Zepplin follow stopped", 10, follow_zeppelin, 3.00, 1.50)
     call IssueImmediateOrder(follow_zeppelin, "stop")
