@@ -1,6 +1,7 @@
 #IFDEF GLOBAL
   integer blockstate = 0
   integer movetotal = 0
+  boolean allyheroblockfix = false
   location ancientrootloc = Location(0, 0)
   unit blockpathunit = null
   unit blockancient = null
@@ -60,6 +61,7 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean atta
   local unit utemp = null
   local player p = null
   local integer i = 0
+  local boolean allyhero = allyheroblockfix == true
   call GroupEnumUnitsInRangeOfLoc(g, l, range, null)
   call GroupRemoveUnit(g, blockpathunit)
   if fixmode == 0 then
@@ -124,7 +126,7 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean atta
         endif
         call GroupRemoveUnit(g,u)
       endloop
-    else  // check other block , once check one own unit
+    else  // check other block , once check one own unit and ally hero
       loop
         set u = FirstOfGroup(g)
         exitwhen u == null
@@ -133,9 +135,10 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean atta
           call CreateDebugTagLoc("other block", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
           call AddAssault(1,GetUnitTypeId(u))
           set blockunit = u
-        elseif p != ai_player and IsPlayerAlly(ai_player, p) and GetPlayerController(p) == MAP_CONTROL_COMPUTER and IsUnitType(u, UNIT_TYPE_HERO) and not town_threatened and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitLoaded(u) then
+        elseif not allyhero and  p != ai_player and IsPlayerAlly(ai_player, p) and GetPlayerController(p) == MAP_CONTROL_COMPUTER and IsUnitType(u, UNIT_TYPE_HERO) and not town_threatened and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitLoaded(u) and not IsUnitType(u, UNIT_TYPE_FLYING) then
           call CreateDebugTagLoc("ally hero block", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
-          call TeleportFixBlock(u)
+          call TeleportFixBlock(u)  //  case one loop let hero teleport too much
+          set allyheroblockfix = true
         endif
         call GroupRemoveUnit(g,u)
       endloop
@@ -145,10 +148,11 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean atta
   call DestroyGroup(g)
   set g = null
   set u = null
+  set allyhero = allyheroblockfix == true
 endfunction
 
 function RemoveBlockPathUnit takes nothing returns nothing
-  if blockpathunit != null and UnitAlive(blockpathunit) then
+  if blockpathunit != null then
     call RemoveUnit(blockpathunit)
   endif
   set blockpathunit = null
@@ -213,8 +217,7 @@ function FixBlockJob takes nothing returns nothing
   set blockunit = null
   set movetotal = 0
   call DisplayToAllJobDebug("Fix_Block Job Start, state : " + Int2Str(blockstate))
-  call CreateDebugTagLoc("Fix Block state : " + Int2Str(blockstate), 8, GetLocationX(home_location) - 300, GetLocationY(home_location) + 300, 60.00, 55.00)
-  call TryFixBlock(2, home_location, 1000, true, blockstate != 3)  // 3 check other block , maybe pathing sys will always led unit go one loc , but loc blind alley , this block unable to handle , like map lastmanstanding - when hero no block , but maybe new train unit wiil go tavern
+  call TryFixBlock(2, home_location, 1200, true, blockstate != 3)  // 3 check other block , maybe pathing sys will always led unit go one loc , but loc blind alley , this block unable to handle , like map lastmanstanding - when hero no block , but maybe new train unit wiil go tavern
   if blockstate == 0 then
     set l = GetPlayerStartLocationLoc(enemy_force[0])
     set blockpathunit = CreatePathingUnitFull(blockpathunit, Player(PLAYER_NEUTRAL_PASSIVE), 'hbew', GetLocationX(home_location), GetLocationY(home_location))  // must big unit and can not revive
@@ -238,6 +241,7 @@ function FixBlockJob takes nothing returns nothing
   set blockstate = blockstate + 1
   if blockstate > 3 then
     set blockstate = 0
+    set allyheroblockfix = false
   endif
   call TQAddJob(240 - Min(blockstate, 1) * 230, FIX_BLOCK, 0)
 endfunction
