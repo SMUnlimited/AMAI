@@ -11,7 +11,7 @@
 // ######################## Fix Block ###############################
 // Created by JZY 15/04/24.
 // blockstate : 0 check home block , 1 & 2 check altar and tavern block , 3 check other block
-// fix mode : 0 and 2 move ancient or kill build and with compensation , 1 harvest or attack tree , 2 give path unit move aside or check other block
+// fix mode : 0 move ancient or kill build and with compensation , 1 harvest or attack tree , 2 give path unit move aside or check other block
 // ##################################################################
 function TryAttackTree takes unit u, integer id, location l returns nothing
   if id == 'ebal' or id == 'hmtm' or id == 'ocat' or id == 'umtw' or id == 'ncat' then
@@ -61,7 +61,7 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean atta
   local unit utemp = null
   local player p = null
   local integer i = 0
-  local boolean allyhero = allyheroblockfix == true
+  local boolean array allyhero
   call GroupEnumUnitsInRangeOfLoc(g, l, range, null)
   call GroupRemoveUnit(g, blockpathunit)
   if fixmode == 0 then
@@ -135,10 +135,11 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean atta
           call CreateDebugTagLoc("other block", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
           call AddAssault(1,GetUnitTypeId(u))
           set blockunit = u
-        elseif not allyhero and  p != ai_player and IsPlayerAlly(ai_player, p) and GetPlayerController(p) == MAP_CONTROL_COMPUTER and IsUnitType(u, UNIT_TYPE_HERO) and not town_threatened and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitLoaded(u) and not IsUnitType(u, UNIT_TYPE_FLYING) then
+        elseif not allyhero[GetPlayerId(p)] and  p != ai_player and IsPlayerAlly(ai_player, p) and GetPlayerController(p) == MAP_CONTROL_COMPUTER and IsUnitType(u, UNIT_TYPE_HERO) and not town_threatened and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitLoaded(u) and not IsUnitType(u, UNIT_TYPE_FLYING) then
           call CreateDebugTagLoc("ally hero block", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
           call TeleportFixBlock(u)  //  case one loop let hero teleport too much
           set allyheroblockfix = true
+          set allyhero[GetPlayerId(p)] = true
         endif
         call GroupRemoveUnit(g,u)
       endloop
@@ -148,7 +149,6 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean atta
   call DestroyGroup(g)
   set g = null
   set u = null
-  set allyhero = allyheroblockfix == true
 endfunction
 
 function RemoveBlockPathUnit takes nothing returns nothing

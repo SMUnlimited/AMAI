@@ -96,7 +96,7 @@ function GroupOrderDeny_d takes group g, unit target returns nothing
   local boolean b = false
   loop
     set u = FirstOfGroup(g)
-    exitwhen u == null or GetUnitState(target, UNIT_STATE_LIFE) <= 0 or b == true
+    exitwhen u == null or b == true
     if IsUnitType(u, UNIT_TYPE_HERO) then
       if GetUnitAbilityLevel(u, 'AUdr') > 0 then  //Intentionally check one by one, prioritizing the restoration of magic
         set b = IssueTargetOrder(u, "darkritual", target)
@@ -232,13 +232,13 @@ function FocusFire takes unit u returns nothing
   set temp_focus = SelectByOrder(temp_focus, OrderId("devour"), false)
   set temp_focus = SelectByOrder(temp_focus, 852487, false)
   set temp_focus = SelectByUnitStandard(temp_focus, true)  //Reduce usage IsUnitInGroup
-  if u != deny_unit and GetUnitState(u, UNIT_STATE_LIFE) > 0 then  //Insurance
+  if u != deny_unit then  //Insurance
     if FirstOfGroup(micro_enemymelee_group) != null then
       call GroupMicroSystem(micro_ranged_group, micro_enemymelee_group, temp_focus)  // Move ranged units away from melee units, if moved here they will not focus fire
     endif
   endif
   call DestroyGroup(t)
-  if BlzGroupGetSize(temp_focus) > 0 and GetUnitState(u, UNIT_STATE_LIFE) > 0 then  //final Insurance
+  if BlzGroupGetSize(temp_focus) > 0 then  //final Insurance
     if focus_fire_unit == null or focus_fire_unit != u then
       if not IsUnitType(u,UNIT_TYPE_STRUCTURE) and not IsUnitOwnedByPlayer(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then  // Dont windwalk for non-critical enemies
         call GroupOrderFocusWindInstant(temp_focus)
@@ -249,13 +249,9 @@ function FocusFire takes unit u returns nothing
     if u == deny_unit and own_race == R_UNDEAD then
       call GroupOrderDeny_d(CopyGroup(temp_focus,t), u)
     endif
-    if GetUnitState(u, UNIT_STATE_LIFE) > 0 then
-      set temp_focus = FocusGroupRemoveUnit(temp_focus)
-      call GroupTargetOrder(temp_focus, "attack", u)
-    endif
-    if GetUnitState(u, UNIT_STATE_LIFE) > 0 then
-      call GroupOrderAttack_d(CopyGroup(windwalk_group,t), u)  // Forces Windwalking invisible units to attack directly as normal group order is ignored
-    endif
+    set temp_focus = FocusGroupRemoveUnit(temp_focus)
+    call GroupTargetOrder(temp_focus, "attack", u)
+    call GroupOrderAttack_d(CopyGroup(windwalk_group,t), u)  // Forces Windwalking invisible units to attack directly as normal group order is ignored
     if u != deny_unit then
       set focus_fire_group = GroupAddGroup(focus_fire_group, temp_focus)  // Finally add units to group to say they have focus fired
     endif
@@ -414,17 +410,16 @@ function FocusFireJob takes nothing returns nothing
       endif
       set i = i + 1
     endloop
-    if deny_unit != null and UnitAlive(deny_unit) and GetUnitState(deny_unit, UNIT_STATE_LIFE) < 24 and (GetUnitState(deny_unit, UNIT_STATE_LIFE)/GetUnitState(deny_unit, UNIT_STATE_MAX_LIFE)) < 0.10 then
+    if deny_unit != null and UnitAlive(deny_unit) and not IsUnitLoaded(deny_unit) and GetUnitState(deny_unit, UNIT_STATE_LIFE) < 24 and (GetUnitState(deny_unit, UNIT_STATE_LIFE)/GetUnitState(deny_unit, UNIT_STATE_MAX_LIFE)) < 0.10 then
       call FocusFire(deny_unit)
-      if not UnitAlive(deny_unit) then
-        call GroupRemoveUnit(unit_healing, deny_unit)
-        call GroupRemoveUnit(unit_rescueing, deny_unit)
-        call GroupRemoveUnit(unit_harassing, deny_unit)
-        call GroupRemoveUnit(unit_zepplin_move, deny_unit)
-        call GroupRemoveUnit(unit_buying_item, deny_unit)
-        call GroupRemoveUnit(unit_buying_merc, deny_unit)
-        call GroupRemoveUnit(unit_buying_tavern, deny_unit)
-      endif
+      call GroupRemoveUnit(unit_rescueing, deny_unit)
+      call GroupRemoveUnit(unit_harassing, deny_unit)
+      call GroupRemoveUnit(unit_zepplin_move, deny_unit)
+      call GroupRemoveUnit(unit_buying_item, deny_unit)
+      call GroupRemoveUnit(unit_buying_merc, deny_unit)
+      call GroupRemoveUnit(unit_buying_tavern, deny_unit)
+      call GroupAddUnit(unit_healing, deny_unit)
+      call TQAddUnitJob(1, SEND_HOME, 0, deny_unit)  // maybe fail
       set deny_unit = null
     endif
     call SetTargetHeroes(difficulty != EASY)
