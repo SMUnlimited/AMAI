@@ -7816,7 +7816,7 @@ function PJInitJobs takes nothing returns nothing
   call PathingJobEx(15 * sleep_multiplier, UPDATE_STRENGTH, 0, false)                             //UpdateStrengthJob
   loop
     exitwhen i >= NEUTRAL_COUNT
-    if neutral_guarded[i] and nearest_neutral[i] != null and UnitAlive(nearest_neutral[i]) then
+    if nearest_neutral[i] != null and neutral_guarded[i] and UnitAlive(nearest_neutral[i]) then
       call PathingJobEx(30 * sleep_multiplier, NEUTRAL_GUARDED, i, true)                          //NeutralGuardedJob
     endif
     set i = i + 1
@@ -10908,10 +10908,10 @@ function StartExpansionAM takes integer qty, integer hall returns integer
 endfunction
 
 //============================================================================
-function CheckRaceCanBuy takes integer id, player p returns boolean
-  if id == sanctuary_item and GetPlayerRace(p) != RACE_HUMAN then
+function CheckRaceCanBuy takes integer id, race r returns boolean
+  if id == sanctuary_item and r != RACE_HUMAN then
     return false
-  elseif id == preservation_item and GetPlayerRace(p) != RACE_NIGHTELF then
+  elseif id == preservation_item and r != RACE_NIGHTELF then
     return false
   endif
   return true
@@ -10932,7 +10932,7 @@ function BuyItem takes integer qty, integer id returns boolean
     //call Trace("Already ordered to get an item")
     return true
   endif
-  if not CheckRaceCanBuy(id,ai_player) then
+  if not CheckRaceCanBuy(id, GetPlayerRace(ai_player)) then
     return false
   endif
   if buy_type[id] == BT_RACIAL_ITEM then
@@ -10967,14 +10967,14 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
   endif
   loop
     exitwhen i < 0 or i >= c_ally_total
-    set m = GetRandomInt(0, c_ally_total - 1)
+    set m = GetRandomInt(0, Max(c_ally_total - 1, 0))
     set i = i + 1
     if GetPlayerSlotState(ally_force[m]) == PLAYER_SLOT_STATE_PLAYING then
       set i = -1
     endif
   endloop
   set shop_unit = null
-  if i < 0 and CheckRaceCanBuy(id, ally_force[m]) then
+  if i < 0 and CheckRaceCanBuy(id, GetPlayerRace(ally_force[m])) then
     set g = CreateGroup()
     call GroupEnumUnitsOfPlayer(g, ally_force[m], null)
     loop
@@ -11388,7 +11388,9 @@ function GetHeroSkin takes integer hn returns nothing
   else
     return // unknow hero
   endif
-  call BlzSetUnitSkinAMAI(hero_unit[hn], heroskin[i])  // set skin API at 1.33+ and some unit at 1.32+ , old WE make map cannot use - so just in case check max player num
+  if heroskin[i] != '0' then
+    call BlzSetUnitSkinAMAI(hero_unit[hn], heroskin[i])  // set skin API at 1.33+ and some unit at 1.32+ , old WE make map cannot use - so just in case check max player num
+  endif
 endfunction
 #UNDEF $SKINSTART$
 #UNDEF $SKINEND$
@@ -11416,7 +11418,7 @@ function HeroReviver takes nothing returns nothing
         endif
       endif
     elseif hero_built[i] then
-      if not TavernResurrect and nearest_neutral[NEUTRAL_TAVERN] != null and (100 * (GetUnitLevel(hero_unit[i]) + 4)) > GetGold() and (25 * (GetUnitLevel(hero_unit[i]) + 4)) > GetWood() then
+      if not TavernResurrect and not attack_running and nearest_neutral[NEUTRAL_TAVERN] != null and (100 * (GetUnitLevel(hero_unit[i]) + 4)) > GetGold() and (25 * (GetUnitLevel(hero_unit[i]) + 4)) > GetWood() then
         set neutral_ordered[NEUTRAL_TAVERN] = true
         set neutral_wanted[NEUTRAL_TAVERN] = 1
         set TavernResurrect = true
@@ -11811,21 +11813,18 @@ function AttackGroupAddUnknown takes nothing returns nothing
   local unit u = null
   local integer i = 0
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
-  set g = SelectUnittype(g, UNIT_TYPE_SUMMONED, false)
-  set g = SelectByHidden(g,false)
-  set g = SelectByAlive(g,true)
   loop
     exitwhen i >= attack_length or FirstOfGroup(g) == null
     set g = SelectById(g, old_id[attack_units[i]], false)
     set i = i + 1
   endloop
+  set g = SelectByHidden(g,false)
+  set g = SelectByAlive(g,true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
     set i = GetUnitTypeId(u)
-    if ((IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) or IsUnitType(u, UNIT_TYPE_ATTACKS_GROUND)) and i != 'ngir') or IsUnitType(u, UNIT_TYPE_SAPPER) then
+    if not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_SUMMONED) amd (((IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) or IsUnitType(u, UNIT_TYPE_ATTACKS_GROUND)) and i != 'ngir') or IsUnitType(u, UNIT_TYPE_SAPPER)) and UnitAlive(u) and not IsUnitHidden(u) then
       call AddAssault(60,i)  //other hero and unit , like other race and custom
     endif
     call GroupRemoveUnit(g, u)
