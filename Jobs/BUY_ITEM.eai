@@ -49,36 +49,19 @@ function CanRepeatItem takes integer id returns boolean
   return false  // record not heal but can repeat buy item
 endfunction
 
-function DropNonHealingItem takes unit u returns nothing
+function SellorDropNonHealingItem takes unit u, unit shop, boolean healitem returns nothing
   local integer i = 0
   local integer id = 0
-  local item t = null
-  loop
-    exitwhen i > 5
-    set t = UnitItemInSlot(u, i)
-    if t != null then
-      set id = GetItemTypeId(t)
-      if not IsHealingItem(id) and not IsValuablesItem(id) then
-        call UnitDropItemPoint(u, t, GetUnitX(u), GetUnitY(u))
-        set t = null
-        return
-      endif
-    endif
-    set i = i + 1
-  endloop
-  set t = null
-endfunction
-
-function SellItem takes unit u, unit shop returns integer
-  local integer i = 0
-  local integer id = 0
+  local integer array it
   local integer c = 0
   local item t = null
   loop
     exitwhen i > 5 or c > 0  //Prevent order stacking from causing fail
     set t = UnitItemInSlot(u, i)
+    set it[i] = 0
     if t != null then
       set id = GetItemTypeId(t)
+      set it[i] = id
       if (id == 'crys' or id == 'wswd' or id == 'wshs' or id == 'tret' or id == 'fgun') and UnitDropItemTarget(u, t, shop) then
         set c = c + 1
       elseif (id == 'pomn' or id == 'mcri') and UnitUseItem(u, t) then
@@ -87,8 +70,19 @@ function SellItem takes unit u, unit shop returns integer
     endif
     set i = i + 1
   endloop
+  if healitem and c < 1 and GetSlotsFreeOnUnit(shop_sent) < 1 then  // Priority sell
+    loop
+      exitwhen i > 6 or c > 5
+      if it[c] != 0 and not IsHealingItem(it[c]) and not IsValuablesItem(it[c]) then
+        set t = UnitItemInSlot(u, c)
+        if t != null and UnitDropItemPoint(u, t, GetUnitX(u), GetUnitY(u)) then
+          set i = i + 1
+        endif
+      endif
+      set c = c + 1
+    endloop
+  endif
   set t = null
-  return c
 endfunction
 
 function ResetBuyItem takes nothing returns nothing
@@ -234,9 +228,7 @@ function BuyItemJob takes integer id returns nothing
   if dist < buy_distance then
     call CreateDebugTag("buy item", 10, shop_sent, 3.00, 1.50)
     call IssueImmediateOrder(shop_sent, "stop")
-    if SellItem(shop_sent, shop_unit) < 1 and GetSlotsFreeOnUnit(shop_sent) < 1 and healing then
-      call DropNonHealingItem(shop_sent)
-    endif
+    call SellorDropNonHealingItem(shop_sent, shop_unit, healing)
     set ismoving = false
     if GetUnitAbilityLevel(shop_unit,'Aall') > 0 then  // Change shop target to this hero
       call IssueTargetOrderById(shop_unit, 'Aall', shop_sent)
