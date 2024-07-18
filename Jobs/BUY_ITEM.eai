@@ -69,29 +69,32 @@ function DropNonHealingItem takes unit u returns nothing
   set t = null
 endfunction
 
-function SellItem takes unit u, unit shop returns nothing
+function SellItem takes unit u, unit shop returns integer
   local integer i = 0
   local integer id = 0
+  local integer c = 0
   local item t = null
   loop
-    exitwhen i > 5
+    exitwhen i > 5 or c > 0  //Prevent order stacking from causing fail
     set t = UnitItemInSlot(u, i)
     if t != null then
       set id = GetItemTypeId(t)
-      if id == 'crys' or id == 'wswd' or id == 'wshs' or id == 'tret' or id == 'fgun' then
-        call UnitDropItemTarget(u, t, shop)
-      elseif id == 'pomn' or id == 'mcri' then
-        call UnitUseItem(u, t)
+      if (id == 'crys' or id == 'wswd' or id == 'wshs' or id == 'tret' or id == 'fgun') and UnitDropItemTarget(u, t, shop) then
+        set c = c + 1
+      elseif (id == 'pomn' or id == 'mcri') and UnitUseItem(u, t) then
+        set c = c + 1
       endif
     endif
     set i = i + 1
   endloop
   set t = null
+  return c
 endfunction
 
 function ResetBuyItem takes nothing returns nothing
   if shop_sent != null then
     call GroupRemoveUnit(unit_buying_item, shop_sent)
+    call GroupRemoveUnit(going_home_group, shop_sent)
     if UnitAlive(shop_sent) and not IsUnitInGroup(shop_sent, unit_buying_merc) and not IsUnitInGroup(shop_sent, unit_buying_tavern) and IsStandardUnit(shop_sent) then
       call RecycleGuardPosition(shop_sent)
       call AddAssault(1, GetUnitTypeId(shop_sent))
@@ -108,6 +111,7 @@ function BuyItemJob takes integer id returns nothing
   local real current_time = TimerGetElapsed(tq_timer)
   local real time_next_try = 0
   local real dist = 0
+  local real dist2 = 0
   local integer detectedenemies = 0
   local boolean healing = IsHealingItem(old_id[id])
   local boolean itemstacking = healing == true or CanRepeatItem(id) == true  // heal item can repeat
@@ -156,23 +160,26 @@ function BuyItemJob takes integer id returns nothing
     endif
     call GroupAddUnit(unit_buying_item, shop_sent)
   endif
+  set dist = DistanceBetweenUnits(shop_sent, shop_unit)
+  //call CreateDebugTag("In BUT ITEM JOB, 10, shop_sent, 3.00, 1.50)
   if moreshop then
     set backshop = GetUnitOfTypeNearUnit(old_id[racial_shop], shop_sent, backshop)
-    if backshop != null and backshop != shop_unit and DistanceBetweenUnits(shop_sent, backshop) < shop_distance_limit then
-      set shop_unit = backshop
-      call CreateDebugTag("BUY_ITEM: get close shop", 10, shop_unit, 3.00, 1.50)
+    if backshop != null and backshop != shop_unit then
+      set dist2 = DistanceBetweenUnits(shop_sent, backshop)
+      if dist2 < dist and dist2 < shop_distance_limit then
+        set shop_unit = backshop
+        set dist = dist2
+        call CreateDebugTag("BUY_ITEM: get close shop", 10, shop_unit, 3.00, 1.50)
+      endif
     endif
     set backshop = null
   endif
-  set dist = DistanceBetweenUnits(shop_sent, shop_unit)
-  //call CreateDebugTag("In BUT ITEM JOB, 10, shop_sent, 3.00, 1.50)
 
   // Town threatened so dont get item
   if GetOwningPlayer(shop_unit) == ai_player and dist < 1000 then
   else
     if town_threatened or attack_running then
       call CreateDebugTag("BUY_ITEM:in attack so dont get item", 10, shop_sent, 3.00, 1.50)
-      call GroupRemoveUnit(going_home_group, shop_sent)
       call ResetBuyItem()
       return
     endif
@@ -187,7 +194,6 @@ function BuyItemJob takes integer id returns nothing
     else
       set retreat_home = false
       call CreateDebugTag("BUY_ITEM: Retreated", 10, shop_sent, 3.00, 1.50)
-      call GroupRemoveUnit(going_home_group, shop_sent)
       call ResetBuyItem()
     endif
     return
@@ -228,8 +234,7 @@ function BuyItemJob takes integer id returns nothing
   if dist < buy_distance then
     call CreateDebugTag("buy item", 10, shop_sent, 3.00, 1.50)
     call IssueImmediateOrder(shop_sent, "stop")
-    call SellItem(shop_sent, shop_unit)
-    if GetSlotsFreeOnUnit(shop_sent) <= 0 and healing then
+    if SellItem(shop_sent, shop_unit) < 1 and GetSlotsFreeOnUnit(shop_sent) < 1 and healing then
       call DropNonHealingItem(shop_sent)
     endif
     set ismoving = false
