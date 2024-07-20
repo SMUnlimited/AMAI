@@ -5441,11 +5441,7 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
     exitwhen u == null
     if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) then
       if IsUnitType(u, UNIT_TYPE_STRUCTURE) then
-        if not IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) and not IsUnitType(u, UNIT_TYPE_MELEE_ATTACKER) then
-          set sum = sum + 0.5
-        else
-          set sum = sum + 1
-        endif
+        set sum = sum + 1
       else
         set sum = sum + GetUnitStrength(u)
       endif
@@ -10814,14 +10810,6 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   endif
   if CheckExpansionTaken(current_expansion) then
     call Trace("AMAIStartexpa: Expansion Taken by someone else")
-    if current_expansion != not_taken_expansion then
-      set current_expansion = null
-    endif
-    if expansion_peon != null and build_zeppelin != null and UnitAlive(expansion_peon) and IsUnitLoaded(expansion_peon) then
-      call IssueTargetOrder(build_zeppelin, "unload", expansion_peon)
-      call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, build_zeppelin)
-      call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, expansion_peon)
-    endif
     return BUILT_ALL
   endif
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Taken Checked")
@@ -10881,6 +10869,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
         else
           call GroupAddUnit(unit_zepplin_move, build_zeppelin)
           call RemoveGuardPosition(build_zeppelin)
+          call TQAddUnitJob(GetTimeToReachUnit(build_zeppelin, current_expansion) + 30, RESET_GUARD_POSITION, 50, build_zeppelin)  // Prevent failure and failure to recover midway
         endif
       endif
       if (w and build_zeppelin == null) then
@@ -11095,7 +11084,7 @@ function StartItem takes integer ask_qty, integer itemid returns integer
     call Trace("buy item")
     return BUILT_SOME
   else
-    if IsHealingItem(old_id[itemid]) and buy_type[itemid] == BT_RACIAL_ITEM and c_ally_total > 0 and GetGold() > 1000 then
+    if build_emergency_healing_item != itemid and IsHealingItem(old_id[itemid]) and buy_type[itemid] == BT_RACIAL_ITEM and c_ally_total > 0 and GetGold() > 1000 then
       if BuyAllyShopItem(have_qty + 1,itemid) then  //return false just run next time
         call Trace("buy item from ally")
         return BUILT_SOME
@@ -11361,18 +11350,16 @@ if mines < 1 or gold_left < 2500 or exp_prepared then
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_prio + i)
   endif
   return
-elseif active_expansion and GetNextExpansion() >= 0 and HallsCompleted(racial_expansion) and GetExpansionFoe() == null and mines < 4 and GetRandomInt(0, 100 - i) < 48 and GetGold() > 1000 and GetWood() > 700 and GetExpansionX() != -1 and GetExpansionY() != -1 and not CheckDoubleExpansionsClaimedInArea(I2R(GetExpansionX()), I2R(GetExpansionY()), false) then
-  if not double_expansion_ally_present and not double_expansion_enemy_present then
-    set u = GetExpansionPeon()
-    if u != null and UnitAlive(u) and u != expansion_peon and not_taken_expansion == null then
-      call SetExpansion(u, old_id[racial_expansion])
-      call CreateDebugTag("chaos expansion", 10, u, 3.00, 1.50)
-      set u = null
-      call Trace("ExpansionBuilder: chaos expansion")
-      return
-    endif
+elseif active_expansion and GetNextExpansion() >= 0 and HallsCompleted(racial_expansion) and GetExpansionFoe() == null and mines < 4 and GetRandomInt(0, 100 - i) < 48 and GetGold() > 1000 and GetWood() > 700 and GetExpansionX() != -1 and GetExpansionY() != -1 and GetLocationEnemyStrength(I2R(GetExpansionX()), I2R(GetExpansionY()), expansion_radius, true) <= 0 then
+  set u = GetExpansionPeon()
+  if u != null and UnitAlive(u) and u != expansion_peon and not_taken_expansion == null then
+    call SetExpansion(u, old_id[racial_expansion])
+    call CreateDebugTag("chaos expansion", 10, u, 3.00, 1.50)
     set u = null
+    call Trace("ExpansionBuilder: chaos expansion")
+    return
   endif
+  set u = null
 endif
 call Trace("ExpansionBuilder: Not ready to build mine")
 endfunction
@@ -12371,6 +12358,7 @@ function AttackMoveTowerRush takes nothing returns nothing
 	local location l = GetStartLocationLoc(GetPlayerStartLocation(rushedplayer))
 	local unit mine = null
 	local unit u = null
+	set break_attack = false
 	loop
 		exitwhen not towerrush
 		exitwhen town_threatened and town_threat[most_threatened_town] >= threat
@@ -12379,7 +12367,6 @@ function AttackMoveTowerRush takes nothing returns nothing
 		if tower_attack_run != true and (GetUnitCountDone(old_id[hero[1]]) + GetUnitCountDone(old_id[hero[2]]) + GetUnitCountDone(old_id[hero[3]])) > 0 and (race_tower_item_must != true or (race_tower_item_must == true and (builder[0] != null or tower_used_item))) then
 			set tower_attack_run = true
 			set attack_running = true
-			set break_attack = false
 			if not town_threatened then
 				call SetAllianceTargetIfLead(builder[10])
 			endif
@@ -13045,6 +13032,8 @@ endfunction
 function Ancient_Expansion takes nothing returns nothing
   local integer i = 1
   if ancient_exp_maintree then
+    set break_attack = false
+    set attack_running = true
     loop
       exitwhen desperation_assault or break_attack
       exitwhen town_threat_break and town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_high_threat
@@ -13061,6 +13050,7 @@ function Ancient_Expansion takes nothing returns nothing
         set i = 1
       endif
     endloop
+    set attack_running = false
   endif
 endfunction
 
@@ -13895,7 +13885,7 @@ function ForcedHarvest takes nothing returns boolean
   local integer T = 0
   local integer i = 0
   local integer c = Min(TownCountDone(racial_expansion), GetMinesOwned())
-  if Forced_Harvest_total == 0 and first_town_mine < 1 and c != 1 and (FoodUsed() <= 26 or GetGold() <= (800 + tier * 100)) then  // later stages of the game, AI may not be harvest
+  if Forced_Harvest_total == 0 and first_town_mine < 1 and (c > 1 or GetGoldOwned() < 3000) and (FoodUsed() < 26 or GetGold() < (1000 + tier * 200)) then  // later stages of the game, AI may not be harvest
     loop
       exitwhen i >= max_towns or T > c
       if own_town_mine[i] != null and GetResourceAmount(own_town_mine[i]) > 0 then
@@ -13906,7 +13896,7 @@ function ForcedHarvest takes nothing returns boolean
       set i = i + 1
     endloop
   endif
-  if Forced_Harvest_total > 3 then
+  if (Forced_Harvest_total > 3 and c > 1) or Forced_Harvest_total > 6 then
     set Forced_Harvest_total = 0  //Prevent peon excessive harvest
   else
     set Forced_Harvest_total = Forced_Harvest_total + 1
