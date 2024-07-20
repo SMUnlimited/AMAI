@@ -49,40 +49,52 @@ function CanRepeatItem takes integer id returns boolean
   return false  // record not heal but can repeat buy item
 endfunction
 
-function SellorDropNonHealingItem takes unit u, unit shop, boolean healitem returns nothing
+function SellorDropNonHealingItem takes unit u, unit shop, boolean healitem, boolean dist returns integer
   local integer i = 0
   local integer id = 0
   local integer array it
+  local integer s = 0  //Prevent order stacking from causing fail
   local integer c = 0
   local item t = null
   loop
-    exitwhen i > 5 or c > 0  //Prevent order stacking from causing fail
+    exitwhen i > 5
     set t = UnitItemInSlot(u, i)
     set it[i] = 0
     if t != null then
       set id = GetItemTypeId(t)
       set it[i] = id
-      if (id == 'crys' or id == 'wswd' or id == 'wshs' or id == 'tret' or id == 'fgun') and UnitDropItemTarget(u, t, shop) then
+      if id == 'crys' or id == 'wswd' or id == 'wshs' or id == 'tret' or id == 'fgun' then
+        if s < 1 and dist and UnitDropItemTarget(u, t, shop) then
+          set s = 1
+        endif
         set c = c + 1
-      elseif (id == 'pomn' or id == 'mcri') and UnitUseItem(u, t) then
+      elseif id == 'pomn' or id == 'mcri' then
+        if s < 1 and dist and UnitUseItem(u, t) then
+          set s = 1
+        endif
         set c = c + 1
       endif
     endif
     set i = i + 1
   endloop
-  if healitem and c < 1 and GetSlotsFreeOnUnit(shop_sent) < 1 then  // Priority sell
+  if healitem and not town_threatened and not TownThreatened() and s < 1 and GetSlotsFreeOnUnit(shop_sent) < 1 then  // Priority sell
     loop
-      exitwhen i > 6 or c > 5
-      if it[c] != 0 and not IsHealingItem(it[c]) and not IsValuablesItem(it[c]) then
-        set t = UnitItemInSlot(u, c)
-        if t != null and UnitDropItemPoint(u, t, GetUnitX(u), GetUnitY(u)) then
+      exitwhen i > 6 or s > 5
+      if it[s] != 0 and not IsHealingItem(it[s]) and not IsValuablesItem(it[s]) then
+        set t = UnitItemInSlot(u, s)
+        if t != null then
+          if dist and UnitDropItemPoint(u, t, GetUnitX(u), GetUnitY(u)) then
           set i = i + 1
+          else
+            set c = c + 1
+          endif
         endif
       endif
-      set c = c + 1
+      set s = s + 1
     endloop
   endif
   set t = null
+  return c  // have can drop item , can continue buy item
 endfunction
 
 function ResetBuyItem takes nothing returns nothing
@@ -214,7 +226,7 @@ function BuyItemJob takes integer id returns nothing
     return
   endif
 
-  if (not itemstacking and GetItemNumberOnUnit(id, shop_sent) > 0) or (itemstacking and GetItemNumber(id) >= shop_wanted) or (GetSlotsFreeOnUnit(shop_sent) <= 0 and not healing) then
+  if (not itemstacking and GetItemNumberOnUnit(id, shop_sent) > 0) or (itemstacking and GetItemNumber(id) >= shop_wanted) or (GetSlotsFreeOnUnit(shop_sent) <= 0 and SellorDropNonHealingItem(shop_sent, shop_unit, healing, dist < buy_distance) < 1) then
     call CreateDebugTag("BUT_ITEM: Items have been brought", 10, shop_sent, 3.00, 1.50)
     call ResetBuyItem()
     return
@@ -227,15 +239,17 @@ function BuyItemJob takes integer id returns nothing
   call RemoveGuardPosition(shop_sent)
   if dist < buy_distance then
     call CreateDebugTag("buy item", 10, shop_sent, 3.00, 1.50)
-    call IssueImmediateOrder(shop_sent, "stop")
-    call SellorDropNonHealingItem(shop_sent, shop_unit, healing)
+    call IssueImmediateOrder(shop_sent, "holdposition")  // stop will let panda cancel element clone
+    call SellorDropNonHealingItem(shop_sent, shop_unit, healing, dist < buy_distance)
     set ismoving = false
     if GetUnitAbilityLevel(shop_unit,'Aall') > 0 then  // Change shop target to this hero
       call IssueTargetOrderById(shop_unit, 'Aall', shop_sent)
     elseif GetUnitAbilityLevel(shop_unit,'Aneu') > 0 then
       call IssueTargetOrderById(shop_unit, 'Aneu', shop_sent)
     endif
+    if GetSlotsFreeOnUnit(shop_sent) > 0 then
     call IssueNeutralImmediateOrderById(ai_player, shop_unit, old_id[id])
+    endif
     if shop_buy_time_small < 0 then
       set shop_buy_time_small = current_time
     endif
