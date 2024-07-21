@@ -1856,7 +1856,7 @@ endfunction
 
 //============================================================================
 function ISign takes nothing returns integer
-  if GetRandomInt(-1,1) >= 0 then
+  if GetRandomInt(-2,1) >= 0 then
     return 1
   else
     return -1
@@ -5428,7 +5428,7 @@ endfunction
 //============================================================================
 function GetLocationEnemyStrength takes real x, real y, real radius, boolean only_structures returns integer
   local group g = CreateGroup()
-  local real sum = 0
+  local integer sum = 0
   local unit u = null
   call GroupEnumUnitsInRange(g,x,y,radius,null)
   if only_structures then
@@ -5443,14 +5443,14 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
       if IsUnitType(u, UNIT_TYPE_STRUCTURE) then
         set sum = sum + 1
       else
-        set sum = sum + GetUnitStrength(u)
+        set sum = sum + R2I(GetUnitStrength(u))
       endif
     endif
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
   set g = null
-  return R2I(sum + 0.5)
+  return sum
 endfunction
 
 //============================================================================
@@ -6735,6 +6735,7 @@ function GetExpFoe takes unit nearunit returns unit
   local real nearest = 10000000
   local real tempnear = 0
   local integer i = 0
+  local integer c = 0
   local unit u = null
   if current_expansion_iswater then
     set t = water_expansion_creeps
@@ -6752,15 +6753,14 @@ function GetExpFoe takes unit nearunit returns unit
     set u = LoadUnitHandle(t, current_expansion_creeps, i)
     if u != null and UnitAlive(u) then
       set tempnear = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
+      set c = c + 1
       if tempnear < nearest then
         set nearunit = u
         set nearest = tempnear
       endif
     endif
   endloop
-  if nearunit == null and LoadInteger(t, current_expansion_creeps, 0) >= 0 then
-    call SaveInteger(t, current_expansion_creeps, 0, -1)
-  endif
+  call SaveInteger(t, current_expansion_creeps, 0, c)
   call RemoveLocation(l)
   set l = null
   set t = null
@@ -7254,7 +7254,7 @@ function GetHealer takes unit u returns unit
     set u = FirstOfGroup(healer_group)
     exitwhen u == null or id < -1
     set id = GetHealerId(GetUnitTypeId(u))
-    if id != -1 and not IsUnitLoaded(u) and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) then
+    if id > -1 and not IsUnitLoaded(u) and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) then
       set id = -2
     endif
     call GroupRemoveUnit(healer_group, u)
@@ -11125,7 +11125,7 @@ function MercBuilder takes integer unitid1, integer unitid2 returns nothing
     if GetRandomInt(0, 100) > difficulty * 25 then
       set i = unitid2
     endif
-    if i != 0 and buy_type[i] == BT_GOBLIN_MERC and neutral_available[NEUTRAL_MERC_CAMP] then
+    if i > 0 and buy_type[i] == BT_GOBLIN_MERC and neutral_available[NEUTRAL_MERC_CAMP] then
       call Trace("Build Merc")
       call BuildUnit(1, i, 25 + tier * 10)
     endif
@@ -11140,7 +11140,7 @@ function DragonAndMercBuilder takes nothing returns nothing
       set i = merc_unit[GetRandomInt(0, Max(merc_number - 1, 0))]
       set b = false
     endif
-    if i != 0 and neutral_available[GetNeutralNumber(i)] then
+    if i > 0 and neutral_available[GetNeutralNumber(i)] then
       call Trace("Build Dragon And Merc : buy Dragon - " + B2S(b))
       call BuildUnit(1, i, 25 + tier * 10)
     endif
@@ -12246,7 +12246,7 @@ function BRRush takes nothing returns nothing
   call DestroyGroup(g)
   set g = null
   set attack_running = true
-  if i != 1 and GetUnitState(utemp, UNIT_STATE_LIFE) >= GetUnitState(utemp, UNIT_STATE_MAX_LIFE) * 0.65 then
+  if i != 1 and utemp != null and GetUnitState(utemp, UNIT_STATE_LIFE) >= GetUnitState(utemp, UNIT_STATE_MAX_LIFE) * 0.65 then
     set l = GetUnitLoc(utemp)
     call IssueImmediateOrderById(utemp, 851976) // Cancel building order
     call IssueImmediateOrder(utemp, "unroot")  //try unroot
@@ -12261,7 +12261,7 @@ function BRRush takes nothing returns nothing
     call SleepInCombatAM()
     call Trace("===BR Finished===")
     if not IssuePointOrderLoc(utemp, "root", l) then  //root tree
-      call IssuePointOrderById(utemp, 851987, GetLocationX(l) + GetRandomReal(-200, 200), GetLocationY(l) + GetRandomReal(-200, 200))  // no remove GuardPosition , no need send root order
+      call IssuePointOrderById(utemp, 851987, GetLocationX(l) + ISign() * GetRandomReal(200, 400), GetLocationY(l) + ISign() * GetRandomReal(200, 400))  // no remove GuardPosition , no need send root order
     endif
     call RemoveLocation(l)
     set l = null
