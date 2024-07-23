@@ -10719,15 +10719,20 @@ endfunction
 
 //============================================================================
 function ConstructExpansion takes unit peon, integer unitid returns boolean
-  local unit u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), unitid, GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
-  local real x = GetUnitX(u)
-  local real y = GetUnitY(u)
-  call RemoveUnit(u)
-  set u = null
-  if ai_time > exp_loc_cache_timeout and DistanceBetweenPoints_dd(Location(x, y), GetUnitLoc(current_expansion)) <= race_max_expa_mine_distance then
+  local unit u = null
+  local real x = 0
+  local real y = 0
+  if ai_time > exp_loc_cache_timeout then
     set exp_loc_cache_timeout = ai_time + 4
-    call TQAddUnit2Job(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon, current_expansion)
-    return IssuePointOrderById(peon, unitid, x, y)
+    set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), unitid, GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
+    set x = GetUnitX(u)
+    set y = GetUnitY(u)
+    call RemoveUnit(u)
+    set u = null
+    if DistanceBetweenPoints_dd(Location(x, y), GetUnitLoc(current_expansion)) <= race_max_expa_mine_distance then
+      call TQAddUnit2Job(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon, current_expansion)
+      return IssuePointOrderById(peon, unitid, x, y)
+    endif
   endif
   return false
 endfunction
@@ -10869,7 +10874,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
         else
           call GroupAddUnit(unit_zepplin_move, build_zeppelin)
           call RemoveGuardPosition(build_zeppelin)
-          call TQAddUnitJob(GetTimeToReachUnit(build_zeppelin, current_expansion) + 30, RESET_GUARD_POSITION, 50, build_zeppelin)  // Prevent failure and failure to recover midway
+          call TQAddUnitJob(GetTimeToReachUnit(build_zeppelin, current_expansion) + GetTimeToReachUnit(build_zeppelin, expansion_peon) + 30, RESET_GUARD_POSITION, 50, build_zeppelin)  // Prevent failure and failure to recover midway
         endif
       endif
       if (w and build_zeppelin == null) then
@@ -11815,8 +11820,6 @@ function AttackGroupAddUnknown takes nothing returns nothing
     set g = SelectById(g, old_id[attack_units[i]], false)
     set i = i + 1
   endloop
-  set g = SelectByHidden(g,false)
-  set g = SelectByAlive(g,true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
