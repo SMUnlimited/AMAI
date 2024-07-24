@@ -5,6 +5,7 @@
   real shop_buy_time_large = -1
   integer shop_wanted = 0
   unit shop_unit = null
+  unit backshop_unit = null
   real shop_distance_limit = 8000
   real raceshop_distance_limit = 8000
   real merchant_distance_limit = 8000
@@ -84,7 +85,7 @@ function SellorDropNonHealingItem takes unit u, unit shop, boolean healitem, boo
         set t = UnitItemInSlot(u, s)
         if t != null then
           if dist and UnitDropItemPoint(u, t, GetUnitX(u), GetUnitY(u)) then
-          set i = i + 1
+            set i = i + 1
           else
             set c = c + 1
           endif
@@ -107,6 +108,7 @@ function ResetBuyItem takes nothing returns nothing
     endif
   endif
   set shop_sent = null
+  set backshop_unit = null
   set shop_ordered = false
   set shop_buy_time_large = -1
   set shop_buy_time_small = -1
@@ -122,7 +124,6 @@ function BuyItemJob takes integer id returns nothing
   local boolean healing = IsHealingItem(old_id[id])
   local boolean itemstacking = healing == true or CanRepeatItem(id) == true  // heal item can repeat
   local boolean moreshop = false
-  local unit backshop = null
   call DisplayToAllJobDebug("BUY_ITEM JOB START")
 
   if shop_ordered == false or shop_unit == null or not UnitAlive(shop_unit) then
@@ -168,17 +169,16 @@ function BuyItemJob takes integer id returns nothing
   endif
   set dist = DistanceBetweenUnits(shop_sent, shop_unit)
   //call CreateDebugTag("In BUT ITEM JOB, 10, shop_sent, 3.00, 1.50)
-  if moreshop then
-    set backshop = GetUnitOfTypeNearUnit(old_id[racial_shop], shop_sent, backshop)
-    if backshop != null and backshop != shop_unit then
-      set dist2 = DistanceBetweenUnits(shop_sent, backshop)
+  if moreshop and (backshop_unit == null or not UnitAlive(backshop_unit)) then
+    set backshop_unit = GetUnitOfTypeNearUnit(old_id[racial_shop], shop_sent, backshop_unit)
+    if backshop_unit != null and backshop_unit != shop_unit then
+      set dist2 = DistanceBetweenUnits(shop_sent, backshop_unit)
       if dist2 < dist and dist2 < shop_distance_limit then
-        set shop_unit = backshop
+        set shop_unit = backshop_unit
         set dist = dist2
         call CreateDebugTag("BUY_ITEM: get close shop", 10, shop_unit, 3.00, 1.50)
       endif
     endif
-    set backshop = null
   endif
 
   // Town threatened so dont get item
@@ -248,7 +248,7 @@ function BuyItemJob takes integer id returns nothing
       call IssueTargetOrderById(shop_unit, 'Aneu', shop_sent)
     endif
     if GetSlotsFreeOnUnit(shop_sent) > 0 then
-    call IssueNeutralImmediateOrderById(ai_player, shop_unit, old_id[id])
+      call IssueNeutralImmediateOrderById(ai_player, shop_unit, old_id[id])
     endif
     if shop_buy_time_small < 0 then
       set shop_buy_time_small = current_time
