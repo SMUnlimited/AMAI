@@ -127,6 +127,11 @@
     integer array W3CWorkers
     integer W3CMind_Length = 0
 
+    integer KK_TP_num = 0
+    effect array KK_TPEffect
+    trigger KK_TP = null
+    timer array KK_TPTimer
+
     string chat_no_ally = ""
     string you_no_gold = ""
     string i_no_gold = ""
@@ -841,6 +846,90 @@ function W3CDenyTipControl takes nothing returns nothing
   call TriggerAddAction(W3CDenyControl, function SetW3CDenyTip )
   call TriggerRegisterAnyUnitEventBJ(W3CDeny, EVENT_PLAYER_UNIT_DEATH )
   call TriggerAddAction(W3CDeny, function W3CDenyTip )
+endfunction
+
+//===========================================================================
+// KK_Teleportation_Point_Tip
+//===========================================================================
+function DestroyTPEffect takes nothing returns nothing
+  local integer i = 1
+  local integer c = 0
+  loop
+    exitwhen i > KK_TP_num
+    if KK_TPEffect[i] != null then
+      call DestroyEffect(KK_TPEffect[i])
+      call DestroyTimer(KK_TPTimer[i])
+      set KK_TPEffect[i] = null
+      set KK_TPTimer[i] = null
+      set i = KK_TP_num
+      set c = KK_TP_num
+      set KK_TP_num = KK_TP_num - 1
+    endif
+    if c > 0 then
+      set KK_TPEffect[c] = KK_TPEffect[c + 1]
+      set c = c + 1
+    endif
+    set i = i + 1
+  endloop
+endfunction
+
+function TPEffect takes nothing returns nothing
+  local unit u1 = GetTriggerUnit()
+  local unit u2 = null
+  local unit u3 = null
+  local group g = CreateGroup()
+  local real x = GetSpellTargetX()
+  local real y = GetSpellTargetY()
+  local real d1 = 1150
+  local real d2 = 0
+  local integer i = GetSpellAbilityId()
+  local location l1 = Location(x, y)
+  local location l2 = null
+  local string t = ""
+  local player p1 = GetOwningPlayer(u1)
+  local player p2 = GetLocalPlayer()
+  if i == 'AItp' or i == 'AHmt' then
+    call GroupEnumUnitsInRange(g, x, y, d1, null)
+    loop
+      set u2 = FirstOfGroup(g)
+      exitwhen u2 == null
+      if IsUnitType(u2, UNIT_TYPE_TOWNHALL) and IsUnitAlly(u2, p1) and GetUnitState(u2, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u2) then
+        set l2 = GetUnitLoc(u2)
+        set d2 = DistanceBetweenPoints(l1, l2)
+        if d2 < d1 then
+          set d1 = d2
+          set u3 = u2
+        endif
+        call RemoveLocation(l2)
+      endif
+      call GroupRemoveUnit(g, u2)
+    endloop
+    call DestroyGroup(g)
+    set g = null
+    if u3 != null and (IsPlayerObserver(p2) or IsPlayerAlly(p1, p2)) then
+      set t = "Doodads\\Cityscape\\Props\\MagicRunes\\MagicRunes0.mdl"
+    endif
+    set KK_TP_num = KK_TP_num + 1
+    set KK_TPTimer[KK_TP_num] = CreateTimer()
+    set KK_TPEffect[KK_TP_num] = AddSpecialEffect(t, x, y)
+    call TimerStart(KK_TPTimer[KK_TP_num], 3, false, function DestroyTPEffect)
+  endif
+  call RemoveLocation(l1)
+  set l1 = null
+  set l2 = null
+  set u1 = null
+  set u3 = null
+  set p1 = null
+  set p2 = null
+  set t = null
+endfunction
+
+function InitTP takes nothing returns nothing
+  if KK_TP == null then
+    set KK_TP = CreateTrigger()
+    call TriggerRegisterAnyUnitEventBJ(KK_TP, EVENT_PLAYER_UNIT_SPELL_CHANNEL)
+    call TriggerAddAction(KK_TP, function TPEffect)
+  endif
 endfunction
 
 //===========================================================================
@@ -2313,6 +2402,7 @@ endfunction
     call InitCommander()
     call CreateW3CClock()
     call InitZoom()
+    call InitTP()
     call CreateW3CMiniMapIcons()
     call W3CDenyTipControl()
     call InitW3CWorkerCount()
