@@ -124,6 +124,7 @@ function AncientExpansionJob takes nothing returns nothing
 local group g = null
 local unit u = null
 local integer i = 0
+local boolean b = false
 call DisplayToAllJobDebug("ANCIENT_EXPANSION JOB STARTED")
 
 if current_expansion == null then
@@ -146,14 +147,22 @@ endif
 
 set exp_time_count = ai_time
 if ancient_exp_state == 0 then
+	set i = TownCountDone(racial_expansion)
+	set b = i > TownCount(race_manual_loading_mine)
+	if i > 0 and ((GetResourceAmount(current_expansion) < GetUnitGoldCost2(racial_expansion) * 2) or TownCount(racial_peon) == 0 or b) then
+		call Trace("Expansion State 0 - no mine , prior move tree")
+		set ancient_exp_state = 1
+		set ancient_attack_running = true
+		call TQAddJob(1, ANCIENT_EXPANSION, 0)
+		return
+	endif
 	set gold_buffer = GetUnitGoldCost2(racial_expansion)
 	set wood_buffer = GetUnitWoodCost2(racial_expansion)
 	if GetGold() < gold_buffer or GetWood() < wood_buffer then
-		call Trace("Expansion State 0 - no resources expansion , wait check mine")
-		set gold_buffer = 0 
+		set gold_buffer = 0
 		set wood_buffer = 0
-		if TownCountDone(racial_expansion) > 0 and (GetResourceAmount(current_expansion) < GetUnitGoldCost2(racial_expansion) * 2 or TownCount(racial_peon) == 0 or (race_manual_loading and (TownCount(race_manual_loading_mine) == 0 or TownCountDone(racial_expansion) > TownCount(race_manual_loading_mine))) or (not race_manual_loading and (GetMinesOwned() == 0 or TownCountDone(racial_expansion) > GetMinesOwned()))) then
-			call Trace("Expansion State 0 - no resources expansion and no mine , wait move tree")
+		if i > 0 then
+			call Trace("Expansion State 0 - no resources expansion , wait check mine")
 			set ancient_exp_state = 1
 			set ancient_attack_running = true
 			call TQAddJob(1, ANCIENT_EXPANSION, 0)
@@ -185,12 +194,13 @@ if ancient_exp_state == 0 then
 	else
 		set gold_buffer = 0
 		set wood_buffer = 0
-		if (race_manual_loading and (TownCount(race_manual_loading_mine) == 0 or TownCountDone(racial_expansion) > TownCount(race_manual_loading_mine))) or (not race_manual_loading and (GetMinesOwned() == 0 or TownCountDone(racial_expansion) > GetMinesOwned())) then
+		if i > 0 and b then
 			call Trace("Expansion State 0 - have creep , use tree expansion")
 			set ancient_exp_state = 1  // move tree , not build
 			set ancient_attack_running = true
+			call TQAddJob(1, ANCIENT_EXPANSION, 0)
 		else
-			call Trace("Expansion State 0 - have creep , not build")
+			call Trace("Expansion State 0 - have creep , not expansion")
 			call AncientExpansionReset()
 		endif
 		set u = null
