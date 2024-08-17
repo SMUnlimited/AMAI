@@ -7,9 +7,13 @@
   //location item_exp_guard_loc = Location(0,0)  // no need guard
 #ELSE
 
-function ItemExpansionReset takes nothing returns nothing
+function ItemExpansionReset takes boolean exp returns nothing
   if itemhero != null and UnitAlive(itemhero) and not IsUnitBuying(itemhero) and IsStandardUnit(itemhero) then
-    call RecycleGuardPosition(itemhero)
+    if not exp then
+      call RecycleGuardPosition(itemhero)
+    else
+      call TQAddUnitJob(6, RESET_GUARD_POSITION, 80, itemhero)
+    endif
   endif
   set item_expanding = false
   set expitem_buy = false
@@ -46,7 +50,7 @@ function ItemExpansionJob takes nothing returns nothing
   call DisplayToAllJobDebug("ITEM_EXPANSION JOB STARTED")
   if town_threatened or current_expansion == null then
     call Trace("Item expansion : Cannot Expansion or no Expansion")  // no need ChooseExpansion() , this is passive expansion , avoidance buy repeat item
-    call ItemExpansionReset()
+    call ItemExpansionReset(false)
     return
   endif
   if itemhero != null then
@@ -59,7 +63,7 @@ function ItemExpansionJob takes nothing returns nothing
     endif
     if itemhero == null or not UnitAlive(itemhero) or not IsStandardUnit(itemhero) then
       call Trace("Item expansion : end jon , hero not standard")  // no need ChooseExpansion() , this is passive expansion , avoidance buy repeat item
-      call ItemExpansionReset()
+      call ItemExpansionReset(false)
       return
     elseif IsUnitBuying(itemhero) and not expitem_buy then  // Priority given to purchase
       call TQAddJob(16, ITEM_EXPANSION, 0)
@@ -74,7 +78,7 @@ function ItemExpansionJob takes nothing returns nothing
       if expitem_buy == false then
         if shop_ordered or GetGold() < gold_price[race_item_expansion_item_id] + 120 or GetWood() < wood_price[race_item_expansion_item_id] + 80 then
           call Trace("Item expansion state 0 - No gold or wood or buy item job is runing for other item")
-          call ItemExpansionReset()
+          call ItemExpansionReset(false)
           return
         endif
         if shop_unit == null or not UnitAlive(shop_unit) or GetOwningPlayer(shop_unit) != ai_player then
@@ -82,7 +86,7 @@ function ItemExpansionJob takes nothing returns nothing
         endif
         if shop_unit == null then
           call Trace("Item expansion state 0 - no shop")
-          call ItemExpansionReset()
+          call ItemExpansionReset(false)
           return
         endif
         set shop_wanted = 1
@@ -92,7 +96,7 @@ function ItemExpansionJob takes nothing returns nothing
         call TQAddJob(2, BUY_ITEM, race_item_expansion_item_id)
       elseif item_exp_count > 4 or not shop_ordered then
         call Trace("Item expansion state 0 - buy item timeout")
-        call ItemExpansionReset()
+        call ItemExpansionReset(false)
         return
       endif
       set item_exp_count = item_exp_count + 1
@@ -119,10 +123,17 @@ function ItemExpansionJob takes nothing returns nothing
           call TQAddJob(RMin(4, RMax(GetTimeToReachUnit(itemhero, current_expansion) + 1,1)), ITEM_EXPANSION, 0)
         else
           call CreateDebugTag("Item expansion state 1 - want to use item", 10, itemhero, 3.00, 1.50)
-          if item_exp_count < 4 and not UseExpansionItem(exp_item) then
+          if item_exp_count < 4 then
+            if UseExpansionItem(exp_item) then
+              call ItemExpansionReset(true)
+              set exp_item = null
+              return
+            endif
             call IssuePointOrder(itemhero, "move", GetUnitX(current_expansion), GetUnitY(current_expansion))  // Prevent the hero's position from getting stuck
             call TQAddJob(4, ITEM_EXPANSION, 0)
             set item_exp_count = item_exp_count + 1
+          else
+            call ItemExpansionReset(false)
           endif
         endif
         set exp_item = null
@@ -133,7 +144,7 @@ function ItemExpansionJob takes nothing returns nothing
         //call SetItemDroppable(exp_item, true)  //Picking up by other players will disrupt balance
         call SetItemPawnable(exp_item, true)  //can selling
       endif
-      call ItemExpansionReset()
+      call ItemExpansionReset(false)
       set exp_item = null
       return
     endif
