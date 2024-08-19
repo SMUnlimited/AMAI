@@ -23,7 +23,7 @@ function GetOtherExpansionNearby takes unit ru, real tx, real ty returns unit
     set u = FirstOfGroup(g)
     exitwhen u == null
     set p = GetOwningPlayer(u)
-    if p != ai_player and p != Player(PLAYER_NEUTRAL_PASSIVE) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) then
+    if p != Player(PLAYER_NEUTRAL_PASSIVE) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != ai_player and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) then
       if IsUnitType(u, UNIT_TYPE_TOWNHALL) == true or IsUnitGoldMine(u) then //or id == oUNDEAD_MINE then//id == oTOWN_HALL or id == oKEEP or id == oCASTLE or id == oUNDEAD_MINE or id == oGREAT_HALL or id == oSTRONGHOLD or id == oFORTRESS or id == oTREE_LIFE or id == oTREE_AGES or id == oTREE_ETERNITY then
         call DestroyGroup(g)
         set g = null
@@ -61,7 +61,7 @@ function CheckDoubleExpansionsClaimedInArea takes real tx, real ty, boolean isBu
     set p = GetOwningPlayer(u)
     if p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 then
       if IsPlayerEnemy(p, ai_player) and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
-        if double_expansion_target == null and not IsUnitHidden(u) then
+        if (double_expansion_target == null or not UnitAlive(double_expansion_target)) and not IsUnitHidden(u) then
           set double_expansion_target = u
         endif
         set double_expansion_enemy_present = true
@@ -79,7 +79,7 @@ function CheckDoubleExpansionsClaimedInArea takes real tx, real ty, boolean isBu
               set double_expansion_allyhuman_present = true
             endif
           else
-            if double_expansion_target == null and not IsUnitHidden(u) then
+            if (double_expansion_target == null or not UnitAlive(double_expansion_target)) and not IsUnitHidden(u) then
               set double_expansion_target = u
             endif
             set double_expansion_enemy_present = true
@@ -117,7 +117,7 @@ function GetTotalClaimedMinesNearby takes real tx, real ty returns integer
     set u = FirstOfGroup(g)
     exitwhen u == null
     set p = GetOwningPlayer(u)
-    if p != ai_player and p != Player(PLAYER_NEUTRAL_PASSIVE) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and (IsUnitType(u, UNIT_TYPE_TOWNHALL) == true or IsUnitGoldMine(u)) then //or id == oUNDEAD_MINE then//id == oTOWN_HALL or id == oKEEP or id == oCASTLE or id == oUNDEAD_MINE or id == oGREAT_HALL or id == oSTRONGHOLD or id == oFORTRESS or id == oTREE_LIFE or id == oTREE_AGES or id == oTREE_ETERNITY then
+    if p != Player(PLAYER_NEUTRAL_PASSIVE) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and p != ai_player and GetUnitState(u, UNIT_STATE_LIFE) > 0 and (IsUnitType(u, UNIT_TYPE_TOWNHALL) == true or IsUnitGoldMine(u)) then //or id == oUNDEAD_MINE then//id == oTOWN_HALL or id == oKEEP or id == oCASTLE or id == oUNDEAD_MINE or id == oGREAT_HALL or id == oSTRONGHOLD or id == oFORTRESS or id == oTREE_LIFE or id == oTREE_AGES or id == oTREE_ETERNITY then
       set count = count + 1
     endif
     call GroupRemoveUnit(g,u)
@@ -157,6 +157,7 @@ function CheckDoubleExpansion takes nothing returns nothing
   local unit u = null
   local boolean b = false
   local integer i = TownCount(racial_expansion)
+  local integer id = 0
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   //set g = SelectNumberOfId(g, 100, old_id[racial_expansion])
   if race_manual_loading then
@@ -165,17 +166,18 @@ function CheckDoubleExpansion takes nothing returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitTypeId(u) == old_id[racial_expansion] and UnitAlive(u) and not IsUnitHidden(u) then
+    set id = GetUnitTypeId(u)
+    if id == old_id[racial_expansion] and UnitAlive(u) and not IsUnitHidden(u) then
       if CheckDoubleExpansionsClaimedInArea(GetUnitX(u), GetUnitY(u), false) then
         set b = true
-        if double_expansion_ally_present and i > 1 then
+        if double_expansion_ally_present and i > 1 and DistanceBetweenPoints_kd(home_location, GetUnitLoc(u)) > 1300 then
           if GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) then
             call IssueImmediateOrderById(u, order_cancel)
             if double_expansion_allyhuman_present then
               // Simulated cancel as real cancel failed as it is actually successfully built at this point.
               // Human probrably wants your expansion gone and attacked it
-              call SetPlayerState(ai_player, PLAYER_STATE_RESOURCE_GOLD, GetPlayerState(ai_player, PLAYER_STATE_RESOURCE_GOLD) + GetUnitGoldCost(GetUnitTypeId(u)))
-              call SetPlayerState(ai_player, PLAYER_STATE_RESOURCE_LUMBER, GetPlayerState(ai_player, PLAYER_STATE_RESOURCE_LUMBER) + GetUnitWoodCost(GetUnitTypeId(u)))
+              call SetPlayerState(ai_player, PLAYER_STATE_RESOURCE_GOLD, GetPlayerState(ai_player, PLAYER_STATE_RESOURCE_GOLD) + GetUnitGoldCost(id))
+              call SetPlayerState(ai_player, PLAYER_STATE_RESOURCE_LUMBER, GetPlayerState(ai_player, PLAYER_STATE_RESOURCE_LUMBER) + GetUnitWoodCost(id))
               call KillUnit(u)
             endif
           endif
