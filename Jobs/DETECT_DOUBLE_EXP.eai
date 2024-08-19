@@ -155,32 +155,40 @@ endfunction
 function CheckDoubleExpansion takes nothing returns nothing
   local group g = CreateGroup()
   local unit u = null
+  local boolean b = false
+  local integer i = TownCount(racial_hall[1])
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectNumberOfId(g, 100, old_id[racial_expansion])
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and CheckDoubleExpansionsClaimedInArea(GetUnitX(u), GetUnitY(u), false) then
-      if double_expansion_ally_present then
-        if GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) then
-          call IssueImmediateOrderById(u, order_cancel)
-          if double_expansion_allyhuman_present then
-            // Simulated cancel as real cancel failed as it is actually successfully built at this point.
-            // Human probrably wants your expansion gone and attacked it
-            call SetPlayerState(ai_player, PLAYER_STATE_RESOURCE_GOLD, GetPlayerState(ai_player, PLAYER_STATE_RESOURCE_GOLD) + GetUnitGoldCost(GetUnitTypeId(u)))
-            call SetPlayerState(ai_player, PLAYER_STATE_RESOURCE_LUMBER, GetPlayerState(ai_player, PLAYER_STATE_RESOURCE_LUMBER) + GetUnitWoodCost(GetUnitTypeId(u)))
-            call KillUnit(u)
+    if UnitAlive(u) and not IsUnitHidden(u) then
+      set i = i - 1
+      if CheckDoubleExpansionsClaimedInArea(GetUnitX(u), GetUnitY(u), false) then
+        set b = true
+        if double_expansion_ally_present then
+          if GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) and i > 1 then
+            call IssueImmediateOrderById(u, order_cancel)
+            if double_expansion_allyhuman_present then
+              // Simulated cancel as real cancel failed as it is actually successfully built at this point.
+              // Human probrably wants your expansion gone and attacked it
+              call SetPlayerState(ai_player, PLAYER_STATE_RESOURCE_GOLD, GetPlayerState(ai_player, PLAYER_STATE_RESOURCE_GOLD) + GetUnitGoldCost(GetUnitTypeId(u)))
+              call SetPlayerState(ai_player, PLAYER_STATE_RESOURCE_LUMBER, GetPlayerState(ai_player, PLAYER_STATE_RESOURCE_LUMBER) + GetUnitWoodCost(GetUnitTypeId(u)))
+              call KillUnit(u)
+            endif
           endif
         endif
       endif
     endif
     call GroupRemoveUnit(g,u)
   endloop
-  if double_expansion_ally_present then
-    call Trace("Ally double expansion detected")
-  endif
-  if double_expansion_enemy_present then
-    call Trace("Enemy double expansion detected")
+  if b then
+    if double_expansion_ally_present then
+      call Trace("Ally double expansion detected")
+    endif
+    if double_expansion_enemy_present then
+      call Trace("Enemy double expansion detected")
+    endif
   endif
   call DestroyGroup(g)
   set g = null
