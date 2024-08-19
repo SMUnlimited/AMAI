@@ -91,24 +91,27 @@ function GroupOrderFocusWindInstant takes group g returns nothing
   set cg = null
 endfunction
 
-function GroupOrderDeny_d takes group g, unit target returns nothing
+function GroupOrderDeny_kd takes group g, group cg, unit target returns nothing
   local unit u = null
   local boolean b = false
   loop
-    set u = FirstOfGroup(g)
+    set u = FirstOfGroup(cg)
     exitwhen u == null or b == true
     if IsUnitType(u, UNIT_TYPE_HERO) then
       if GetUnitAbilityLevel(u, 'AUdr') > 0 then  //Intentionally check one by one, prioritizing the restoration of magic
         set b = IssueTargetOrder(u, "darkritual", target)
+        call GroupRemoveUnit(g, u)
       elseif GetUnitAbilityLevel(u, 'AUdp') > 0 or GetUnitAbilityLevel(u, 'AIdp') > 0 then
         set b = IssueTargetOrder(u, "deathpact", target)
+        call GroupRemoveUnit(g, u)
       elseif GetUnitAbilityLevel(u, 'AIg2') > 0 or GetUnitAbilityLevel(u, 'AIdg') > 0 then
         set b = IssueTargetOrderById(u, 852674, target)
+        call GroupRemoveUnit(g, u)
       endif
     endif
-    call GroupRemoveUnit(g, u)
+    call GroupRemoveUnit(cg, u)
   endloop
-  call DestroyGroup(g)
+  call DestroyGroup(cg)
   set u = null
 endfunction
 
@@ -138,9 +141,9 @@ function FocusGroupRemoveUnit takes group rg returns group
     set u = FirstOfGroup(g)
     exitwhen u == null or i >= 12  //group order only control 12 unit
     //if not IsUnitInGroup(u, focus_fire_group) then
+    set i = i + 1
     call CreateDebugTag("FF", 10, u, 1.00, 0.80)
     call GroupAddUnit(rg, u)
-    set i = i + 1
     //endif
     //call RemoveGuardPosition(u)
     //call TQAddUnitJob(1.5, RESET_GUARD_POSITION_ONLY, 80, u)
@@ -249,7 +252,7 @@ function FocusFire takes unit u returns nothing
     endif
     call CreateDebugTag("FF: here:" + Int2Str(BlzGroupGetSize(temp_focus)), 10, u, 1.00, 0.80)
     if u == deny_unit and own_race == R_UNDEAD then
-      call GroupOrderDeny_d(CopyGroup(temp_focus,t), u)
+      call GroupOrderDeny_kd(temp_focus,CopyGroup(temp_focus,t), u)
     endif
     set temp_focus = FocusGroupRemoveUnit(temp_focus)
     call GroupTargetOrder(temp_focus, "attack", u)
