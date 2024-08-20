@@ -112,8 +112,8 @@ function ItemExpansionJob takes nothing returns nothing
     set item_exp_state = 1
     set item_exp_count = 0
   elseif item_exp_state == 1 then
-    if GetExpFoe(u) == null and itemhero != null and UnitAlive(itemhero) then
-      call Trace("Item expansion state 1 - Rush Expansion done")
+    set u = GetExpFoe(u)
+    if u == null and itemhero != null and UnitAlive(itemhero) then
       set exp_item = GetItemOfType(exp_item,race_item_expansion_item_id)
       if exp_item != null and not CheckExpansionTaken(current_expansion) and GetLocationNonCreepStrength(GetUnitX(itemhero), GetUnitY(itemhero), 1200) <= 0 then
         call RemoveGuardPosition(itemhero)
@@ -122,24 +122,26 @@ function ItemExpansionJob takes nothing returns nothing
           call IssuePointOrder(itemhero, "move", GetUnitX(current_expansion), GetUnitY(current_expansion))
           call TQAddJob(RMin(4, RMax(GetTimeToReachUnit(itemhero, current_expansion) + 1,1)), ITEM_EXPANSION, 0)
         else
-          call CreateDebugTag("Item expansion state 1 - want to use item", 10, itemhero, 3.00, 1.50)
           if item_exp_count < 4 then
             if UseExpansionItem(exp_item) then
               call ItemExpansionReset(true)
               set exp_item = null
+              call CreateDebugTag("Item expansion state 1 - want to use item", 10, itemhero, 3.00, 1.50)
               return
             endif
+            call CreateDebugTag("Item expansion state 1 - use item done", 10, itemhero, 3.00, 1.50)
             call IssuePointOrder(itemhero, "move", GetUnitX(current_expansion), GetUnitY(current_expansion))  // Prevent the hero's position from getting stuck
-            call TQAddJob(4, ITEM_EXPANSION, 0)
+            call TQAddJob(2, ITEM_EXPANSION, 0)
             set item_exp_count = item_exp_count + 1
           else
+            call CreateDebugTag("Item expansion state 1 - use item fail", 10, itemhero, 3.00, 1.50)
             call ItemExpansionReset(false)
           endif
         endif
         set exp_item = null
         return
       endif
-      call Trace("Item expansion state 1 - End")
+      call Trace("Item expansion state 1 - no item or no expansion , end job")
       if exp_item != null then
         //call SetItemDroppable(exp_item, true)  //Picking up by other players will disrupt balance
         call SetItemPawnable(exp_item, true)  //can selling
@@ -147,9 +149,15 @@ function ItemExpansionJob takes nothing returns nothing
       call ItemExpansionReset(false)
       set exp_item = null
       return
+    elseif u != null then
+      call Trace("Item expansion state 1 - Wait rush creep")
+      set u = null
+    else
+      call Trace("Item expansion state 1 - Expansion fail")
+      call ItemExpansionReset(false)
+      set u = null
+      return
     endif
-    call Trace("Item expansion state 1 - Wait rush Expansion")
-    set u = null
   endif
   call TQAddJob(16, ITEM_EXPANSION, 0)
 endfunction
