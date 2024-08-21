@@ -21,12 +21,40 @@ function countEnemyReal takes nothing returns nothing
   endloop
 endfunction
 
+function CheckAllianceChange takes nothing returns boolean
+  local integer ia = 0
+  local integer ie = 0
+  local player p = null
+  local boolean b = false
+  loop
+    exitwhen (ia >= c_ally_total and ie >= c_enemy_total) or b
+    if ia < c_ally_total then
+      set p = ally_force[ia]
+      if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(p) and not IsPlayerAlly(ai_player,p) then
+        set b = true
+      endif
+      set ia = ia + 1
+    endif
+    if ie < c_enemy_total then
+      set p = ally_force[ie]
+      if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(p) and not IsPlayerEnemy(ai_player,p) then
+        set b = true
+      endif
+      set ie = ie + 1
+    endif
+  endloop
+  set p = null
+  return b
+endfunction
+
 function RevealEnemy takes nothing returns nothing
   call DisplayToAllJobDebug("REVEAL_ENEMY JOB START")
-  if ai_time > 160 then
+  if ai_time > 160 and CheckAlliance() then
     call countAllyEnemy()  // Prevent map change alliance settings
+    call countEnemyReal()
+  else
+    call countEnemyReal()
   endif
-  call countEnemyReal()
   if not pathing_done then
     call TQAddJob(1200, REVEAL_ENEMY, 0)
   endif
