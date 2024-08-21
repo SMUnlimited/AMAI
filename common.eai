@@ -5810,13 +5810,16 @@ function GetLumberLocationAtBase takes nothing returns location
   if race_has_ghouls then
     set ground_id = old_id[racial_ghoul]
   endif
-  set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), ground_id, GetLocationX(home_location), GetLocationY(home_location))
-  if not IssueImmediateOrder(u, "autoharvestlumber") then  // home_location near no tree , so move unit , random x y coordinates
+  set x = GetUnitX(u)
+  set y = GetUnitY(u)
+  call IssueImmediateOrder(u, "autoharvestlumber")  // home_location near no tree , so move unit , random x y coordinates
+  call Sleep(5.00)
+  if DistanceBetweenPoints_dd(Location(x, y), GetUnitLoc(u)) <= 100 then
     call IssuePointOrder(u, "move", GetLocationX(home_location) + GetRandomInt(1000,1100)*ISign(), GetLocationY(home_location) + GetRandomInt(1000,1100)*ISign())
     call Sleep(2.00)
     call IssueImmediateOrder(u, "autoharvestlumber")
+    call Sleep(3.00)
   endif
-  call Sleep(5.00)
   set x = GetUnitX(u)
   set y = GetUnitY(u)
   call RemoveUnit(u)
@@ -5838,7 +5841,8 @@ function BuildLumberMillAtBase takes nothing returns boolean
     set buildloc = GetUnitLoc(u)
     call RemoveUnit(u)
     set u = null
-    set b = IssuePointOrderByIdLoc(peon, old_id[racial_lumber], buildloc)
+    call IssuePointOrderByIdLoc(peon, old_id[racial_lumber], buildloc)
+    set b = true
     call RemoveLocation(buildloc)
     set buildloc = null
   endif
@@ -5948,7 +5952,7 @@ function MultipleMinefix takes nothing returns boolean
   local group g = null
   local unit u = null
   local boolean b = true
-  if town_threatened or not hero_built[1] or (not race_manual_loading and not race_uses_mine_expansion and (current_expansion != null and DistanceBetweenPoints_kd(home_location,GetUnitLoc(current_expansion)) < expansion_taken_radius) or (fixmine != null and GetResourceAmount(fixmine) > 200)) or (race_manual_loading and GetUnitCount(old_id[race_manual_loading_mine]) > 1) or (race_uses_mine_expansion and TownCount(racial_expansion) > 1) then
+  if town_threatened or not hero_built[1] or (not race_manual_loading and not race_uses_mine_expansion and (not_taken_expansion != null and DistanceBetweenPoints_kd(home_location,GetUnitLoc(not_taken_expansion)) < expansion_taken_radius) or (fixmine != null and GetResourceAmount(fixmine) > 200)) or (race_manual_loading and GetUnitCount(old_id[race_manual_loading_mine]) > 1) or (race_uses_mine_expansion and TownCount(racial_expansion) > 1) then
     return b  //no first hero priority build army , human and orc just harvest
   endif
   call Trace("Check Multiple Mine")
@@ -5960,7 +5964,6 @@ function MultipleMinefix takes nothing returns boolean
   if FirstOfGroup(g) == null then
     call DestroyGroup(g)
     set g = null
-    set current_expansion = null
     set not_taken_expansion = null
     if not race_manual_loading then
       set first_town_mine = -1  //home_location no mine , if not ELF , need end HARVEST CHECK job , return to normal
@@ -5986,9 +5989,8 @@ function MultipleMinefix takes nothing returns boolean
     endif
     call GroupRemoveUnit(g, u)
   endloop
-  if fixmine != null and current_expansion == null then
-    set current_expansion = fixmine  //expansion mine , prevent build too much TOWNHALL , olny first_town_mine > 1 mode need set
-    set not_taken_expansion = fixmine
+  if fixmine != null and not_taken_expansion != fixmine then
+    set not_taken_expansion = fixmine  // prevent build too much TOWNHALL , olny first_town_mine > 1 mode need set
   endif
   if race_manual_loading then
     if fixmine != null and GetUnitCount(old_id[race_manual_loading_mine]) < TownCount(racial_expansion) then
@@ -9972,18 +9974,21 @@ endfunction
 function StartHarass takes integer groupnum, integer harass_target, boolean avoid_towers, real strength_limit, real flee_percent, integer flee_number, real lx, real ly returns nothing
   local integer i = 0
   local integer t = 0
-  local group harasser = CreateGroup()
-  local group g = CreateGroup()
+  local group harasser = null
+  local group g = null
   local integer key = groupnum
   local real strength = 0
-  local real getstrength = LoadReal(additional_info, key, START_STRENGTH)
+  local real getstrength = 0
   local integer qty = 0
   local integer uid = 0
-  local boolean b = HaveSavedHandle(additional_info, key, HARASS_GROUP)
-  call Trace("StartHarass : get harass unit" )
-  if b then
-    set t = BlzGroupGetSize(LoadGroupHandle(additional_info, key, HARASS_GROUP))
+  if HaveSavedHandle(additional_info, key, HARASS_GROUP) then
+    call Trace("StartHarass : the groupnum harass runing , not start new harass job" )
+    return
   endif
+  call Trace("StartHarass : get harass unit" )
+  set harasser = CreateGroup()
+  set g = CreateGroup()
+  set getstrength = LoadReal(additional_info, key, START_STRENGTH)
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectByHidden(g, false)
   set g = SelectByFullHealth(g, true)
@@ -10011,33 +10016,21 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     call Trace("StartHarass : get harass unit fail" )
     return
   endif
-  if not b then
-    set harass_time[groupnum] = ai_time
-    call GroupRemoveGuardPositionInstant(harasser)
-    call GroupAddGroup(unit_harassing, harasser)
-    call SaveGroupHandle(additional_info, key, HARASS_GROUP, harasser)
-    call SaveReal(additional_info, key, START_STRENGTH, strength)
-    call SaveBoolean(additional_info, key, AVOID_TOWERS, avoid_towers)
-    call SaveReal(additional_info, key, STRENGTH_LIMIT, strength_limit)
-    call SaveBoolean(additional_info, key, STATE_ATTACKING, true)
-    call SaveReal(additional_info, key, FLEE_PERCENT, flee_percent)
-    call SaveInteger(additional_info, key, FLEE_NUMBER, flee_number)
-    call SaveInteger(additional_info, key, INVISIBLE_COUNT, 0)
-    call SaveReal(additional_info, key, LOCX, lx)
-    call SaveReal(additional_info, key, LOCY, ly)
-    call TQAddGroupJob(0, HARASS, harass_target, null, harasser)
-    call Trace("StartHarass : start harass job" )
-  elseif LoadBoolean(additional_info, key, STATE_ATTACKING) == true then  //The group still working no need to initiate it repeatedly
-    call GroupRemoveGuardPositionInstant(harasser)
-    call GroupAddGroup(unit_harassing, harasser)
-    call GroupAddGroup(LoadGroupHandle(additional_info, key, HARASS_GROUP), harasser)
-    call SaveReal(additional_info, key, START_STRENGTH, getstrength + strength)
-    call DestroyGroup(harasser)
-    call Trace("StartHarass : add new unit to harass job" )
-  else  // maybe RETREAT
-    call DestroyGroup(harasser)
-    call Trace("StartHarass : harass job maybe RETREAT" )
-  endif
+  set harass_time[groupnum] = ai_time
+  call GroupRemoveGuardPositionInstant(harasser)
+  call GroupAddGroup(unit_harassing, harasser)
+  call SaveGroupHandle(additional_info, key, HARASS_GROUP, harasser)
+  call SaveReal(additional_info, key, START_STRENGTH, strength)
+  call SaveBoolean(additional_info, key, AVOID_TOWERS, avoid_towers)
+  call SaveReal(additional_info, key, STRENGTH_LIMIT, strength_limit)
+  call SaveBoolean(additional_info, key, STATE_ATTACKING, true)
+  call SaveReal(additional_info, key, FLEE_PERCENT, flee_percent)
+  call SaveInteger(additional_info, key, FLEE_NUMBER, flee_number)
+  call SaveInteger(additional_info, key, INVISIBLE_COUNT, 0)
+  call SaveReal(additional_info, key, LOCX, lx)
+  call SaveReal(additional_info, key, LOCY, ly)
+  call TQAddGroupJob(0, HARASS, harass_target, null, harasser)
+  call Trace("StartHarass : start harass job" )
   set harasser = null
 endfunction
 
@@ -10470,15 +10463,15 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
         endif
       endif
     endif
-    if not IssuePointOrderByIdLoc(peon, old_id[unitid], l) then
+    call IssuePointOrderByIdLoc(peon, old_id[unitid], l)
       //call Trace("Building at special point")
     //else
-      call Trace("BuildatspecialLoc: Not able to build here")
-      call RemoveLocation(l)
-      set l = null
-      set peon = null
-      return CANNOT_BUILD
-    endif
+    //   call Trace("BuildatspecialLoc: Not able to build here")
+    //   call RemoveLocation(l)
+    //   set l = null
+    //   set peon = null
+    //   return CANNOT_BUILD
+    // endif
   endif
   call RemoveLocation(l)
   set l = null
@@ -10737,7 +10730,8 @@ function ConstructExpansion takes unit peon, integer unitid returns boolean
     set u = null
     if DistanceBetweenPoints_dd(Location(x, y), GetUnitLoc(current_expansion)) <= race_max_expa_mine_distance then
       call TQAddUnit2Job(2 * sleep_multiplier, BUILD_EXPANSION, 0, peon, current_expansion)
-      return IssuePointOrderById(peon, unitid, x, y)
+      call IssuePointOrderById(peon, unitid, x, y)
+      return true
     endif
   endif
   return false
@@ -10792,6 +10786,10 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   local boolean f = false
   local boolean w = false
   if first_town_mine > 0 then  //home_location have multiple mine , fix GetMinesOwned bug , check actual number of gold mines(ELF and not UD)
+    if first_town_mine > 1 and MultipleMinefix() then
+      call Trace("AMAIStartexpa: Built All MultiMineFix")
+      return BUILT_ALL
+    endif
     if race_manual_loading then
       set count = TownCount(race_manual_loading_mine)
       set countdone = TownCountDone(race_manual_loading_mine)
@@ -10811,11 +10809,6 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   if town_threatened then
     call Trace("AMAIStartexpa: Town threatened")
     return BUILT_SOME
-  endif
-
-  if first_town_mine > 1 and MultipleMinefix() then
-    call Trace("AMAIStartexpa: Built All MultiMineFix")
-    return BUILT_ALL
   endif
 
   if current_expansion == null or CheckExpansionTaken(current_expansion) then
@@ -10936,10 +10929,10 @@ function BuyItem takes integer qty, integer id returns boolean
     //call Trace("Already ordered to get an item")
     return true
   endif
-  if not CheckRaceCanBuy(id, GetPlayerRace(ai_player)) then
-    return false
-  endif
   if buy_type[id] == BT_RACIAL_ITEM then
+    if not CheckRaceCanBuy(id, GetPlayerRace(ai_player)) then
+      return false
+    endif
     if shop_unit == null or not UnitAlive(shop_unit) or GetOwningPlayer(shop_unit) != ai_player then
       set shop_unit = GetOneOfId(shop_unit, ai_player, old_id[racial_shop])
     endif
@@ -11277,8 +11270,7 @@ if not first_expansion_chosen then
   return
 endif
 if first_town_mine > 1 and fixmine != null then
-  set current_expansion = fixmine  // let StartExpansionAM can work
-  set not_taken_expansion = fixmine
+  set not_taken_expansion = fixmine  // let race Expansion stop
 endif
 if current_expansion == null or CheckExpansionTaken(current_expansion) then
   call ChooseExpansion()
@@ -12278,9 +12270,10 @@ function BRRush takes nothing returns nothing
     call Chat(C_Done)
     call SleepInCombatAM()
     call Trace("===BR Finished===")
-    if not IssuePointOrderLoc(utemp, "root", l) then  //root tree
-      call IssuePointOrderById(utemp, 851987, GetLocationX(l) + ISign() * GetRandomReal(200, 400), GetLocationY(l) + ISign() * GetRandomReal(200, 400))  // no remove GuardPosition , no need send root order
-    endif
+    call IssuePointOrderLoc(utemp, "root", l)
+    // if not IssuePointOrderLoc(utemp, "root", l) then  //root tree , this order olny return false
+    //   call IssuePointOrderLoc(utemp, "move", GetLocationX(l) + ISign() * GetRandomReal(200, 400), GetLocationY(l) + ISign() * GetRandomReal(200, 400))  // no remove GuardPosition , no need send root order
+    // endif
     call RemoveLocation(l)
     set l = null
   else
@@ -12369,6 +12362,7 @@ function AttackMoveTowerRush takes nothing returns nothing
 	local integer y = R2I(enemy_point_y)
 	local integer attack_length_counter = 0
 	local integer i = 0
+	local integer exp = 0
 	local real threat = teleport_low_threat * 1.5
 	local real d = 0
 	local real md = 10000
@@ -12397,13 +12391,15 @@ function AttackMoveTowerRush takes nothing returns nothing
 						if d < md then
 							set md = d
 							set mine = expansion_list[i]
+							set exp = i
 						endif
 					endif
 					set i = i + 1
 				endloop
 				if mine != null then
-					set current_expansion = mine
 					set current_expansion_iswater = false
+					set current_expansion = mine
+					set current_expansion_creeps = exp
 					set u = GetExpFoe(mine)
 				endif
 				set i = 0
