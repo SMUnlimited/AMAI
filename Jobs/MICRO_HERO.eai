@@ -160,20 +160,31 @@ endfunction
 function GetTeleportLandPoint takes location l returns location
   local group g = CreateGroup()
   local unit u = null
+  local player p = null
+  local location loc = null
   local real x = GetLocationX(l)
   local real y = GetLocationY(l)
-  call GroupEnumUnitsInRangeOfLoc(g, l, 900, null)
+  call GroupEnumUnitsInRangeOfLoc(g, l, 1800, null)
   if teleportloc != null then
     call RemoveLocation(teleportloc)  // set new loc , cannot return teleportloc
   endif
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null  //Find a enemy unit , land to unit loc , prevent army land to hall , cannot expand
-    if IsPlayerEnemy(ai_player,GetOwningPlayer(u)) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitInvisible(u, ai_player) and UnitAlive(u) and not IsUnitHidden(u) then
-      set teleportloc = GetUnitLoc(u)
+    set p = GetOwningPlayer(u)
+    if IsPlayerEnemy(ai_player,p) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitInvisible(u, ai_player) and UnitAlive(u) and not IsUnitHidden(u) then
+      set loc = GetUnitLoc(u)
+      if DistanceBetweenPoints(loc, l) > 850 then
+        set teleportloc = AIGetProjectedLoc(l, loc, GetRandomReal(400, 880), 0)
+        call RemoveLocation(loc)
+      else
+        set teleportloc = loc
+      endif
       call DestroyGroup(g)
       set g = null
       set u = null
+      set p = null
+      set loc = null
       return Location(GetLocationX(teleportloc),GetLocationY(teleportloc))
     endif
     call GroupRemoveUnit(g, u)
@@ -181,6 +192,7 @@ function GetTeleportLandPoint takes location l returns location
   set teleportloc = Location(x,y)
   call DestroyGroup(g)
   set g = null
+  set p = null
   return Location(x,y)
 endfunction
 
