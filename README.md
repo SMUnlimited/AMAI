@@ -47,7 +47,7 @@ Avoid v1.29.x of Warcraft III and either upgrade or downgrade as it breaks vario
 
 ## AMAI UI Installer
 
-The installer only works on Windows 7/8/10 64bit.
+The installer only works on Windows 7/8/10 64-bit.
 
 The installer has to be downloaded separately as its much larger compared to the AI package.
 
@@ -217,7 +217,7 @@ This special version will make *odd* teams run with AMAI and *even* teams run wi
 
 Useful for testing how much better AMAI is against the original AI.
 
-Not shipped by default as it creates a very different blizzard.j file.
+Not shipped by default as it creates a very different `Blizzard.j` file.
 
 Run/double click one of the `MakeVAI<Version>` bat files. (e.g `MakeVAITFT.bat` to create the AMAI vs Blizzard AI scripts for the classic TFT version.)
 
