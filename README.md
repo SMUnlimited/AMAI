@@ -4,9 +4,9 @@ Advanced Melee Artificial Intelligence Mod For Warcraft III.
 
 Created by **AIAndy**, **Zalamander** and the **Strategy Master**.
 
-Official Release Links available from: https://www.hiveworkshop.com/threads/advanced-melee-ai.62879/
+Official Release Links available from https://www.hiveworkshop.com/threads/advanced-melee-ai.62879/.
 
-As was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601.
+AMAI was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601.
 
 # How to Play
 
