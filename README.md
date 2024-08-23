@@ -98,7 +98,7 @@ Copy contents of `AMAI\Scripts\<Version>` and `AMAI\Scripts\Blizzard.j` into the
 
 ## Manual Mod Install
 
-You can install the scripts locally to your game folder to enable the AI for any map you play and to avoid extracting the official maps.
+You can install the scripts locally to your game folder to enable AMAI for any map you play, freeing you from extracting the official maps, as well as being able to update AMAI easily.
 
 For Warcraft III Windows version, change the registry key:
 ```
