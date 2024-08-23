@@ -47,7 +47,7 @@ Avoid v1.29.x of Warcraft III and either upgrade or downgrade as it breaks vario
 
 ## AMAI UI Installer
 
-The installer only works on Windows 7/8/10 64-bit.
+The installer only works on 64-bit Windows 7/8/10.
 
 The installer has to be downloaded separately as its much larger compared to the AI package.
 
