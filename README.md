@@ -111,7 +111,7 @@ reg add "HKCU\Software\Blizzard Entertainment\Warcraft III" /v "Allow Local File
 
 For Warcraft III macOS version, from `Terminal.app`, run this:
 ```
-defaults write "com.blizzard.<Game>" "Allow Local Files" -int 1
+defaults write com.blizzard.<Game> "Allow Local Files" -int 1
 ```
 Where `<Game>` should be replaced with `Warcraft\ III` if you have the release version, or `Warcraft\ III\ Public\ Test` if you have the PTR version.
 
