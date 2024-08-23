@@ -109,7 +109,7 @@ Or alternatively, run this:
 reg add "HKCU\Software\Blizzard Entertainment\Warcraft III" /v "Allow Local Files" /t REG_DWORD /d 1
 ```
 
-For Warcraft III macOS version, from Terminal, run this:
+For Warcraft III macOS version, from `Terminal.app`, run this:
 ```
 defaults write "com.blizzard.<Game>" "Allow Local Files" -int 1
 ```
