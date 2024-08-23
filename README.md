@@ -303,7 +303,7 @@ AMAI is designed to work with melee maps.
 
 If you make a custom map, you need to make sure in the world editor it is also set to `Latest Patch` dataset and still using the melee AI.
 
-If you don't do this the AMAI will get stuck upgrading past tier 2 as it will use the vanilla patch.
+If you don't do this the AMAI will get stuck upgrading past Tier 2 as it will use the vanilla patch.
 
 Scripted maps may need to disable the Commander as it will otherwise conflict.
 
