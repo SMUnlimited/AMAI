@@ -5949,6 +5949,7 @@ function MultipleMinefix takes nothing returns boolean
   local integer gold = 0
   local real i = 0
   local real distance = 10000
+  local location l = null
   local group g = null
   local unit u = null
   local boolean b = true
@@ -5992,8 +5993,8 @@ function MultipleMinefix takes nothing returns boolean
   if fixmine != null and not_taken_expansion != fixmine then
     set not_taken_expansion = fixmine  // prevent build too much TOWNHALL , olny first_town_mine > 1 mode need set
   endif
-  if race_manual_loading then
-    if fixmine != null and GetUnitCount(old_id[race_manual_loading_mine]) < TownCount(racial_expansion) then
+  if race_manual_loading and fixmine != null then
+    if GetUnitCount(old_id[race_manual_loading_mine]) < TownCount(racial_expansion) then
       call GroupEnumUnitsInRangeOfLoc(g, home_location, expansion_taken_radius, null)
       set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL,true)
       set g = SelectByHidden(g, false)
@@ -6004,10 +6005,20 @@ function MultipleMinefix takes nothing returns boolean
       endif
       set u = null
     elseif TownCount(racial_expansion) < 2 and c > 1 and gold > 3 * GetUnitGoldCost2(racial_expansion) then  //  build one tree
-      set b = false
+      set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), racial_expansion, GetUnitX(fixmine), GetUnitY(fixmine), 270.0)
+      set l = GetUnitLoc(u)
+      call RemoveUnit(u)
+      set u = null
+      if DistanceBetweenPoints_kd(l, GetUnitLoc(fixmine)) <= race_max_expa_mine_distance then
+        call IssuePointOrderByIdLoc(expansion_peon, racial_expansion, l)
+        set b = true
+      endif
+      call RemoveLocation(l)
+      set l = null
     endif
-  elseif race_uses_mine_expansion then
-    set b = gold <= GetUnitGoldCost2(racial_expansion) / 3 and gold > 0
+  elseif race_uses_mine_expansion and fixmine != null and (TownCount(racial_expansion) < 2 or (GetGold() > 1200 and TownCount(racial_expansion) < 3)) and not (gold <= GetUnitGoldCost2(racial_expansion) / 3 and gold > 0) then
+    call IssueTargetOrderById(expansion_peon, racial_expansion, fixmine)
+    set b = true
   elseif c < 2 then
     set b = false
   endif
@@ -12261,19 +12272,22 @@ function BRRush takes nothing returns nothing
     call IssueImmediateOrderById(utemp, 851976) // Cancel building order
     call IssueImmediateOrder(utemp, "unroot")  //try unroot
     call Sleep(2.8)  //unroot time
-    set loc = GetUnitLoc(rushcreep_target)
-    call IssuePointOrderLoc(utemp, "attack", loc)
-    call RemoveLocation(loc)
-    set loc = null
+    call IssuePointOrder(utemp, "attack", GetUnitX(rushcreep_target), GetUnitY(rushcreep_target))
     call AttackMoveKill(rushcreep_target)
     call ReformUntilTargetDeadAM(rushcreep_target, true)
     call Chat(C_Done)
     call SleepInCombatAM()
     call Trace("===BR Finished===")
-    call IssuePointOrderLoc(utemp, "root", l)
+    set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), 'eaom', GetLocationX(l), GetLocationY(l), 270.0)
+    set loc = GetUnitLoc(u)
+    call RemoveUnit(u)
+    set u = null
+    call IssuePointOrderLoc(utemp, "root", loc)
     // if not IssuePointOrderLoc(utemp, "root", l) then  //root tree , this order olny return false
     //   call IssuePointOrderLoc(utemp, "move", GetLocationX(l) + ISign() * GetRandomReal(200, 400), GetLocationY(l) + ISign() * GetRandomReal(200, 400))  // no remove GuardPosition , no need send root order
     // endif
+    call RemoveLocation(loc)
+    set loc = null
     call RemoveLocation(l)
     set l = null
   else
