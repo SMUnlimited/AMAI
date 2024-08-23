@@ -123,7 +123,7 @@ Run game and play a custom game on a standard melee map.
 
 ## Notes
 
-Advanced Melee AI is made to be used on 'melee' maps only so please don't try to use it on completely custom maps (e.g Tower Defence). It will make no difference on such maps.
+Advanced Melee AI is made to be used on melee maps only so please don't try to use it on completely custom maps (e.g Tower Defence). It will make no difference on such maps.
 
 Custom melee maps need to be set to latest patch data. Open the map in the Warcraft editor, go to `Scenario` > `Map Options`, and change `Game Data Set` to `Melee (Latest Patch)`.
 
