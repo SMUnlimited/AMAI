@@ -58,6 +58,9 @@ perl -i -pe"s/PLAYER_NEUTRAL_PASSIVE/PLAYER_AMAI_NEUTRAL_PASSIVE/g" Scripts/Bliz
 perl -i -pe"s/PLAYER_NEUTRAL_AGGRESSIVE/PLAYER_AMAI_NEUTRAL_AGGRESSIVE/g" Scripts/%VER%/common.ai
 perl -i -pe"s/PLAYER_NEUTRAL_AGGRESSIVE/PLAYER_AMAI_NEUTRAL_AGGRESSIVE/g" Scripts/Blizzard_%VER%.j
 
+copy /b/v/y "Scripts\Blizzard_%VER%.j" "Scripts\Blizzard.j"
+ECHO copy \Scripts\Blizzard.j
+
 pjass %VER%\common.j Scripts\%VER%\common.ai
 if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 jassparser %VER%\common.j Scripts\%VER%\common.ai
