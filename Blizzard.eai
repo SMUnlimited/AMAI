@@ -625,7 +625,7 @@ function removeWorkerFromMine takes unit u returns nothing
   local integer i = 0
   loop
     exitwhen i >= W3CMind_Length
-    if IsUnitInGroup(u, W3CWorkerMine[i]) then
+    if W3CWorkerMine[i] != null and IsUnitInGroup(u, W3CWorkerMine[i]) then
       call GroupRemoveUnit(W3CWorkerMine[i], u)
       set W3CWorkers[i] = W3CWorkers[i] - 1
       call updateMineText(i)
@@ -634,25 +634,12 @@ function removeWorkerFromMine takes unit u returns nothing
   endloop
 endfunction
 
-function unitCanGatherAppropriateGoldMine takes unit mine, integer id returns boolean
-  if id == 'uaco' then
-    return GetUnitTypeId(mine) == 'ugol'
-  elseif id == 'ewsp' then
-    return GetUnitTypeId(mine) == 'egol'
-  endif
-  return GetUnitTypeId(mine) == 'ngol'
-endfunction
-
 function unitIsWorker takes unit u, integer i returns boolean
-  return IsUnitType(u, UNIT_TYPE_PEON) or i == 'ngir' or i == 'hpea' or i == 'opeo' or i == 'ewsp' or i == 'uaco' or i == 'ncpn' or i == 'ndrl'
+  return not IsUnitHidden(u) and (IsUnitType(u, UNIT_TYPE_PEON) or i == 'ngir' or i == 'hpea' or i == 'opeo' or i == 'ewsp' or i == 'uaco' or i == 'ncpn' or i == 'ndrl')
 endfunction
 
 function targetIsGold takes integer i returns boolean
   return i == 'ngol' or i == 'ugol' or i == 'egol'
-endfunction
-
-function unitCanGatherTarget takes unit u, unit target returns boolean
-  return unitIsWorker(u, GetUnitTypeId(u)) and targetIsGold(GetUnitTypeId(target)) and unitCanGatherAppropriateGoldMine(target, GetUnitTypeId(u))
 endfunction
 
 function W3CWorker_lossOfMine takes nothing returns nothing
@@ -662,19 +649,19 @@ function W3CWorker_lossOfMine takes nothing returns nothing
     set i = isMineExist(u)
     if i >= 0 then
       call DestroyGroup(W3CWorkerMine[i])
-      call SetTextTagVisibility(W3CWorkTextTag[i], false)
       call DestroyTextTag(W3CWorkTextTag[i])
       loop
         exitwhen i >= W3CMind_Length
-        set W3CWorkerMine[i] = W3CWorkerMine[i + 1]
-        set W3CMines[i] = W3CMines[i + 1]
         set W3CWorkers[i] = W3CWorkers[i + 1]
+        set W3CMines[i] = W3CMines[i + 1]
+        set W3CWorkerMine[i] = W3CWorkerMine[i + 1]
         set W3CWorkTextTag[i] = W3CWorkTextTag[i + 1]
         set i = i + 1
       endloop
       set W3CMind_Length = W3CMind_Length - 1
-      set W3CWorkerMine[W3CMind_Length] = null
+      set W3CWorkers[W3CMind_Length] = 0
       set W3CMines[W3CMind_Length] = null
+      set W3CWorkerMine[W3CMind_Length] = null
       set W3CWorkTextTag[W3CMind_Length] = null
     endif
   endif
@@ -706,29 +693,35 @@ function W3CWorker_Order takes nothing returns nothing
   set u = null
 endfunction
 
+function unitCanGatherAppropriateGoldMine takes integer mineid, integer id returns boolean
+  return (id == 'uaco' and mineid == 'ugol') or (id == 'ewsp' and mineid == 'egol') or (id != 'uaco' and id != 'ewsp' and mineid == 'ngol')
+endfunction
+
+function unitCanGatherTarget takes unit u, unit mine returns boolean
+  local integer id = GetUnitTypeId(u)
+  local integer mineid = GetUnitTypeId(mine)
+  return unitIsWorker(u, id) and targetIsGold(mineid) and unitCanGatherAppropriateGoldMine(mineid, id)
+endfunction
+
 function W3CWorker_TargetOrderTrigger takes nothing returns nothing
   local unit mine = GetOrderTargetUnit()
   local unit u = GetTriggerUnit()
   local integer i = 0
-  if mine != null then
-    if unitIsWorker(u, GetUnitTypeId(u)) and unitCanGatherTarget(u, mine) and unitOrderedToGather(GetIssuedOrderId(), GetUnitTypeId(mine), u) then
-        call removeWorkerFromMine(u)
-        set i = isMineExist(mine)
-        if i < 0 then
-          set i = addMineExist(mine)
-        endif
-        call GroupAddUnit(W3CWorkerMine[i], u)
-        set W3CWorkers[i] = W3CWorkers[i] + 1
-        call updateMineText(i)
-        set mine = null
-        set u = null
-      return
-    endif
-    if GetIssuedOrderId() != 852017 then
+  if unitIsWorker(u, GetUnitTypeId(u)) then
+    if mine != null and unitCanGatherTarget(u, mine) and unitOrderedToGather(GetIssuedOrderId(), GetUnitTypeId(mine), mine) then
+      call removeWorkerFromMine(u)
+      set i = isMineExist(mine)
+      if i < 0 then
+        set i = addMineExist(mine)
+      endif
+      call GroupAddUnit(W3CWorkerMine[i], u)
+      set W3CWorkers[i] = W3CWorkers[i] + 1
+      call updateMineText(i)
+    elseif GetIssuedOrderId() != 852017 then
       call removeWorkerFromMine(u)
     endif
-    set mine = null
   endif
+  set mine = null
   set u = null
 endfunction
 
@@ -766,7 +759,7 @@ function InitW3CWorkerCount takes nothing returns nothing
   loop
     exitwhen i >= GetBJMaxPlayers()
     set p = Player(i)
-    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and p == GetLocalPlayer() and not IsPlayerObserver(p) and GetPlayerController(p) == MAP_CONTROL_USER then
+    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(p) and GetPlayerController(p) == MAP_CONTROL_USER then
       call TriggerRegisterPlayerChatEvent(workerCountTrigger, p, "-workercount", true)
       call TriggerRegisterPlayerUnitEventSimple(issuedTargetOrderTrigger, p, EVENT_PLAYER_UNIT_ISSUED_TARGET_ORDER)
       call TriggerRegisterPlayerUnitEventSimple(issuedOrder, p, EVENT_PLAYER_UNIT_ISSUED_ORDER)
@@ -777,12 +770,12 @@ function InitW3CWorkerCount takes nothing returns nothing
     endif
     set i = i + 1
   endloop
+  call TriggerRegisterPlayerUnitEventSimple(lossOfMineTrigger, Player(PLAYER_NEUTRAL_PASSIVE), EVENT_PLAYER_UNIT_DEATH)
   call TriggerAddAction(issuedTargetOrderTrigger, function W3CWorker_TargetOrderTrigger)
   call TriggerAddAction(issuedOrder, function W3CWorker_Order)
   call TriggerAddAction(issuedPointOrder, function W3CWorker_Order)
   call TriggerAddAction(lossOfUnitTrigger, function W3CWorker_lossOfUnit)
   call TriggerAddAction(workerCountTrigger, function W3CWorker_chat)
-  call TriggerRegisterPlayerUnitEventSimple(lossOfUnitTrigger, Player(PLAYER_NEUTRAL_PASSIVE), EVENT_PLAYER_UNIT_DEATH)
   call TriggerAddAction(lossOfMineTrigger, function W3CWorker_lossOfMine)
   set p = null
 endfunction
@@ -838,7 +831,7 @@ function W3CDenyTipControl takes nothing returns nothing
   local integer i = 0
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if (GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER) then
+    if GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER then
       call TriggerRegisterPlayerChatEvent(W3CDenyControl, Player(i), "-deny", false)
     endif
     set i = i + 1
@@ -852,64 +845,57 @@ endfunction
 // KK_Teleportation_Point_Tip
 //===========================================================================
 function DestroyTPEffect takes nothing returns nothing
-  local integer i = 0
+  local integer i = 1
   call DestroyEffect(KK_TPEffect[1])
   call DestroyTimer(KK_TPTimer[1])
   set KK_TPEffect[1] = null
   set KK_TPTimer[1] = null
   loop
-    exitwhen i > KK_TP_num
-    set i = i + 1
+    exitwhen i >= KK_TP_num
     set KK_TPEffect[i] = KK_TPEffect[i + 1]
     set KK_TPTimer[i] = KK_TPTimer[i + 1]
+    set i = i + 1
   endloop
-  set KK_TP_num = KK_TP_num - 1
+  if KK_TP_num > 0 then
+    set KK_TP_num = KK_TP_num - 1
+  endif
 endfunction
 
 function TPEffect takes nothing returns nothing
   local unit u = null
-  local unit uc = null
   local group g = CreateGroup()
   local real x = GetSpellTargetX()
   local real y = GetSpellTargetY()
-  local real d1 = 1150
-  local real d2 = 0
   local integer i = GetSpellAbilityId()
-  local location l1 = Location(x, y)
-  local location l2 = null
   local player p1 = GetOwningPlayer(GetTriggerUnit())
-  local player p2 = GetLocalPlayer()
-  if i == 'AItp' or i == 'AHmt' then
-    call GroupEnumUnitsInRange(g, x, y, d1, null)
+  local player p2 = null
+  if p1 != null and (i == 'AItp' or i == 'AHmt') then
+    call GroupEnumUnitsInRange(g, x, y, 850, null)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if (IsUnitType(u, UNIT_TYPE_TOWNHALL) or i == 'AHmt') and IsUnitAlly(u, p1) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) then
-        set l2 = GetUnitLoc(u)
-        set d2 = DistanceBetweenPoints(l1, l2)
-        if d2 < d1 then
-          set d1 = d2
-          set uc = u
-        endif
-        call RemoveLocation(l2)
-      endif
+      exitwhen (IsUnitType(u, UNIT_TYPE_TOWNHALL) or i == 'AHmt') and IsUnitAlly(u, p1) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u)
       call GroupRemoveUnit(g, u)
     endloop
-    call DestroyGroup(g)
-    set g = null
-    if uc != null and (IsPlayerObserver(p2) or IsPlayerAlly(p1, p2)) then
-      set KK_TP_num = KK_TP_num + 1
-      set KK_TPEffect[KK_TP_num] = AddSpecialEffect("Doodads\\Cityscape\\Props\\MagicRunes\\MagicRunes0.mdl", x, y)
-      set KK_TPTimer[KK_TP_num] = CreateTimer()
-      call TimerStart(KK_TPTimer[KK_TP_num], 3, false, function DestroyTPEffect)
+    if u != null then
+      set i = 0
+      loop
+        exitwhen i >= GetBJMaxPlayers()
+        set p2 = Player(i)
+        if GetPlayerSlotState(p2) == PLAYER_SLOT_STATE_PLAYING and (IsPlayerObserver(p2) or (GetPlayerController(p2) == MAP_CONTROL_USER) and IsPlayerAlly(p1, p2)) then
+          set KK_TP_num = KK_TP_num + 1
+          set KK_TPEffect[KK_TP_num] = AddSpecialEffect("Doodads\\Cityscape\\Props\\MagicRunes\\MagicRunes0.mdl", x, y)
+          set KK_TPTimer[KK_TP_num] = CreateTimer()
+          call TimerStart(KK_TPTimer[KK_TP_num], 3, false, function DestroyTPEffect)
+        endif
+        set i = i + 1
+      endloop
+      set p2 = null
     endif
-    set uc = null
-    set l2 = null
   endif
-  call RemoveLocation(l1)
-  set l1 = null
+  call DestroyGroup(g)
+  set g = null
   set p1 = null
-  set p2 = null
 endfunction
 
 function InitTP takes nothing returns nothing
