@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) Observer debugging when debug turned on for vanilla AI in VSAI mode.
 
 ### Fixed
--  Fix ally attack target not being reset, particularly expansion seemed to be slower without fix.
+-  Fix ally attack target not being reset, particularly expansion seemed to be slower without fix. (jzy-chitong56)
 
 ## [3.3.5a] - 2024-06-07
 
