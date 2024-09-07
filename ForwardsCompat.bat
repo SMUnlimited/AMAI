@@ -83,6 +83,9 @@ if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 jassparser %VER%\common.j Scripts\Blizzard_%VER%.j
 if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 
+copy /b/v/y "Scripts\Blizzard_%VER%.j" "Scripts\Blizzard.j"
+ECHO copy \Scripts\Blizzard.j
+
 if "%RESULTFWCOMPAT%"=="1" (
   ECHO Apply forwards compatability error %VER%
   exit /b %RESULTFWCOMPAT%
