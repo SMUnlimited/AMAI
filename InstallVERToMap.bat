@@ -1,3 +1,4 @@
+@ECHO OFF
 SET VER=%~1
 SET RESULTMAKEVER=0
 if not exist "%~2" (

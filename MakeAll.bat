@@ -1,3 +1,4 @@
+@ECHO OFF
 @call MakeRoC
 pause
 @call MakeTFT

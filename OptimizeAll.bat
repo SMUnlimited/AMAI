@@ -1,3 +1,4 @@
+@ECHO OFF
 @call MakeOptREFORGED.bat
 pause
 @call MakeOptROC.bat
