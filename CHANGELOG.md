@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Crash protection to job thread if it has too many actions in the queue (risk only with large maps)
 - Fix ally attack target not being reset, particularly expansion seemed to be slower without fix. (jzy-chitong56)
 - (DevTools) Added echo off to install scripts to reduce console spam.
 - (DevTools) Making legacy editions now copies over correct blizzard.j when performing a manual install.

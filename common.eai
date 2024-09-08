@@ -5046,9 +5046,9 @@ endfunction
 
 // To run a sleep within the job thread, will delay all other jobs as well
 function TQSleep takes real time returns nothing
-  local integer i = 0
+  local integer i = 1
   loop
-    exitwhen i >= tq_length
+    exitwhen i > tq_length
     set tq_time[i] = tq_time[i] + time
     set i = i + 1
   endloop
@@ -5566,10 +5566,13 @@ function TQExchange takes integer pos1, integer pos2 returns nothing
 endfunction
 
 //============================================================================
-function TQUpHeap takes integer pos returns nothing
+function TQUpHeap takes integer pos, integer runnum returns nothing
   if tq_time[pos] < tq_time[pos/2] then
     call TQExchange(pos, pos/2)
-    call TQUpHeap(pos/2)
+    if (ModuloInteger(runnum, 200) == 0) then
+      call Sleep(0.1)
+    endif
+    call TQUpHeap(pos/2, runnum + 1)
   endif
 endfunction
 
@@ -5599,13 +5602,17 @@ function TQRemoveRoot takes nothing returns nothing
   set tq_length = tq_length - 1
   if pos <= tq_length then
     call TQCopy(tq_length + 1, pos)
-    call TQUpHeap(pos)
+    call TQUpHeap(pos, 1)
   endif
   call ReleaseTQLock()
 endfunction
 
 //============================================================================
 function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, group group_par, unit unit_par_2 returns nothing
+  if tq_length >= JASS_MAX_ARRAY_SIZE then
+    // Do nothing too many jobs already
+    return
+  endif  
   call GetTQLock()
   set tq_length = tq_length + 1
   //call SaveReal(tq_hashtable, time, tq_length, time)
@@ -5619,7 +5626,7 @@ function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, gr
   set tq_unit_par[tq_length] = unit_par
   set tq_group_par[tq_length] = group_par
   set tq_unit_par2[tq_length] = unit_par_2
-  call TQUpHeap(tq_length)
+  call TQUpHeap(tq_length, 1)
   call ReleaseTQLock()
 endfunction
 
