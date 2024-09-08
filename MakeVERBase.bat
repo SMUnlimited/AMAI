@@ -1,6 +1,7 @@
 @ECHO OFF
 SET VSAI=%~1
 SET VER=%~2
+SET MAKEALL=%~3
 SET RESULTMAKEVER=0
 if %VSAI% == 1 (
 ECHO Making AMAI %VER% VS AI
@@ -76,6 +77,9 @@ if "%RESULTMAKEVER%"=="1" (
   )
   if %VSAI% == 0 (
     ECHO Compilation AMAI %VER% error
+  )
+  if %MAKEALL% == 1 (
+    SET RESULTMAKEVER=0
   )
   exit /b %RESULTOPTVER%
 ) else (

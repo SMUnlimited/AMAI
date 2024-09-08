@@ -1,5 +1,6 @@
 @ECHO OFF
 SET VER=%~1
+SET MAKEALL=%~2
 SET RESULTOPTVER=0
 ECHO Making AMAI Optimizing %VER%
 perl Optimize.pl %VER%\common.j Scripts\%VER%\common.ai -l %VER%\Races.txt Scripts\%VER%\$2
@@ -26,6 +27,9 @@ copy /b/v/y "Scripts\Blizzard_%VER%.j" "Scripts\Blizzard.j"
 ECHO copy \Scripts\Blizzard.j
 if "%RESULTOPTVER%"=="1" (
   ECHO Compilation AMAI Optimization %VER% error
+  if %MAKEALL% == 1 (
+    SET RESULTMAKEVER=0
+  )
   exit /b %RESULTOPTVER%
 ) else (
   ECHO Compilation AMAI Optimization %VER% finished

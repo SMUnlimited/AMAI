@@ -1,9 +1,12 @@
 @ECHO OFF
-SET LOG=%~1
-call MakeVERBase.bat 0 REFORGED
+SET MAKEALL=%~1
+if not "%MAKEALL%"=="1" (
+  SET MAKEALL=0
+)
+call MakeVERBase.bat 0 REFORGED %MAKEALL%
 ECHO _____________________________
-call MakeOptVER REFORGED
+call MakeOptVER REFORGED %MAKEALL%
 ECHO =============================
-if not "%LOG%"=="0" (
-    pause
+if "%RESULTMAKEVER%"=="1" (
+  pause
 )

@@ -1,3 +1,4 @@
+@ECHO OFF
 if not exist %1 (
 	ECHO %1 Cannot be found
 	exit /b 1
