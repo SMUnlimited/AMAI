@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- (Classic) Zoom hotkeys can now be enabled or disabled via `-zoomkey` command 
 - (DevTools) Observer debugging when debug turned on for vanilla AI in VSAI mode.
 
 ### Fixed
