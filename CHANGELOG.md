@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fix Goblin Tinker Skill not upgrading past rockets on one of the trees. (jzy-chitong56)
 - Reduce lengthy unnecessary wait during distraction attack. (jzy-chitong56)
 - Fix so Ai's only ask for gold before surrender if the commander is installed as its the only way to send gold to the AIs. (jzy-chitong56)
+- Defeated players should not keep chatting. (jzy-chitong56)
 - (DevTools) Added echo off to install scripts to reduce console spam.
 - (DevTools) Making legacy editions now copies over correct blizzard.j when performing a manual install.
 
