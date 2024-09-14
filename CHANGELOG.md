@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (Classic) Zoom hotkeys can now be enabled or disabled via `-zoomkey` command. (jzy-chitong56)
 - (DevTools) Observer debugging when debug turned on for vanilla AI in VSAI mode.
 
+### Changed
+
+- Peons with higher priority over a hall upgrade will now be favoured first if no other way to build more peons. 
+
 ### Fixed
 
 - Crash protection to job thread if it has too many actions in the queue (risk only with large maps)
