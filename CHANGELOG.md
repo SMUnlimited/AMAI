@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 - Crash protection to job thread if it has too many actions in the queue (risk only with large maps)
 - Fix so when at the food limit, AI will not save resources to build units and block building anything else that don't require food.
+- Fix so front location is calculated for all cases of players as well as optimized the calculation.
 - Fix ally attack target not being reset, particularly expansion seemed to be slower without fix. (jzy-chitong56)
 - Fix Goblin Tinker Skill not upgrading past rockets on one of the trees. (jzy-chitong56)
 - Reduce lengthy unnecessary wait during distraction attack. (jzy-chitong56)

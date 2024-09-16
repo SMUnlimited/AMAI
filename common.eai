@@ -6862,21 +6862,30 @@ function ComputeFrontPoints takes nothing returns nothing
   local integer n = 0
   local player p = null
   local unit array u
-  local location loc = null
+  local boolean array enemyplayers
   local player mainplayer = Player(GetAiPlayer())
   local boolean pathingdone = true
   local boolean array patherdone
   local location l = null
   local real distance = 0
+  local location array backuplocs
+
   loop
-    exitwhen i >= c_enemy_total
-    set p = enemy_force[i]
-    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
-      set loc = GetPlayerStartLocationLoc(p)
-      set u[n] = CreatePathingUnit(u[n])
-      call IssuePointOrder(u[n], "move", GetLocationX(loc), GetLocationY(loc))
-      call RemoveLocation(loc)
-      set n = n + 1
+    exitwhen i >= GetBJMaxPlayers()
+    set p = Player(i)
+    if p != ai_player then
+      set l = GetPlayerStartLocationLoc(p)
+      if l != null then
+        set u[n] = CreatePathingUnit(u[n])
+        if IsPlayerEnemy(ai_player, p) then
+          set enemyplayers[n] = true
+        else
+          set enemyplayers[n] = false
+        endif    
+        call IssuePointOrder(u[n], "move", GetLocationX(l), GetLocationY(l))
+        call RemoveLocation(l)
+        set n = n + 1
+      endif  
     endif
     set i = i + 1
   endloop
@@ -6895,17 +6904,22 @@ function ComputeFrontPoints takes nothing returns nothing
             call RemoveUnit(u[i])
             set u[i] = null
             set patherdone[i] = true
-            call AddFrontPoint(Location(GetLocationX(l),GetLocationY(l)))
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, 90))
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, -90))
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, 80))
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, -80))
+            if enemyplayers[i] then
+              set front_loc[front_loc_num] = Location(GetUnitX(u[i]), GetUnitY(u[i]))
+              set front_loc_num = front_loc_num + 1
+              call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, 90))
+              call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, -90))
+              call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, 80))
+              call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, -80))
+              set backuplocs[i] = null
+            else
+              set backuplocs[i] = Location(GetUnitX(u[i]), GetUnitY(u[i]))
+            endif  
           elseif GetUnitState(u[i], UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u[i]) == OrderId("stop") or GetUnitCurrentOrder(u[i]) != OrderId("move") then
             set patherdone[i] = true
             call RemoveUnit(u[i])
             set u[i] = null
-          //else
-            //call RemoveLocation(l)
+            set backuplocs[i] = null
           endif
           call RemoveLocation(l)
           set pathingdone = false
@@ -6916,22 +6930,35 @@ function ComputeFrontPoints takes nothing returns nothing
     exitwhen pathingdone
     call Sleep(0.1)
   endloop
-  if front_loc[0] == null or front_loc_num == 0 then
-    call Trace("fix front_loc[0]" )
-    if Player(0) != ai_player then
-      set l = GetPlayerStartLocationLoc(Player(0))
-    else
-      set l = GetPlayerStartLocationLoc(Player(1))
-    endif
-    set front_loc[0] = GetLocationInDistanceFromBaseToLoc(l, front_base_distance)
-    if front_loc_num == 0 then
-      set front_loc_num = front_loc_num + 1
-    endif
-    call RemoveLocation(l)
+  if front_loc_num == 0 then
+    set i = 0
+    loop
+      exitwhen i >= n
+      if backuplocs[i] != null then
+        set front_loc[front_loc_num] = Location(GetLocationX(backuplocs[i]), GetLocationY(backuplocs[i]))
+        set front_loc_num = front_loc_num + 1
+        call AddFrontPoint(AIGetProjectedLoc(backuplocs[i], home_location, 100, 90))
+        call AddFrontPoint(AIGetProjectedLoc(backuplocs[i], home_location, 100, -90))
+        call AddFrontPoint(AIGetProjectedLoc(backuplocs[i], home_location, 200, 80))
+        call AddFrontPoint(AIGetProjectedLoc(backuplocs[i], home_location, 200, -80))
+        call RemoveLocation(backuplocs[i])
+        set backuplocs[i] = null
+      endif  
+      set i = i + 1
+    endloop  
   endif
-  set front_locs_computed = true
+  if front_loc[0] == null then
+    call Trace("ERROR: Unexpected Front Location")
+    if front_loc_num > 0 then
+      set front_loc[0] = front_loc[front_loc_num - 1]
+    endif
+  endif  
+  if front_loc[0] != null then
+    set front_locs_computed = true
+  else
+    call Trace("ERROR: Fronts not computed")  
+  endif
   set l = null
-  set loc = null
   set p = null
   set mainplayer = null
 
