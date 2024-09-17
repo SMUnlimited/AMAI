@@ -495,6 +495,7 @@ globals
 
 
     integer racial_peon	= 0
+    integer neededPeons = 0
     integer array racial_hall
     integer array racial_goldmine
     integer minearray = 0
@@ -2492,7 +2493,7 @@ endfunction
 
 //============================================================================
 function StaggerSleep takes real base, real spread returns nothing
-  call Sleep(base + spread * I2R(GetAiPlayer()) / I2R(GetPlayers()))
+  call Sleep(base + spread * I2R(GetAiPlayer()) / I2R(GetPlayers()) + GetRandomReal(-0.1, 0.1))
 endfunction
 
 //============================================================================
@@ -5614,10 +5615,13 @@ function TQExchange takes integer pos1, integer pos2 returns nothing
 endfunction
 
 //============================================================================
-function TQUpHeap takes integer pos returns nothing
+function TQUpHeap takes integer pos, integer runnum returns nothing
   if tq_time[pos] < tq_time[pos/2] then
     call TQExchange(pos, pos/2)
-    call TQUpHeap(pos/2)
+    if (ModuloInteger(runnum, 200) == 0) then
+      call Sleep(0.1)
+    endif
+    call TQUpHeap(pos/2, runnum + 1)
   endif
 endfunction
 
@@ -5647,13 +5651,17 @@ function TQRemoveRoot takes nothing returns nothing
   set tq_length = tq_length - 1
   if pos <= tq_length then
     call TQCopy(tq_length + 1, pos)
-    call TQUpHeap(pos)
+    call TQUpHeap(pos, 1)
   endif
   call ReleaseTQLock()
 endfunction
 
 //============================================================================
 function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, group group_par, unit unit_par_2 returns nothing
+  if tq_length >= JASS_MAX_ARRAY_SIZE then
+    // Do nothing too many jobs already
+    return
+  endif  
   call GetTQLock()
   set tq_length = tq_length + 1
   //call SaveReal(tq_hashtable, time, tq_length, time)
@@ -5667,7 +5675,7 @@ function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, gr
   set tq_unit_par[tq_length] = unit_par
   set tq_group_par[tq_length] = group_par
   set tq_unit_par2[tq_length] = unit_par_2
-  call TQUpHeap(tq_length)
+  call TQUpHeap(tq_length, 1)
   call ReleaseTQLock()
 endfunction
 
@@ -6924,19 +6932,28 @@ function ComputeFrontPoints takes nothing returns nothing
   local player p = null
   local unit array u
   //local player mainplayer = Player(GetAiPlayer())
+  local boolean array enemyplayers
   local boolean pathingdone = true
   local boolean array patherdone
   local location l = null
   local real distance = 0
+  local location array backuplocs
   loop
-    exitwhen i >= c_enemy_total
-    set p = enemy_force[i]
-    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
+    exitwhen i >= GetBJMaxPlayers()
+    set p = Player(i)
+    if p != ai_player then
       set l = GetPlayerStartLocationLoc(p)
-      set u[n] = CreatePathingUnit(u[n])
-      call IssuePointOrder(u[n], "move", GetLocationX(l), GetLocationY(l))
-      call RemoveLocation(l)
-      set n = n + 1
+      if l != null then
+        set u[n] = CreatePathingUnit(u[n])
+        if IsPlayerEnemy(ai_player, p) then
+          set enemyplayers[n] = true
+        else
+          set enemyplayers[n] = false
+        endif
+        call IssuePointOrder(u[n], "move", GetLocationX(l), GetLocationY(l))
+        call RemoveLocation(l)
+        set n = n + 1
+      endif
     endif
     set i = i + 1
   endloop
@@ -6955,15 +6972,22 @@ function ComputeFrontPoints takes nothing returns nothing
             call RemoveUnit(u[i])
             set u[i] = null
             set patherdone[i] = true
-            call AddFrontPoint(Location(GetLocationX(l),GetLocationY(l)))
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, 90))
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, -90))
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, 80))
-            call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, -80))
+            if enemyplayers[i] then
+              set front_loc[front_loc_num] = Location(GetUnitX(u[i]), GetUnitY(u[i]))
+              set front_loc_num = front_loc_num + 1
+              call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, 90))
+              call AddFrontPoint(AIGetProjectedLoc(l, home_location, 100, -90))
+              call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, 80))
+              call AddFrontPoint(AIGetProjectedLoc(l, home_location, 200, -80))
+              set backuplocs[i] = null
+            else
+              set backuplocs[i] = Location(GetUnitX(u[i]), GetUnitY(u[i]))
+            endif
           elseif GetUnitState(u[i], UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u[i]) == OrderId("stop") or GetUnitCurrentOrder(u[i]) != OrderId("move") then
             set patherdone[i] = true
             call RemoveUnit(u[i])
             set u[i] = null
+            set backuplocs[i] = null
           endif
           call RemoveLocation(l)
           set pathingdone = false
@@ -6974,24 +6998,34 @@ function ComputeFrontPoints takes nothing returns nothing
     exitwhen pathingdone
     call Sleep(0.1)
   endloop
-  if front_loc[0] == null or front_loc_num == 0 then
-    if Player(0) != ai_player then
-      set l = GetPlayerStartLocationLoc(Player(0))
-    else
-      set l = GetPlayerStartLocationLoc(Player(1))
-    endif
-    set front_loc[0] = GetLocationInDistanceFromBaseToLoc(l, front_base_distance)
-    call CreateDebugTagLoc("fix front_loc[0]", 10, GetLocationX(l), GetLocationY(l), 60.00, 55.00)
-    if front_loc_num == 0 then
-      set front_loc_num = front_loc_num + 1
-    endif
-    call RemoveLocation(l)
+  if front_loc_num == 0 then
+    set i = 0
+    loop
+      exitwhen i >= n
+      if backuplocs[i] != null then
+        set front_loc[front_loc_num] = Location(GetLocationX(backuplocs[i]), GetLocationY(backuplocs[i]))
+        set front_loc_num = front_loc_num + 1
+        call AddFrontPoint(AIGetProjectedLoc(backuplocs[i], home_location, 100, 90))
+        call AddFrontPoint(AIGetProjectedLoc(backuplocs[i], home_location, 100, -90))
+        call AddFrontPoint(AIGetProjectedLoc(backuplocs[i], home_location, 200, 80))
+        call AddFrontPoint(AIGetProjectedLoc(backuplocs[i], home_location, 200, -80))
+        call RemoveLocation(backuplocs[i])
+        set backuplocs[i] = null
+      endif
+      set i = i + 1
+    endloop
   endif
-  set front_locs_computed = true
-  set l = null
+  if front_loc[0] == null then
+    call Trace("ERROR: Unexpected Front Location , not computed")
+    if front_loc_num > 0 then
+      set front_loc[0] = front_loc[front_loc_num - 1]
+    endif
+  else
+    set front_locs_computed = true
+  endif
   set p = null
+  set l = null
   //set mainplayer = null
-
 endfunction
 
 //============================================================================
@@ -7440,6 +7474,10 @@ function GetHeroHealingItem takes nothing returns integer
 	return 0
 endfunction
 
+function GetSleepMultipler takes integer aiCount returns real
+  return LinearInterpolation(I2R(slm_start), I2R(slm_end), slm_start_mult, slm_end_mult, I2R(aiCount)) + GetRandomReal(-0.2, 0.2)
+endfunction 
+
 //============================================================================
 // (AMAI) Jobs Listing (Custom Job Scripts are placed here)
 //============================================================================
@@ -7762,11 +7800,11 @@ function CheckAllNeutralsQuick takes nothing returns nothing
 endfunction
 
 //============================================================================
-function CopyPJ takes integer jid, integer par returns nothing
+function CopyPJ takes integer t returns nothing
   local integer i = 1
   loop
     exitwhen i > pj_length
-    if pj_jid[i] == jid and pj_par[i] == par then
+    if i == t then
       loop
         exitwhen i >= pj_length
         set pj_time[i] = pj_time[i + 1]
@@ -7776,26 +7814,26 @@ function CopyPJ takes integer jid, integer par returns nothing
         set pj_remove[i] = pj_remove[i + 1]
         set i = i + 1
       endloop
-      set pj_length = pj_length - 1
     endif
     set i = i + 1
   endloop
+  set pj_length = pj_length - 1
 endfunction
 
-function RemovePJ takes integer jid, integer par returns nothing
+function RemovePJ takes integer jid, integer par, integer t returns nothing
   if jid == NEUTRAL_GUARDED and nearest_neutral[par] == null then
-    call CopyPJ(jid, par)
-  elseif jid != NEUTRAL_GUARDED and (not UnitAlive(nearest_neutral[par]) or nearest_neutral[par] == null) then
-    call CopyPJ(jid, par)
+    call CopyPJ(t)
+  elseif jid == NEUTRAL_ENEMY_CHECK and (not UnitAlive(nearest_neutral[par]) or nearest_neutral[par] == null) then
+    call CopyPJ(t)
   endif
 endfunction
 
-function PJHandleOnce takes integer t, real te returns boolean
-  if te - pj_time[t] >= pj_frequency[t] then
+function PJHandleOnce takes integer t returns boolean
+  if pj_length > 0 and TimerGetElapsed(tq_timer) >= pj_time[t] then
     call TQDoJob(pj_jid[t], pj_par[t], null, null, null)
-    set pj_time[t] = te
+    set pj_time[t] = TimerGetElapsed(tq_timer) + pj_frequency[t]
     if pj_remove[t] then
-      call RemovePJ(pj_jid[t], pj_par[t])
+      call RemovePJ(pj_jid[t], pj_par[t], t)
     endif
     return true
   endif
@@ -7809,6 +7847,7 @@ function PathingJobEx takes real frequency, integer jid, integer par, boolean re
   set pj_jid[pj_length] = jid
   set pj_par[pj_length] = par
   set pj_remove[pj_length] = remove
+  call Sleep(GetRandomReal(0.8, 1.2))
 endfunction
 
 function PJInitJobs takes nothing returns nothing
@@ -7824,7 +7863,7 @@ function PJInitJobs takes nothing returns nothing
   call PathingJobEx(60, CLEANUP_BLOCKS, 0, false)                                                 //CleanupBlocksJob
   call PathingJobEx(160, ITEM_REPEAT_CHECK, 0, false)                                             //ItemRepeatCheck
   call PathingJobEx(1200, REVEAL_ENEMY, 0, false)                                                 //RevealEnemyJob
-  call PathingJobEx(sleep_multiplier * 5, STRUCTURE_CONTROL, 0, false)                            //StructureControlJob
+  call PathingJobEx(5 * sleep_multiplier, STRUCTURE_CONTROL, 0, false)                            //StructureControlJob
   if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null then
     call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALING_FOUNTAIN, true)  //NeutralEnemyCheckJob
   endif
@@ -7880,9 +7919,9 @@ function PathingThread takes nothing returns nothing
   if pj_length > 0 then
     loop
       exitwhen player_defeated
-      if PJHandleOnce(t, TimerGetElapsed(tq_timer)) then
+      if PJHandleOnce(t) then
         call UpdateDebugTextTag(tt, "path job sys : " + Int2Str(pj_jid[t]), 10, GetLocationX(home_location) + 300, GetLocationY(home_location))
-        call Sleep(RMin(1, GetRandomReal(0.5, 0.8) * sleep_multiplier))
+        call Sleep(RMax(1, GetRandomReal(0.6, 1.2) * sleep_multiplier))
       else
         call UpdateDebugTextTag(tt, "path job sys : not job", 10, GetLocationX(home_location) + 300, GetLocationY(home_location))
         call Sleep(1)
@@ -7893,7 +7932,7 @@ function PathingThread takes nothing returns nothing
       endif
       if active_expansion then
         set i = i + 1
-        if i >= 120 then
+        if i >= 300 then
           set i = 0
           set active_expansion = GetPlayerUnitTypeCount(Player(PLAYER_NEUTRAL_PASSIVE),'ngol') >= (c_enemy_total + c_ally_total + 1) * 2
         endif
@@ -7902,15 +7941,18 @@ function PathingThread takes nothing returns nothing
   elseif active_expansion then
     loop
       exitwhen player_defeated or not active_expansion
-      call Sleep(1)
+      call Sleep(10)
       set i = i + 1
-      if i >= 120 then
+      if i >= 30 then
         set i = 0
         set active_expansion = GetPlayerUnitTypeCount(Player(PLAYER_NEUTRAL_PASSIVE),'ngol') >= (c_enemy_total + c_ally_total + 1) * 2
       endif
     endloop
   endif
-  call UpdateDebugTextTag(tt, "path job sys : end", 10, GetLocationX(home_location) + 300, GetLocationY(home_location))
+  call SetTextTagText(tt, "path job sys : end", 0.1)
+  call SetTextTagPermanent(tt, false)
+  call SetTextTagLifespan(tt, 30)
+  set tt = null
 endfunction
 
 //============================================================================
@@ -8694,7 +8736,6 @@ endfunction
 
 //===========================================================================
 
-
 //============================================================================
 // AMAI Code
 //============================================================================
@@ -8727,7 +8768,7 @@ function InitAMAI takes nothing returns nothing
   if c_enemy_total == 1 and c_ally_total == 0 then
     set game_is_1on1 = true
   endif
-  set sleep_multiplier = sleep_multiplier * LinearInterpolation(I2R(slm_start), I2R(slm_end), slm_start_mult, slm_end_mult, I2R(c_ai_total))
+  set sleep_multiplier = GetSleepMultipler(c_ai_total)
   set difficulty = MeleeDifficulty()
   set income_per_mine = income_per_mine * Max(difficulty - 1, 1)
   call Trace("Init AMAI step 1")
@@ -10521,6 +10562,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     local integer n1 = needed1[unitid]
     local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
     local integer nn = GetNeutralNumber(unitid)
+    local integer i = 1
 
     // If specified town not built ignore town specific requests
     if town != -1 and (not town_built[town] or (unitid != racial_expansion and TownCountTown(racial_expansion, town) <= 0)) then
@@ -10535,6 +10577,11 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     // Previous upgrade will set some time aside while upgrading, during which time requests are ignored till time has expired
     if needed3[unitid] == UPGRADED and town != -1 and ai_time < available_time[unitid] then
       return BUILT_SOME
+    endif
+
+    // Used so lower priority town hall upgrades only occur when all peons at a higher priority have been built
+    if unitid == racial_peon then
+      set neededPeons = neededPeons + ask_qty
     endif
 
     //------------------------------------------------------------------------
@@ -10581,6 +10628,11 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     endif
     if afford_food < afford_qty then
       set afford_qty = afford_food
+    endif
+
+    // If at food limit skip units in build queue rather than block
+    if food_cost > 0 and need_qty > 0 and food_cost > total_food  then
+      return CANNOT_BUILD
     endif
 
     // Check if allowed to go over upkeep limit otherwise restrict qty
@@ -10639,6 +10691,13 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
 
     if needed3[unitid] == UPGRADED then
       if needed1[unitid] != 0 and GetUnitCountEx(needed1[unitid],true,town) < 1 then
+        return CANNOT_BUILD
+      endif
+    endif
+
+    // Don't upgrade if there is a higher priority need for peons first and the racial hall required to build them, but we are requesting a lower priority hall upgrade
+    if IsRacialHallId(unitid, 2) and IsRacialHallId(needed1[racial_peon], 1) then
+      if Min(neededPeons, 10) > TownCountDone(racial_peon) and TownCountDone(racial_hall[1]) == 1 then  // Includes upgraded halls due to Add to counting
         return CANNOT_BUILD
       endif
     endif
@@ -11765,7 +11824,7 @@ function OneBuildLoopAM takes nothing returns nothing
     call RefreshAllNeeded()
     call FactoryNumberUpdate()
     set logtype = null
-
+    set neededPeons = 0 // Reset
 endfunction
 
 
@@ -12400,7 +12459,7 @@ function AttackMoveTowerRush takes nothing returns nothing
 	set break_attack = false
 	loop
 		exitwhen not towerrush
-		exitwhen town_threatened and most_threatened_town >=0 and town_threat[most_threatened_town] >= threat
+		exitwhen town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= threat
 		exitwhen break_attack
 		exitwhen CaptainIsEmpty()  // all units died
 		if tower_attack_run != true and (GetUnitCountDone(old_id[hero[1]]) + GetUnitCountDone(old_id[hero[2]]) + GetUnitCountDone(old_id[hero[3]])) > 0 and (race_tower_item_must != true or (race_tower_item_must == true and (builder[0] != null or tower_used_item))) then
