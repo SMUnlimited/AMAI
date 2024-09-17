@@ -6,8 +6,8 @@ eval {
   print "Perl version: $]\n";
 };
 if ($@) {
-  print "ERROR: Failed to uninstall AMAI.";
-  die "Please install Perl as a requirement to uninstall AMAI. Download https://strawberryperl.com/";
+  print "ERROR: Failed to install AMAI.";
+  die "Please install Perl as a requirement to install AMAI. Download https://strawberryperl.com/";
 }
 
 sub process_dir {
