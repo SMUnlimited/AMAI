@@ -9,6 +9,13 @@ ECHO Making AMAI %VER% VS AI
 if %VSAI% == 0 (
 ECHO Making AMAI %VER%
 )
+where perl
+if "%errorlevel%"=="1" SET RESULTOPTVER=1
+if "%RESULTOPTVER%"=="1" (
+  ECHO Compilation AMAI Optimization %VER% error
+  ECHO Please install Perl as a requirement to compile AMAI. Download https://strawberryperl.com/
+  exit /b %RESULTOPTVER%
+)
 mkdir Scripts\
 mkdir Scripts\%VER%\
 ECHO _____________________________

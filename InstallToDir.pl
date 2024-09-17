@@ -2,6 +2,14 @@
 
 use strict;
 
+eval {
+  print "Perl version: $]\n";
+};
+if ($@) {
+  print "ERROR: Failed to uninstall AMAI.";
+  die "Please install Perl as a requirement to uninstall AMAI. Download https://strawberryperl.com/";
+}
+
 sub process_dir {
   my $ver = $_[0];
   my $dirname = $_[1];
