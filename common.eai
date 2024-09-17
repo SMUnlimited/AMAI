@@ -2393,29 +2393,41 @@ function GetUnitCountEx takes integer unitid, boolean only_done, integer townid 
 endfunction
 
 //============================================================================
-function TownCountEx takes integer unitid, boolean only_done, integer townid returns integer
+// Counts other units that count as this unit, can optionally pass an upgradeid that is ignored from the count
+function  GetUnitCountAlt takes integer unitid, integer upgradeid, boolean only_done, integer townid returns integer
   local integer have_qty = 0
-  local integer newid = 0
-
   if IsAMAI then
-    set have_qty = GetUnitCountEx(unitid,only_done,townid) + GetUnitCountEx(tc_add1[unitid],false,townid) + GetUnitCountEx(tc_add2[unitid],false,townid)
+    if upgradeid != tc_add1[unitid] then
+      set have_qty = have_qty + GetUnitCountEx(tc_add1[unitid],only_done,townid)
+    endif
+    if upgradeid != tc_add2[unitid] then
+      set have_qty = have_qty + GetUnitCountEx(tc_add2[unitid],only_done,townid)
+    endif  
   else
-    //set newid = GetAMAIId(unitid)
-    //set have_qty = GetUnitCountEx(unitid,only_done,townid) + GetUnitCountEx(tc_add1[newid],false,townid) + GetUnitCountEx(tc_add2[newid],false,townid)
-    set have_qty = GetUnitCountEx(unitid,only_done,townid)
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%10" ne "0"  or "%9" ne "0"
-    if unitid == %1 then
-      set have_qty = have_qty + GetUnitCountEx(%9,false,townid) + GetUnitCountEx(%10, false,townid)
+    if unitid == %1 and upgradeid != %9 then
+      set have_qty = have_qty + GetUnitCountEx(%9,only_done,townid)
+    endif
+    if unitid == %1 and upgradeid != %10 then
+      set have_qty = have_qty + GetUnitCountEx(%10, only_done,townid)
     endif
 #ENDINCLUDE
   endif
 
 #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "TC_ADD"
-  if unitid == %1 then
-    set have_qty = have_qty + GetUnitCountEx(%3, false, townid)
+  if unitid == %1 and upgradeid != %3 then
+    set have_qty = have_qty + GetUnitCountEx(%3, only_done, townid)
   endif
 #ENDINCLUDE
   return have_qty
+endfunction  
+
+function TownCountEx takes integer unitid, boolean only_done, integer townid returns integer
+  //local integer newid = 0
+    //set newid = GetAMAIId(unitid)
+    //set have_qty = GetUnitCountEx(unitid,only_done,townid) + GetUnitCountEx(tc_add1[newid],false,townid) + GetUnitCountEx(tc_add2[newid],false,townid)
+
+  return GetUnitCountEx(unitid,only_done,townid) + GetUnitCountAlt(unitid,0,only_done,townid)
 
 endfunction
 
@@ -9334,7 +9346,8 @@ function RefreshNeeded takes integer t, integer qty, integer unitid, integer tow
   else
     if needed1[unitid] != 0 then
       if needed3[unitid] == UPGRADED then
-        call SetBuildAllAMCore(BUILD_UNIT, Max(0,qty - TownCountEx(unitid, false, town)), needed1[unitid], town, bloc, prio + prio_n_inc*3)
+        // Number needed is on top of the already upgraded as cannot upgrade the already upgraded. Remove existing desired upgrade from count to avoid it infinitely increasing.
+        call SetBuildAllAMCore(BUILD_UNIT, Max(0,qty + GetUnitCountAlt(needed1[unitid], unitid, false, town)), needed1[unitid], town, bloc, prio + prio_n_inc*3)
       else
         call SetBuildAllAMCore(BUILD_UNIT, Get_f_qty(qty, unitid, town), needed1[unitid], -1, BLOC_STD, prio + prio_n_inc*3)
       endif
@@ -10819,6 +10832,10 @@ function StartItem takes integer ask_qty, integer itemid returns integer
 
   if (needed1[itemid] != 0 and TownCountDone(needed1[itemid]) < 1) or (needed2[itemid] != 0 and TownCountDone(needed2[itemid]) < 1) or (needed3[itemid] != 0 and TownCountDone(needed3[itemid]) < 1) then
     return CANNOT_BUILD
+  endif
+
+  if attack_running then
+    return CANNOT_BUILD // Don't reserve gold and wood for items when we are not going to be be able to buy right now
   endif
 
   set total_gold = total_gold - gold_cost

@@ -13,12 +13,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Changed
 
 - Peons with higher priority over a hall upgrade will now be favoured first if no other way to build more peons.
+- If in an attack don't save gold and wood for items as hero is busy.
 
 ### Fixed
 
 - Crash protection to job thread if it has too many actions in the queue (risk only with large maps)
 - Fix so when at the food limit, AI will not save resources to build units and block building anything else that don't require food.
 - Fix so front location is calculated for all cases of players as well as optimized the calculation.
+- Fix upgraded building counts underreported resulting in stuck build logic.
+- Fixed issue where defeated AI player scripts could still be running when they have 0 units left wasting resources.
 - Fix ally attack target not being reset, particularly expansion seemed to be slower without fix. (jzy-chitong56)
 - Fix Goblin Tinker Skill not upgrading past rockets on one of the trees. (jzy-chitong56)
 - Reduce lengthy unnecessary wait during distraction attack. (jzy-chitong56)
