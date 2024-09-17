@@ -41,9 +41,9 @@ Improvements and fixes to the core AI engine will improve the older scripts as w
 
 Classic AMAI scripts do have some forward compatibility built in to fix some major issues in later versions including 24 player support.
 
-Avoid v1.29.x of Warcraft III and either upgrade or downgrade as it breaks various things including but not limited to: 
-  - Preventing AMAI from chatting.
-  - Heroes not learning skills although we have a fix that can get applied, this may not work if the map itself is too old.
+Avoid v1.29 - 1.31 of Warcraft III and either upgrade or downgrade as they break many things including but not limited to: 
+  - Preventing AMAI from chatting (1.29.x only)
+  - Heroes not learning skills although we have a fix that can get applied, this may not work if the map itself is too old. (1.29 - 1.31)
 
 ## AMAI UI Installer
 
