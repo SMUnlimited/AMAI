@@ -103,17 +103,12 @@ function TeleportHome takes integer hn returns nothing
   //local real dy = 0
   local real actual_diff = 0 
   local location start_loc = null
-
   //set hero_loc = GetUnitLoc(hero_unit[hn])
-  set break_attack = attack_running
-  set attack_running = false
-  call ClearCaptainTargets()
-  set teleporting = true
-  if c_ally_total > 0 and major_hero != null and UnitAlive(major_hero) then
+  if major_hero != null and UnitAlive(major_hero) then
     loop
-      exitwhen i >= GetBJMaxPlayers()
-      set p = Player(i)
-      if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and (IsPlayerAlly(p, ai_player) or ai_player == p) then
+      exitwhen i >= c_ally_total
+      set p = ally_force[i]
+      if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
         set start_loc = GetPlayerStartLocationLoc(p)
         //set dx = GetLocationX(start_loc) - GetLocationX(hero_loc)
         //set dy = GetLocationY(start_loc) - GetLocationY(hero_loc)
@@ -124,30 +119,78 @@ function TeleportHome takes integer hn returns nothing
           if teleport_loc != null then
             call RemoveLocation(teleport_loc)
           endif
-          set teleport_loc = GetTeleportLandPoint(start_loc)
+          set teleport_loc = Location(GetLocationX(start_loc),GetLocationY(start_loc))
         endif
         call RemoveLocation(start_loc)
       endif
       set i = i + 1
     endloop
-    call CaptainAttack(GetLocationX(teleport_loc), GetLocationY(teleport_loc))
+  endif
+  call ClearCaptainTargets()
+  if teleport_loc != null then
+    call SetCaptainHome(BOTH_CAPTAINS, GetLocationX(teleport_loc), GetLocationY(teleport_loc))
+    //call CaptainAttack(GetLocationX(teleport_loc), GetLocationY(teleport_loc))
   else
     call CaptainGoHome()
-    set teleport_loc = GetTeleportLandPoint(home_location)
+    set teleport_loc = Location(GetLocationX(home_location),GetLocationY(home_location))
   endif
-  if teleport_loc != null then
-    call ClearCaptainTargets()
-    call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(teleport_loc), GetLocationY(teleport_loc))
-    call RemoveLocation(teleport_loc)
-    set teleport_loc = null
+  call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), GetLocationX(teleport_loc) + GetRandomInt(300,500) * ISign(), GetLocationY(teleport_loc) + GetRandomInt(300,500) * ISign())
+  set break_attack = attack_running
+  set attack_running = false
+  set teleporting = true
+  if teleportloc != null then
+    call RemoveLocation(teleportloc)
   endif
+  set teleportloc = Location(GetLocationX(teleport_loc),GetLocationY(teleport_loc))  //  set new teleport job move loc
+  call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
+  call RemoveLocation(teleport_loc)
+  set teleport_loc = null
+  set start_loc = null
+  set p = null
   set start_loc = null
   //if hero_loc != null then
   //call RemoveLocation( hero_loc )
   //set hero_loc = null
   //endif
+endfunction
+
+function GetTeleportLandPoint takes location l returns location
+  local group g = CreateGroup()
+  local unit u = null
+  local player p = null
+  local location loc = null
+  local real x = GetLocationX(l)
+  local real y = GetLocationY(l)
+  call GroupEnumUnitsInRangeOfLoc(g, l, 1800, null)
+  if teleportloc != null then
+    call RemoveLocation(teleportloc)  // set new loc , cannot return teleportloc
+  endif
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null  //Find a enemy unit , land to unit loc , prevent army land to hall , cannot expand
+    set p = GetOwningPlayer(u)
+    if IsPlayerEnemy(ai_player,p) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitInvisible(u, ai_player) and UnitAlive(u) and not IsUnitHidden(u) then
+      set loc = GetUnitLoc(u)
+      if DistanceBetweenPoints(loc, l) > 850 then
+        set teleportloc = AIGetProjectedLoc(l, loc, GetRandomReal(400, 880), 0)
+        call RemoveLocation(loc)
+      else
+        set teleportloc = loc
+      endif
+      call DestroyGroup(g)
+      set g = null
+      set u = null
+      set p = null
+      set loc = null
+      return Location(GetLocationX(teleportloc),GetLocationY(teleportloc))
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  set teleportloc = Location(x,y)
+  call DestroyGroup(g)
+  set g = null
   set p = null
-  call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
+  return Location(x,y)
 endfunction
 
 function TeleportToLoc takes unit u, location l returns nothing
@@ -156,6 +199,7 @@ function TeleportToLoc takes unit u, location l returns nothing
   set attack_running = false
   set teleporting = true
   call ClearCaptainTargets()
+  call SetCaptainHome(BOTH_CAPTAINS, GetLocationX(loc), GetLocationY(loc))
   //call CaptainAttack(GetLocationX(loc), GetLocationY(loc))
   call UnitUseItemPoint(u, GetItemOfTypeOnUnit(tp_item, u), GetLocationX(loc), GetLocationY(loc))
   call TQAddUnitJob(0.5, TELEPORT, 0, u)
@@ -298,9 +342,12 @@ function MicroHeroJob takes integer hn returns nothing
     call MoveLocation(hero_enemy_loc[hn], GetLocationX(enemy_density_loc), GetLocationY(enemy_density_loc))
     set hero_ally_density[hn] = ally_density
     call MoveLocation(hero_ally_loc[hn], GetLocationX(ally_density_loc), GetLocationY(ally_density_loc))
-
-    if not teleporting and current_order >= 852008 and current_order <= 852013 then
-      if GetItemTypeId(UnitItemInSlot(hero_unit[hn], current_order - 852008)) == old_id[tp_item] then
+    if (not teleporting and (current_order >= 852008 and current_order <= 852013)) or current_order == 852093 then
+      if (current_order != 852093 and GetItemTypeId(UnitItemInSlot(hero_unit[hn], current_order - 852008)) == old_id[tp_item]) or (current_order == 852093 and GetUnitAbilityLevel(hero_unit[hn], 'AHmt') > 0) then
+        if not teleporting and teleportloc != null then
+          call RemoveLocation(teleportloc)
+          set teleportloc = null
+        endif
         set teleporting = true
         call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
       endif
