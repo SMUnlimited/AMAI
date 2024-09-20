@@ -1,6 +1,6 @@
 @ECHO OFF
-SET VER=%~2
-SET MAKEALL=%~3
+SET VER=%~1
+SET MAKEALL=%~2
 SET RESULTMAKEVER=0
 where perl
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
