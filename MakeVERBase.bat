@@ -3,11 +3,11 @@ SET VER=%~2
 SET MAKEALL=%~3
 SET RESULTMAKEVER=0
 where perl
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
-if "%RESULTOPTVER%"=="1" (
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+if "%RESULTMAKEVER%"=="1" (
   ECHO Compilation AMAI Optimization %VER% error
   ECHO Please install Perl as a requirement to compile AMAI. Download : https://strawberryperl.com/
-  exit /b %RESULTOPTVER%
+  exit /b %RESULTMAKEVER%
 )
 mkdir Scripts\
 mkdir Scripts\%VER%\
@@ -75,7 +75,7 @@ if "%RESULTMAKEVER%"=="1" (
   if %MAKEALL% == 1 (
     SET RESULTMAKEVER=0
   )
-  exit /b %RESULTOPTVER%
+  exit /b %RESULTMAKEVER%
 ) else (
   ECHO Making AMAI %VER% finish
 )
