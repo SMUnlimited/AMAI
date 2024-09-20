@@ -53,8 +53,8 @@ const installOnDirectory = async () => {
     process.send(`ERROR: Cannot find ${process.cwd()}\\MPQEditor.exe`)
     return
   }
-  if (installCommander && !fs.existsSync(`Scripts\\Blizzard_${ver}.j`)) {
-    process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\blizzard_${ver}.j`)
+  if (installCommander && !fs.existsSync(`Scripts\\${ver}\\Blizzard.j`)) {
+    process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\blizzard.j`)
     return
   }
 
@@ -134,7 +134,7 @@ const installOnDirectory = async () => {
             [
               'a',
               file,
-              `Scripts\\Blizzard_${ver}.j`,
+              `Scripts\\${ver}\\Blizzard.j`,
               `Scripts\\Blizzard.j`,
             ],
             { encoding : `utf8` }
