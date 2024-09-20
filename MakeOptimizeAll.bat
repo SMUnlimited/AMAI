@@ -1,7 +1,4 @@
 @ECHO OFF
-@call MakeOptREFORGED.bat
-pause
-@call MakeOptROC.bat
-pause
-@call MakeOptTFT.bat
-pause
+@call MakeOptROC.bat 1
+@call MakeOptTFT.bat 1
+@call MakeOptREFORGED.bat 0

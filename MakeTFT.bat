@@ -1,4 +1,14 @@
 @ECHO OFF
+SET MAKEALL=%~1
+if not "%MAKEALL%"=="1" (
+  SET MAKEALL=0
+)
 call TFT/Inherit.bat
-call MakeVERBase.bat 0 TFT
+ECHO _____________________________
+call MakeVERBase.bat TFT %MAKEALL%
+ECHO _____________________________
 call ForwardsCompat.bat TFT
+ECHO =============================
+if "%RESULTMAKEVER%"=="1" (
+  pause
+)

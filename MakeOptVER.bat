@@ -1,11 +1,18 @@
 @ECHO OFF
 SET VER=%~1
+SET MAKEALL=%~2
 SET RESULTOPTVER=0
-ECHO Optimizing %VER% Scripts
+ECHO Making AMAI Optimizing %VER%
+where perl
+if "%errorlevel%"=="1" SET RESULTOPTVER=1
+if "%RESULTOPTVER%"=="1" (
+  ECHO Compilation AMAI Optimization %VER% error
+  ECHO Please install Perl as a requirement to compile AMAI. Download : https://strawberryperl.com/
+  exit /b %RESULTOPTVER%
+)
 perl Optimize.pl %VER%\common.j Scripts\%VER%\common.ai -l %VER%\Races.txt Scripts\%VER%\$2
-perl Optimize.pl -b Scripts\Blizzard_%VER%.j
-perl Optimize.pl -b Scripts\Blizzard.j
-ECHO Optimizing finished
+perl Optimize.pl -b Scripts\%VER%\Blizzard.j
+perl Optimize.pl -b Scripts\%VER%\Blizzard_VSAI.j
 ECHO _____________________________
 pjass %VER%\common.j Scripts\%VER%\common.ai
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
@@ -22,12 +29,17 @@ ECHO _____________________________
 pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\undead.ai
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
 ECHO _____________________________
-pjass %VER%\common.j Scripts\Blizzard_%VER%.j
+pjass %VER%\common.j Scripts\%VER%\Blizzard.j
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
+ECHO _____________________________
+pjass %VER%\common.j Scripts\%VER%\Blizzard_VSAI.j
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
 if "%RESULTOPTVER%"=="1" (
-  ECHO Optimization %VER% error
+  ECHO Compilation AMAI Optimization %VER% error
+  if %MAKEALL% == 1 (
+    SET RESULTMAKEVER=0
+  )
   exit /b %RESULTOPTVER%
 ) else (
-  ECHO Optimization %VER% successful
+  ECHO Compilation AMAI Optimization %VER% finished
 )
