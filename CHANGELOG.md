@@ -23,13 +23,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fix so front location is calculated for all cases of players as well as optimized the calculation.
 - Fix upgraded building counts underreported resulting in stuck build logic.
 - Fixed issue where defeated AI player scripts could still be running when they have 0 units left wasting resources.
+- Fix for tower rushes and ancient expansions being unintentionally disabled entirely.
 - Fix ally attack target not being reset, particularly expansion seemed to be slower without fix. (jzy-chitong56)
 - Fix Goblin Tinker Skill not upgrading past rockets on one of the trees. (jzy-chitong56)
 - Reduce lengthy unnecessary wait during distraction attack. (jzy-chitong56)
 - Fix so Ai's only ask for gold before surrender if the commander is installed as its the only way to send gold to the AIs. (jzy-chitong56)
 - Defeated players should not keep chatting. (jzy-chitong56)
 - Fix for buy neutral units running attack which is not expected. (jzy-chitong56)
-- Fix for not detecting sleeping air units correctly. (jzy-chitong56)
 - (Classic) Hero Skill fix will only run on versions 1.29 - 1.32.8. 1.32.9 and onwards will not run the fix. (jzy-chitong56)
 - (DevTools) Added echo off to install scripts to reduce console spam.
 - (DevTools) Making legacy editions now copies over correct blizzard.j when performing a manual install.
