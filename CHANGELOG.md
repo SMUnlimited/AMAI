@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 - Peons with higher priority over a hall upgrade will now be favoured first if no other way to build more peons.
 - If in an attack don't save gold and wood for items as hero is busy.
+- Ancient expansion will now consider all 3 heroes to determine suitability instead of only the first hero.
 - Teleport control improvements and fixes. (jzy-chitong56)
 
 ### Fixed
