@@ -14,7 +14,6 @@ if "%~3" == "1" (
   MPQEditor a "%~2" "%~dp0Scripts\%VER%\Blizzard.j" Scripts\Blizzard.j
   if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
 )
-if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
 MPQEditor f "%~2"
 if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
 if "%RESULTMAKEVER%"=="5" (
