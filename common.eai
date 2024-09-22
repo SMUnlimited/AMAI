@@ -2402,34 +2402,48 @@ function GetUnitCountEx takes integer unitid, boolean only_done, integer townid 
 endfunction
 
 //============================================================================
+// If units upgrade requirement unit is the same as passed in upgrade unit id for three levels of upgrades.
+// TODO Won't currently work with 4 or more tiers.
+function isSameUpgradeLine takes integer unitid, integer upgradeid returns boolean
+  if upgradeid == 0 then
+    return false
+  endif
+  if needed3[unitid] == UPGRADED and needed1[unitid] == upgradeid then
+    return true
+  endif
+  return false  
+endfunction  
+
 // Counts other units that count as this unit, can optionally pass an upgradeid that is ignored from the count
-function  GetUnitCountAlt takes integer unitid, integer upgradeid, boolean only_done, integer townid returns integer
+function GetUnitCountAlt takes integer unitid, integer upgradeid, boolean only_done, integer townid returns integer
   local integer have_qty = 0
   if IsAMAI then
-    if upgradeid != tc_add1[unitid] then
+    if upgradeid != tc_add1[unitid] and not isSameUpgradeLine(tc_add1[unitid], upgradeid) then
       set have_qty = have_qty + GetUnitCountEx(tc_add1[unitid],only_done,townid)
     endif
-    if upgradeid != tc_add2[unitid] then
+    if upgradeid != tc_add2[unitid] and not isSameUpgradeLine(tc_add2[unitid], upgradeid)  then
       set have_qty = have_qty + GetUnitCountEx(tc_add2[unitid],only_done,townid)
     endif  
   else
-#INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%10" ne "0"  or "%9" ne "0"
-    if unitid == %1 and upgradeid != %9 then
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%9" ne "0"
+    if unitid == %1 and upgradeid != %9 and not isSameUpgradeLine(%9, upgradeid) then
       set have_qty = have_qty + GetUnitCountEx(%9,only_done,townid)
     endif
-    if unitid == %1 and upgradeid != %10 then
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%10" ne "0"
+    if unitid == %1 and upgradeid != %10 and not isSameUpgradeLine(%10, upgradeid) then
       set have_qty = have_qty + GetUnitCountEx(%10, only_done,townid)
     endif
-#ENDINCLUDE
+  #ENDINCLUDE
   endif
 
 #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "TC_ADD"
-  if unitid == %1 and upgradeid != %3 then
+  if unitid == %1 and upgradeid != %3  and not isSameUpgradeLine(%3, upgradeid) then
     set have_qty = have_qty + GetUnitCountEx(%3, only_done, townid)
   endif
 #ENDINCLUDE
   return have_qty
-endfunction  
+endfunction
 
 function TownCountEx takes integer unitid, boolean only_done, integer townid returns integer
   //local integer newid = 0
