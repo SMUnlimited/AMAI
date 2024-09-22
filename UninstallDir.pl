@@ -24,9 +24,17 @@ sub process_dir {
 			process_dir ("$dirname\\$filename", $commander);
 		} elsif ($filename =~ m/\.w3m$/ || $filename =~ m/\.w3x$/ ) {
 			print "Uninstalling AMAI and Commander to $dirname/$filename\n";
-			system "MPQEditor htsize \"$dirname/$filename\" 64";
 
 			system "MPQEditor d \"$dirname/$filename\" Scripts\\common.ai";
+			if ($? == -1) {
+				printf "Unable to spawn MPQEditor process";
+			} elsif ($? >> 8 == 5) {
+				printf "ERROR: Failed to uninstall, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
+			} elsif ($? >> 8 == 2) { 
+				# Already deleted file so ignore
+			} elsif ($? >> 8 > 0)  {
+				printf "ERROR: Unknown. AMAI not have uninstalled correctly. delete :%d\n", $? >> 8;
+			}
 			system "MPQEditor d \"$dirname/$filename\" Scripts\\elf.ai";
 			system "MPQEditor d \"$dirname/$filename\" Scripts\\human.ai";
 			system "MPQEditor d \"$dirname/$filename\" Scripts\\orc.ai";
@@ -37,7 +45,15 @@ sub process_dir {
 			system "MPQEditor d \"$dirname/$filename\" Scripts\\undead2.ai";
 			system "MPQEditor d \"$dirname/$filename\" Scripts\\Blizzard.j";
 
-			system "MPQEditor f \"$dirname/$filename\""
+			system "MPQEditor f \"$dirname/$filename\"";
+
+			if ($? == -1) {
+				printf "Unable to spawn MPQEditor process";
+			} elsif ($? >> 8 == 5) {
+				printf "ERROR: Failed to uninstall flush, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
+			} elsif ($? >> 8 > 0)  {
+				printf "ERROR: Unknown. AMAI not have uninstalled correctly. flush:%d\n", $? >> 8;
+			}
 
 		}
 	}
