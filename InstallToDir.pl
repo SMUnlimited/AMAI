@@ -24,8 +24,10 @@ sub process_dir {
       print "Installing $ver AMAI to dir $dirname\\$filename\n";
       process_dir ($ver, "$dirname\\$filename", $commander);
     } elsif ($filename =~ m/\.w3m$/ || $filename =~ m/\.w3x$/ ) {
-      if (!(defined($commander)) || $commander eq "true") {
+      if (!(defined($commander)) || $commander eq "1") {
         print "Installing $ver AMAI and Commander to $dirname/$filename\n";
+      } elsif (!(defined($commander)) || $commander eq "2") {
+        print "Installing $ver AMAI and Commander - VS AI to $dirname/$filename\n";
       } else {
         print "Installing $ver AMAI without Commander to $dirname/$filename\n";
       }
@@ -45,7 +47,7 @@ sub process_dir {
       } elsif ($? >> 8 > 0) {
         printf "ERROR: Unknown. AMAI not have installed correctly. Adding ai scripts:%d\n", $? >> 8;
       }
-      if (!(defined($commander)) || $commander eq "true") {
+      if (!(defined($commander)) || $commander eq "1") {
         system "MPQEditor a \"$dirname/$filename\" Scripts\\$ver\\Blizzard.j Scripts\\Blizzard.j";
         if ($? == -1) {
           printf "Unable to spawn MPQEditor process";
@@ -53,6 +55,15 @@ sub process_dir {
           printf "ERROR: Failed to add commander, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
         } elsif ($? >> 8 > 0) {
           printf "ERROR: Unknown. AMAI not have installed correctly. Adding commander:%d\n", $? >> 8;
+        }
+      } elsif (!(defined($commander)) || $commander eq "2") {
+        system "MPQEditor a \"$dirname/$filename\" Scripts\\$ver\\Blizzard_VSAI.j Scripts\\Blizzard.j";
+        if ($? == -1) {
+          printf "Unable to spawn MPQEditor process";
+        } elsif ($? >> 8 == 5) {
+          printf "ERROR: Failed to add commander - VS AI, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
+        } elsif ($? >> 8 > 0) {
+          printf "ERROR: Unknown. AMAI not have installed correctly. Adding commander - VS AI:%d\n", $? >> 8;
         }
       }
       system "MPQEditor f \"$dirname/$filename\"";
