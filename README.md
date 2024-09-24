@@ -65,7 +65,7 @@ This guide assumes that your working directory is `AMAI`.
 
 From Windows `CMD`/`PowerShell` or Wine `wineconsole`, run this:
 ```
-.\Install<Version>ToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m" <N>
+.\Install<Version>ToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m"
 ```
 Where `<Version>` should be replaced with `ROC`, `TFT`, or `REFORGED`, `<Map>` with your preferred map, `<N>` with `1` or `0` if you want to install the Commander or not, respectively.
 
@@ -77,7 +77,7 @@ Note that disabling the Commander makes `-zoom xxxx` non-functional on pre-REFOR
 
 Alternatively, for complex installs, if you have `perl` installed, you can run this:
 ```
-perl .\InstallToDir.pl <Version> "C:\Documents\Warcraft III\Maps\AMAI\" "1"
+perl .\InstallToDir.pl <Version> "C:\Documents\Warcraft III\Maps\AMAI\"
 ```
 This will install AMAI to all maps recursively.
 
@@ -216,7 +216,7 @@ Run/double-click one of the `MakeOpt<Version>` bat files. (e.g `MakeOptROC.bat` 
 
 Then install like normal by running this: 
 ```
-.\InstallROCToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m" <N>
+.\InstallROCToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m"
 ```
 
 ## VS AI Build
