@@ -24,11 +24,11 @@ sub process_dir {
       print "Installing $ver AMAI to dir $dirname\\$filename\n";
       process_dir ($ver, "$dirname\\$filename", $commander);
     } elsif ($filename =~ m/\.w3m$/ || $filename =~ m/\.w3x$/ ) {
-      if ($commander eq "1") {
+      if (!(defined($commander)) || $commander eq "1") {
         print "Installing $ver AMAI and Commander to $dirname/$filename\n";
       } elsif ($commander eq "2") {
         print "Installing $ver AMAI and Commander - VS AI to $dirname/$filename\n";
-      } elsif (!(defined($commander)) || $commander eq "0") {
+      } elsif ($commander eq "0") {
         print "Installing $ver AMAI without Commander to $dirname/$filename\n";
       }
       system "MPQEditor htsize \"$dirname/$filename\" 64";
@@ -47,7 +47,7 @@ sub process_dir {
       } elsif ($? >> 8 > 0) {
         printf "ERROR: Unknown. AMAI not have installed correctly. Adding ai scripts:%d\n", $? >> 8;
       }
-      if ($commander eq "1") {
+      if (!(defined($commander)) || $commander eq "1") {
         system "MPQEditor a \"$dirname/$filename\" Scripts\\$ver\\Blizzard.j Scripts\\Blizzard.j";
         if ($? == -1) {
           printf "Unable to spawn MPQEditor process";
