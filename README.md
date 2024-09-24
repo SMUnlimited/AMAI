@@ -65,9 +65,9 @@ This guide assumes that your working directory is `AMAI`.
 
 From Windows `CMD`/`PowerShell` or Wine `wineconsole`, run this:
 ```
-.\Install<Version>ToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m"
+.\Install<Version>ToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m" <N>
 ```
-Where `<Version>` should be replaced with `ROC`, `TFT`, or `REFORGED`, `<Map>` with your preferred map, `<N>` with `1` or `0` if you want to install the Commander or not, respectively.
+Where `<Version>` should be replaced with `ROC`, `TFT`, or `REFORGED`, `<Map>` with your preferred map, `<N>` with `0` or `1` or `2` if you want to not install the Commander or install the Commander or  install the Commander - VS AI , respectively.
 
 Press enter to install AMAI to the selected map.
 
@@ -81,7 +81,7 @@ perl .\InstallToDir.pl <Version> "C:\Documents\Warcraft III\Maps\AMAI\"
 ```
 This will install AMAI to all maps recursively.
 
-You can disable the commander - VS AI for this install by running this:
+You can installs the commander - VS AI for this install by running this:
 ```
 perl .\InstallToDir.pl <Version> "C:\Documents\Warcraft III\Maps\AMAI\" "2"
 ```
@@ -216,7 +216,7 @@ Run/double-click one of the `MakeOpt<Version>` bat files. (e.g `MakeOptROC.bat` 
 
 Then install like normal by running this: 
 ```
-.\InstallROCToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m"
+.\InstallROCToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m" <N>
 ```
 
 ## VS AI Build
