@@ -28,7 +28,7 @@ sub process_dir {
         print "Installing $ver AMAI and Commander to $dirname/$filename\n";
       } elsif ($commander eq "2") {
         print "Installing $ver AMAI and Commander - VS AI to $dirname/$filename\n";
-      } elsif ($commander eq "0") {
+      } else {
         print "Installing $ver AMAI without Commander to $dirname/$filename\n";
       }
       system "MPQEditor htsize \"$dirname/$filename\" 64";
