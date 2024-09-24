@@ -9,7 +9,7 @@ MPQEditor htsize "%~2" 64
 if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
 MPQEditor a "%~2" "%~dp0Scripts\%VER%\*.ai" Scripts
 if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
-if not "%~3"=="2"  (
+if "%~3"=="1"  (
   ECHO Installed Commander to Map
   MPQEditor a "%~2" "%~dp0Scripts\%VER%\Blizzard.j" Scripts\Blizzard.j
   if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
