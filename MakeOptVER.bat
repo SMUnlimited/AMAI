@@ -34,6 +34,7 @@ if "%errorlevel%"=="1" SET RESULTOPTVER=1
 ECHO _____________________________
 pjass %VER%\common.j Scripts\%VER%\Blizzard_VSAI.j
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
+ECHO _____________________________
 if "%RESULTOPTVER%"=="1" (
   ECHO Compilation AMAI Optimization %VER% error
   if %MAKEALL% == 1 (
