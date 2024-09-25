@@ -194,7 +194,7 @@ const installOnDirectory = async () => {
           }
           f2AddToMPQ.error ?
             process.send(f2AddToMPQ.error.message)
-              : process.send(`Add commander script ${file}`);
+              : process.send(`Add VS AI commander script ${file}`);
         }
 
         const f3AddToMPQ =  spawnSync(
