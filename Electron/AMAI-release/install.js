@@ -31,9 +31,9 @@ const getAllFiles = (dirPath, arrayOfFiles) => {
 const installOnDirectory = async () => {
   const args = process.argv.slice(2);
   const installCommander = (args[1] == 'true');
-  const installCommanderMode1 = (args[1] == '-1');
-  const installCommanderMode2 = (args[1] == '-2');
-  const installCommanderMode3 = (args[1] == '-0');
+  const installCommanderMode1 = (args[1] == '1');
+  const installCommanderMode2 = (args[1] == '2');
+  const installCommanderMode3 = (args[1] == '0');
   const response = args[0];
   const ver = args[2]
 
