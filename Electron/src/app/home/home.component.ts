@@ -23,7 +23,7 @@ export class HomeComponent implements OnInit {
   BJ_State: boolean = true;
   isInteractive: boolean = true;
   modeState: string = '-folder';
-  bjState: string = '1';
+  bjState: string = '-1';
   message: string = '';
 
   ngOnInit(): void {
@@ -137,15 +137,15 @@ export class HomeComponent implements OnInit {
           console.log('BJ',this.bjState,this.BJ_State);
           break;
         case 'BJoption1':
-          this.bjState = '1';
+          this.bjState = '-1';
           console.log('BJ',this.bjState);
           break;
         case 'BJoption2':
-          this.bjState = '2';
+          this.bjState = '-2';
           console.log('BJ',this.bjState);
           break;
         case 'BJoption0':
-          this.bjState = '0';
+          this.bjState = '-0';
           console.log('BJ',this.bjState);
           break;
       }
