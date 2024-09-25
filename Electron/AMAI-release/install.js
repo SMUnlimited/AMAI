@@ -31,6 +31,9 @@ const getAllFiles = (dirPath, arrayOfFiles) => {
 const installOnDirectory = async () => {
   const args = process.argv.slice(2);
   const installCommander = (args[1] == 'true');
+  const installCommanderMode1 = (args[1] == '-1');
+  const installCommanderMode2 = (args[1] == '-2');
+  const installCommanderMode3 = (args[1] == '-0');
   const response = args[0];
   const ver = args[2]
 
@@ -53,8 +56,18 @@ const installOnDirectory = async () => {
     process.send(`ERROR: Cannot find ${process.cwd()}\\MPQEditor.exe`)
     return
   }
-  if (installCommander && !fs.existsSync(`Scripts\\${ver}\\Blizzard.j`)) {
+  // if (installCommander && !fs.existsSync(`Scripts\\${ver}\\Blizzard.j`)) {
+  //   process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\blizzard.j`)
+  //   return
+  // }
+
+  if (installCommanderMode1 && !fs.existsSync(`Scripts\\${ver}\\Blizzard.j`)) {
     process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\blizzard.j`)
+    return
+  }
+
+  if (installCommanderMode2 && !fs.existsSync(`Scripts\\${ver}\\Blizzard_VSAI.j`)) {
+    process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\blizzard_VSAI.j`)
     return
   }
 
@@ -127,7 +140,7 @@ const installOnDirectory = async () => {
           process.send(f1AddToMPQ.error.message)
             : process.send(`Add ai scripts ${file}`);
 
-        if (installCommander) {
+        if (installCommanderMode1) {
 
           const f2AddToMPQ =  spawnSync(
             `MPQEditor.exe`,
@@ -155,6 +168,33 @@ const installOnDirectory = async () => {
             process.send(f2AddToMPQ.error.message)
               : process.send(`Add commander script ${file}`);
 
+        } else if (installCommanderMode2) {
+
+          const f2AddToMPQ =  spawnSync(
+            `MPQEditor.exe`,
+            [
+              'a',
+              file,
+              `Scripts\\${ver}\\Blizzard_VSAI.j`,
+              `Scripts\\Blizzard.j`,
+            ],
+            { encoding : `utf8` }
+          );
+
+          /** uncomment to debbug */
+         // console.log('f2AddToMPQ', f2AddToMPQ.error);
+
+          // spawnSync(`echo`, [`running AddToMPQ 2 ${file}`]);
+          if (f2AddToMPQ.status == 5) {
+            process.send(`WARN: ${file} Failed to add blizzard_VSAI.j script, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+            continue;
+          } else if (f2AddToMPQ.status > 0) {
+            process.send(`WARN: ${file} Possibly failed to add blizzard_VSAI.j script, Unknown error occurred: ${f2AddToMPQ.status}`)
+            continue;
+          }
+          f2AddToMPQ.error ?
+            process.send(f2AddToMPQ.error.message)
+              : process.send(`Add commander script ${file}`);
         }
 
         const f3AddToMPQ =  spawnSync(
