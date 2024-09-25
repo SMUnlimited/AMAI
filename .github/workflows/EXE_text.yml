@@ -1,39 +1,41 @@
-# This is a basic workflow to help you get started with Actions
-name: 'AMAI 安装器 编译工作流'
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
 
-# Controls when the action will run.
+name: AMAI Installer CI
+
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
   push:
-    branches:
-      - devtool
-  #path:
-
-
+    branches: [ "devtool" ]
   pull_request:
-    branches:
-      - devtool
-
-
-  # Allows you to run this workflow manually from the Actions tab
-    # workflow_dispatch:
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
-permissions:
-  contents: read
+    paths:
+      - 'Electron/**'
+      - '.github/workflows/installer.yml'
 
 jobs:
   build:
-    strategy:
-      matrix:
-        node-version: [21]
 
-    # The type of runner that the job will run on
-    runs-on: windows-2022
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./Electron
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [16.x, 18.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
-    - name: 提交源码
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v3
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+    - run: npm ci
+    - run: npm run electron:build
 
     - name: 设置 node 缓存模组
       uses: actions/cache@v4
@@ -47,24 +49,6 @@ jobs:
           ${{ runner.os }}-build-${{ env.cache-name }}-
           ${{ runner.os }}-build-
           ${{ runner.os }}-
-
-    - name: 调用 Node.js 版本号：${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-
-    - name: 安装工程环境
-      run: npm i
-  
-
-   # - name: 校验文件
-     # run: npm run lint
-
-   #    - name: 运行 unit 测试
-      #   run: npm run test
-
-   #    - name: 运行 e2e 测试
-     #    run: npm run e2e
 
     - name: 打包应用
      # run: npm run electron:local
