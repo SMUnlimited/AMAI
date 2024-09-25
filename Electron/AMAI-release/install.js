@@ -33,7 +33,7 @@ const installOnDirectory = async () => {
   const installCommander = (args[1] == 'true');
   const installCommanderMode1 = (args[1] == '1');
   const installCommanderMode2 = (args[1] == '2');
-  const installCommanderMode3 = (args[1] == '0');
+  // const installCommanderMode3 = (args[1] == '0');
   const response = args[0];
   const ver = args[2]
 
@@ -148,13 +148,13 @@ const installOnDirectory = async () => {
               'a',
               file,
               `Scripts\\${ver}\\Blizzard.j`,
-              `Scripts\\Blizzard.j`,
+              `Scripts\\Blizzard.j`
             ],
             { encoding : `utf8` }
           );
 
           /** uncomment to debbug */
-         // console.log('f2AddToMPQ', f2AddToMPQ.error);
+          // console.log('f2AddToMPQ', f2AddToMPQ.error);
 
           // spawnSync(`echo`, [`running AddToMPQ 2 ${file}`]);
           if (f2AddToMPQ.status == 5) {
@@ -176,13 +176,13 @@ const installOnDirectory = async () => {
               'a',
               file,
               `Scripts\\${ver}\\Blizzard_VSAI.j`,
-              `Scripts\\Blizzard.j`,
+              `Scripts\\Blizzard.j`
             ],
             { encoding : `utf8` }
           );
 
           /** uncomment to debbug */
-         // console.log('f2AddToMPQ', f2AddToMPQ.error);
+          // console.log('f2AddToMPQ', f2AddToMPQ.error);
 
           // spawnSync(`echo`, [`running AddToMPQ 2 ${file}`]);
           if (f2AddToMPQ.status == 5) {
@@ -207,7 +207,7 @@ const installOnDirectory = async () => {
         );
 
         /** uncomment to debbug */
-       // console.log('f3AddToMPQ', f3AddToMPQ.error);
+        // console.log('f3AddToMPQ', f3AddToMPQ.error);
 
         // spawnSync(`echo`, [`running AddToMPQ 3 ${file}`]);
         if (f3AddToMPQ.status == 5) {
