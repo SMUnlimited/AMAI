@@ -72,7 +72,7 @@ const createWindow = (): BrowserWindow => {
   return win;
 }
 
-const execInstall = async (signal, commander: boolean = true, isMap: boolean = false, ver: String = "REFORGED") => {
+const execInstall = async (signal, commander: String = "-1", isMap: boolean = false, ver: String = "REFORGED") => {
   const controller = new AbortController();
   const response = dialog.showOpenDialogSync(win, {
     // TODO: add i18n here
