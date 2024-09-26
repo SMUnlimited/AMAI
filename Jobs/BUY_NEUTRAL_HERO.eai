@@ -1,13 +1,16 @@
 #IFDEF GLOBAL
 #ELSE
 
-function ResetBuyNeutralHero takes integer nn returns unit
+function ResetBuyNeutralHero takes integer nn, integer id returns unit
   if neutral_sent[nn] != null then
     call GroupRemoveUnit(unit_buying_tavern, neutral_sent[nn])
     if UnitAlive(neutral_sent[nn]) and not IsUnitInGroup(neutral_sent[nn], unit_buying_item) and not IsUnitInGroup(neutral_sent[nn], unit_buying_merc) and IsStandardUnit(neutral_sent[nn]) then
       call RecycleGuardPosition(neutral_sent[nn])
       call AddAssault(1, GetUnitTypeId(neutral_sent[nn]))
     endif
+  endif
+  if not hero_built[1] and id == hero[1] then
+    set recalculate_heros = true
   endif
   set neutral_sent[nn] = null
   set neutral_ordered[nn] = false
@@ -37,7 +40,7 @@ function BuyNeutralHero takes integer id returns nothing
     set place_guarded = neutral_guarded[nn]
   endif
   if TownCount(id) >= neutral_wanted[nn] then
-    set tavern = ResetBuyNeutralHero(nn)
+    set tavern = ResetBuyNeutralHero(nn, id)
     return
   endif
 
@@ -51,7 +54,7 @@ function BuyNeutralHero takes integer id returns nothing
       endif
       set neutral_sent[nn] = GetUnitToBuy(neutral_sent[nn], tavern)
       if neutral_sent[nn] == null then
-        set tavern = ResetBuyNeutralHero(nn)
+        set tavern = ResetBuyNeutralHero(nn, id)
         call Trace("No unit to get neutral hero")
         return
       endif
@@ -73,16 +76,16 @@ function BuyNeutralHero takes integer id returns nothing
         call CreateDebugTag("buy tavern hero", 10, neutral_sent[nn], 3.00, 1.50)
         call IssueImmediateOrder(neutral_sent[nn], "holdposition")  // stop will let panda cancel element clone
         if TavernResurrect then  // try Resurrect all hero
-          if TownCount(hero[1]) < 1 and hero_built[1] then
-            call IssueNeutralImmediateOrderById(ai_player, tavern, old_id[hero[1]])
+          if hero_built[1] and TownCount(hero[1]) < 1 then
+            call IssueNeutralTargetOrder(ai_player, tavern, "awaken", hero_unit[1])
           endif
-          if TownCount(hero[2]) < 1 and hero_built[2] then
-            call IssueNeutralImmediateOrderById(ai_player, tavern, old_id[hero[2]])
+          if hero_built[2] and TownCount(hero[2]) < 1 then
+            call IssueNeutralTargetOrder(ai_player, tavern, "awaken", hero_unit[2])
           endif
-          if TownCount(hero[3]) < 1 and hero_built[3] then
-            call IssueNeutralImmediateOrderById(ai_player, tavern, old_id[hero[3]])
+          if hero_built[3] and TownCount(hero[3]) < 1 then
+            call IssueNeutralTargetOrder(ai_player, tavern, "awaken", hero_unit[3])
           endif
-          set tavern = ResetBuyNeutralHero(nn)
+          set tavern = ResetBuyNeutralHero(nn, id)
           return  // end job
         endif
         call IssueNeutralImmediateOrderById(ai_player, tavern, old_id[id])
