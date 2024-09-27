@@ -7870,8 +7870,8 @@ function PJInitJobs takes nothing returns nothing
   endif
   call PathingJobEx(60, CLEANUP_BLOCKS, 0, false)                                                 //CleanupBlocksJob
   call PathingJobEx(160, ITEM_REPEAT_CHECK, 0, false)                                             //ItemRepeatCheck
+  call PathingJobEx(180, STRUCTURE_CONTROL, 0, false)                                             //StructureControlJob
   call PathingJobEx(1200, REVEAL_ENEMY, 0, false)                                                 //RevealEnemy
-  call PathingJobEx(5 * sleep_multiplier, STRUCTURE_CONTROL, 0, false)                            //StructureControlJob
   if nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null then
     call PathingJobEx(6 * sleep_multiplier, NEUTRAL_ENEMY_CHECK, NEUTRAL_HEALING_FOUNTAIN, true)  //NeutralEnemyCheckJob
   endif
@@ -7921,40 +7921,37 @@ function PathingThread takes nothing returns nothing
   call PJInitJobs()  // this job no need run on job system , help job system more focused on combat
   set pathing_done = true
   call StaggerSleep(1,10)
-  if pj_length > 0 then
-    loop
-      exitwhen player_defeated
-      if active_expansion then
-        if i > 300 then
-          set i = 0
-          set active_expansion = GetPlayerUnitTypeCount(Player(PLAYER_NEUTRAL_PASSIVE),'ngol') >= (c_enemy_total + c_ally_total + 1) * 2
-        endif
-        set i = i + 1
-      endif
-      if t >= pj_length then
-        set t = 0
-      endif
-      set t = t + 1
-      if pj_remove[t] then
-        call RemovePJ(pj_jid[t], pj_par[t], t)
-      endif
-      if pj_length > 0 and TimerGetElapsed(tq_timer) >= pj_time[t] then
-        call TQDoJob(pj_jid[t], pj_par[t], null, null, null)
-        set pj_time[t] = TimerGetElapsed(tq_timer) + pj_frequency[t]
-      endif
-      call Sleep(1)
-    endloop
-  else
-    loop
-      exitwhen player_defeated or not active_expansion
-      if i > 30 then
+  loop
+    exitwhen player_defeated or pj_length < 1
+    if active_expansion then
+      if i > 300 then
         set i = 0
         set active_expansion = GetPlayerUnitTypeCount(Player(PLAYER_NEUTRAL_PASSIVE),'ngol') >= (c_enemy_total + c_ally_total + 1) * 2
       endif
       set i = i + 1
-      call Sleep(10)
-    endloop
-  endif
+    endif
+    if t >= pj_length then
+      set t = 0
+    endif
+    set t = t + 1
+    if TimerGetElapsed(tq_timer) >= pj_time[t] then
+      call TQDoJob(pj_jid[t], pj_par[t], null, null, null)
+      set pj_time[t] = TimerGetElapsed(tq_timer) + pj_frequency[t]
+    endif
+    if pj_remove[t] then
+      call RemovePJ(pj_jid[t], pj_par[t], t)
+    endif
+    call Sleep(1)
+  endloop
+  loop
+    exitwhen player_defeated or not active_expansion
+    if i > 30 then
+      set i = 0
+      set active_expansion = GetPlayerUnitTypeCount(Player(PLAYER_NEUTRAL_PASSIVE),'ngol') >= (c_enemy_total + c_ally_total + 1) * 2
+    endif
+    set i = i + 1
+    call Sleep(10)
+  endloop
 endfunction
 
 //============================================================================
