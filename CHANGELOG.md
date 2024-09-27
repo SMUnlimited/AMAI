@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issue where defeated AI player scripts could still be running when they have 0 units left wasting resources.
 - Fix for tower rushes and ancient expansions being unintentionally disabled entirely.
 - Fix windwalk abilities making units go invisible but then never attacking out of invisibility for bonus damage.
+- Fixed minor town threat tracking inconsistency.
 - Fix ally attack target not being reset, particularly expansion seemed to be slower without fix. (jzy-chitong56)
 - Fix Goblin Tinker Skill not upgrading past rockets on one of the trees. (jzy-chitong56)
 - Reduce lengthy unnecessary wait during distraction attack. (jzy-chitong56)
