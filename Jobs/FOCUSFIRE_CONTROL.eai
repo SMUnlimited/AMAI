@@ -47,15 +47,15 @@ function GroupMicroSystem takes group g, group meleeg, group temp_focus returns 
       set unitloc = GetUnitLoc(u)
       set copy = CopyGroup(meleeg,copy)
       set melee = GetNearestOfGroup(melee, copy, unitloc)
-      if melee != null and DistanceBetweenUnits(u, melee) < 150 and UnitAlive(melee) and IsUnitFacingUnit(melee, u) and GetUnitMoveSpeed(melee) <= GetUnitMoveSpeed(u) and (not IsUnitType(u, UNIT_TYPE_FLYING) or (IsUnitType(u, UNIT_TYPE_FLYING) and IsUnitType(melee, UNIT_TYPE_ATTACKS_FLYING))) and not IsUnitInGroup(u, focus_fire_group) then // 220 is the smallest ranged unit in warcraft 3.
+      if melee != null and not IsUnitInGroup(u, focus_fire_group) and IsUnitFacingUnit(melee, u) and DistanceBetweenUnits(u, melee) < 200 and GetUnitMoveSpeed(melee) <= GetUnitMoveSpeed(u) and (not IsUnitType(u, UNIT_TYPE_FLYING) or (IsUnitType(u, UNIT_TYPE_FLYING) and IsUnitType(melee, UNIT_TYPE_ATTACKS_FLYING))) then // 220 is the smallest ranged unit in warcraft 3.
         set l = GetSubtractionLoc_kd(unitloc, GetUnitLoc(melee))
-        set l = GetProjectedLoc_dd(unitloc, l, 400)
+        set l = GetProjectedLoc_dd(unitloc, l, 800)
         call RemoveGuardPosition(u)
         call CreateDebugTagLoc("FF: MICRO LOC", 10, GetLocationX(l), GetLocationY(l), 3.00, 1.50)
         call IssuePointOrderLoc(u, "move", l)
-        call TQAddUnitJob(1, RESET_GUARD_POSITION_ONLY, 80, u)
-        call RemoveLocation(l)
+        call TQAddUnitJob(1.8, RESET_GUARD_POSITION_ONLY, 80, u)
         call GroupRemoveUnit(temp_focus, u)  // prevent focus fire controls interrupting
+        call RemoveLocation(l)
       else
         call RemoveLocation(unitloc)
       endif
@@ -69,26 +69,32 @@ function GroupMicroSystem takes group g, group meleeg, group temp_focus returns 
   set l = null
 endfunction
 
-function GroupOrderFocusWindInstant takes group g returns nothing
+function GroupOrderFocusWindInstant_d takes group g, unit target returns nothing
   local unit u = null
-  local group cg = null
-  set cg = CopyGroup(g,cg)
+  local group ug = null
+  set ug = CopyGroup(g, ug)
   loop
-    set u = FirstOfGroup(cg)
+    set u = FirstOfGroup(ug)
     exitwhen u == null
     if GetUnitAbilityLevel(u, 'AOwk') > 0 or GetUnitAbilityLevel(u, 'ANwk') > 0 then
-      call GroupAddUnit(windwalk_group, u)
-      if not UnitInvis(u) then
+      if not IsUnitInGroup(u, windwalk_group) then
+        call GroupAddUnit(windwalk_group, u)
+        call GroupRemoveUnit(g, u) // Removed from other focus fire groups
+      endif
+      if UnitInvis(u) then
+        call CreateDebugTag("FF: windwalk attack", 10, u, 1.00, 0.80)
+        call RemoveGuardPosition(u)
+        call IssueTargetOrder(u, "attack", target)
+        call TQAddUnitJob(1.8, RESET_WINDWALKER, 0, u) // Needs to happen before the next focus fire iteration
+      else
         call CreateDebugTag("FF: windwalk", 10, u, 1.00, 0.80)
         call IssueImmediateOrder(u, "windwalk")
       endif
-      call TQAddUnitJob(8, RESET_WINDWALKER, 0, u)
-      call GroupRemoveUnit(g, u)  // use windwalk_group attack controls
     endif
-    call GroupRemoveUnit(cg, u)
+    call GroupRemoveUnit(ug, u)
   endloop
-  call DestroyGroup(cg)
-  set cg = null
+  call DestroyGroup(ug)
+  set ug = null
 endfunction
 
 function GroupOrderDeny_kd takes group g, group cg, unit target returns nothing
@@ -115,24 +121,7 @@ function GroupOrderDeny_kd takes group g, group cg, unit target returns nothing
   set u = null
 endfunction
 
-function GroupOrderAttack_d takes group g, unit target returns nothing
-  local unit u = null
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null or GetUnitState(target, UNIT_STATE_LIFE) <= 0
-    if UnitInvis(u) then
-      call RemoveGuardPosition(u)
-      call IssueTargetOrder(u, "attack", target)
-      call GroupAddUnit(focus_fire_group, u)
-      call RecycleGuardPosition(u)
-    endif
-    call GroupRemoveUnit(g, u)
-  endloop
-  call DestroyGroup(g)
-  set u = null
-endfunction
-
-function FocusGroupRemoveUnit takes group rg returns group
+function FocusGroupRemoveGuard takes group rg returns group
   local integer i = 0
   local unit u = null
   local group g = rg
@@ -145,8 +134,9 @@ function FocusGroupRemoveUnit takes group rg returns group
     call CreateDebugTag("FF", 10, u, 1.00, 0.80)
     call GroupAddUnit(rg, u)
     //endif
+    // DISABLED FOCUS OVERIDE FOR NOW
     //call RemoveGuardPosition(u)
-    //call TQAddUnitJob(1.5, RESET_GUARD_POSITION_ONLY, 80, u)
+    //call TQAddUnitJob(1.8, RESET_GUARD_POSITION_ONLY, 80, u)
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
@@ -246,7 +236,7 @@ function FocusFire takes unit u returns nothing
   if BlzGroupGetSize(temp_focus) > 0 then  //final Insurance
     if focus_fire_unit == null or focus_fire_unit != u then
       if not IsUnitType(u,UNIT_TYPE_STRUCTURE) and not IsUnitOwnedByPlayer(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then  // Dont windwalk for non-critical enemies
-        call GroupOrderFocusWindInstant(temp_focus)
+        call GroupOrderFocusWindInstant_d(temp_focus, u)
       endif
       set focus_fire_unit = u
     endif
@@ -254,9 +244,8 @@ function FocusFire takes unit u returns nothing
     if u == deny_unit and own_race == R_UNDEAD then
       call GroupOrderDeny_kd(temp_focus,CopyGroup(temp_focus,t), u)
     endif
-    set temp_focus = FocusGroupRemoveUnit(temp_focus)
+    set temp_focus = FocusGroupRemoveGuard(temp_focus)  // Not currently fully controlling focus fire
     call GroupTargetOrder(temp_focus, "attack", u)
-    call GroupOrderAttack_d(CopyGroup(windwalk_group,t), u)  // Forces Windwalking invisible units to attack directly as normal group order is ignored
     if u != deny_unit then
       set focus_fire_group = GroupAddGroup(focus_fire_group, temp_focus)  // Finally add units to group to say they have focus fired
     endif
@@ -337,7 +326,7 @@ function FocusEnemyUnitsNearGroup takes group g returns nothing
       elseif p != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerAlly(p, ai_player) and not UnitInvis(u) then
         if IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) then
           set range_strength = range_strength + GetUnitStrength(u)
-          if unit_life < GetUnitState(u, UNIT_STATE_MAX_LIFE)*0.70 then
+          if unit_life < GetUnitState(u, UNIT_STATE_MAX_LIFE) then
             call GroupAddUnit(micro_ranged_group, u) // Only add to micro orders if damaged
           endif
         endif
@@ -391,13 +380,13 @@ function FocusFireJob takes nothing returns nothing
 
   call DisplayToAllJobDebug("FOCUSFIRE_CONTROL JOB START")
 
-  //if retreat_controlled and (attack_running or town_threatened) then
+  call GroupClear(focus_fire_group)
+  call GroupClear(windwalk_group)
 
   if not CaptainRetreating() and (attack_running or town_threatened) then
     if major_hero == null or not UnitAlive(major_hero) or IsUnitInGroup(major_hero, unit_healing) then
       set major_hero = GetMajorHeroReplacement_k(major_hero,last_major_hero_loc)
     endif
-    call GroupClear(focus_fire_group)
     if major_hero != null then
       call MoveLocation(last_major_hero_loc, GetUnitX(major_hero), GetUnitY(major_hero))
       call GroupEnumUnitsInRange(g,GetUnitX(major_hero),GetUnitY(major_hero),battle_radius,null)
@@ -427,18 +416,8 @@ function FocusFireJob takes nothing returns nothing
       call TQAddUnitJob(1, SEND_HOME, 0, deny_unit)  // maybe fail
       set deny_unit = null
     endif
-    call SetTargetHeroes(difficulty != EASY)
-  //else
-    //call GroupRecycleGuardPositionInstant(CopyGroup(windwalk_group,g))
-    //loop
-    //	set u = FirstOfGroup(windwalk_group)
-    //	exitwhen u == null
-    //	call GroupRemoveUnit(windwalk_group, u)
-    //	if not IsUnitInGroup(u, unit_healing) and not IsUnitInGroup(u, unit_harassing) then
-    //		call RecycleGuardPosition(u)
-    //	endif
-    //endloop
   endif
+  call SetTargetHeroes(difficulty != EASY)
   call DestroyGroup(g)
   set g = null
   call TQAddJob(2 * sleep_multiplier, FOCUSFIRE_CONTROL, 0)
