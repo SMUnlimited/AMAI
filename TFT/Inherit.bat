@@ -3,7 +3,6 @@ copy /y REFORGED\AddedAggression.txt TFT\AddedAggression.txt
 copy /y REFORGED\CommandBuilds.txt TFT\CommandBuilds.txt
 copy /y REFORGED\Dragons.txt TFT\Dragons.txt
 copy /y REFORGED\DragonTypes.txt TFT\DragonTypes.txt
-copy /y REFORGED\Healers.txt TFT\Healers.txt
 copy /y REFORGED\HealingItems.txt TFT\HealingItems.txt
 copy /y REFORGED\HeroAbilities.txt TFT\HeroAbilities.txt
 copy /y REFORGED\HeroLevels.txt TFT\HeroLevels.txt
