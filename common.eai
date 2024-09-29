@@ -838,6 +838,7 @@ globals
 
 #INCLUDETABLE <ChatEvents.txt> #EFR
     string array chat_%1
+    boolean array chat_cond_%1
     integer chat_%1_length = 0
     constant integer C_%1 = %row
 #ENDINCLUDE
@@ -1914,12 +1915,16 @@ endfunction
 
 //============================================================================
 function AddToCT takes string s returns nothing
-  local string firstchar = SubString(s,0,1)		// Substring dosn't work in AMAI and returns strange values (but is the same value so we do a comparison of the substring value then return the actual character
+// Substring dosn't work in ai code and returns strange values in Jass (but is the same value so we do a comparison of the substring value then return the actual character
+// Outright crashes in LUA mode
+  local string firstchar = s //SubString(s,0,1)
   local integer i = 0
   if (firstchar == null) then
     set firstchar = ""
   endif
+  call Trace("Add char: " + firstchar)
   set i = StringHash(firstchar)
+  call Trace("String hash " + Int2Str(i))
   //if (i >= JASS_MAX_ARRAY_SIZE) then
   //set i = i - (i/(JASS_MAX_ARRAY_SIZE-1) - 1) * JASS_MAX_ARRAY_SIZE
   //set i = i - (i/JASS_MAX_ARRAY_SIZE)*JASS_MAX_ARRAY_SIZE
@@ -1935,7 +1940,7 @@ endfunction
 
 //============================================================================
 function GetChar takes string s, integer num returns string
-  local string linechar = SubString(s, num, num + 1)
+  local string linechar = s //SubString(s, num, num + 1)
   return LookupCT(linechar)
 endfunction
 
@@ -1943,6 +1948,7 @@ endfunction
 function InitCT takes nothing returns nothing
   set chat_vars[0] = ""
 #INCLUDETABLE <Languages\StandardCharTable.txt> #NOUTF8
+  call Trace("Adding char:%1")
   call AddToCT("%1")
 #ENDINCLUDE
   call AddToCT("#")
@@ -3006,9 +3012,13 @@ function InitChatArrays%1 takes nothing returns nothing
   #INCLUDETABLE <ChatEvents.txt> #EFR
   #DEFINE $chatevent$ %1
     #INCLUDETABLE <Languages\$lang$\Chat$chatevent$.txt> #ENC:$enc$
-  set chat_$chatevent$[#EVAL{%row-1}] = "%1"
+      set chat_$chatevent$[#EVAL{%row-1}] = "%1"
+      set chat_cond_$chatevent$[#EVAL{%row-1}] = true
     #AFTERINCLUDE
-  set chat_$chatevent$_length = %row
+      set chat_$chatevent$_length = %row
+    #ENDINCLUDE
+    #INCLUDETABLE <Languages\$lang$\Chat$chatevent$.txt> #ENC:$enc$ #COND "%2" ne ""
+      set chat_cond_$chatevent$[#EVAL{%row-1}] = %2
     #ENDINCLUDE
 
   #ENDINCLUDE
@@ -8564,21 +8574,33 @@ function InitAMAI takes nothing returns nothing
   set income_per_mine = income_per_mine * Max(difficulty - 1, 1)
   call Trace("Init AMAI step 1")
   call InitNeutralSpecial()
+      call Trace("Init AMAI step 2")
   call InitHeroArrays()
+      call Trace("Init AMAI step 3")
   call InitArrays()  // Has been moved to be set before all other code as is only variable declaration
+        call Trace("Init AMAI step 4")
   call InitChatArrays()
+        call Trace("Init AMAI step 5")
   call InitChatEvents()
+        call Trace("Init AMAI step 6")
   call InitTrans()
+        call Trace("Init AMAI step 7")
   call InitTranslations()
+        call Trace("Init AMAI step 8")
   call InitRaceNames()
+        call Trace("Init AMAI step 9")
   call InitCT()
+        call Trace("Init AMAI step 10")
 //    call TestCT()
   call InitChatVars()
+        call Trace("Init AMAI step 11")
   call InitCreepStrengthArray()
+    call Trace("Init AMAI step 12")
   call StopGathering()
   call InitBuildArrayAM()
   call InitUpkeep()
   call InitNeutralBuildings()
+    call Trace("Init AMAI step 13")
   call StartThread(function PathingThread)
   //call StartThread(function ExpansionThread)
   //call StartThread(function CheckAllNeutrals)
@@ -8587,6 +8609,7 @@ function InitAMAI takes nothing returns nothing
   call InitPlayerStrengthCache()
   call SetNearestEnemy()
   call InitTownBuilt()
+  call Trace("Init AMAI step end")
   set max_farms = GetMaxFarms()
   set mine_loc = GetUnitLoc(own_town_mine[0])
 
@@ -10290,7 +10313,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     //------------------------------------------------------------------------
     // limit the qty we're requesting to the amount of resources available
     //
-    set gold_cost = GetUnitGoldCost2(unitid)
+    set gold_cost = GetUnitGoldCost2(unitid) // When hero is free this is returning 0 correctly
     set wood_cost = GetUnitWoodCost2(unitid)
     set food_cost = GetFoodUsed(old_id[unitid])
 

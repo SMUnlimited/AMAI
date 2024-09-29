@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- Basic AI interopability for LUA maps but with some issues: 
+  - Note chat placeholder support doesn't work so various templated chat messages are not being processed. This affects both Jass and Lua maps.
+  - Commander works enough to let you set the initial language, but bringing up rest of commander or typing commands does not currently work.
 - (Classic) Zoom hotkeys can now be enabled or disabled via `-zoomkey` command. (jzy-chitong56)
 - (DevTools) Observer debugging when debug turned on for vanilla AI in VSAI mode.
 
