@@ -37,6 +37,8 @@ function TrackArmy takes integer num returns boolean
   local real x = 0
   local real y = 0
   local integer p = army_owner[num]
+  local player ap = Player(p)
+  local player up = null
   if u != null then
     // If tracking existing army select range from current position not historic position
     call GroupEnumUnitsInRange(g, GetUnitX(u), GetUnitY(u), army_radius, null)
@@ -49,14 +51,15 @@ function TrackArmy takes integer num returns boolean
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetOwningPlayer(u) == Player(p) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitInGroup(u, in_army_group) then
+    set up = GetOwningPlayer(u)
+    if up == ap and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitInGroup(u, in_army_group) then
       call GroupAddUnit(army_group[num], u)
       call GroupAddUnit(in_army_group, u)
       set x = x + GetUnitX(u)  // Prevent loc exceeding map range
       set y = y + GetUnitY(u)
       //set l = GetSumLoc_dd(l, GetUnitLoc(u))
       set army_count[num] = army_count[num] + 1
-      if (GetOwningPlayer(u) != ai_player and IsUnitInvisible(u, ai_player)) or (GetOwningPlayer(u) == ai_player and not IsStandardUnit(u)) then 
+      if (up != ai_player and IsUnitInvisible(u, ai_player)) or (up == ai_player and not IsStandardUnit(u)) then 
         // Fix using invisible units to exploit amai to force defend its town
       else
           set army_strength[num] = army_strength[num] + GetUnitStrength(u)
@@ -69,6 +72,8 @@ function TrackArmy takes integer num returns boolean
 
   call RemoveLocation(army_dir[num])
   call RemoveLocation(army_future[num])
+  set ap = null
+  set up = null
   if army_count[num] <= 1 or army_strength[num] == 0 then
     call DestroyGroup(army_group[num])
     set army_group[num] = null
