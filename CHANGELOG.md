@@ -37,6 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fix so Ai's only ask for gold before surrender if the commander is installed as its the only way to send gold to the AIs. (jzy-chitong56)
 - Defeated players should not keep chatting. (jzy-chitong56)
 - Fix for buy neutral units running attack which is not expected. (jzy-chitong56)
+- Memory leak and fault tolerance optimizations. (jzy-chitong56)
 - (Classic) Fix hero priorities too low for various strategies.
 - (Classic) Hero Skill fix will only run on versions 1.29 - 1.32.8. 1.32.9 and onwards will not run the fix. (jzy-chitong56)
 - (DevTools) Added echo off to install scripts to reduce console spam.
