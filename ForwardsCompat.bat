@@ -1,5 +1,12 @@
 SET VER=%~1
 SET RESULTFWCOMPAT=0
+where perl
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
+if "%RESULTFWCOMPAT%"=="1" (
+  ECHO Compilation AMAI Optimization %VER% error
+  ECHO Please install Perl as a requirement to compile AMAI. Download : https://strawberryperl.com/
+  exit /b %RESULTFWCOMPAT%
+)
 ECHO Applying forwards compatability %VER% scripts
 perl -i -pe"s/GetBJMaxPlayers/GetBJMaxPlayersAMAI/g" Scripts/%VER%/common.ai
 perl -i -pe"s/GetBJMaxPlayers/GetBJMaxPlayersAMAI/g" Scripts/%VER%/Blizzard.j
