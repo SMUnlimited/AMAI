@@ -54,20 +54,24 @@ jassparser %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\undead.ai
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 ECHO _____________________________
 perl SplitBlizzardJ.pl %VER%
-ECHO creating \Scripts\%VER%\Blizzard.j and \Scripts\%VER%\Blizzard_VSAI.j
-perl ejass.pl Blizzard3.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
-perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\%VER%\Blizzard.j
-pjass %VER%\common.j Scripts\%VER%\Blizzard.j
-if "%errorlevel%"=="1" SET RESULTMAKEVER=1
-jassparser %VER%\common.j Scripts\%VER%\Blizzard.j
-if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+ECHO _____________________________
+ECHO creating \Scripts\%VER%\Blizzard.j
 perl ejass.pl Blizzard3VAI.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
 perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\%VER%\Blizzard_VSAI.j
 pjass %VER%\common.j Scripts\%VER%\Blizzard_VSAI.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 jassparser %VER%\common.j Scripts\%VER%\Blizzard_VSAI.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
-ECHO \Scripts\%VER%\Blizzard.j and \Scripts\%VER%\Blizzard_VSAI.j created
+ECHO \Scripts\%VER%\Blizzard.j created
+ECHO _____________________________
+ECHO creating \Scripts\%VER%\Blizzard_VSAI.j
+perl ejass.pl Blizzard3.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
+perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\%VER%\Blizzard.j
+ECHO \Scripts\%VER%\Blizzard_VSAI.j created
+pjass %VER%\common.j Scripts\%VER%\Blizzard.j
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+jassparser %VER%\common.j Scripts\%VER%\Blizzard.j
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 ECHO _____________________________
 rmdir /s /q "%VER%/tmp"
 if "%RESULTMAKEVER%"=="1" (
