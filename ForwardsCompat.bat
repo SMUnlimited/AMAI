@@ -64,10 +64,6 @@ perl -i -pe"s/PLAYER_COLOR_SNOW/PLAYER_COLOR_SNOWAMAI/g" Scripts/%VER%/common.ai
 perl -i -pe"s/PLAYER_COLOR_SNOW/PLAYER_COLOR_SNOWAMAI/g" Scripts/%VER%/Blizzard.j
 perl -i -pe"s/PLAYER_COLOR_SNOW/PLAYER_COLOR_SNOWAMAI/g" Scripts/%VER%/Blizzard_VSAI.j
 
-perl -i -pe"s/PLAYER_COLOR_SNOW/PLAYER_COLOR_SNOWAMAI/g" Scripts/%VER%/common.ai
-perl -i -pe"s/PLAYER_COLOR_SNOW/PLAYER_COLOR_SNOWAMAI/g" Scripts/%VER%/Blizzard.j
-perl -i -pe"s/PLAYER_COLOR_SNOW/PLAYER_COLOR_SNOWAMAI/g" Scripts/%VER%/Blizzard_VSAI.j
-
 perl -i -pe"s/PLAYER_COLOR_EMERALD/PLAYER_COLOR_EMERALDAMAI/g" Scripts/%VER%/common.ai
 perl -i -pe"s/PLAYER_COLOR_EMERALD/PLAYER_COLOR_EMERALDAMAI/g" Scripts/%VER%/Blizzard.j
 perl -i -pe"s/PLAYER_COLOR_EMERALD/PLAYER_COLOR_EMERALDAMAI/g" Scripts/%VER%/Blizzard_VSAI.j
