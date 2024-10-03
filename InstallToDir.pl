@@ -31,7 +31,7 @@ sub process_dir {
       } else {
         print "Installing $ver AMAI without Commander to $dirname/$filename\n";
       }
-      system "MPQEditor htsize \"$dirname/$filename\" 64";
+      system "MPQEditor htsize \"$dirname/$filename\" 128";
       if ($? == -1) {
         printf "Unable to spawn MPQEditor process";
       } elsif ($? >> 8 == 5) {
@@ -71,7 +71,7 @@ sub process_dir {
         } elsif ($? >> 8 == 5) {
           printf "ERROR: Failed to add Other AI, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
         } elsif ($? >> 8 > 0) {
-          printf "ERROR: Unknown. AMAI not have installed correctly. Adding Other:%d\n", $? >> 8;
+          printf "ERROR: Unknown. AMAI not have installed correctly. Adding Other AI:%d\n", $? >> 8;
         }
       }
       system "MPQEditor f \"$dirname/$filename\"";
