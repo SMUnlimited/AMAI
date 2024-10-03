@@ -217,7 +217,7 @@ const installOnDirectory = async () => {
           /** uncomment to debbug */
           // console.log('f2xAddToMPQ', f2xAddToMPQ.error);
 
-          // spawnSync(`echo`, [`running AddToMPQ 2 ${file}`]);
+          // spawnSync(`echo`, [`running AddToMPQ 2x ${file}`]);
           if (f2xAddToMPQ.status == 5) {
             process.send(`WARN: ${file} Failed to add Other AI script, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
             continue;
