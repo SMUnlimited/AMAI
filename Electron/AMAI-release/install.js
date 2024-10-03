@@ -97,7 +97,7 @@ const installOnDirectory = async () => {
 
         const mpqEditor = spawnSync(
           `MPQEditor.exe`,
-          [`htsize`, file, `64`],
+          [`htsize`, file, `128`],
           { encoding : `utf8` }
         );
 
@@ -178,6 +178,13 @@ const installOnDirectory = async () => {
               `Scripts\\${ver}\\Blizzard_VSAI.j`,
               `Scripts\\Blizzard.j`
             ],
+            `MPQEditor.exe`,
+            [
+              'a',
+            file,
+            `Scripts\\VanillaAI_${ver}\\*.ai`,
+            `Scripts`
+            ],
             { encoding : `utf8` }
           );
 
@@ -195,6 +202,32 @@ const installOnDirectory = async () => {
           f2AddToMPQ.error ?
             process.send(f2AddToMPQ.error.message)
               : process.send(`Add VS AI commander script ${file}`);
+
+          const f2xAddToMPQ = spawnSync(
+            `MPQEditor.exe`,
+            [
+            'a',
+            file,
+            `Scripts\\Other_AI_${ver}\\*.ai`,
+            `Scripts`
+            ],
+            { encoding : `utf8` }
+          );
+
+          /** uncomment to debbug */
+          // console.log('f2xAddToMPQ', f2xAddToMPQ.error);
+
+          // spawnSync(`echo`, [`running AddToMPQ 2 ${file}`]);
+          if (f2xAddToMPQ.status == 5) {
+            process.send(`WARN: ${file} Failed to add Other AI script, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+            continue;
+          } else if (f2xAddToMPQ.status > 0) {
+            process.send(`WARN: ${file} Possibly failed to add Other AI script, Unknown error occurred: ${f2xAddToMPQ.status}`)
+            continue;
+          }
+          f2xAddToMPQ.error ?
+            process.send(f2xAddToMPQ.error.message)
+              : process.send(`Add Other AI script ${file}`);
         }
 
         const f3AddToMPQ =  spawnSync(
