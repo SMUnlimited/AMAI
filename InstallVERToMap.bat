@@ -18,6 +18,9 @@ if "%~3" == "2" (
   ECHO Installed Commander - VS AI to Map
   MPQEditor a "%~2" "%~dp0Scripts\%VER%\Blizzard_VSAI.j" Scripts\Blizzard.j
   if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
+  ECHO Installed Other AI to Map
+  MPQEditor a "%~2" "%~dp0%VER%\VanillaAI\*.ai" Scripts
+  if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
 )
 MPQEditor f "%~2"
 if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
