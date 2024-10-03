@@ -14,7 +14,7 @@ mkdir Scripts\%VER%\
 ECHO _____________________________
 ECHO creating \Scripts\%VER%\common.ai
 perl ejass.pl common.eai %VER% VER:%VER% > Scripts\%VER%\common.ai
-ECHO IGNORE jasshelper --scriptonly common.j Scripts\Blizzard.j Scripts\%VER%\common.ai Scripts\%VER%\common2.ai
+ECHO IGNORE jasshelper --scriptonly common.j Scripts\%VER%\Blizzard.j Scripts\%VER%\Blizzard_VSAI.j Scripts\%VER%\common.ai Scripts\%VER%\common2.ai
 ECHO \Scripts\%VER%\common.ai created
 pjass %VER%\common.j Scripts\%VER%\common.ai
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
