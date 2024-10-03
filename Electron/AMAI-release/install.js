@@ -179,12 +179,6 @@ const installOnDirectory = async () => {
               `Scripts\\Blizzard.j`
             ],
             `MPQEditor.exe`,
-            [
-              'a',
-            file,
-            `Scripts\\VanillaAI_${ver}\\*.ai`,
-            `Scripts`
-            ],
             { encoding : `utf8` }
           );
 
