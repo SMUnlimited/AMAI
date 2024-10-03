@@ -65,6 +65,14 @@ sub process_dir {
         } elsif ($? >> 8 > 0) {
           printf "ERROR: Unknown. AMAI not have installed correctly. Adding commander - VS AI:%d\n", $? >> 8;
         }
+        system "MPQEditor a \"$dirname/$filename\" $ver\\VanillaAI\\*.ai Scripts";
+        if ($? == -1) {
+          printf "Unable to spawn MPQEditor process";
+        } elsif ($? >> 8 == 5) {
+          printf "ERROR: Failed to add Other AI, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
+        } elsif ($? >> 8 > 0) {
+          printf "ERROR: Unknown. AMAI not have installed correctly. Adding Other:%d\n", $? >> 8;
+        }
       }
       system "MPQEditor f \"$dirname/$filename\"";
       if ($? == -1) {
