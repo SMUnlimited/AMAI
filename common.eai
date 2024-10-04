@@ -10554,7 +10554,7 @@ function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc retu
       endif
     endif
     call IssuePointOrderByIdLoc(peon, old_id[unitid], l)
-      //call Trace("Building at special point")
+    //call Trace("Building at special point")
     //else
     //   call Trace("BuildatspecialLoc: Not able to build here")
     //   call RemoveLocation(l)
@@ -10815,7 +10815,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       if needed3[unitid] == UPGRADED then
         set available_time[unitid] = ai_time + GetUnitBuildTime(old_id[unitid]) / 5 + 1
       endif
-      if (afford_qty + have_qty == need_qty)  then
+      if (afford_qty + have_qty == need_qty) then
         return BUILT_ALL
       else
         return BUILT_SOME
@@ -11031,13 +11031,10 @@ endfunction
 // Set up to buy an item
 function BuyItem takes integer qty, integer id returns boolean
   if attack_running then
-    if towerrush then  // TR need buy item , and TR will build more shop , so have near shop can buy
-      if tower_attack_run and (TownCountDone(racial_shop) < 2 or race_tower_shop < 1 or buy_type[id] != BT_RACIAL_ITEM) then
-        return false
-      endif
-    else
-      return false
+    if towerrush and tower_attack_run and (TownCountDone(racial_shop) < 2 or race_tower_shop < 1 or buy_type[id] != BT_RACIAL_ITEM) then
+      return false  // TR need buy item , and TR will build more shop , so have near shop can buy
     endif
+    return false
   endif
   if shop_ordered then
     //call Trace("Already ordered to get an item")
@@ -11421,11 +11418,12 @@ set u = GetExpFoe(u)
 if mines < 2 and ai_time - exp_time_count > exp_first_time then
   if u != null then
     set take_exp = true
-    call Trace("ExpansionBuilder:Need to Creep Mine 2")
-    //if attacking_expansion then
-    //  set exp_prepared = true
-    //  call Trace("ExpansionBuilder: Ready to expand to mine 2 - odd")
-    //endif
+    if active_expansion then
+      set exp_prepared = true
+      call Trace("ExpansionBuilder:Have Creep , But ready to active expand to mine 2")
+    else
+      call Trace("ExpansionBuilder:Need to Creep mine 2")
+    endif
   else
     set take_exp = false
     set exp_prepared = true
@@ -11438,9 +11436,9 @@ if mines < 3 and ((ai_time - exp_time_count > exp_second_time) or (mines > 1 and
     set take_exp = true
     if active_expansion then
       set exp_prepared = true
-      call Trace("ExpansionBuilder:Ready to expand to mine 3")
+      call Trace("ExpansionBuilder:Have Creep , But ready to active expand to mine 3")
     else
-      call Trace("ExpansionBuilder:Need to Creep Mine 3")
+      call Trace("ExpansionBuilder:Need to Creep mine 3")
     endif
   else
     set take_exp = false
@@ -11550,7 +11548,7 @@ function HeroReviver takes nothing returns nothing
       endif
     elseif hero_built[i] then
       if not TavernResurrect then
-        if nearest_neutral[NEUTRAL_TAVERN] != null and not neutral_ordered[NEUTRAL_TAVERN] and (82 * (GetUnitLevel(hero_unit[i]) + 3)) > GetGold() and (22 * (GetUnitLevel(hero_unit[i]) + 3)) > GetWood() then
+        if nearest_neutral[NEUTRAL_TAVERN] != null and not neutral_ordered[NEUTRAL_TAVERN] and GetRandomInt(0, 3 + difficulty) > 3 and FoodSpace() >= GetFoodUsed(old_id[hero[i]]) and (82 * (GetUnitLevel(hero_unit[i]) + 3)) < GetGold() and (22 * (GetUnitLevel(hero_unit[i]) + 3)) < GetWood() then
           set neutral_ordered[NEUTRAL_TAVERN] = true
           set neutral_wanted[NEUTRAL_TAVERN] = 1
           call TQAddJob(0, BUY_NEUTRAL_HERO, hero[i])
@@ -11977,7 +11975,7 @@ function FormGroupAM takes integer seconds returns nothing
   call InitAssault()
 
   loop
-    exitwhen index == attack_length
+    exitwhen index >= attack_length
 
     set unitid = attack_units[index]
 
@@ -12838,14 +12836,11 @@ function GetWeakAndNearEnemy takes nothing returns player
     endif
     set i = i + 1
   endloop
-  // if pmin == -1 then
-  //   call Trace("Debug: GetWeakAndNearEnemy failed!")
-  //   set pmin = 0
-  // endif
   set cbuilding = null
   if pmin != -1 then
     return enemy_force[pmin]
   endif
+  //   call Trace("Debug: GetWeakAndNearEnemy failed!")
   return null
 endfunction
 
@@ -12901,14 +12896,11 @@ function GetSecondNearestEnemy takes nothing returns player
     endif
     set i = i + 1
   endloop
-  // if spmin == -1 then
-  //   call Trace("Debug: GetSecondNearestEnemy failed!")
-  //   set spmin = 0
-  // endif
   set cbuilding = null
   if spmin != -1 then
     return enemy_force[spmin]
   endif
+  //   call Trace("Debug: GetSecondNearestEnemy failed!")
   return null
 endfunction
 
@@ -13503,26 +13495,26 @@ if not creeping_only then	// Do the normal attack sequence
     if needs_exp then
       if first_expansion_chosen and (current_expansion == null or CheckExpansionTaken(current_expansion)) then
         call ChooseExpansion()
-      endif
-      if current_expansion == null then
-        call Trace("Need expansion but none found")
-      else
-        set creep = GetExpFoe(creep)
-        if creep != null then
-          call Trace("Creep the Expansion")
-          set attacking_expansion = true
-          set battle_radius = creep_battle_radius
-          call SetAllianceTargetIfLeadAndChat(creep, C_Expansion)
-          call FormGroupAM(3)
-          call AttackMoveKillCreep(creep)
-          call ClearAllianceTarget(creep)
-          if creep == null or not UnitAlive(creep) then
-            set take_exp = false
+        if current_expansion != null then
+          call Trace("Need expansion but none found")
+        else
+          set creep = GetExpFoe(creep)
+          if creep != null then
+            call Trace("Creep the Expansion")
+            set attacking_expansion = true
+            set battle_radius = creep_battle_radius
+            call SetAllianceTargetIfLeadAndChat(creep, C_Expansion)
+            call FormGroupAM(3)
+            call AttackMoveKillCreep(creep)
+            call ClearAllianceTarget(creep)
+            if creep == null or not UnitAlive(creep) then
+              set take_exp = false
+            endif
+            call Sleep(10)
+            set attacking_expansion = false
+            set creep = null
+            return
           endif
-          call Sleep(10)
-          set attacking_expansion = false
-          set creep = null
-          return
         endif
       endif
     endif
@@ -13891,6 +13883,7 @@ function HealArmy takes nothing returns nothing
   loop
     set hs = GetArmyHealthState()
     if ward_cast then
+      set global_heal = true
       loop
         exitwhen player_defeated or town_threatened or i >= 4
         call Trace("function HealArmy: wait ward cast heal" + Int2Str(i))
@@ -13905,7 +13898,6 @@ function HealArmy takes nothing returns nothing
     exitwhen sleepFrequency >= 3 and hs > healthTrigger // Tried to heal but overall still strong so exit loop
     exitwhen urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger
     exitwhen player_defeated or town_threatened or ver_heroes == false
-    set mass_healed = false
     call Trace("function HealArmy: Army is badly damaged and needs healing " + Real2Str(hs))
     if (not CaptainIsHome()) then
       call CaptainGoHome()
@@ -13959,6 +13951,8 @@ function HealArmy takes nothing returns nothing
     endif
     set sleepFrequency = sleepFrequency + 1
     call Sleep(sleepLength * sleep_multiplier) // Wait some time for item effects to work
+    set mass_healed = false
+    set global_heal = false
   endloop
   set mh_i = null
   set u = null
