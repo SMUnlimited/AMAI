@@ -9,9 +9,17 @@ MPQEditor htsize "%~2" 64
 if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
 MPQEditor a "%~2" "%~dp0Scripts\%VER%\*.ai" Scripts
 if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
-if "%~3" == "1" (
+if "%~3"=="1"  (
   ECHO Installed Commander to Map
-  MPQEditor a "%~2" "%~dp0Scripts\Blizzard_%VER%.j" Scripts\Blizzard.j
+  MPQEditor a "%~2" "%~dp0Scripts\%VER%\Blizzard.j" Scripts\Blizzard.j
+  if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
+)
+if "%~3" == "2" (
+  ECHO Installed Commander - VS AI to Map
+  MPQEditor a "%~2" "%~dp0Scripts\%VER%\Blizzard_VSAI.j" Scripts\Blizzard.j
+  if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
+  ECHO Installed Other AI to Map
+  MPQEditor a "%~2" "%~dp0%VER%\VanillaAI\*.ai" Scripts
   if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
 )
 MPQEditor f "%~2"

@@ -1,7 +1,4 @@
 @ECHO OFF
-@call MakeRoC
-pause
-@call MakeTFT
-pause
-@call MakeREFORGED
-pause
+@call MakeRoC 1
+@call MakeTFT 1
+@call MakeREFORGED 0
