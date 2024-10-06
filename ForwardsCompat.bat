@@ -1,3 +1,4 @@
+@ECHO OFF
 SET VER=%~1
 SET RESULTFWCOMPAT=0
 where perl
