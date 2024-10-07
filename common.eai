@@ -4098,6 +4098,7 @@ function GroupAddTypeAndRemoveGuard takes group g, integer id, player p returns 
     exitwhen u == null
     if GetUnitTypeId(u) == id then
       call RemoveGuardPosition(u)
+      call CreateDebugTag("Remove Guard Position Group Add Type", 10, u, 3.00, 1.50)
       call GroupAddUnit(g,u)
     endif
     call GroupRemoveUnit(ag, u)
@@ -5976,8 +5977,9 @@ function BuildBRAtCreep takes nothing returns boolean
       set success = IssueTargetOrder(own_town_mine[0], "unload", u)
       call Sleep(0.01)
     endif
-    call RemoveGuardPosition(u)  // no need reset guard , the tree can train
+    call RemoveGuardPosition(u)
     call IssuePointOrderByIdLoc(u, old_id[racial_rushcreep], loc)
+    call TQAddUnitJob(16, RESET_GUARD_POSITION, 20, u)
     set u = null
   endif
   call RemoveLocation(loc)
@@ -10647,16 +10649,16 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       set afford_qty = afford_food
     endif
 
+    // If at food limit skip units in build queue rather than block
+    if food_cost > 0 and need_qty > 0 and food_cost > total_food then
+      return CANNOT_BUILD
+    endif
+
     // Check if allowed to go over upkeep limit otherwise restrict qty
     if (food_cost > 0) then
       set afford_food = ApplyUpkeepCheck(afford_food, ver_food_limit - total_food, food_cost, afford_qty)
       call ApplyUpkeepSaving()
       call UpdateLastUpkeep()
-    endif
-
-    // If at food limit skip units in build queue rather than block
-    if food_cost > 0 and need_qty > 0 and food_cost > total_food then
-      return CANNOT_BUILD
     endif
 
     set afford_qty = Min(afford_qty, afford_food)
@@ -11447,7 +11449,7 @@ loop
   set i = i + 1
 endloop
 set i = 0
-if active_expansion then
+if mines < 3 and active_expansion then
   set exp_prepared = true
   call Trace("ExpansionBuilder: Active expansion")
   set i = Max(GetPlayerUnitTypeCount(Player(PLAYER_NEUTRAL_PASSIVE),'ngol') - (c_enemy_total + c_ally_total + 1), 20)
