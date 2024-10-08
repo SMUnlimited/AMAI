@@ -1042,7 +1042,6 @@ globals
     boolean active_expansion = false
 
     unit expansion_peon = null
-    unit chaos_expansion_peon = null
     unit build_zeppelin = null
     //location exp_loc_cache = Location(0,0)
     integer exp_loc_cache_timeout = 0
@@ -1062,6 +1061,7 @@ globals
     boolean first_expansion_chosen = false
     unit not_taken_expansion = null  // used to MultipleMinefix , militai expansion , ancient expansion and item expansion system
     unit chaos_expansion = null
+    boolean chaos_expansion_run = false
     boolean pathing_done = false
 
     integer confirm_count = 0
@@ -3056,15 +3056,11 @@ function InitChatArrays%1 takes nothing returns nothing
 #INCLUDETABLE <ChatEvents.txt> #EFR
 #DEFINE $chatevent$ %1
   set chat_$chatevent$_length = 0
-  #INCLUDETABLE <Languages\$lang$\Chat$chatevent$.txt> #ENC:$enc$ #COND "%2" ne ""
-  if %2 then
-    set chat_$chatevent$[#EVAL{%row-1}] = "%1"
-    set chat_$chatevent$_length = chat_$chatevent$_length + 1
-  endif
-  #ENDINCLUDE
-  #INCLUDETABLE <Languages\$lang$\Chat$chatevent$.txt> #ENC:$enc$ #COND "%2" eq ""
-  set chat_$chatevent$[#EVAL{%row-1}] = "%1"
+  #INCLUDETABLE <Languages\$lang$\Chat$chatevent$.txt> #ENC:$enc$
+  #EVAL{"%3" ? "if %2\"%3\" then" : ("%2" ? "if %2 then" : "")}
+  set chat_$chatevent$[chat_$chatevent$_length] = "%1"
   set chat_$chatevent$_length = chat_$chatevent$_length + 1
+  #EVAL{("%2" or "%3") ? "endif" : ""}
   #ENDINCLUDE
 
 #ENDINCLUDE
@@ -11469,16 +11465,20 @@ if mines < 1 or gold_left < 2500 or exp_prepared then
   return
 elseif active_expansion and mines < 4 and GetRandomInt(0, 100 - i) < 42 and GetGold() > 1000 and GetWood() > 700 and not_taken_expansion == null then
   if chaos_expansion != null and GetResourceAmount(chaos_expansion) >= GetUnitGoldCost(old_id[racial_expansion]) and GetLocationCreepStrength(GetUnitX(chaos_expansion), GetUnitY(chaos_expansion), expansion_radius) <= 0 and not CheckExpansionTaken(chaos_expansion) then
-    if chaos_expansion_peon != null and UnitAlive(chaos_expansion_peon) and chaos_expansion_peon != expansion_peon then
-      call TQAddUnit2Job(2 * sleep_multiplier, BUILD_EXPANSION, 0, chaos_expansion_peon, chaos_expansion)
-      call IssueTargetOrderById(chaos_expansion_peon, old_id[racial_expansion], chaos_expansion)
-      call CreateDebugTag("chaos expansion", 10, chaos_expansion_peon, 3.00, 1.50)
+    set u = GetExpansionPeon()
+    if u != null and UnitAlive(u) and u != expansion_peon and not chaos_expansion_run then
+      set chaos_expansion_run = true
+      call TQAddUnit2Job(2 * sleep_multiplier, BUILD_EXPANSION, 0, u, chaos_expansion)
+      call IssueTargetOrderById(u, old_id[racial_expansion], chaos_expansion)
+      call CreateDebugTag("chaos expansion", 10, u, 3.00, 1.50)
       call Trace("ExpansionBuilder: chaos expansion")
+      set u = null
       return
     endif
-    set chaos_expansion_peon = GetExpansionPeon()
+    set u = null
   else
     set chaos_expansion = expansion_list[GetRandomInt(0, expansion_list_length - 1)]
+    set chaos_expansion_run = false
   endif
 endif
 call Trace("ExpansionBuilder: Not ready to build mine")
@@ -12184,6 +12184,13 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
   //local group g = null
   if race_has_ghouls and race_ghouls_attack then
     set attack_length_counter = 5000  // Force army to regroup to try and get ghouls to go along
+  endif
+  if target == null or not UnitAlive(target) then  // ints lastcaptain
+    set lastcaptainx = 0
+    set lastcaptainy = 0
+  else
+    set lastcaptainx = GetUnitX(target)
+    set lastcaptainy = GetUnitY(target)
   endif
   loop
     exitwhen town_threat_break and town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat and not desperation_assault
@@ -13181,7 +13188,7 @@ function Ancient_Expansion takes nothing returns nothing
       endif
       set i = i + 1
       call Sleep(2 * sleep_multiplier)
-      if i > 10 then
+      if i > 7 then
         call FormGroupAM(0)
         set i = 1
       endif
@@ -13199,6 +13206,9 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
   //set own_strength = ai_strength
   call Trace("==Sleep Defend Town==" )
   call SetDefendPlayer(b)
+  if not b and not CaptainIsHome() then
+    call CaptainGoHome()
+  endif
   loop
     //if town_loc[most_threatened_town] != null and LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] then
       //if town_threat[most_threatened_town] >= teleport_low_threat then
@@ -13222,10 +13232,6 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
     if defense_length_counter > attack_reform_length then
       set defense_length_counter = 0
       call FormGroupAM(0)
-    endif
-    if not b and not CaptainIsHome() then
-      call CaptainGoHome()
-      set b = true
     endif
     exitwhen not town_threatened and not TownThreatened() and not CaptainInCombat(false)
     exitwhen player_defeated

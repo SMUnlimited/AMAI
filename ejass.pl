@@ -1,6 +1,8 @@
 #!/usr/bin/perl -w
 use strict;
 
+no warnings 'uninitialized'; # Complex language processing on InitChatArrays throws these and no way to avoid them in this case.
+
 unless ( $ARGV[0] and $ARGV[0] !~ /-[h?]/ ) {
 	print "------------------------------------------------------\n";
 	print "|\n|     Jass Pre-parser version 0.0.11\n";
@@ -68,7 +70,7 @@ while (<INFILE>) {
 	$_ = fnamerep($_) unless /\#DEFINE/;
 	if (/^\/\//) {}
 	elsif (/#PRAGMA/) {}
-	elsif (/(#IFDEF) (\w+)/) {
+	elsif (/(#IFDEF) [\$]?(\w+)[\$]?/) {
 		#warn "IFDEF";
 		$level++;
 		$file[$level]{"if"} = $1;
@@ -80,7 +82,7 @@ while (<INFILE>) {
 		$file[$level]{"skip"} = $skip;
 		$skip = (not $file[$level]{$file[$level]{"now"}} or $file[$level]{"skip"});
 	}
-	elsif (/(#IFNDEF) (\w+)/) {
+	elsif (/(#IFNDEF) [\$]?(\w+)[\$]?/) {
 		#warn "IFNDEF";
 		$level++;
 		$file[$level]{"if"} = $1;
