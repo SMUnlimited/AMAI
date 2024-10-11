@@ -40,6 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Memory leak and fault tolerance optimizations. (jzy-chitong56)
 - (Classic) Fix hero priorities too low for various strategies.
 - (Classic) Hero Skill fix will only run on versions 1.29 - 1.32.8. 1.32.9 and onwards will not run the fix. (jzy-chitong56)
+- (Classic) Fix healer mana costs which instead used reforged costs (jzy-chitong56)
 - (DevTools) Added echo off to install scripts to reduce console spam.
 - (DevTools) Making legacy editions now copies over correct blizzard.j when performing a manual install.
 
