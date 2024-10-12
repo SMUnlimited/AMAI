@@ -2060,6 +2060,10 @@ function GetChatVarR takes string key returns real
   return LoadReal(language_table, CHAT_VARS_TABLE, StringHash(key+"R"))
 endfunction
 
+function GetTargetStrengthChat takes nothing returns real
+  return GetChatVarR("TargetStrength")
+endfunction
+
 //============================================================================
 // Converts translational parts of text to actual text
 //============================================================================
@@ -11480,7 +11484,7 @@ if mines < 1 or gold_left < 2500 or exp_prepared then
   endif
   return
 elseif active_expansion and mines < 4 and GetRandomInt(0, 100 - i) < 42 and GetGold() > 1000 and GetWood() > 700 and not_taken_expansion == null then
-  if chaos_expansion != null and GetResourceAmount(chaos_expansion) >= GetUnitGoldCost(old_id[racial_expansion]) and GetLocationCreepStrength(GetUnitX(chaos_expansion), GetUnitY(chaos_expansion), expansion_radius) <= 0 and not CheckExpansionTaken(chaos_expansion) then
+  if chaos_expansion != null and chaos_expansion != current_expansion and GetResourceAmount(chaos_expansion) >= GetUnitGoldCost(old_id[racial_expansion]) and GetLocationCreepStrength(GetUnitX(chaos_expansion), GetUnitY(chaos_expansion), expansion_radius) <= 0 and not CheckExpansionTaken(chaos_expansion) then
     set u = GetExpansionPeon()
     if u != null and UnitAlive(u) and u != expansion_peon and not chaos_expansion_run then
       set chaos_expansion_run = true
@@ -13503,27 +13507,27 @@ if not creeping_only then	// Do the normal attack sequence
     if needs_exp and first_expansion_chosen then
       if current_expansion == null or CheckExpansionTaken(current_expansion) then
         call ChooseExpansion()
-        if current_expansion == null or CheckExpansionTaken(current_expansion) then
-          call Trace("Need expansion but can not expansion or none found")
+      endif
+      if current_expansion == null or CheckExpansionTaken(current_expansion) then
+        call Trace("Need expansion but no valid free expansion available")
+      else
+        set creep = GetExpFoe(creep)
+        if creep != null then
+          call Trace("Creep the Expansion")
+          set attacking_expansion = true
+          set battle_radius = creep_battle_radius
+          call SetAllianceTargetIfLeadAndChat(creep, C_Expansion)
+          call FormGroupAM(3)
+          call AttackMoveKillCreep(creep)
+          call ClearAllianceTarget(creep)
+          if creep == null or not UnitAlive(creep) then
+            set take_exp = false
+          endif
+          call Sleep(10)
+          set attacking_expansion = false
+          set creep = null
           return
         endif
-      endif
-      set creep = GetExpFoe(creep)
-      if creep != null then
-        call Trace("Creep the Expansion")
-        set attacking_expansion = true
-        set battle_radius = creep_battle_radius
-        call SetAllianceTargetIfLeadAndChat(creep, C_Expansion)
-        call FormGroupAM(3)
-        call AttackMoveKillCreep(creep)
-        call ClearAllianceTarget(creep)
-        if creep == null or not UnitAlive(creep) then
-          set take_exp = false
-        endif
-        call Sleep(10)
-        set attacking_expansion = false
-        set creep = null
-        return
       endif
     endif
   endif
