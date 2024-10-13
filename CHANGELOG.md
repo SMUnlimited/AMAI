@@ -45,6 +45,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (Classic) Fix healer mana costs which instead used reforged costs (jzy-chitong56)
 - (DevTools) Added echo off to install scripts to reduce console spam.
 - (DevTools) Making legacy editions now copies over correct blizzard.j when performing a manual install.
+- (DevTools) Disabled automatic copy of Reforged to TFT settings as it makes it difficult to modify settings for debugging. Call TFT/Inherit.bat directly when required instead.
 
 ## [3.3.5a] - 2024-06-07
 
