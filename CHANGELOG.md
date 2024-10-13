@@ -34,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed minor town threat tracking inconsistency.
 - Slightly timing tweak to help AI hardcoded systems better understand which mines are claimed at game start.
 - Fixed an issue where we would not get a new target after killing target due to incorrectly checking that combat has ended, which is not likely to be the case.
+- Fix for second nearest ally attack target in ffa matches not taking account of distance correctly if own hero was not available.
 - Fix ally attack target not being reset, particularly expansion seemed to be slower without fix. (jzy-chitong56)
 - Fix Goblin Tinker Skill not upgrading past rockets on one of the trees. (jzy-chitong56)
 - Reduce lengthy unnecessary wait during distraction attack. (jzy-chitong56)
