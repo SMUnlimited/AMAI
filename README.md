@@ -127,7 +127,8 @@ Advanced Melee AI is made to be used on melee maps only so please don't try to u
 
 Custom melee maps need to be set to latest patch data. Open the map in the Warcraft editor, go to `Scenario` > `Map Options`, and change `Game Data Set` to `Melee (Latest Patch)`.
 
-Lua maps do not appear to work. Open the map in the Warcraft editor, go to `Scenario` > `Map Options`, and change `Script Language` to `Jass`, then install AMAI to it. If `Script Language` is disabled, please reset the `Trigger Editor` to its initial state.
+Lua maps are supported, but the Commander can only be used to set language and game mode at game start. You cannot use the commander during the game.
+If you want the full Commander support, Open the map in the Warcraft editor, go to `Scenario` > `Map Options`, and change `Script Language` to `Jass`, then install AMAI to it. If `Script Language` is disabled, please reset the `Trigger Editor` to its initial state.
 
 You may need to run as an administrator if you have issues with maps not displaying any teams.
 

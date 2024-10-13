@@ -8,8 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Added
 
 - Basic AI interopability for LUA maps but with some issues: 
-  - Note chat placeholder support doesn't work so various templated chat messages are not being processed. This affects both Jass and Lua maps.
-  - Commander works enough to let you set the initial language, but bringing up rest of commander or typing commands does not currently work.
+  - Commander works enough in LUA maps to let you set the initial language and game mode, but bringing up rest of commander during the game or typing commands does not currently work.
+  - (DevTools) Note chat placeholders is no longer supported in languages. This affects both Jass and Lua maps.
+  - (DevTools) Conditionals are supported in languages by adding a second column to language translations with a jass conditional expression. String comparisons can only be included in a third column which will be converted to a string as the "" characters cannot be used in the second column.
 - (Classic) Zoom hotkeys can now be enabled or disabled via `-zoomkey` command. (jzy-chitong56)
 - (DevTools) Observer debugging when debug turned on for vanilla AI in VSAI mode.
 
