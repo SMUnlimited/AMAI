@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Fixed
 
 - Crash protection to job thread if it has too many actions in the queue (risk only with large maps)
+- Better use of sleep staggering to reduce game crashes with large players maps.
 - Fix so when at the food limit, AI will not save resources to build units and block building anything else that don't require food.
 - Fix so front location is calculated for all cases of players as well as optimized the calculation.
 - Fix upgraded building counts underreported resulting in stuck build logic.
