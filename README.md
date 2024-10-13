@@ -134,7 +134,7 @@ You may need to run as an administrator if you have issues with maps not display
 
 Note that maps older than 1.24 will need resaving in the world editor if you want full 24 player support.
 
-AMAI is more resource intensive than the normal AI scripts. At 24 players there is a higher risk of lag and crashes as the game cannot handle too many script operations happening in the same frame. We continue to optimize and fix issues to avoid this occuring.
+AMAI is more resource intensive than the normal AI scripts. At 24 players there is a higher risk of lag and crashes as the game cannot handle too many script operations happening in the same game frame. Reduce the number of players if you have issues. We continue to optimize and fix issues to help avoid this occuring.
 
 # Build Requirements
 

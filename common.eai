@@ -3174,7 +3174,8 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
   local integer rand = 0
   local player p = null
   local integer chat_greet_count = 0
-  call ApplyChatConditions()
+  local string parsed_chat
+  //call ApplyChatConditions() Not supported in lua
   if chat_list_length == 0 then
     return
   endif
@@ -3184,12 +3185,14 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
     set p = Player(i)
     if (GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) != MAP_CONTROL_COMPUTER and ((ally and IsPlayerAlly(p, ai_player)) or (enemy and IsPlayerEnemy(p, ai_player)) and not IsPlayerObserver(p))) or (obs and IsPlayerObserver(p)) then
       set rand = std_rand
-      loop
-        exitwhen (chat_list_eq[rand] == COMPARE_TRUE) or (chat_list_eq[rand] == COMPARE_EQ and chat_list_race[rand] == race_name[player_race[i]]) or (chat_list_eq[rand] == COMPARE_UNEQ and chat_list_race[rand] != race_name[player_race[i]])
-        set rand = GetRandomInt(0, chat_list_length - 1)
-      endloop
       call SetChatVarsPlayer(p)
       // Only send a limited number of greetings to a single player
+      set parsed_chat = ApplyChatVars(chat_list[rand])
+      if chat ==  C_Goldproblem then
+        set parsed_chat = parsed_chat + " " + ApplyTrans("CurrentGold") + ":" + Int2Str(GetGold())
+      elseif chat == C_Ally or chat == C_Attack or chat == C_Megatarget then
+        set parsed_chat = parsed_chat + " " + ApplyTrans("Target") + ":" + ApplyTrans(GetChatVar("TargetColor"))
+      endif
       if chat == C_Greet then
         if (HaveStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i))) then
           set chat_greet_count = GetStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i)) 
@@ -3198,12 +3201,12 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
             //call DisplayToAllFromPlayer("GREET" + Int2Str(chat_greet_count), GetAiPlayer(), false)
             call StoreInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i), chat_greet_count + 1 )
             //call SyncStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(GREETINGS_NUM))
-            call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)          
+            call DisplayToPlayer(parsed_chat, p, important)          
         endif
       elseif immediate then
-        call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)
+        call DisplayToPlayer(parsed_chat, p, important)
       else
-        call QueueChat(ApplyChatVars(chat_list[rand]), p, important)
+        call QueueChat(parsed_chat, p, important)
       endif
     endif
     set i = i + 1
