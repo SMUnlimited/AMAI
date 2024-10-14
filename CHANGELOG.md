@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - AI will not take into account enemies ally strength of target which was blocking any attack attempts at all.
 - Insane AI will maphack and determine enemies strength precisely instead of roughly.
 - Teleport control improvements and fixes. (jzy-chitong56)
+- (DevTools) Updated MPQEditor to 4.0.0.924.
 
 ### Fixed
 
