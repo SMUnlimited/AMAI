@@ -3214,7 +3214,8 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
   local integer rand = 0
   local player p = null
   local integer chat_greet_count = 0
-  call ApplyChatConditions()
+  local string parsed_chat
+  //call ApplyChatConditions() Not supported in lua
   if chat_list_length == 0 then
     return
   endif
@@ -3224,12 +3225,14 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
     set p = Player(i)
     if (GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) != MAP_CONTROL_COMPUTER and ((ally and IsPlayerAlly(p, ai_player)) or (enemy and IsPlayerEnemy(p, ai_player)) and not IsPlayerObserver(p))) or (obs and IsPlayerObserver(p)) then
       set rand = std_rand
-      loop
-        exitwhen (chat_list_eq[rand] == COMPARE_TRUE) or (chat_list_eq[rand] == COMPARE_EQ and chat_list_race[rand] == race_name[player_race[i]]) or (chat_list_eq[rand] == COMPARE_UNEQ and chat_list_race[rand] != race_name[player_race[i]])
-        set rand = GetRandomInt(0, chat_list_length - 1)
-      endloop
       call SetChatVarsPlayer(p)
       // Only send a limited number of greetings to a single player
+      set parsed_chat = ApplyChatVars(chat_list[rand])
+      if chat == C_Goldproblem then
+        set parsed_chat = parsed_chat + " " + ApplyTrans("CurrentGold") + ":" + Int2Str(GetGold())
+      elseif chat == C_Ally or chat == C_Attack or chat == C_Megatarget then
+        set parsed_chat = parsed_chat + " " + ApplyTrans("Target") + ":" + ApplyTrans(GetChatVar("TargetColor"))
+      endif
       if chat == C_Greet then
         if (HaveStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i))) then
           set chat_greet_count = GetStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i))
@@ -3238,12 +3241,12 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
           //call DisplayToAllFromPlayer("GREET" + Int2Str(chat_greet_count), GetAiPlayer(), false)
           call StoreInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i), chat_greet_count + 1 )
           //call SyncStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(GREETINGS_NUM))
-          call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)
+          call DisplayToPlayer(parsed_chat, p, important)
         endif
       elseif immediate then
-        call DisplayToPlayer(ApplyChatVars(chat_list[rand]), p, important)
+        call DisplayToPlayer(parsed_chat, p, important)
       else
-        call QueueChat(ApplyChatVars(chat_list[rand]), p, important)
+        call QueueChat(parsed_chat, p, important)
       endif
     endif
     set i = i + 1
@@ -4524,7 +4527,7 @@ function CalcNearestNeutrals takes nothing returns nothing
           set checks[i] = 0
           call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
           if (ModuloInteger(i,10) == 0) then
-            call Sleep(GetRandomReal(0.2, 0.4) * sleep_multiplier)
+            call StaggerSleep(0.1 * sleep_multiplier, GetRandomReal(0.2, 0.4) * sleep_multiplier)
           endif
           set i = i + 1
         endif
@@ -4602,7 +4605,7 @@ function CalcNearestNeutrals takes nothing returns nothing
     endloop
     call DestroyGroup(tempg)
     exitwhen pathingdone
-    call Sleep(1 * sleep_multiplier)
+    call StaggerSleep(0.8 * sleep_multiplier, 1 * sleep_multiplier)
   endloop
   set tempg = null
   call DestroyGroup(g)
@@ -4650,7 +4653,7 @@ function GetNearestNeutral takes unit ru, integer id returns unit
       set checks[i] = 0
       call IssuePointOrder(pather[i], "move", GetUnitX(u), GetUnitY(u))
       if ModuloInteger(i,10) == 0 then
-        call Sleep(0.3 * sleep_multiplier)
+        call StaggerSleep(0.2 * sleep_multiplier, 0.3 * sleep_multiplier)
       endif
       set i = i + 1
     else
@@ -4708,7 +4711,7 @@ function GetNearestNeutral takes unit ru, integer id returns unit
     endloop
     call DestroyGroup(tempg)
     exitwhen pathingdone
-    call Sleep(1 * sleep_multiplier)
+    call StaggerSleep(0.8 * sleep_multiplier, 1 * sleep_multiplier)
   endloop
   set tempg = null
   call DestroyGroup(g)
@@ -5289,7 +5292,11 @@ endfunction
 function GetUnexactPlayerStrength takes player p returns integer
   local integer pid = GetPlayerId(p)
   if p_str_cache_timeout[pid] < ai_time then
-    set p_str_cache[pid] = Max(0, R2I(GetPlayerStrength(p) * GetRandomReal(1 - I2R(uncertainty) / 50, 1 + I2R(uncertainty) / 50)) + GetRandomDiff(uncertainty / 5))
+    if difficulty == HARD then
+      set p_str_cache[pid] = Max(0,R2I(GetPlayerStrength(p)))
+    else
+      set p_str_cache[pid] = Max(0, R2I(GetPlayerStrength(p) * GetRandomReal(1 - I2R(uncertainty) / 50, 1 + I2R(uncertainty) / 50)) + GetRandomDiff(uncertainty / 5))
+    endif
     set p_str_cache_timeout[pid] = ai_time + p_str_cache_valid_time
   endif
   return p_str_cache[pid]
@@ -7945,7 +7952,7 @@ function PathingThread takes nothing returns nothing
     if pj_remove[t] then
       call RemovePJ(pj_jid[t], pj_par[t], t)
     endif
-    call Sleep(1)
+    call StaggerSleep(0.8, 1.2)
   endloop
   loop
     exitwhen player_defeated or not active_expansion
@@ -7954,7 +7961,7 @@ function PathingThread takes nothing returns nothing
       set active_expansion = GetPlayerUnitTypeCount(Player(PLAYER_NEUTRAL_PASSIVE),'ngol') >= (c_enemy_total + c_ally_total + 1) * 2
     endif
     set i = i + 1
-    call Sleep(10)
+    call StaggerSleep(8, 12)
   endloop
 endfunction
 
@@ -11894,7 +11901,7 @@ function BuildLoopAM takes nothing returns nothing
       call InitBuildArrayAM()
       set blc = 0
     endif
-    call Sleep(5 * sleep_multiplier)
+    call StaggerSleep(5 * sleep_multiplier,6 * sleep_multiplier)
     //call Trace("Build Loop total seconds:" + Int2Str((ai_time - timing) * 5))
   endloop
 //    call DisplayToAll("Shutting down BuildLoopAM")
@@ -12089,7 +12096,7 @@ function SleepInCombatAM takes nothing returns nothing
     exitwhen break_attack // forced attack to end
     exitwhen CaptainIsEmpty()// no troops so stop attack
     exitwhen R2I(count) >= 900 // Took longer than 15 mins to stop lingering something is wrong
-    if (lastcaptainx != 0 and lastcaptainy != 0) then
+    if (lastcaptainx != 0 and lastcaptainy != 0) and (u == null or not UnitAlive(u)) then
       call GroupEnumUnitsInRange(g, lastcaptainx, lastcaptainy, battle_radius,null)
       loop
         set u = FirstOfGroup(g)
@@ -12100,12 +12107,14 @@ function SleepInCombatAM takes nothing returns nothing
       call GroupClear(g)
       if u == null and noenemycount < 8 then
         set noenemycount = noenemycount + 1 // 8 seconds to pick up items on ground
-        call TeleportCaptain(lastcaptainx, lastcaptainy)
+        if not CaptainInCombat(true) then
+          call TeleportCaptain(lastcaptainx, lastcaptainy)
+        endif
       elseif u == null then
         exitwhen true // no enemies so exit
       endif
     endif
-    if (u != null and (not CaptainInCombat(true) or CaptainRetreating() or CaptainIsHome())) then
+    if u != null and not (CaptainInCombat(true) or CaptainIsHome()) then
       set attack_length_counter = attack_length_counter + 1
       if attack_length_counter > attack_reform_length then
         set attack_length_counter = 0
@@ -12266,7 +12275,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       endif
     endif
 
-    call Sleep(2 * sleep_multiplier)
+    call StaggerSleep(1 * sleep_multiplier, 2 * sleep_multiplier)
 
     //set attack_length_counter = attack_length_counter + 1
         //if reform and attack_length_counter > attack_reform_length then
@@ -12321,7 +12330,7 @@ function SleepUntilAtGoalAM takes nothing returns nothing
   loop
     exitwhen town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_low_threat
     set lcount = lcount + 1
-    call Sleep(sleep_multiplier)
+    call StaggerSleep(0.8, 1*sleep_multiplier)
     exitwhen break_attack
     exitwhen CaptainRetreating() and isfleeing
     if lcount >= 6 then
@@ -12330,7 +12339,7 @@ function SleepUntilAtGoalAM takes nothing returns nothing
     endif
     exitwhen CaptainIsEmpty()       // all units died
     //call Trace("Sleeping until target reached")
-    call Sleep(2 * sleep_multiplier)
+    call StaggerSleep(2 * sleep_multiplier, 3 * sleep_multiplier)
   endloop
   call Trace("SleepUntilGoal exit")
 endfunction
@@ -12604,7 +12613,7 @@ function AttackMoveTowerRush takes nothing returns nothing
 			endif
 			set attack_length_counter = attack_length_counter + 1
 		endif
-		call Sleep(1)
+		call StaggerSleep(1*sleep_multiplier, 2*sleep_multiplier)
 		//call AttackMoveKill(builder[20])
 		//if towers_built == 0 then
 			//call CreateDebugTag("Reform protect peon", 10, builder[1], 2.00, 1.50)
@@ -12770,11 +12779,11 @@ endfunction
 //============================================================================
 // (AMAI)  ChooseAttackTarget
 //============================================================================
-function GetRangePenalty takes unit target returns integer
+function GetRangePenalty takes unit target returns real
   if major_hero == null or not UnitAlive(major_hero) or not UnitAlive(target) then
-    return 0
+    return DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(GetOwningPlayer(target)))
   endif
-  return R2I(DistanceBetweenUnits(major_hero, target) / 1400)
+  return DistanceBetweenUnits(major_hero, target) / 1400
 endfunction
 
 //============================================================================
@@ -12832,8 +12841,8 @@ endfunction
 function GetWeakAndNearEnemy takes nothing returns player
   local integer i = 0
   local integer pmin = -1
-  local integer minstr = 10000
-  local integer cstr = 0
+  local real minstr = 10000
+  local real cstr = 0
   local unit cbuilding = null
   loop
     exitwhen i >= c_enemy_total
@@ -12886,9 +12895,9 @@ function GetSecondNearestEnemy takes nothing returns player
   local integer i = 0
   local integer pmin = -1
   local integer spmin = -1
-  local integer minstr = 10000
-  local integer sminstr = 10000
-  local integer cstr = 0
+  local real minstr = 10000
+  local real sminstr = 10000
+  local real cstr = 0
   local unit cbuilding = null
   loop
     exitwhen i >= c_enemy_total
@@ -12968,7 +12977,7 @@ endfunction
 function GetTargetStrength takes unit target returns integer
   local integer str = GetUnexactPlayerStrength(GetOwningPlayer(target))
   if str < 100 then
-    set str = Min(str + GetRangePenalty(target), 100)
+    set str = Min(str + R2I(GetRangePenalty(target)), 100)
   endif
   return str
 endfunction
@@ -13255,7 +13264,7 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
     endif
     exitwhen not town_threatened and not TownThreatened() and not CaptainInCombat(false)
     exitwhen player_defeated
-    call Sleep(2 * sleep_multiplier)
+    call StaggerSleep(2 * sleep_multiplier, 3 * sleep_multiplier)
     //set own_strength = GetOwnStrength()
   endloop
   call Trace("==exit Sleep Defend Town==")
@@ -13899,7 +13908,7 @@ function HealArmy takes nothing returns nothing
       loop
         exitwhen player_defeated or town_threatened or i >= 4
         call Trace("function HealArmy: wait ward cast heal" + Int2Str(i))
-        call Sleep(sleep_multiplier)
+        call StaggerSleep(0.8 * sleep_multiplier, sleep_multiplier)
         set i = i + 1
       endloop
       if i >= 4 then
@@ -13962,7 +13971,7 @@ function HealArmy takes nothing returns nothing
       endif
     endif
     set sleepFrequency = sleepFrequency + 1
-    call Sleep(sleepLength * sleep_multiplier) // Wait some time for item effects to work
+    call StaggerSleep(sleepLength * sleep_multiplier, sleepLength * sleep_multiplier + 1) // Wait some time for item effects to work
     set mass_healed = false
     set global_heal = false
   endloop
