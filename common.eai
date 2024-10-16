@@ -6831,32 +6831,13 @@ endfunction
 //============================================================================
 function CheckFastExpansion takes nothing returns nothing
   local integer es = 0
-  //local location expanloc = null
   local real timeaway = 0
-  //local location l = null
-  //local unit firstexp = null
-
-//  call GetExpNearestMin(firstexp)
-//  set l = GetUnitLoc(firstexp)
-//  set timeaway = CanPathToLoc(start_loc, l, PATHING_TYPE_WALKABILITY)
-//  if timeaway > 0 then
-//	set current_expansion = firstexp
-//  	call AddExpansion(current_expansion, timeaway)
-//	call Trace("CheckFastExpansion: Quick Mine Calculated")
-//	set ancient_exp_loc = expansion_ancient[expansion_list_length - 1]	
-//	set current_expansion_creeps = expansion_creeps[expansion_list_length - 1]
-//  endif
-
-  //set firstexp = null
   
   if current_expansion != null then
-	set es = GetExpansionStrength()
-  //MinRangeToEnemy(l) > 7000
-	if GetRandomInt(1,2) == 1 and GetPlayers() > 2 and MinRangeToEnemy(home_location) > 7000 and es <= 0 then
-		set exp_time_count = -exp_first_time
-	endif
-  //call RemoveLocation(l)
-  //set l = null
+    set es = GetExpansionStrength()
+    if GetRandomInt(1,2) == 1 and ((GetPlayers() > 2 and MinRangeToEnemy(home_location) > 7000 and es <= 0) or exp_number >= (c_enemy_total + c_ally_total + 1)*2 or race_militia_expansion_available) then
+      set exp_time_count = -exp_first_time
+    endif
   endif
 endfunction
 
@@ -7740,17 +7721,11 @@ function PathingThread takes nothing returns nothing
   call CheckAllNeutralsQuick() // Old system check
   call MakeExpansionList()
   set water_map = water_expansion_list_length >= expansion_list_length
-  set active_expansion = water_expansion_list_length + expansion_list_length >= (c_enemy_total + c_ally_total + 1)*2  // have more mine , should positive Expansion
   set first_expansion_chosen = first_expansion_chosen == true or (water_expansion_list_length > 0)  // no expansion but have water expansion , can take expansion
-  call ChooseExpansion()
-  call CheckFastExpansion()
   call CheckAllNeutrals() // The more advanced new system check
   set pathing_done = true
   loop // no need repeated run
     call StaggerSleep(4 * sleep_multiplier, 6 * sleep_multiplier)
-    if active_expansion and exp_number < c_enemy_total + c_ally_total + 1 then
-      set active_expansion = false
-    endif
     if t == 5 then
       loop
         exitwhen i >= NEUTRAL_COUNT
@@ -10592,12 +10567,9 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     return BUILT_ALL
   endif
 
-  if current_expansion == null or CheckExpansionTaken(current_expansion) then
-    call ChooseExpansion()
-    if current_expansion == null then
-      call Trace("AMAIStartexpa: Expansion Not Found")
-      return BUILT_ALL
-    endif
+  if current_expansion == null then
+    call Trace("AMAIStartexpa: Expansion Not Found")
+    return BUILT_ALL
   endif
   if CheckExpansionTaken(current_expansion) then
     call Trace("AMAIStartexpa: Expansion Taken by someone else")
@@ -10988,9 +10960,11 @@ local boolean exp_prepared = false
 local boolean rebuild = false
 local unit u = null
 local boolean upkeepboost = false
+local boolean specialexpand = false
+local boolean fastexpa = true
 
 if not first_expansion_chosen then
-  call Trace("ExpansionBuilder: First expansion not chosen")
+  call Trace("ExpansionBuilder: Expansions not evaluated yet")
   return
 endif
 if current_expansion == null or CheckExpansionTaken(current_expansion) then
@@ -11006,6 +10980,11 @@ if current_expansion == null or CheckExpansionTaken(current_expansion) then
     endif
     return
   endif
+  set specialexpand = true
+endif
+if fastexpa then
+  set fastexpa = false
+  call CheckFastExpansion()
 endif
 set exp_prepared = false
 if first_town_mine > 0 and (race_uses_mine_expansion or race_manual_loading) then  //home_location have multiple mine , fix GetMinesOwned bug(ELF and UD)
@@ -11031,7 +11010,7 @@ if mines < 2 and ai_time - exp_time_count > exp_first_time then
   endif
 endif
 
-if mines < 3 and ((ai_time - exp_time_count > exp_second_time) or (active_expansion and ai_time - exp_time_count > exp_first_time)) then
+if mines < 3 and (ai_time - exp_time_count > exp_second_time) then
   if u != null then
     set take_exp = true
     call Trace("ExpansionBuilder:Need to Creep Mine 3")
@@ -11039,6 +11018,45 @@ if mines < 3 and ((ai_time - exp_time_count > exp_second_time) or (active_expans
     set take_exp = false
     set exp_prepared = true
     call Trace("ExpansionBuilder:Ready to expand to mine 3")
+  endif
+endif
+
+// Every mine has chance to check expand
+if take_exp and race_militia_expansion_available and specialexpand then
+  call Trace("ExpansionBuilder:Could militia expand?")
+  set specialexpand = false
+  if GetRandomInt(1, 100) <= 60 then
+    call TQAddJob(0, MILITIA_EXPAND, 0)
+    return
+  endif
+endif
+if take_exp and race_item_expansion_available and not item_expanding and specialexpand then
+  call Trace("ExpansionBuilder:Could item expand?")
+  set specialexpand = false
+  if GetRandomInt(1, 100) <= race_item_expansion_probability and GetResourceAmount(current_expansion) > (gold_price[race_item_expansion_item_id] + 300) and not_taken_expansion == null and shop_unit != null and race_item_expansion_item_id != 0 and tier >= race_item_sale_level then
+      set item_expanding = true
+      call TQAddJob(1, ITEM_EXPANSION, 0)
+      return
+  endif
+endif
+if take_exp and race_ancient_expansion_available and not ancient_expanding and specialexpand then //choseexp means this first time we picked a new mine to expand to
+  call Trace("ExpansionBuilder:Could ancient expand?")
+  set specialexpand = false
+  set i = 0
+  if hero_unit[1] != null then
+    set i = hero_rush_bonus[hero[1]]
+  endif
+  if hero_unit[2] != null then
+    set i = i + hero_rush_bonus[hero[2]]
+  endif
+  if hero_unit[3] != null then
+    set i = i + hero_rush_bonus[hero[3]]
+  endif
+  if GetRandomInt(1, 100) <= race_ancient_expansion_probability and GetExpansionStrength() < race_ancient_expansion_strength and i >= race_ancient_expansion_hero_rush_level then
+    call TQAddJob(0, ANCIENT_EXPANSION_CHECK, 0)
+    return
+  else
+    call Trace("ExpansionBuilder:Won't ancient exp this time")
   endif
 endif
 
@@ -12869,9 +12887,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
       // take expansions as needed
       //
       if needs_exp and first_expansion_chosen then
-        if current_expansion == null or CheckExpansionTaken(current_expansion) then
-          call ChooseExpansion()
-        endif
         if current_expansion == null or CheckExpansionTaken(current_expansion) then
           call Trace("Need expansion but no valid free expansion available")
         else
