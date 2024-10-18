@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - Commander works enough in LUA maps to let you set the initial language and game mode, but bringing up rest of commander during the game or typing commands does not currently work.
   - (DevTools) Note chat placeholders is no longer supported in languages. This affects both Jass and Lua maps.
   - (DevTools) Conditionals are supported in languages by adding a second column to language translations with a jass conditional expression. String comparisons can only be included in a third column which will be converted to a string as the "" characters cannot be used in the extra columns.
+- Aggressive AMAI profiles now have a chance to expand early and up to a 4th mine when rich.
 - (Classic) Zoom hotkeys can now be enabled or disabled via `-zoomkey` command. (jzy-chitong56)
 - (DevTools) Observer debugging when debug turned on for vanilla AI in VSAI mode.
 
