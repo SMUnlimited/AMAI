@@ -33,6 +33,6 @@ if "%RESULTMAKEVER%"=="5" (
   ) else if "%~3"=="2" (
     ECHO Installed %VER% AMAI to map %2 , Commander : VS AI and Other AI
   ) else (
-    ECHO Installed %VER% AMAI to map %2 , Commander : no
+    ECHO Installed %VER% AMAI to map %2 , Commander : not install
   )
 )
