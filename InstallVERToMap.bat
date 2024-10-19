@@ -30,6 +30,7 @@ if "%RESULTMAKEVER%"=="5" (
 ) else (
   if not "%RESULTMAKEVER%"=="0" (
     ECHO Possibly failed to install to map %2, an unknown error occured %RESULTMAKEVER%
+    exit /b %RESULTMAKEVER%
   )
   ECHO Installed %VER% AMAI to Map %2
 )
