@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component } from '@angular/core';
 import { ElectronService, MenuService } from './core/services';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslateService, TranslatePipe, TranslateDirective, _ as t_, LangChangeEvent } from "@codeandweb/ngx-translate";
 import { APP_CONFIG } from '../environments/environment';
 import { InstallModel } from '../../commons/models';
 
@@ -16,13 +16,24 @@ export class AppComponent {
   public messages = [];
 
   constructor(
-    private electronService: ElectronService,
-    private translate: TranslateService,
-    private menuService: MenuService,
-    private cdr: ChangeDetectorRef,
+    private readonly electronService: ElectronService,
+    private readonly translate: TranslateService,
+    private readonly menuService: MenuService,
+    private readonly cdr: ChangeDetectorRef,
   ) {
     this.translate.setDefaultLang('en');
+    const lang = this.translate.getBrowserLang();
+    this.translate.use(lang)
     console.log('APP_CONFIG', APP_CONFIG);
+
+    // Refresh app when language changes
+    this.translate.onLangChange.subscribe((event: LangChangeEvent) => {
+      this.translate.get([t_('PAGES.HOME.TITLE'),t_('PAGES.ELECTRON.OPEN_MAP'), t_('PAGES.ELECTRON.OPEN_DIR'), t_('PAGES.ELECTRON.MAPFILE')]).subscribe((translations: { [key: string]: string } ) => {
+        this.electronService.ipcRenderer.send('Trans', translations);
+      })
+      this.cdr.detectChanges();
+    });
+    
 
     if (electronService.isElectron) {
       this.menuService.createMenu();
@@ -30,13 +41,15 @@ export class AppComponent {
       // TODO: add 'push notification'/'notification'
       this.electronService.ipcRenderer.on('on-install-init', (_, args: InstallModel) => {
         console.log('args-install-init', args)
-        // TODO: use i18n to translate
-        this.title = `Installing into ${args.response}`;
+        this.translate.get(t_('PAGES.APP.INSTALLING'), {path: args.response}).subscribe((res: string) => {
+          this.title = res
+        });
         this.active = true;
         this.couldClose = false;
         this.messages = [];
-        // TODO: use i18n to translate
-        !args.isMap && this.messages && this.messages.push(`Installing in directory: ${args.response}`);
+        this.translate.get(t_('PAGES.APP.INSTALLING_DIR'), {path: args.response}).subscribe((res: string) => {
+          !args.isMap && this.messages?.push(res);
+        });
 
         // disable the menu while the script is running
         this
@@ -58,8 +71,9 @@ export class AppComponent {
 
       // TODO: add 'push notification'/'notification'
       this.electronService.ipcRenderer.on('on-install-exit', (_, args) => {
-        // TODO: use i18n to translate
-        this.title = 'Installation finished...';
+        this.translate.get(t_('PAGES.APP.INSTALL_DONE')).subscribe((res: string) => {
+          this.title = res;
+        });
         this.couldClose = true;
 
         this
@@ -71,7 +85,7 @@ export class AppComponent {
 
       this.electronService.ipcRenderer.on('on-install-message', (_, args) => {
         console.log('args-install-message', args);
-        this.messages && this.messages.push(args);
+        this.messages?.push(args);
         this.cdr.detectChanges();
       });
 
@@ -93,6 +107,8 @@ export class AppComponent {
   }
 
   public closeCmd() {
-    this.couldClose ? (this.active = false) : null;
+    if (this.couldClose) { 
+      this.active = false;
+    }
   }
 }

@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - (DevTools) Conditionals are supported in languages by adding a second column to language translations with a jass conditional expression. String comparisons can only be included in a third column which will be converted to a string as the "" characters cannot be used in the extra columns.
 - Aggressive AMAI profiles now have a chance to expand early and up to a 4th mine when rich.
 - (Classic) Zoom hotkeys can now be enabled or disabled via `-zoomkey` command. (jzy-chitong56)
+- (Installer) Added translations to installer and will attempt to automatically set language based on users system.
+  - If that fails you can manually change language from the menu toolbar.
+  - Translations may not be perfect as are auto-generated from bing translate except chinese from jzy-chitong56.
 - (DevTools) Observer debugging when debug turned on for vanilla AI in VSAI mode.
 
 ### Changed
@@ -20,12 +23,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Peons with higher priority over a hall upgrade will now be favoured first if no other way to build more peons.
 - If in an attack don't save gold and wood for items as hero is busy.
 - Ancient expansion will now consider all 3 heroes to determine suitability instead of only the first hero.
-- Ancient/militia/item expansions are now checked whenever a new expansion is chosen, so every expansion the random chance to use the ability is rechecked instead of once at game start. 
+- Ancient/militia/item expansions are now checked whenever a new expansion is chosen, so every expansion the random chance to use the ability is rechecked instead of once at game start.
   - Additionally its in sync with when the AI wants an expansion and doesn't just bypass normal expansion priority anymore. 
 - Tweaked expansion logic so when alot more mines on map it increases chance of doing a fast expansion but isn't certain.
 - AI will not take into account enemies ally strength of target which was blocking any attack attempts at all.
 - Insane AI will maphack and determine enemies strength precisely instead of roughly.
 - Teleport control improvements and fixes. (jzy-chitong56)
+- (Installer) Changed name to Installer instead of Electron Manager.
 - (DevTools) Updated MPQEditor to 4.0.0.924.
 
 ### Fixed

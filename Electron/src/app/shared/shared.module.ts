@@ -1,7 +1,7 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule } from '@codeandweb/ngx-translate';
 
 import { PageNotFoundComponent } from './components/';
 import { WebviewDirective } from './directives/';

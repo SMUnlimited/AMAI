@@ -8,8 +8,8 @@ import { SharedModule } from './shared/shared.module';
 import { AppRoutingModule } from './app-routing.module';
 
 // NG Translate
-import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
-import { TranslateHttpLoader } from '@ngx-translate/http-loader';
+import { TranslateLoader, provideTranslateService } from '@codeandweb/ngx-translate';
+import { TranslateHttpLoader } from '@codeandweb/http-loader';
 
 import { HomeModule } from './home/home.module';
 import { DetailModule } from './detail/detail.module';
@@ -30,7 +30,10 @@ const httpLoaderFactory = (http: HttpClient): TranslateHttpLoader =>  new Transl
     HomeModule,
     DetailModule,
     AppRoutingModule,
-    TranslateModule.forRoot({
+
+  ],
+  providers: [   
+    provideTranslateService({
       loader: {
         provide: TranslateLoader,
         useFactory: httpLoaderFactory,
@@ -38,7 +41,6 @@ const httpLoaderFactory = (http: HttpClient): TranslateHttpLoader =>  new Transl
       }
     })
   ],
-  providers: [],
   bootstrap: [AppComponent]
 })
 export class AppModule {}

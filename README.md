@@ -53,7 +53,7 @@ The installer has to be downloaded separately as its much larger compared to the
 
 Unzip the contents of the installer to a folder of your choice.
 
-Double-click amai-electron-manager.exe to open the installer.
+Double-click amai-installer.exe to open the installer.
 
 You can install to a single map or a whole directory.
 
