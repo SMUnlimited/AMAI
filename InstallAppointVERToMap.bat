@@ -33,6 +33,7 @@ echo Installation Commander?:
 echo 1. Install Commander (default)
 echo 2. Install VS AI Commander
 echo 3. Not Install Commander
+
 echo.
 set /p choice=Input(1 ~ 3):
 
@@ -54,6 +55,7 @@ echo.
 echo Please choose the installation method:
 Echo. 1. Batch installation (default)
 Echo. 2. Install a single map
+
 echo.
 set /p choice=Input(1 ~ 2):
 
@@ -63,6 +65,8 @@ cls
 echo.
 ECHO Please enter the complete path of the map folder.
 ECHO e.g. C:\Documents\Warcraft III\Maps
+
+echo.
 set /p searchPath=Input:
 
 setlocal enabledelayedexpansion
@@ -72,15 +76,18 @@ for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
 endlocal
 pause
 )
+
 if not "%choice%"=="1" (
 :InputMap
 cls
 echo.
 ECHO Please enter the complete path of the map folder and map File Name (with Format).
 ECHO e.g. C:\Documents\Warcraft III\Maps\Friends_v1.2.w3x
+
+echo.
 set /p filePath=Input:
-ECHO %filePath%
-  call InstallVERToMap %VER% "%filePath%" "%COMMAND%"
+
+call InstallVERToMap %VER% "%filePath%" "%COMMAND%"
 pause
 goto InputMap
 )
