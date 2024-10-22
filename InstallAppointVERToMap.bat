@@ -62,7 +62,7 @@ if "%choice%"=="1" (
 cls
 echo.
 ECHO Please enter the complete path of the map folder.
-ECHO e.g. G:\Documents\Warcraft III\Maps\
+ECHO e.g. C:\Documents\Warcraft III\Maps
 set /p searchPath=Input:
 
 setlocal enabledelayedexpansion
@@ -77,7 +77,7 @@ if not "%choice%"=="1" (
 cls
 echo.
 ECHO Please enter the complete path of the map folder and map File Name (with Format).
-ECHO e.g. G:\Documents\Warcraft III\Maps\Friends_v1.2.w3x
+ECHO e.g. C:\Documents\Warcraft III\Maps\Friends_v1.2.w3x
 set /p filePath=Input:
 ECHO %filePath%
   call InstallVERToMap %VER% "%filePath%" "%COMMAND%"
