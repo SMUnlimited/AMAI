@@ -420,6 +420,7 @@ globals
     integer min_peon_number_double_mine = 11  // minimum number of peons when 2 mines are owned
     boolean race_has_moonwells = false  // Racial farms have healing properties
     integer groundid = 'ewsp'  // Used to create path units, must be different from race peon
+    integer racial_burrow = 0 // Building id that can house peons/units and then shoot enemies.
 
 #PRAGMA END RACIAL SETTINGS
 
@@ -5815,15 +5816,19 @@ endfunction
 function BuildLumberMillAtBase takes nothing returns boolean
   local location buildloc = GetLumberLocationAtBase()
   local unit u = null
+  local unit temp = null
   local unit peon = GetExpansionPeon()
   local boolean b = false
   if buildloc != null then
     if peon == null then
       set peon = GetExpansionPeon2(peon)
     endif
+    set temp = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_lumber], buildloc, 270.0)
     set u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_lumber], buildloc, 270.0)
     call RemoveLocation(buildloc)
     set buildloc = GetUnitLoc(u)
+    call RemoveUnit(temp)
+    set temp = null
     call RemoveUnit(u)
     set u = null
     call IssuePointOrderByIdLoc(peon, old_id[racial_lumber], buildloc)
@@ -6947,14 +6952,17 @@ function ComputeFrontPoints takes nothing returns nothing
       set backuplocs[i] = null
     endif  
     set i = i + 1
-  endloop  
-  if front_loc[0] == null then
+  endloop
+  if front_loc_num == 0 then
+    call Trace("WARN: No front locations at all")
+    set front_locs_computed = false
+  elseif front_loc[0] == null then
     call Trace("ERROR: Unexpected Front Location")
     if front_loc_num > 0 then
       set front_loc[0] = front_loc[front_loc_num - 1]
     endif
     set front_locs_computed = false
-  else
+  else  
     set front_locs_computed = true
   endif
   set l = null
@@ -10090,11 +10098,13 @@ endfunction
 
 //============================================================================
 function GetBuildLocation takes integer bloc returns location
+  local integer i = 0
   if bloc == BLOC_MINE then
     return mine_loc
   endif
-  if front_loc[0] != null then
-    return front_loc[GetRandomInt(0, front_loc_num - 1)]
+  set i = Max(GetRandomInt(0, front_loc_num - 1),0)
+  if front_loc[i] != null then
+    return front_loc[i]
   endif
   return home_location
 endfunction
@@ -10185,26 +10195,39 @@ endfunction
 
 //============================================================================
 function BuildAtSpecialLoc takes integer unitid, integer town, integer bloc returns integer
-  local unit u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], GetBuildLocation(bloc), 270.0)
-  local location l = GetUnitLoc(u)
+  local unit u = null
+  local unit spaceunit = null
+  local unit spaceunit2 = null
+  local location l = null
   local unit peon = GetExpansionPeon()
 
   if peon == null then
     set peon = GetExpansionPeon2(peon)	// In case we can't get the expansion peon
   endif
+  if peon == null then
+    call Trace("BuildatspecialLoc: No peon available")
+    return CANNOT_BUILD	
+  endif
+  set spaceunit = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], GetBuildLocation(bloc), 270.0)
+  if bloc == BLOC_FRONT then
+    set spaceunit2 = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], GetBuildLocation(bloc), 270.0)
+  endif
+  set u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], GetBuildLocation(bloc), 270.0)
+  set l = GetUnitLoc(u)
   call RemoveUnit(u)
   set u = null
+  call RemoveUnit(spaceunit)
+  set spaceunit = null
+  if (spaceunit2 != null) then
+    call RemoveUnit(spaceunit2)
+    set spaceunit2 = null
+  endif
   if l == null then
     //call Trace("BuildatspecialLoc: No location found")
     //call RemoveLocation(l)
     //set l = null
     set peon = null
     return CANNOT_BUILD
-  elseif peon == null then
-    call Trace("BuildatspecialLoc: No peon available")
-    call RemoveLocation(l)
-    set l = null
-    return CANNOT_BUILD	
   elseif not IssuePointOrderByIdLoc(peon, old_id[unitid], l) then
     //call Trace("Building at special point")
   //else
@@ -10251,6 +10274,14 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
 
     // Previous upgrade will set some time aside while upgrading, during which time requests are ignored till time has expired
     if needed3[unitid] == UPGRADED and town != -1 and ai_time < available_time[unitid] then
+      return BUILT_SOME
+    endif
+    
+    if bloc == BLOC_FRONT and not front_locs_computed then
+      return BUILT_SOME
+    endif
+      
+    if bloc == BLOC_MINE and mine_loc == null then
       return BUILT_SOME
     endif
 
@@ -10453,9 +10484,6 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     //endif
 
     if bloc != BLOC_STD then
-      if bloc == BLOC_FRONT and not front_locs_computed then
-        return BUILT_SOME
-      endif
       if BuildAtSpecialLoc(unitid, town, bloc) != CANNOT_BUILD then   // This only occurs if no peon could be obtained
         return BUILT_SOME
       endif

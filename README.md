@@ -263,7 +263,9 @@ InstallTFTToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m" <N>
 **Strategy and Profile Editor**:
   - Supports an unlimited amount of your own profiles.
   - Supports an unlimited amount of your own strategies.
-  - Auto Building feature for example: an AMAI computer only needs to know that it shall build a hero and 15 footmen. It will automatically build all needed buildings, workers and farms in order to get this as fast as possible.
+  - Auto Building feature for example: an AMAI computer only needs to know that it shall build a hero and 15 footmen. 
+    - It will automatically build all needed buildings, workers and farms in order to get this as fast as possible.
+    - It can also automatically build upgrades or its own counter units when your strategy runs out of items to build.
 
 # Commander
 

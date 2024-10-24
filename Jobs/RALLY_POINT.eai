@@ -1,14 +1,50 @@
 #IFDEF GLOBAL
+    location rally_point = null
 #ELSE
+
+function CheckBurrow takes nothing returns nothing
+  local group g = CreateGroup()
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectById(g, old_id[racial_burrow], true)
+  set g = SelectByAlive(g, true)
+  set g = SelectByHidden(g, false)
+  call GroupImmediateOrder( g, "standdown" )  //fix orc peon go battlestations , but can not standdown
+  call DestroyGroup(g)
+  set g = null
+endfunction
+
+// Set rally point so units come out of buildings at a likely useful location and not the default location.
 function RallypointJob takes nothing returns nothing
   local group g = CreateGroup()
   local unit u = null
+  local integer i = 0
   call DisplayToAllJobDebug("RALLY_POINT JOB START")
+  if rally_point == null and front_locs_computed then 
+    set i = Max(GetRandomInt(0, front_loc_num - 1),0)
+    if front_loc[i] != null then
+      set rally_point = AIGetProjectedLoc(front_loc[0], home_location, -(front_base_distance*0.25), 0)
+    endif
+  endif
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  call GroupPointOrderLoc(g, "setrally", home_location)
+  set g = SelectByAlive(g, true)
+  set g = SelectByHidden(g, false)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if rally_point != null and DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) <= expansion_taken_radius then
+      call IssuePointOrderLoc(u, "setrally", rally_point)
+    else
+      call IssuePointOrderLoc(u, "setrally", home_location)
+    endif
+    call GroupRemoveUnit(g,u)
+  endloop
+  set u = null
   call DestroyGroup(g)
   set g = null
+  if racial_burrow != 0 and TownCountDone(racial_burrow) > 0 then
+    call CheckBurrow()
+  endif
   call TQAddJob(60, RALLY_POINT, 0)
 endfunction
 #ENDIF

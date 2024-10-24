@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - If that fails you can manually change language from the menu toolbar.
   - Translations may not be perfect as are auto-generated from bing translate except chinese from jzy-chitong56.
 - (DevTools) Observer debugging when debug turned on for vanilla AI in VSAI mode.
+- (DevTools) New racial setting `racial_burrow` to set unit used for peons not exiting burrow fix.
 
 ### Changed
 
@@ -28,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Tweaked expansion logic so when alot more mines on map it increases chance of doing a fast expansion but isn't certain.
 - AI will not take into account enemies ally strength of target which was blocking any attack attempts at all.
 - Insane AI will maphack and determine enemies strength precisely instead of roughly.
+- Rally controls will make use of front locations at the home base while all others rally to home to ensure all units exit buildings optimally.
 - Teleport control improvements and fixes. (jzy-chitong56)
 - (Installer) Changed name to Installer instead of Electron Manager.
 - (DevTools) Updated MPQEditor to 4.0.0.924.
@@ -46,6 +48,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Slightly timing tweak to help AI hardcoded systems better understand which mines are claimed at game start.
 - Fixed an issue where we would not get a new target after killing target due to incorrectly checking that combat has ended, which is not likely to be the case.
 - Fix for second nearest ally attack target in ffa matches not taking account of distance correctly if own hero was not available.
+- If front locations are not computed don't save resources for units being built at the front.
 - Fix ally attack target not being reset, particularly expansion seemed to be slower without fix. (jzy-chitong56)
 - Fix Goblin Tinker Skill not upgrading past rockets on one of the trees. (jzy-chitong56)
 - Reduce lengthy unnecessary wait during distraction attack. (jzy-chitong56)
@@ -53,6 +56,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Defeated players should not keep chatting. (jzy-chitong56)
 - Fix for buy neutral units running attack which is not expected. (jzy-chitong56)
 - Memory leak and fault tolerance optimizations. (jzy-chitong56)
+- When building at mine, lumber or front locations AI's will do a better job of leaving gaps for units and buildings. (jzy-chitong56)
+- Fix for hardcoded bug leaving peons in burrows (jzy-chitong56)
 - (Classic) Fix hero priorities too low for various strategies.
 - (Classic) Hero Skill fix will only run on versions 1.29 - 1.32.8. 1.32.9 and onwards will not run the fix. (jzy-chitong56)
 - (Classic) Fix healer mana costs which instead used reforged costs (jzy-chitong56)
