@@ -212,29 +212,10 @@ endfunction
 // 	and tower rushs etc
 //============================================================================
 function initRacialTraits takes nothing returns nothing
-  local integer i = 0
-
-  set i = GetRandomInt(1,100)
-  set race_militia_expansion_available = race_militia_expansion_available and i <= 60
-  if race_militia_expansion_available then
-    call Trace("Militia expansion is true")
-  endif
-  set i = GetRandomInt(1, 100)
-  set race_ancient_expansion_available = race_ancient_expansion_available and i <= race_ancient_expansion_probability
-  if race_ancient_expansion_available then
-    call Trace("Ancient Expansion is true")
-  endif
-  set i = GetRandomInt(1, 100)
-  set race_item_expansion_available = race_item_expansion_available and i <= race_item_expansion_probability
-  if race_item_expansion_available then
-    call Trace("Item Expansion is true")
-  endif
-  set i = GetRandomInt(1, 100)
-  set race_towerrush_available = race_towerrush_available and i <= race_towerrush_probability
+  set race_towerrush_available = race_towerrush_available and GetRandomInt(1, 100) <= race_towerrush_probability
   if race_towerrush_available then
     call Trace("Towerrush variable is true")
   endif
-
 endfunction
 
 function CanTowerRush takes nothing returns nothing
@@ -872,9 +853,9 @@ function build_sequence_all takes nothing returns nothing
     set new_tier = GetTier()
     if tier != new_tier then
       set tier = new_tier
-      if tier == 2 and upkeep_border[UPKEEP_LOW] > FoodUsed() then
+      if tier == 2 then
         set racial_highbuild_lv2_total = 0
-      elseif tier == 3 and upkeep_border[UPKEEP_HIGH] > FoodUsed() then
+      elseif tier > 2 then
         set racial_highbuild_lv3_total = 0
       endif
       //call Trace("BUILD SEQUENCE: initbuildarray2")
@@ -883,20 +864,27 @@ function build_sequence_all takes nothing returns nothing
 
     //If no high-level barracks, it is still necessary to build low-level units to transition
     if tier == 2 and racial_highbuild_lv2_total < 1 then
-      set i = 0
-      loop
-        exitwhen i >= racial_highbuild_lv2_length
-        set racial_highbuild_lv2_total = TownCountDone(racial_highbuild_lv2[i]) + racial_highbuild_lv2_total
-        set i = i + 1
-      endloop
-    endif
-    if tier > 2 and racial_highbuild_lv3_total < 1 then
-      set i = 0
-      loop
-        exitwhen i >= racial_highbuild_lv3_length
-        set racial_highbuild_lv3_total = TownCountDone(racial_highbuild_lv3[i]) + racial_highbuild_lv3_total
-        set i = i + 1
-      endloop
+      if upkeep_border[UPKEEP_LOW] > FoodUsed() + farm_food2 then
+        set i = 0
+        loop
+          exitwhen i >= racial_highbuild_lv2_length
+          set racial_highbuild_lv2_total = TownCountDone(racial_highbuild_lv2[i]) + racial_highbuild_lv2_total
+          set i = i + 1
+        endloop
+      else
+        set racial_highbuild_lv2_total = 1
+      endif
+    elseif tier > 2 and racial_highbuild_lv3_total < 1 then
+      if upkeep_border[UPKEEP_HIGH] > FoodUsed() + farm_food2 then
+        set i = 0
+        loop
+          exitwhen i >= racial_highbuild_lv3_length
+          set racial_highbuild_lv3_total = TownCountDone(racial_highbuild_lv3[i]) + racial_highbuild_lv3_total
+          set i = i + 1
+        endloop
+      else
+        set racial_highbuild_lv3_total = 1
+      endif
     endif
 
     //call Trace("BUILD SEQUENCE: build_sequence")
