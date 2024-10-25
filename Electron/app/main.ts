@@ -85,7 +85,7 @@ const setLang = async (signal, lang: String = "English") => {
   let child;
   // passing reference to external call back
   signal = controller.signal;
-  console.log('${lang}  -newlang');
+  console.log('newlang ： ${lang}');
   let currentExecDir = `./AMAI-release/`,
     currentScriptDir = './AMAI-release/';
 
@@ -104,7 +104,6 @@ const setLang = async (signal, lang: String = "English") => {
   });
 
   try {
-    console.log('try  0');
     process.chdir(currentScriptDir);
   } catch(err) {
 
@@ -125,7 +124,6 @@ const setLang = async (signal, lang: String = "English") => {
         win.webContents.send('on-setlanguage-error', err);
       }
     );
-    console.log('try 1');
     // send messages to modal on front
     child.on('message', (message) => {
       win.webContents.send('on-setlanguage-message', message);
@@ -237,9 +235,7 @@ const execInstall = async (signal, commander: String = "1", isMap: boolean = fal
 
 const installProcess = () => {
   let signal = {};
-    console.log('ein 0');
   ipcMain && ipcMain.on('setlang-English', async () => {
-    console.log('eee 1');
     setLang(signal, "English");
   });
 
