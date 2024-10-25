@@ -38,11 +38,11 @@ const installOnDirectory = async () => {
 
 
   if (args[1] !== '1' && args[1] !== '2' && args[1] !== '0') {
-    process.send(`#### AMAI set Scripts Languages ####`);
+    process.send(`#### AMAI Set Scripts Languages ####`);
     const searchFor = /string language = "([^"]*)"/g;
     const replaceWith = `string language = ${args[1]}`;
-    process.send(`s ${searchFor}`)
-    process.send(`r ${replaceWith}`)
+    process.send(`search ${searchFor}`)
+    process.send(`replace ${replaceWith}`)
     const filePath = ``;
     const updatedData = ``;
 
