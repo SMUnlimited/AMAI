@@ -8,7 +8,7 @@
 function CheckBurrow takes nothing returns nothing
   local group g = CreateGroup()
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  set g = SelectById(g, old_id[BURROW], true)
+  set g = SelectById(g, old_id[racial_burrow], true)
   set g = SelectByAlive(g, true)
   set g = SelectByHidden(g, false)
   call GroupImmediateOrder( g, "standdown" )  //fix orc peon go battlestations , but can not standdown
@@ -20,8 +20,8 @@ function CheckBuildLoc takes location l, real range returns integer
   local group g = CreateGroup()
   local integer i = 0
   call GroupEnumUnitsInRangeOfLoc(g, l, range, null)
-  set g = SelectByPlayer(g, ai_player, true)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  set g = SelectByPlayer(g, ai_player, true)
   set g = SelectByAlive(g, true)
   set g = SelectByHidden(g, false)
   set i = BlzGroupGetSize(g)
@@ -47,8 +47,8 @@ function CheckShredderLoc takes nothing returns nothing
       if d >= 1000 and d <= 2000 then  //Ensure to be near home_location
         call GroupClear(g)
         call GroupEnumUnitsInRangeOfLoc(g, l, 800, null)
-        set g = SelectByPlayer(g, ai_player, true)
         set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+        set g = SelectByPlayer(g, ai_player, true)
         set g = SelectByAlive(g, true)
         set g = SelectByHidden(g, false)
         set shredderbuild = BlzGroupGetSize(g) < 5
@@ -62,19 +62,31 @@ function CheckShredderLoc takes nothing returns nothing
   set g = null
 endfunction
 
-function CheckRallyPoint takes location l, real range returns nothing
-  local group g = null
-  if l != null then
-    set g = CreateGroup()
-    call GroupEnumUnitsInRangeOfLoc(g, home_location, range, null)  // ohter town no need set
-    set g = SelectByPlayer(g, ai_player, true)
-    set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-    set g = SelectByAlive(g, true)
-    set g = SelectByHidden(g, false)
-    call GroupPointOrderLoc(g, "setrally",l)
-    call DestroyGroup(g)
-    set g = null
+function CheckRallyPoint takes nothing returns nothing
+  local group g = CreateGroup()
+  local unit u = null
+  local integer i = 0
+  if rally_point == null and front_locs_computed then 
+    set i = Max(GetRandomInt(0, front_loc_num - 1),0)
+    if front_loc[i] != null then
+      set rally_point = AIGetProjectedLoc(front_loc[0], home_location, -(front_base_distance*0.25), 0)
+    endif
   endif
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and not IsUnitHidden(u) then
+      if rally_point != null and DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) <= expansion_taken_radius then
+        call IssuePointOrderLoc(u, "setrally", rally_point)  //avoid being blocked by front_loc build
+      else
+        call IssuePointOrderLoc(u, "setrally", home_location)
+      endif
+    endif
+    call GroupRemoveUnit(g,u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
 endfunction
 
 function StructureControlJob takes nothing returns nothing
@@ -83,16 +95,16 @@ function StructureControlJob takes nothing returns nothing
     if rally_point == null and front_loc[0] != null and GetLocationX(front_loc[0]) != 0 and GetLocationY(front_loc[0]) != 0 then
       set rally_point = AIGetProjectedLoc(front_loc[0], home_location, -1200, 0)
     endif
-    call CheckRallyPoint(rally_point,1600)
-    call CheckRallyPoint(home_location,1100)  //avoid being blocked by front_loc build
+    call CheckRallyPoint()
     if racial_lumber == 0 or race_no_wood_harvest then  //help fix ELF build blocking , ture is build may be dismantled after being attacked
       set homebuild = CheckBuildLoc(home_location,800) < 5
       set minebuild = mine_loc != null and CheckBuildLoc(mine_loc,700) < 4
+      set shredderbuild = false  // reset
       if TownCountDone(neutral_shredder) > 0 then
         call CheckShredderLoc()  //  harvest wood will have new loc can build
       endif
     endif
-    if TownCountDone(BURROW) > 0 then
+    if racial_burrow != 0 and TownCountDone(racial_burrow) > 0 then
       call CheckBurrow()
     endif
   endif

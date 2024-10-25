@@ -47,7 +47,7 @@ function GroupMicroSystem takes group g, group meleeg, group temp_focus returns 
       set unitloc = GetUnitLoc(u)
       set copy = CopyGroup(meleeg,copy)
       set melee = GetNearestOfGroup(melee, copy, unitloc)
-      if melee != null and UnitAlive(melee) and not IsUnitInGroup(u, focus_fire_group) and IsUnitFacingUnit(melee, u) and DistanceBetweenUnits(u, melee) < 200 and GetUnitMoveSpeed(melee) <= GetUnitMoveSpeed(u) and (not IsUnitType(u, UNIT_TYPE_FLYING) or (IsUnitType(u, UNIT_TYPE_FLYING) and IsUnitType(melee, UNIT_TYPE_ATTACKS_FLYING))) then // 220 is the smallest ranged unit in warcraft 3.
+      if melee != null and IsUnitFacingUnit(melee, u) and DistanceBetweenUnits(u, melee) < 200 and GetUnitMoveSpeed(melee) <= GetUnitMoveSpeed(u) and (not IsUnitType(u, UNIT_TYPE_FLYING) or (IsUnitType(u, UNIT_TYPE_FLYING) and IsUnitType(melee, UNIT_TYPE_ATTACKS_FLYING))) and UnitAlive(melee) and not IsUnitInGroup(u, focus_fire_group) then // 220 is the smallest ranged unit in warcraft 3.
         set l = GetSubtractionLoc_kd(unitloc, GetUnitLoc(melee))
         set l = GetProjectedLoc_dd(unitloc, l, 800)
         call RemoveGuardPosition(u)
@@ -99,6 +99,7 @@ endfunction
 
 function GroupOrderDeny_kd takes group g, group cg, unit target returns nothing
   local unit u = null
+  local item t = null
   local boolean b = false
   loop
     set u = FirstOfGroup(cg)
@@ -110,7 +111,16 @@ function GroupOrderDeny_kd takes group g, group cg, unit target returns nothing
       elseif GetUnitAbilityLevel(u, 'AUdp') > 0 or GetUnitAbilityLevel(u, 'AIdp') > 0 then
         set b = IssueTargetOrder(u, "deathpact", target)
         call GroupRemoveUnit(g, u)
-      elseif GetUnitAbilityLevel(u, 'AIg2') > 0 or GetUnitAbilityLevel(u, 'AIdg') > 0 then
+      elseif GetUnitAbilityLevel(u, 'AIg2') > 0 then
+        set t = GetItemOfTypeOnUnit('ritd', u)
+        if t != null then
+          call UnitUseItemTarget(u, t, target)
+          set b = true
+        else
+          set b = IssueTargetOrderById(u, 852674, target)  // Prevent custom settings
+        endif
+        call GroupRemoveUnit(g, u)
+      elseif GetUnitAbilityLevel(u, 'AIdg') > 0 then
         set b = IssueTargetOrderById(u, 852674, target)
         call GroupRemoveUnit(g, u)
       endif
@@ -119,6 +129,7 @@ function GroupOrderDeny_kd takes group g, group cg, unit target returns nothing
   endloop
   call DestroyGroup(cg)
   set u = null
+  set t = null
 endfunction
 
 function FocusGroupRemoveGuard takes group rg returns group

@@ -10,7 +10,7 @@
   real raceshop_distance_limit = 8000
   real merchant_distance_limit = 8000
   boolean retreat_home = false
-  boolean ismoving = false
+  //boolean ismoving = false
   real buyX
   real buyY
 
@@ -104,7 +104,8 @@ function ResetBuyItem takes nothing returns nothing
     call GroupRemoveUnit(unit_buying_item, shop_sent)
     call GroupRemoveUnit(going_home_group, shop_sent)
     if UnitAlive(shop_sent) and not IsUnitInGroup(shop_sent, unit_buying_merc) and not IsUnitInGroup(shop_sent, unit_buying_tavern) and IsStandardUnit(shop_sent) then
-      call TQAddUnitJob(2, RESET_GUARD_POSITION, 80, shop_sent)
+      call RecycleGuardPosition(shop_sent)
+      call AddAssault(1, GetUnitTypeId(shop_sent))
     endif
   endif
   set shop_sent = null
@@ -138,6 +139,19 @@ function BuyItemJob takes integer id returns nothing
     set shop_ordered = false
     return	// Shouldn't be buying an item anyway , no need reset time , so no use reset
   endif
+  if retreat_home then
+    if shop_sent != null and UnitAlive(shop_sent) and DistanceBetweenPoints_dk(GetUnitLoc(shop_sent), home_location) >= 1100 then
+      call CreateDebugTag("BUY_ITEM: Retreat to Home", 10, shop_sent, 3.00, 1.50)
+      call RemoveGuardPosition(shop_sent)
+      call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
+      call TQAddJob(5, BUY_ITEM, id)
+    else
+      set retreat_home = false
+      call CreateDebugTag("BUY_ITEM: Retreated", 10, shop_sent, 3.00, 1.50)
+      call ResetBuyItem()
+    endif
+    return
+  endif
   set moreshop = GetOwningPlayer(shop_unit) == ai_player and TownCountDone(racial_shop) > 1
   // moved here to prevent a job crash
   if shop_sent == null or not UnitAlive(shop_sent) or (not itemstacking and GetItemNumberOnUnit(id, shop_sent) > 0) then
@@ -168,6 +182,7 @@ function BuyItemJob takes integer id returns nothing
     endif
     call GroupAddUnit(unit_buying_item, shop_sent)
   endif
+
   set dist = DistanceBetweenUnits(shop_sent, shop_unit)
   //call CreateDebugTag("In BUT ITEM JOB, 10, shop_sent, 3.00, 1.50)
   if moreshop and (backshop_unit == null or not UnitAlive(backshop_unit)) then
@@ -190,20 +205,6 @@ function BuyItemJob takes integer id returns nothing
       call ResetBuyItem()
       return
     endif
-  endif
-
-  if retreat_home then
-    if DistanceBetweenPoints_dk(GetUnitLoc(shop_sent), home_location) >= 1100 then
-      call CreateDebugTag("BUY_ITEM: Retreat to Home", 10, shop_sent, 3.00, 1.50)
-      call RemoveGuardPosition(shop_sent)
-      call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
-      call TQAddJob(5, BUY_ITEM, id)
-    else
-      set retreat_home = false
-      call CreateDebugTag("BUY_ITEM: Retreated", 10, shop_sent, 3.00, 1.50)
-      call ResetBuyItem()
-    endif
-    return
   endif
 
   // Enemies are present so get home before they harm us
@@ -242,7 +243,7 @@ function BuyItemJob takes integer id returns nothing
     call CreateDebugTag("buy item", 10, shop_sent, 3.00, 1.50)
     call IssueImmediateOrder(shop_sent, "holdposition")  // stop will let panda cancel element clone
     call SellorDropNonHealingItem(shop_sent, shop_unit, healing, dist < buy_distance)
-    set ismoving = false
+    //set ismoving = false
     if GetUnitAbilityLevel(shop_unit,'Aall') > 0 then  // Change shop target to this hero
       call IssueTargetOrderById(shop_unit, 'Aall', shop_sent)
     elseif GetUnitAbilityLevel(shop_unit,'Aneu') > 0 then
@@ -258,9 +259,9 @@ function BuyItemJob takes integer id returns nothing
   else
     call CreateDebugTag("move to item shop", 10, shop_sent, 3.00, 1.50)
     call IssuePointOrder(shop_sent, "move", GetUnitX(shop_unit) + ISign() * GetRandomInt(200, 320), GetUnitY(shop_unit) + ISign() * GetRandomInt(200, 320))  // if completely close shop, the item with the lowest priority will be sold, such as scepter
-    if ismoving == false then
-      set ismoving = true
-    endif
+    // if ismoving == false then
+    //   set ismoving = true
+    // endif
     set time_next_try = RMin(4, RMax(GetTimeToReachUnit(shop_sent, shop_unit) + 1,1))
   endif
 
