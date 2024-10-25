@@ -86,6 +86,9 @@ export class HomeComponent implements OnInit {
         case 'Roc':
           if (!this.ROCInstall) {
             this.message = `install${this.modeState}${this.bjState}-ROC`;
+            this.Images_ROC_Shown = true;
+            this.Images_TFT_Shown = false;
+            this.Images_REF_Shown = false;
             this.TFTInstall = false;
             this.REFInstall = false;
             this.ROCInstall = !this.ROCInstall;
@@ -96,6 +99,9 @@ export class HomeComponent implements OnInit {
         case 'Tft':
           if (!this.TFTInstall) {
             this.message = `install${this.modeState}${this.bjState}-TFT`;
+            this.Images_ROC_Shown = false;
+            this.Images_TFT_Shown = true;
+            this.Images_REF_Shown = false;
             this.ROCInstall = false;
             this.REFInstall = false;
             this.TFTInstall = !this.TFTInstall;
@@ -106,6 +112,9 @@ export class HomeComponent implements OnInit {
         case 'Ref':
           if (!this.REFInstall) {
             this.message = `install${this.modeState}${this.bjState}`;
+            this.Images_ROC_Shown = false;
+            this.Images_TFT_Shown = false;
+            this.Images_REF_Shown = true;
             this.ROCInstall = false;
             this.TFTInstall = false;
             this.REFInstall = !this.REFInstall;

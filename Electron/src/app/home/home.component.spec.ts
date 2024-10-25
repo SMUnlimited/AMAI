@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 
 import { HomeComponent } from './home.component';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule } from '@codeandweb/ngx-translate';
 import { RouterTestingModule } from '@angular/router/testing';
 
 describe('HomeComponent', () => {
@@ -26,7 +26,7 @@ describe('HomeComponent', () => {
   it('should render title in a h1 tag', waitForAsync(() => {
     const compiled = fixture.debugElement.nativeElement;
     expect(compiled.querySelector('h1').textContent).toContain(
-      'PAGES.HOME.TITLE'
+      {{ 'PAGES.HOME.TITLE' | translate }}
     );
   }));
 });

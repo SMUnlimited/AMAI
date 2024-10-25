@@ -7,6 +7,7 @@ const ipcMain = require('electron').ipcMain;
 const cp = require('child_process');
 
 let win: BrowserWindow = null;
+let translations : { [key: string]: string };
 const args = process.argv.slice(1),
   serve = args.some(val => val === '--serve');
 
@@ -20,7 +21,7 @@ const isDev = () => {
   return require.main.filename.indexOf('app.asar') === -1;
 }
 
-const createWindow = (): BrowserWindow => {
+  const createWindow = (): BrowserWindow => {
 
   const size = screen.getPrimaryDisplay().workAreaSize;
 
@@ -30,6 +31,8 @@ const createWindow = (): BrowserWindow => {
     y: 0,
     width: size.width,
     height: size.height,
+    minWidth: 1280,
+    minHeight: 940,
     webPreferences: {
       devTools: true,
       nodeIntegration: true,
@@ -72,16 +75,81 @@ const createWindow = (): BrowserWindow => {
   return win;
 }
 
-const execInstall = async (signal, commander: String = "-1", isMap: boolean = false, ver: String = "REFORGED") => {
+const setLang = async (signal, lang: String = "English") => {
+  return;
+  const controller = new AbortController();
+  const response = [];
+  const newlang = `"${lang}"`;
+  const isMap: boolean = false;
+  const ver: String = "REFORGED";
+  let child;
+  // passing reference to external call back
+  signal = controller.signal;
+  console.log('${lang}  -newlang');
+  let currentExecDir = `./AMAI-release/`,
+    currentScriptDir = './AMAI-release/';
+
+  if(!isDev()) {
+    currentExecDir = `./AMAI/`;
+    currentScriptDir = path.join(
+      __dirname,
+      `../${currentExecDir}`
+    );
+  }
+  response[0] = currentScriptDir;
+  win.webContents.send('setlanguage', <InstallModel>{
+    response: response[0],
+    newlang,
+    isMap
+  });
+
+  try {
+    console.log('try  0');
+    process.chdir(currentScriptDir);
+  } catch(err) {
+
+  }
+
+  // init set language proccess
+  try {
+    child = cp.fork(
+      require.resolve(
+        path.join(
+          __dirname,
+          `../${currentExecDir}install.js`
+        )
+      ),
+      [ response[0], newlang, ver ],
+      { signal },
+      (err) => {
+        win.webContents.send('on-setlanguage-error', err);
+      }
+    );
+    console.log('try 1');
+    // send messages to modal on front
+    child.on('message', (message) => {
+      win.webContents.send('on-setlanguage-message', message);
+    });
+
+    // close modal on process finishes
+    child.on('exit', () => {
+      win.webContents.send('on-setlanguage-exit');
+    });
+  } catch(err) {
+    win.webContents.send('on-setlanguage-error', err.message);
+  }
+}
+
+const execInstall = async (signal, commander: String = "1", isMap: boolean = false, ver: String = "REFORGED") => {
   const controller = new AbortController();
   const response = dialog.showOpenDialogSync(win, {
     // TODO: add i18n here
-    title : isMap ? "Open WC3 Map File": "Open AMAI Maps Directory",
+    title : isMap ? translations["PAGES.ELECTRON.OPEN_MAP"]: translations["PAGES.ELECTRON.OPEN_DIR"],
     // TODO: Change to let multiples selections when is map
     properties: isMap ? ['openFile'] : ['openDirectory'],
     // TODO: add i18n here
     filters: isMap ? [
-      { name: 'WC3 Map File', extensions: ['w3x', 'w3m'] },
+    { name: translations["PAGES.ELECTRON.MAPFILE"], extensions: ['w3x', 'w3m'] },
     ] : null,
   });
 
@@ -137,7 +205,6 @@ const execInstall = async (signal, commander: String = "-1", isMap: boolean = fa
     // win.webContents.send('on-install-message', 'Error: ' + err.message);
   }
 
-
   // init install proccess
   try {
     child = cp.fork(
@@ -153,7 +220,6 @@ const execInstall = async (signal, commander: String = "-1", isMap: boolean = fa
         win.webContents.send('on-install-error', err);
       }
     );
-
 
     // send messages to modal on front
     child.on('message', (message) => {
@@ -171,6 +237,47 @@ const execInstall = async (signal, commander: String = "-1", isMap: boolean = fa
 
 const installProcess = () => {
   let signal = {};
+    console.log('ein 0');
+  ipcMain && ipcMain.on('setlang-English', async () => {
+    console.log('eee 1');
+    setLang(signal, "English");
+  });
+
+  ipcMain && ipcMain.on('setlang-Chinese', async () => {
+    setLang(signal, "Chinese");
+  });
+
+  ipcMain && ipcMain.on('setlang-French', async () => {
+    setLang(signal, "French");
+  });
+
+  ipcMain && ipcMain.on('setlang-Deutsch', async () => {
+    setLang(signal, "Deutsch");
+  });
+
+  ipcMain && ipcMain.on('setlang-Norwegian', async () => {
+    setLang(signal, "Norwegian");
+  });
+
+  ipcMain && ipcMain.on('setlang-Portuguese', async () => {
+    setLang(signal, "Portuguese");
+  });
+
+  ipcMain && ipcMain.on('setlang-Romanian', async () => {
+    setLang(signal, "Romanian");
+  });
+
+  ipcMain && ipcMain.on('setlang-Russian', async () => {
+    setLang(signal, "Russian");
+  });
+
+  ipcMain && ipcMain.on('setlang-Spanish', async () => {
+    setLang(signal, "Spanish");
+  });
+
+  ipcMain && ipcMain.on('setlang-Swedish', async () => {
+    setLang(signal, "Swedish");
+  });
 
   ipcMain && ipcMain.on('install-folder-1', async () => {
     execInstall(signal, "1", false);
@@ -215,11 +322,11 @@ const installProcess = () => {
   ipcMain && ipcMain.on('install-map-2-TFT', async () => {
     execInstall(signal, "2", true, "TFT");
   });
-  
+
   ipcMain && ipcMain.on('install-map-0-TFT', async () => {
     execInstall(signal, "0", true, "TFT");
   });
-  
+
   ipcMain && ipcMain.on('install-folder-1-ROC', async () => {
     execInstall(signal, "1", false, "ROC");
   });
@@ -227,7 +334,7 @@ const installProcess = () => {
   ipcMain && ipcMain.on('install-folder-2-ROC', async () => {
     execInstall(signal, "2", false, "ROC");
   });
-  
+
   ipcMain && ipcMain.on('install-folder-0-ROC', async () => {
     execInstall(signal, "0", false, "ROC");
   });
@@ -239,7 +346,7 @@ const installProcess = () => {
   ipcMain && ipcMain.on('install-map-2-ROC', async () => {
     execInstall(signal, "2", true, "ROC");
   });
-  
+
   ipcMain && ipcMain.on('install-map-0-ROC', async () => {
     execInstall(signal, "0", true, "ROC");
   });
@@ -286,5 +393,15 @@ const init = () => {
   }
 }
 
+const installTrans = () => {
+  ipcMain?.on('Trans', (_event, data) => {
+    translations = data as { [key: string]: string };
+    if (win != null) {
+      win.setTitle(translations['PAGES.HOME.TITLE'])
+    }
+  });
+}
+
 init();
+installTrans();
 installProcess();
