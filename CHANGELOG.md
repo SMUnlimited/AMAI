@@ -30,6 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - AI will not take into account enemies ally strength of target which was blocking any attack attempts at all.
 - Insane AI will maphack and determine enemies strength precisely instead of roughly.
 - Rally controls will make use of front locations at the home base while all others rally to home to ensure all units exit buildings optimally.
+- Town defense control optimized so that the army tracker controls where defense is best placed in all cases.
 - Teleport control improvements and fixes. (jzy-chitong56)
 - (Installer) Changed name to Installer instead of Electron Manager.
 - (DevTools) Updated MPQEditor to 4.0.0.924.
@@ -49,6 +50,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed an issue where we would not get a new target after killing target due to incorrectly checking that combat has ended, which is not likely to be the case.
 - Fix for second nearest ally attack target in ffa matches not taking account of distance correctly if own hero was not available.
 - If front locations are not computed don't save resources for units being built at the front.
+- Fixed issue with town threats always evaluated as 0 for single players.
 - Fix ally attack target not being reset, particularly expansion seemed to be slower without fix. (jzy-chitong56)
 - Fix Goblin Tinker Skill not upgrading past rockets on one of the trees. (jzy-chitong56)
 - Reduce lengthy unnecessary wait during distraction attack. (jzy-chitong56)

@@ -11602,7 +11602,14 @@ function FormGroupAM takes integer seconds returns nothing
 
     set index = index + 1
   endloop
-  call Sleep(seconds)
+  if seconds > 0 then
+    if not town_threatened then
+      call ClearCaptainTargets() // Causes the pause in movement to allow units to catch up
+                                 // disabled when town threatened as we want units to get back fast
+                                 // and disabled if no sleep delay specified
+    endif
+    call Sleep(seconds)
+  endif
 endfunction
 
 //============================================================================
@@ -11681,6 +11688,7 @@ function SleepInCombatAM takes nothing returns nothing
       exitwhen CaptainIsEmpty()// no troops so stop attack
       exitwhen R2I(count) >= 900 // Took longer than 15 mins to stop lingering something is wrong
       if (lastcaptainx != 0 and lastcaptainy != 0) then
+        call CreateDebugTagLoc("Sleep at captainloc", 10, lastcaptainx, lastcaptainy, 1.00, 0.80)
         call GroupEnumUnitsInRange(g, lastcaptainx, lastcaptainy, battle_radius,null)
         loop
           set u = FirstOfGroup(g)
@@ -11691,21 +11699,21 @@ function SleepInCombatAM takes nothing returns nothing
         call GroupClear(g)
         if u == null and noenemycount < 8 then
             set noenemycount = noenemycount + 1 // 8 seconds to pick up items on ground
-            if (not CaptainIsHome()) then // ignore captain retreating as that will usually occur after killing target
-              call TeleportCaptain(lastcaptainx, lastcaptainy)
-            endif
+            call TeleportCaptain(lastcaptainx, lastcaptainy)
         elseif u == null then
           exitwhen true // no enemies so exit
         endif
+      else
+        call CreateDebugTagLoc("Sleep in combat", 10, GetLocationX(home_location),GetLocationY(home_location), 1.00, 0.80)
       endif
-      if (u != null and not CaptainIsHome()) then
+      if (u != null and not CaptainInCombat(true)) then
         set attack_length_counter = attack_length_counter + 1
         if attack_length_counter > attack_reform_length then
             set attack_length_counter = 0
             call FormGroupAM(0)
         endif
-        call AttackMoveKill(u)
-         //call CaptainAttack(GetLocationX(last_ally_loc), GetLocationY(last_ally_loc))
+        call AttackMoveKill(u) // Use existing troops
+        call CreateDebugTag("Combat sleep attack", 10, u, 1.00, 0.80)
       endif
       exitwhen (not CaptainInCombat(true) or CaptainRetreating() or CaptainIsHome()) and count > 180  // Fail safe using hardcoded checks
       set count = count + 1
@@ -11853,7 +11861,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       endif
     endif
 
-    call StaggerSleep(1 * sleep_multiplier, 2 * sleep_multiplier)
+    call StaggerSleep(1 * sleep_multiplier, (1 * sleep_multiplier) + 2)
 
     //set attack_length_counter = attack_length_counter + 1
         //if reform and attack_length_counter > attack_reform_length then
@@ -12648,6 +12656,8 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
   set own_strength = ai_strength
   call Trace("==Sleep Defend Town==" )
   loop
+    //call DisplayToAll("Town Threatened:" + B2S(town_threatened) + " HardTown Threatened:" + B2S(TownThreatened()) + " CaptainInCombat:" + B2S(CaptainInCombat(false)) + " i:" )
+    call CreateDebugTagLoc("Sleep until town defended", 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
     //if town_loc[most_threatened_town] != null and LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] then
       //if town_threat[most_threatened_town] >= teleport_low_threat then
         //if not teleporting then
@@ -12672,15 +12682,14 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
       call FormGroupAM(0)
     endif
     if not CaptainIsHome() and not CaptainRetreating() then
+      call ClearCaptainTargets()
       call CaptainGoHome()
     endif
     exitwhen not town_threatened and not TownThreatened() and not CaptainInCombat(false)
     exitwhen player_defeated
-    call StaggerSleep(2 * sleep_multiplier, 3 * sleep_multiplier)
-    //set own_strength = GetOwnStrength()
+    call StaggerSleep(2 * sleep_multiplier, (2 * sleep_multiplier) + 2)
   endloop
   call Trace("==exit Sleep Defend Town==")
-  call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
 endfunction
 
 function SetLeadAlly takes nothing returns nothing
@@ -13406,8 +13415,8 @@ function universal_attack_sequence takes nothing returns nothing
     set isfleeing = false
     call FormGroupAM(1)
     call SleepUntilTownDefended(ai_strength)
-  elseif not towerrush and not ancient_expanding and not militia_expanding and not item_expanding then
-    call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
+  //elseif not towerrush and not ancient_expanding and not militia_expanding and not item_expanding then
+    //call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
   endif
 
   if go_home then
@@ -13417,10 +13426,6 @@ function universal_attack_sequence takes nothing returns nothing
   endif
   set break_attack = false
   set go_home = false
-  if not town_threatened then
-    call ClearCaptainTargets()   // Causes the pause in movement to allow units to catch up
-                                 // disabled when town threatened as we want units to get back fast
-  endif
 endfunction
 
 //============================================================================
