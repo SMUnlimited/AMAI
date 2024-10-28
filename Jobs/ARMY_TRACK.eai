@@ -188,17 +188,17 @@ function UpdateSpecificTownThreat takes integer num returns nothing
   local player p = Player(town_owner[num])
   loop
     exitwhen i >= army_num
-    set dist = RMax(DistanceBetweenPoints(army_future[i], town_loc[num]), full_threat_distance)
+    set dist = RMax(DistanceBetweenPoints(army_future[i], town_loc[num]), full_threat_distance) // Future loc
+    set loc = GetSubtractionLoc(town_loc[num], army_loc[i]) 
+    if DistanceBetweenPoints(army_loc[i], town_loc[num]) < GetLengthOfLoc(army_dir[i]) and RAbs(GetAngleBetweenLocs(army_dir[i], loc)) <= 0.4 then // Current loc
+      set dist = full_threat_distance
+    endif
+    call RemoveLocation(loc)
     if dist <= no_threat_distance then
-      set loc = GetSubtractionLoc(army_loc[i], town_loc[num])
-      if DistanceBetweenPoints(army_loc[i], town_loc[num]) < GetLengthOfLoc(army_dir[i]) and RAbs(GetAngleBetweenLocs(army_dir[i], loc)) <= 0.4 then
-        set dist = full_threat_distance
-      endif
-      call RemoveLocation(loc)
       set threat = distance_threat_mult * army_strength[i] / Pow(dist, distance_threat_exponent)
-      if IsPlayerAlly(p, Player(army_owner[i])) or Player(army_owner[i]) == ai_player then
-        set t = t - threat
-      else
+      if IsPlayerAlly(Player(town_owner[num]), Player(army_owner[i])) and Player(army_owner[i]) != ai_player then
+        set town_threat[num] = town_threat[num] - (threat*0.3) // Only ally units reduce threat so should protect own towns over allies, but in some situations ally units enough to protect town
+      elseif Player(army_owner[i]) != ai_player then
         set t = t + threat
         if threat > max_threat then
           set max_threat = threat
@@ -260,6 +260,12 @@ function UpdateTownThreat takes nothing returns nothing
     elseif most_threatened_town >= 0 and town_threat[most_threatened_town] > accepted_threat_level * 1.2 then
       set town_threatened = true
       call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
+    elseif most_threatened_player_town >= 0 and town_threat[most_threatened_player_town] > 0 then
+      call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_player_town]), GetLocationY(town_loc[most_threatened_player_town]))
+    elseif most_threatened_town >= 0 and town_threat[most_threatened_town] > 0 then
+      call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
+    else
+      call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
     endif
   else
     set lastFreeNum = i
