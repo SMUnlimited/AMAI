@@ -31,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Insane AI will maphack and determine enemies strength precisely instead of roughly.
 - Rally controls will make use of front locations at the home base while all others rally to home to ensure all units exit buildings optimally.
 - Town defense control optimized so that the army tracker controls where defense is best placed in all cases.
+- Moved AMAI tags to after player names as various replays and leaderboards cannot display name correctly in those cases.
 - Teleport control improvements and fixes. (jzy-chitong56)
 - (Installer) Changed name to Installer instead of Electron Manager.
 - (DevTools) Updated MPQEditor to 4.0.0.924.
