@@ -4190,33 +4190,41 @@ endfunction
 function GetMineNearLoc takes unit u, location l, real dist returns unit
   local group g = CreateGroup()
   local integer i = 0
-  local real distance = 1500
+  local real d1 = 0
+  local real d2 = dist
+  local unit mine
+  local boolean captures_mines = race_uses_mine_expansion or race_manual_loading
   call GroupEnumUnitsInRangeOfLoc(g, l, dist, null)
-  //set g = SelectByAlive(g, true)
+  if minearray == 0 then
+    call DisplayToAll("Warning - No standard gold mine set in standardunits.slk")
+    call Sleep(3)
+  endif
   loop
-    if minearray == 0 then
-      call DisplayToAll("Warning - No standard gold mine set in standardunits.slk")
-      call Sleep(3)
+    set mine = FirstOfGroup(g)
+    exitwhen mine == null
+    if UnitAlive(mine) and GetResourceAmount(mine) > 0 and ((captures_mines and GetOwningPlayer(mine) == ai_player) or not captures_mines) then
+      set i = 0
+      loop
+        exitwhen i >= minearray
+        if GetUnitTypeId(mine) == racial_goldmine[i] then
+          set i = minearray
+          set d1 = DistanceBetweenPoints_dk(GetUnitLoc(mine), l)
+          if d1 <= d2 then  // get close mine
+            set d2 = d1
+            set u = mine
+          endif
+        endif
+        set i = i + 1
+      endloop
     endif
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    set i = 0
-    loop
-      exitwhen i >= minearray
-      if GetUnitTypeId(u) == racial_goldmine[i] and GetResourceAmount(u) > 0 then
-        //if SetHasEntry(ver_gold_mines, GetUnitTypeId(u)) then
-        //if GetUnitTypeId(u) =='ngol' or GetUnitTypeId(u) =='egol' or GetUnitTypeId(u) == 'ugol' then
-        call Trace("GetMineNearLOC: A Mine match found")
-        call DestroyGroup(g)
-        set g = null
-        return u
-      endif
-      set i = i + 1
-    endloop
-    call GroupRemoveUnit(g,u)
+    call GroupRemoveUnit(g,mine)
   endloop
   call DestroyGroup(g)
   set g = null
+  set mine = null
+  if u != null then 
+    call Trace("GetMineNearLOC: A Mine match found")
+  endif
   return u
 endfunction
 
