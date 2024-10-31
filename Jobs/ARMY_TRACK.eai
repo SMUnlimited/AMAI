@@ -188,25 +188,34 @@ function UpdateSpecificTownThreat takes integer num returns nothing
   local player p = Player(town_owner[num])
   loop
     exitwhen i >= army_num
-    set dist = RMax(DistanceBetweenPoints(army_future[i], town_loc[num]), full_threat_distance) // Future loc
-    set loc = GetSubtractionLoc(town_loc[num], army_loc[i])
-    if DistanceBetweenPoints(army_loc[i], town_loc[num]) < GetLengthOfLoc(army_dir[i]) and RAbs(GetAngleBetweenLocs(army_dir[i], loc)) <= 0.4 then // Current loc
-      set dist = full_threat_distance
-    endif
-    call RemoveLocation(loc)
-    if dist <= no_threat_distance then
-      set dist = Pow(dist, distance_threat_exponent)
-      if dist == 0 then
-        set dist = 1
+    if army_owner[i] != town_owner[i] then
+      set dist = RMax(DistanceBetweenPoints(army_future[i], town_loc[num]), full_threat_distance) // Future loc
+      set loc = GetSubtractionLoc(town_loc[num], army_loc[i])
+      if DistanceBetweenPoints(army_loc[i], town_loc[num]) < GetLengthOfLoc(army_dir[i]) and RAbs(GetAngleBetweenLocs(army_dir[i], loc)) <= 0.4 then // Current loc
+        set dist = full_threat_distance
+      else
+        set dist = RMin(dist, DistanceBetweenPoints(army_loc[i], town_loc[num]))
       endif
-      set threat = distance_threat_mult * army_strength[i] / dist
-      if IsPlayerAlly(Player(town_owner[num]), Player(army_owner[i])) and Player(army_owner[i]) != ai_player then
-        set t = t - (threat*0.3) // Only ally units reduce threat so should protect own towns over allies, but in some situations ally units enough to protect town
-      elseif Player(army_owner[i]) != ai_player then
-        set t = t + threat
-        if threat > max_threat then
-          set max_threat = threat
-          set town_threat_army[num] = i
+      call RemoveLocation(loc)
+      set loc = null
+      if dist <= no_threat_distance then
+        //call DisplayToAll("Threat Dist:" + Real2Str(dist))
+        //call DisplayToAll("Threat strength:" + Real2Str(army_strength[i]))
+        //call DisplayToAll("Threat divisor:" + Real2Str(Pow(dist, distance_threat_exponent)))
+        set dist = Pow(dist, distance_threat_exponent)
+        if dist == 0 then
+          set dist = 1
+        endif
+        set threat = distance_threat_mult * army_strength[i] / dist
+        //call DisplayToAll("Threat:" + Real2Str(Pow(dist, distance_threat_exponent)))
+        if IsPlayerAlly(Player(town_owner[num]), Player(army_owner[i])) and Player(army_owner[i]) != ai_player then
+          set t = t - (threat*0.3) // Only ally units reduce threat so should protect own towns over allies, but in some situations ally units enough to protect town
+        elseif Player(army_owner[i]) != ai_player then
+          set t = t + threat
+          if threat > max_threat then
+            set max_threat = threat
+            set town_threat_army[num] = i
+          endif
         endif
       endif
     endif
@@ -254,8 +263,11 @@ function UpdateTownThreat takes nothing returns nothing
   if i >= town_num then
     set mode = 3
     set lastFreeNum = 0
-    if most_threatened_town >= 0 then
+    if most_threatened_town > 0 and town_threat[most_threatened_town] > 0 then
       call Trace("ThreatenedTownThreat:" + Real2Str(town_threat[most_threatened_town]) + " AcceptedThreatLevel:" + Real2Str(accepted_threat_level))
+    endif
+    if most_threatened_player_town > 0 and town_threat[most_threatened_player_town] > 0 then
+      call Trace("PlayerThreatenedTownThreat:" + Real2Str(town_threat[most_threatened_player_town]) + " AcceptedThreatLevel:" + Real2Str(accepted_threat_level))
     endif
     if most_threatened_player_town >= 0 and town_threat[most_threatened_player_town] > accepted_threat_level then //and town_threat[most_threatened_town] > (I2R(c_ally_total + 1) / c_enemy_total) * town_threat[most_threatened_enemy_town] then
       set town_threatened = true
