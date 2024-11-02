@@ -77,7 +77,7 @@ function GroupOrderFocusWindInstant_d takes group g, unit target returns nothing
         call GroupAddUnit(windwalk_group, u)
         call GroupRemoveUnit(g, u) // Removed from other focus fire groups
       endif
-      if UnitInvis(u) then
+      if IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then // UnitInvis does not work
           call CreateDebugTag("FF: windwalk attack", 10, u, 1.00, 0.80)
           call RemoveGuardPosition(u)
           call IssueTargetOrder(u, "attack", target)
@@ -129,6 +129,23 @@ function FilterFocusFireGroupIfFacing takes group g, unit target returns nothing
   set ug = null
 endfunction
 
+function SelectByWindwalk takes group rg returns group
+  local unit u = null
+  local group g = rg
+  set rg = CreateGroup()
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if GetUnitAbilityLevel(u, 'AOwk') > 0 or GetUnitAbilityLevel(u, 'ANwk') > 0 or IsUnitInvisible(u, GetOwningPlayer(u)) then
+      call GroupAddUnit(rg, u )
+    endif
+    call GroupRemoveUnit(g, u )
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  return rg
+endfunction
+
 function FocusFire takes unit u returns nothing
   local group t = CreateGroup()
   local group temp_focus = CreateGroup()
@@ -146,7 +163,7 @@ function FocusFire takes unit u returns nothing
   // call DestroyGroup(t)
   // set t = CreateGroup()
   call GroupEnumUnitsInRange(t, GetUnitX(u), GetUnitY(u), normal_battle_radius, null)
-  set t = SelectByInvisible(t, GetOwningPlayer(u), true)
+  set t = SelectByWindwalk(t)
   set temp_focus = GroupAddGroup(temp_focus, t)
   call DestroyGroup(t)
   set t = null
@@ -299,6 +316,7 @@ endfunction
 function FocusFireJob takes nothing returns nothing
   local group g = CreateGroup()
   local integer i = 0
+  local unit u = null
 
   call DisplayToAllJobDebug("FOCUSFIRE_CONTROL JOB START")
 
@@ -307,6 +325,18 @@ function FocusFireJob takes nothing returns nothing
   endif
  
    call GroupClear(focus_fire_group)
+   loop
+      set u = FirstOfGroup(windwalk_group)
+      exitwhen u == null
+      if IsUnitVisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) and not IsUnitInGroup(u, unit_healing) and not IsUnitInGroup(u, unit_rescueing ) and not IsUnitInGroup(u, unit_harassing ) and not IsUnitInGroup(u, unit_zepplin_move ) then
+        call RecycleGuardPosition(u)
+        if attack_running and not CaptainIsHome() and not CaptainRetreating() and not isfleeing then
+            call AddAssault(1, GetUnitTypeId(u))
+        endif
+      endif
+      call GroupRemoveUnit(windwalk_group, u)
+   endloop
+   set u = null
    call GroupClear(windwalk_group)
  
   if not CaptainRetreating() and (attack_running or town_threatened) then
