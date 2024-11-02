@@ -12134,37 +12134,51 @@ endfunction
 //============================================================================
 function GetIntervalCreep takes unit u, integer lower, integer upper, integer str, integer anti_air_strength, boolean allow_air, integer sd returns unit
     local integer creepstrength = 0
+    local integer creepstrengthalt = 0
+    local unit alt = null
     local integer middle = (lower + upper) / 2
 
     if sd < 0 then
       return null
     endif
     set u = GetCreepCamp(1, middle, allow_air)
-    if u == null then
+    set alt = GetCreepCamp(1, middle, false)
+    if u == null and alt == null then
         return GetIntervalCreep(u, middle, upper, str, anti_air_strength, allow_air, sd - 1)
-    else
-      set creepstrength = GetCreepCampStrength(u) + 1
-      if balancing then
-        //call Trace("Creep strength: " + Int2Str(creepstrength))
-        call PingMinimap(GetUnitX(u), GetUnitY(u), 1)
-      endif
-      if creepstrength < str then
-        if air_strength <= anti_air_strength then
-          return u
-        else
-          return GetIntervalCreep(u, lower, upper, str, anti_air_strength, false, sd - 1)
-        endif
-      else
-        return GetIntervalCreep(u, lower, middle, str, anti_air_strength, allow_air, sd - 1)
-      endif
     endif
+    if u != null then
+      set creepstrength = GetCreepCampStrength(u) + 1
+    endif
+    if alt != null then
+      set creepstrengthalt = GetCreepCampStrength(u) + 1
+    endif
+    if balancing then
+      //call Trace("Creep strength: " + Int2Str(creepstrength))
+      call PingMinimap(GetUnitX(u), GetUnitY(u), 1)
+    endif
+    if u != null and creepstrength < str then
+      if air_strength <= anti_air_strength then
+        set alt = null
+        return u
+      elseif alt != null and creepstrengthalt < str then
+        set u = alt
+        set alt = null
+        return u
+      endif
+    elseif alt != null and creepstrengthalt < str then
+        set u = alt
+        set alt = null
+        return u
+    endif
+    set alt = null
+    return GetIntervalCreep(u, lower, middle, str, anti_air_strength, allow_air, sd - 1)
 endfunction
 
 //============================================================================
 function GetFittingCreep takes unit u, integer str returns unit
   local integer anti_air_strength = R2I(GetPlayerAntiAirStrength(ai_player))
   local integer creepstrength = 0
-  local boolean allow_air = false      //anti_air_strength > 25
+  local boolean allow_air = false
   local integer lvl = str
 
   set u = GetCreepCamp(1, lvl, true)
@@ -12177,29 +12191,19 @@ function GetFittingCreep takes unit u, integer str returns unit
     set u = GetCreepCamp(1, lvl, false)
   endif
 
-  if u == null then
-    return u
-  endif
-
   //call Trace("Our strength: " + Int2Str(str))
-  set creepstrength = GetCreepCampStrength(u)
-  if creepstrength < str and air_strength <= anti_air_strength then
+  if u != null then
+    set creepstrength = GetCreepCampStrength(u)
+  endif  
+  if u != null and creepstrength < str and air_strength <= anti_air_strength then
     //call Trace("Creep match")
     call Trace("Creeping strength: " + Int2Str(creepstrength))
     set air_strength = creepstrength
     return u
   else
-    //call Trace("No Creep ")
     return GetIntervalCreep(u, 1,100,str, anti_air_strength, allow_air, camp_scan_depth)
   endif
   return u
-
-//    set creep = GetCreepCamp(1, camp_last_checked, allow_air)
-
-//    if balancing then
-//      call DisplayToAll("Creep strength: " + Int2Str(creepstrength))
-//      call PingMinimap(GetUnitX(creep), GetUnitY(creep), 1)
-//    endif
 
 endfunction
 
