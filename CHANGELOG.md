@@ -55,6 +55,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issue with town threats always evaluated as 0 for single players.
 - Fixed potential infinite loop when trying to find a creep camp.
 - Fixed issue with own town mine tracking not as accurate as it could be.
+- Fixed issue where attacks were not being cancelled unless only an ally was under threat.
 - Fix ally attack target not being reset, particularly expansion seemed to be slower without fix. (jzy-chitong56)
 - Fix Goblin Tinker Skill not upgrading past rockets on one of the trees. (jzy-chitong56)
 - Reduce lengthy unnecessary wait during distraction attack. (jzy-chitong56)
