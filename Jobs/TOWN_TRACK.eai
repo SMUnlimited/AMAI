@@ -10,6 +10,7 @@
     boolean array town_can_tp
     integer most_threatened_town = -1
     integer most_threatened_enemy_town = -1
+    integer home_town = -1
     integer town_num = 0
     real town_radius = 2500
     group in_town_group = CreateGroup()
@@ -22,6 +23,9 @@ function CopyTown takes integer from, integer to returns nothing
   //set town_group[to] = town_group[from]
   set town_count[to] = town_count[from]
   set town_can_tp[to] = town_can_tp[from]
+  if town_num == from then
+    set town_num = to
+  endif
   // Not below are temporary to keep usage of it accurate as army track will run after this and re-evaluate.
   if most_threatened_town == from then
     set most_threatened_town = to
@@ -77,6 +81,9 @@ function TrackTown takes integer num returns boolean
     call CreateDebugTagLoc("Tracked Town: " + Int2Str(num) + " structures:" + Int2Str(town_count[num]), 16, x, y, 8.00, 3.00)
   elseif not IsPlayerAlly(Player(p), ai_player) then
     set town_can_tp[num] = false
+  endif
+  if DistanceBetweenPoints(town_loc[num], home_location) <= town_radius then
+    set home_town = num
   endif
   return true
 endfunction
@@ -141,6 +148,7 @@ function TownTrackJob takes nothing returns nothing
   call DisplayToAllJobDebug("TOWN_TRACK Job Start")
   if not town_threatened and not TownThreatened() then
     call GroupClear(in_town_group)
+    set home_town = -1
     call TrackExistingTowns()
     call SeedNewTowns()
   endif
