@@ -3552,6 +3552,14 @@ function CopyGroup takes group g returns group
   return gnew
 endfunction
 
+// Is unit actually invisible to player via abilities
+function IsUnitInvisibleAM takes unit u, player target returns boolean
+  local boolean isInvis = false
+  set isInvis = UnitInvis(u) and not IsUnitDetected(u,target) // UnitInvis only detects some specific invisibility cases (e.g windwalkers are not one of them)
+  set isInvis = isInvis or (IsUnitInvisible(u, target) and not IsUnitMasked(u, target) and not IsUnitFogged(u, target)) //IsUnitInvisible also takes actual visibility into account so fogged/masked need to be excluded
+  return isInvis
+endfunction
+
 //==========================================================================
 // (AMAI)	AreUnitsOfType
 //==========================================================================
@@ -5438,7 +5446,7 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if ((only_structures and IsUnitType(u, UNIT_TYPE_STRUCTURE)) or (not only_structures and not IsUnitType(u, UNIT_TYPE_PEON))) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and not IsUnitHidden(u) and not IsUnitInvisible(u, ai_player) then
+    if ((only_structures and IsUnitType(u, UNIT_TYPE_STRUCTURE)) or (not only_structures and not IsUnitType(u, UNIT_TYPE_PEON))) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) and IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and not IsUnitHidden(u) and not IsUnitInvisibleAM(u, ai_player) then
       set sum = sum + 1
     endif
     call GroupRemoveUnit(g,u)
@@ -5487,7 +5495,7 @@ function GetLocationStrength takes real x, real y, real radius returns real
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and not IsUnitHidden(u) and IsUnitType(u,UNIT_TYPE_PEON) == false and not IsUnitInvisible(u, ai_player) then
+    if UnitAlive(u) and not IsUnitHidden(u) and IsUnitType(u,UNIT_TYPE_PEON) == false and not IsUnitInvisibleAM(u, ai_player) then
       set strength = GetUnitStrength(u)
       set sum = sum + strength
       if IsUnitType(u, UNIT_TYPE_FLYING) then
@@ -11594,10 +11602,11 @@ function FormGroupAM takes integer seconds returns nothing
     set count  = TownCountDone(unitid)
 
     if unitid == racial_ghoul and not take_all_ghouls_along then
-      set desire = attacking_ghouls
+      set desire = (count - harvesting_ghouls) // all spare ghouls should attack and join attack as built
       if towerrush then
         set desire = Min(Max(count - 2 , 0),desire)  // reserve
       endif
+      set attacking_ghouls = desire
     endif
 
     call ConversionsAM(desire,unitid)
@@ -11701,7 +11710,7 @@ function SleepInCombatAM takes nothing returns nothing
         loop
           set u = FirstOfGroup(g)
           exitwhen u == null
-          exitwhen UnitAlive(u) and not IsUnitHidden(u) and not IsUnitInvisible(u, ai_player) and IsPlayerEnemy(ai_player, GetOwningPlayer(u))
+          exitwhen UnitAlive(u) and not IsUnitHidden(u) and IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and not IsUnitInvisibleAM(u, ai_player)
           call GroupRemoveUnit(g, u)
         endloop
         call GroupClear(g)
@@ -11812,20 +11821,25 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
   local integer combat_length_counter = 0
   //local group g = null
 
-  if race_has_ghouls and race_ghouls_attack then
-    set attack_length_counter = 5000  // Force army to regroup to try and get ghouls to go along
-  endif
   loop
+    //call Trace("SleepExitThreat:" + B2S(town_threat_break and town_threatened and not desperation_assault))
     exitwhen town_threat_break and town_threatened and not desperation_assault
+    //call Trace("SleepExitBreak:" + B2S(break_attack and not desperation_assault))
     exitwhen break_attack and not desperation_assault
     //exitwhen captain_flee and CaptainRetreating()
+    //call Trace("SleepExitFlee:" + B2S(isfleeing and (CaptainRetreating() or CaptainIsHome()) and not desperation_assault))
     exitwhen isfleeing and (CaptainRetreating() or CaptainIsHome()) and not desperation_assault
+    //call Trace("SleepExitEmpty:" + B2S(CaptainIsEmpty() and not desperation_assault))
     exitwhen CaptainIsEmpty() and not desperation_assault
     //if (c_ally_total > 0 and GetAllianceTarget() != null) then // If alliance target exists this overrides hardcoded attack controls regardless of unit you pass, so reconfigure attack to be aware of this
     //  set target = GetAllianceTarget()
     //endif
+    //call Trace("SleepExitNull:" + B2S(target == null))
     exitwhen target == null // Fail safe
-    exitwhen IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (IsUnitInvisible(target, ai_player))
+    //call Trace("SleepExitInvalid:" + B2S(IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (IsUnitInvisible(target, ai_player))))
+    exitwhen not UnitAlive(target)
+    exitwhen IsPlayerAlly(ai_player, GetOwningPlayer(target))
+    exitwhen IsUnitInvisibleAM(target, ai_player)
     //if IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player)) then
     //  set g = CreateGroup()
     //  call GroupEnumUnitsInRange(g,GetUnitX(target), GetUnitY(target),battle_radius,null)
