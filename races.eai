@@ -45,7 +45,7 @@ globals
 
     integer wave        = 1
     boolean peons_assigned = false
-
+    boolean ghouls_in_attack = false
 
 endglobals
 
@@ -543,10 +543,8 @@ function setup_ghouls takes nothing returns nothing
     set take_all_ghouls_along = false
   endif
   if take_all_ghouls_along then
-    set attacking_ghouls = gn - Max(1 - (R2I(shredder_peon_count / 2) * TownCountDone(neutral_shredder)), 0)
     set harvesting_ghouls = 0
   elseif wave <= 4 then
-    set attacking_ghouls = Max(6, gn - 2)
     set harvesting_ghouls = 1
   //elseif wave==2 then
     //set attacking_ghouls = Max(6, gn - 2)
@@ -559,13 +557,15 @@ function setup_ghouls takes nothing returns nothing
   else
     //set harvesting_ghouls = Max(0,Min(5 - wood / R2I(maximum_peon_wood*1),gn) - (R2I(shredder_peon_count / 2) * TownCountDone(neutral_shredder)))
     set harvesting_ghouls = Max(1,Min(5 - wood / R2I(maximum_peon_wood*1),gn) - (R2I(shredder_peon_count / 2) * TownCountDone(neutral_shredder)))
-    set attacking_ghouls = gn - harvesting_ghouls
   endif
+  set attacking_ghouls = gn - harvesting_ghouls
   set attacking_ghouls = Min(Max(attacking_ghouls, 0), gn)
   if towerrush then  // towerrush compensate
     set harvesting_ghouls = Max(2, harvesting_ghouls)
     set attacking_ghouls = gn - harvesting_ghouls
   endif
+  call Trace("Attacking Ghouls:" + Int2Str(attacking_ghouls))
+  call Trace("Harvesting Ghouls:" + Int2Str(harvesting_ghouls))
 endfunction
 
 #INCLUDE <$VER$\$RACE$\BuildSequence.ai>
@@ -665,14 +665,14 @@ function attack_sequence_all takes nothing returns nothing
         call setup_ghouls()
 
         set peons_assigned = false
+        set ghouls_in_attack = true
         call Trace("RACIAL ATTACK: Assigning Peons")
         loop
           exitwhen peons_assigned or desperation_assault
-          call StaggerSleep(sleep_multiplier, sleep_multiplier + 1)
+          call StaggerSleep(2, 3)
         endloop
         call Trace("RACIAL ATTACK: exit Assigning Peons")
-        call StaggerSleep(2, 3) // Seems this helps make sure we do get the ghouls instead of them going back to wood
-        //call FormGroupAM(2)
+        call FormGroupAM(0) // Gets the ghouls to stop harvesting
       endif
 
       call Trace("RACIAL ATTACK: waiting for troops")
@@ -685,8 +685,7 @@ function attack_sequence_all takes nothing returns nothing
 //      call Trace("About to Attack")
       call setup_force(false)
       call universal_attack_sequence()
-
-      set attacking_ghouls = 0
+      set ghouls_in_attack = false
     endif
 
     call StaggerSleep(sleep_multiplier,sleep_multiplier + 2)
@@ -735,7 +734,13 @@ function peon_assignment takes nothing returns nothing
     endif
   endif
   if race_has_ghouls then
-    call HarvestWood(0,Max(TownCountDone(racial_ghoul) - attacking_ghouls, harvesting_ghouls) - TownCountDone(neutral_shredder))
+    call HarvestWood(0, Max(harvesting_ghouls,0))
+    if peons_assigned and ghouls_in_attack then
+      call HarvestWood(0, Max(TownCountDone(racial_ghoul) - attacking_ghouls - harvesting_ghouls,0)) // spare ghouls not doing anything and not assigned to attack yet
+      call FormGroupAM(0) // in an attack so don't let harvest AI override attack
+    else
+      call HarvestWood(0, Max(TownCountDone(racial_ghoul) - harvesting_ghouls,0)) // spare ghouls not doing anything
+    endif
     set peons_assigned = true
   elseif race_manual_loading then
     call HarvestWood(0, 20)
@@ -897,9 +902,9 @@ function build_sequence_all takes nothing returns nothing
     endif
     call Sleep(3 * sleep_multiplier)
     //call Trace("BUILD SEQUENCE: peon_assignment 2")
-    call peon_assignment_all()
-    call Sleep(3 * sleep_multiplier)
-    set x = x + Max(R2I(6*sleep_multiplier), 1)
+    //call peon_assignment_all()
+    //call Sleep(3 * sleep_multiplier)
+    set x = x + Max(R2I(3*sleep_multiplier), 1)
   endloop
 endfunction
 
