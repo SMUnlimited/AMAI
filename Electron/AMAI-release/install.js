@@ -60,6 +60,16 @@ const installOnDirectory = async () => {
   if (!fs.existsSync(`Scripts\\${ver}\\common.ai`)) {
     process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\common.ai`)
     return
+  } else {
+    filePath1 = `Scripts\\${ver}\\common.ai`;
+    fs.readFile(filePath1, 'utf8', (err, data) => {
+      updatedData1 = data.replace(searchFor, replaceWith);
+      fs.writeFile(filePath1, updatedData1, 'utf8', (err) => {
+        if (err) {
+          process.send(`ERROR: Cannot Set language , ${process.cwd()}\\Scripts\\${ver}\\common.ai`)
+        }
+      });
+    });
   }
   if (!fs.existsSync(`MPQEditor.exe`)) {
     process.send(`ERROR: Cannot find ${process.cwd()}\\MPQEditor.exe`)
@@ -72,39 +82,31 @@ const installOnDirectory = async () => {
   if (installCommanderMode1 && !fs.existsSync(`Scripts\\${ver}\\Blizzard.j`)) {
     process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\Blizzard.j`)
     return
+  } else {
+    filePath2 = `Scripts\\${ver}\\Blizzard.j`;
+    fs.readFile(filePath2, 'utf8', (err, data) => {
+      updatedData2 = data.replace(searchFor, replaceWith);
+      fs.writeFile(filePath2, updatedData2, 'utf8', (err) => {
+        if (err) {
+          process.send(`ERROR: Cannot Set language , ${process.cwd()}\\Scripts\\${ver}\\Blizzard.j`)
+        }
+      });
+    });
   }
   if (installCommanderMode2 && !fs.existsSync(`Scripts\\${ver}\\Blizzard_VSAI.j`)) {
     process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\Blizzard_VSAI.j`)
     return
+  } else {
+    filePath3 = `Scripts\\${ver}\\Blizzard_VSAI.j`;
+    fs.readFile(filePath3, 'utf8', (err, data) => {
+      updatedData3 = data.replace(searchFor, replaceWith);
+      fs.writeFile(filePath3, updatedData3, 'utf8', (err) => {
+        if (err) {
+          process.send(`ERROR: Cannot Set language , ${process.cwd()}\\Scripts\\${ver}\\Blizzard_VSAI.j`)
+        }
+      });
+    });
   }
-
-  filePath1 = `Scripts\\${ver}\\common.ai`;
-  fs.readFile(filePath1, 'utf8', (err, data) => {
-    updatedData1 = data.replace(searchFor, replaceWith);
-    fs.writeFile(filePath1, updatedData1, 'utf8', (err) => {
-      if (err) {
-        process.send(`ERROR: Cannot Set ${ver} common.ai language`)
-      }
-    });
-  });
-  filePath2 = `Scripts\\${ver}\\Blizzard.j`;
-  fs.readFile(filePath2, 'utf8', (err, data) => {
-    updatedData2 = data.replace(searchFor, replaceWith);
-    fs.writeFile(filePath2, updatedData2, 'utf8', (err) => {
-      if (err) {
-        process.send(`ERROR: Cannot Set ${ver} Blizzard.j language`)
-      }
-    });
-  });
-  filePath3 = `Scripts\\${ver}\\Blizzard_VSAI.j`;
-  fs.readFile(filePath3, 'utf8', (err, data) => {
-    updatedData3 = data.replace(searchFor, replaceWith);
-    fs.writeFile(filePath3, updatedData3, 'utf8', (err) => {
-      if (err) {
-        process.send(`ERROR: Cannot Set ${ver} Blizzard_VSAI.j language`)
-      }
-    });
-  });
 
   if(arrayOfFiles) {
     for (const file of arrayOfFiles) {
