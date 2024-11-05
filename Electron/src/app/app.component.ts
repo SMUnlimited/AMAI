@@ -28,6 +28,8 @@ export class AppComponent {
 
     // Refresh app when language changes
     this.translate.onLangChange.subscribe((event: LangChangeEvent) => {
+      const newLang = event.lang;
+      this.electronService.ipcRenderer.send('Trans-newlang', newLang);
       this.translate.get([t_('PAGES.HOME.TITLE'),t_('PAGES.ELECTRON.OPEN_MAP'), t_('PAGES.ELECTRON.OPEN_DIR'), t_('PAGES.ELECTRON.MAPFILE')]).subscribe((translations: { [key: string]: string } ) => {
         this.electronService.ipcRenderer.send('Trans', translations);
       })
