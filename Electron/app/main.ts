@@ -8,6 +8,7 @@ const cp = require('child_process');
 
 let win: BrowserWindow = null;
 let translations : { [key: string]: string };
+let currentLanguage: string = "English";
 const args = process.argv.slice(1),
   serve = args.some(val => val === '--serve');
 
@@ -75,69 +76,6 @@ const isDev = () => {
   return win;
 }
 
-const setLang = async (signal, lang: String = "English") => {
-  return;
-  const controller = new AbortController();
-  const response = [];
-  const newlang = `"${lang}"`;
-  const isMap: boolean = false;
-  const ver: String = "REFORGED";
-  let child;
-  // passing reference to external call back
-  signal = controller.signal;
-  console.log('newlang ： ${lang}');
-  let currentExecDir = `./AMAI-release/`,
-    currentScriptDir = './AMAI-release/';
-
-  if(!isDev()) {
-    currentExecDir = `./AMAI/`;
-    currentScriptDir = path.join(
-      __dirname,
-      `../${currentExecDir}`
-    );
-  }
-  response[0] = currentScriptDir;
-  win.webContents.send('setlanguage', <InstallModel>{
-    response: response[0],
-    newlang,
-    isMap
-  });
-
-  try {
-    process.chdir(currentScriptDir);
-  } catch(err) {
-
-  }
-
-  // init set language proccess
-  try {
-    child = cp.fork(
-      require.resolve(
-        path.join(
-          __dirname,
-          `../${currentExecDir}install.js`
-        )
-      ),
-      [ response[0], newlang, ver ],
-      { signal },
-      (err) => {
-        win.webContents.send('on-setlanguage-error', err);
-      }
-    );
-    // send messages to modal on front
-    child.on('message', (message) => {
-      win.webContents.send('on-setlanguage-message', message);
-    });
-
-    // close modal on process finishes
-    child.on('exit', () => {
-      win.webContents.send('on-setlanguage-exit');
-    });
-  } catch(err) {
-    win.webContents.send('on-setlanguage-error', err.message);
-  }
-}
-
 const execInstall = async (signal, commander: String = "1", isMap: boolean = false, ver: String = "REFORGED") => {
   const controller = new AbortController();
   const response = dialog.showOpenDialogSync(win, {
@@ -189,7 +127,8 @@ const execInstall = async (signal, commander: String = "1", isMap: boolean = fal
   win.webContents.send('on-install-init', <InstallModel>{
     response: response[0],
     commander,
-    isMap
+    isMap,
+    currentLanguage
   });
 
   // Change the relative path from where the script will be executed
@@ -212,7 +151,7 @@ const execInstall = async (signal, commander: String = "1", isMap: boolean = fal
           `../${currentExecDir}install.js`
         )
       ),
-      [ response[0], commander, ver ],
+      [ response[0], commander, ver, currentLanguage ],
       { signal },
       (err) => {
         win.webContents.send('on-install-error', err);
@@ -235,45 +174,6 @@ const execInstall = async (signal, commander: String = "1", isMap: boolean = fal
 
 const installProcess = () => {
   let signal = {};
-  ipcMain && ipcMain.on('setlang-English', async () => {
-    setLang(signal, "English");
-  });
-
-  ipcMain && ipcMain.on('setlang-Chinese', async () => {
-    setLang(signal, "Chinese");
-  });
-
-  ipcMain && ipcMain.on('setlang-French', async () => {
-    setLang(signal, "French");
-  });
-
-  ipcMain && ipcMain.on('setlang-Deutsch', async () => {
-    setLang(signal, "Deutsch");
-  });
-
-  ipcMain && ipcMain.on('setlang-Norwegian', async () => {
-    setLang(signal, "Norwegian");
-  });
-
-  ipcMain && ipcMain.on('setlang-Portuguese', async () => {
-    setLang(signal, "Portuguese");
-  });
-
-  ipcMain && ipcMain.on('setlang-Romanian', async () => {
-    setLang(signal, "Romanian");
-  });
-
-  ipcMain && ipcMain.on('setlang-Russian', async () => {
-    setLang(signal, "Russian");
-  });
-
-  ipcMain && ipcMain.on('setlang-Spanish', async () => {
-    setLang(signal, "Spanish");
-  });
-
-  ipcMain && ipcMain.on('setlang-Swedish', async () => {
-    setLang(signal, "Swedish");
-  });
 
   ipcMain && ipcMain.on('install-folder-1', async () => {
     execInstall(signal, "1", false);
@@ -344,7 +244,7 @@ const installProcess = () => {
   });
 
   ipcMain && ipcMain.on('install-map-0-ROC', async () => {
-    execInstall(signal, "0", true, "ROC");
+    execInstall(signal, "0", true, "ROC", );
   });
 
   // TODO: stop process with signal
@@ -390,6 +290,43 @@ const init = () => {
 }
 
 const installTrans = () => {
+  ipcMain?.on('Trans-newlang', (_event, data) => {
+    switch (data) {
+      case 'en':
+        currentLanguage = "English";
+        break;
+      case 'zh':
+        currentLanguage = "Chinese";
+        break;
+      case 'fr':
+        currentLanguage = "French";
+        break;
+      case 'de':
+        currentLanguage = "German";
+        break;
+      case 'no':
+        currentLanguage = "Norwegian";
+        break;
+      case 'pt':
+        currentLanguage = "Portuguese";
+        break;
+      case 'ro':
+        currentLanguage = "Romanian";
+        break;
+      case 'ru':
+        currentLanguage = "Russian";
+        break;
+      case 'es':
+        currentLanguage = "Spanish";
+        break;
+      case 'sv':
+        currentLanguage = "Swedish";
+        break;
+      default:
+        currentLanguage = "English";
+        console.log('Current Language: Unknown so change to English');
+    }
+  });
   ipcMain?.on('Trans', (_event, data) => {
     translations = data as { [key: string]: string };
     if (win != null) {
