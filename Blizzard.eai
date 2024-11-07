@@ -216,6 +216,31 @@ endfunction
 //*
 //***************************************************************************
 
+function DisplayToTP takes string msg returns nothing
+  call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 5, msg )
+endfunction
+function TraceToTP takes string msg returns nothing
+  if debugging then
+    call DisplayToTP(msg)
+  endif
+endfunction
+function DisplayToPlayer takes player p, string msg returns nothing
+  call DisplayTimedTextToPlayer(p, 0, 0, 5, msg )
+endfunction
+function DisplayToAll takes string msg returns nothing
+  local integer i = 0
+  loop
+    exitwhen i >= GetBJMaxPlayers()
+    call DisplayTimedTextToPlayer(Player(i), 0, 0, 7, msg )
+    set i = i + 1
+  endloop
+endfunction
+function TraceToAll takes string msg returns nothing
+  if debugging then
+    call DisplayToAll(msg)
+  endif
+endfunction
+
 //===========================================================================
 // The Parser (Takes a String, Seperates words, puts in string array)
 //===========================================================================
@@ -225,6 +250,8 @@ function Parser takes string ChatMsg returns nothing
   local integer A = 1
   local integer I = 0
   local integer Length = StringLength(ChatMsg)
+
+  call TraceToAll("Parser run:" + ChatMsg)
 
   //Pulls Words and places them each in their own Variable
   loop
@@ -318,30 +345,6 @@ endfunction
 
 function c2s takes player p returns string
   return cs2s(GetPlayerName(p), GetPlayerColor(p)) + ": "
-endfunction
-
-function DisplayToTP takes string msg returns nothing
-  call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 5, msg )
-endfunction
-
-function TraceToTP takes string msg returns nothing
-  if debugging then
-    call DisplayToTP(msg)
-  endif
-endfunction
-
-function DisplayToPlayer takes player p, string msg returns nothing
-  call DisplayTimedTextToPlayer(p, 0, 0, 5, msg )
-endfunction
-
-function DisplayToAll takes string msg returns nothing
-  call DisplayTimedTextToPlayer(GetLocalPlayer(), 0, 0, 7, msg )
-endfunction
-
-function TraceToAll takes string msg returns nothing
-  if debugging then
-    call DisplayToAll(msg)
-  endif
 endfunction
 
 function DisplayFromPlayer takes player p, string msg returns nothing
@@ -589,6 +592,9 @@ endfunction
 // W3C Worker count
 //===========================================================================
 function updateMineText takes integer i returns nothing
+  local integer c = 0
+  local player p = GetTriggerPlayer()
+  local player sp = null
   if W3CWorkTextTag[i] != null then
     call SetTextTagTextBJ(W3CWorkTextTag[i], I2S(W3CWorkers[i]) + "/5", 13)
     call SetTextTagPos(W3CWorkTextTag[i], GetUnitX(W3CMines[i]) - 30, GetUnitY(W3CMines[i]) - 140, 0)
@@ -599,8 +605,17 @@ function updateMineText takes integer i returns nothing
     else
       call SetTextTagColorBJ(W3CWorkTextTag[i], 100, 100, 30, 100)
     endif
-    call SetTextTagVisibility(W3CWorkTextTag[i], W3CWorkerCount and W3CWorkers[i] > 0 and (IsPlayerObserver(GetLocalPlayer()) or not IsPlayerEnemy(GetTriggerPlayer(), GetLocalPlayer())))
+    if W3CWorkerCount and W3CWorkers[i] > 0 then
+      loop
+        exitwhen c >= GetBJMaxPlayers()
+        set sp = Player(c)
+        call SetTextTagVisibility(W3CWorkTextTag[i], IsPlayerObserver(sp) or not IsPlayerEnemy(p, sp))
+        set c = c + 1
+      endloop
+      set sp = null
+    endif
   endif
+  set p = null
 endfunction
 
 function addMineExist takes unit u returns integer
@@ -730,7 +745,9 @@ endfunction
 
 function W3CWorker_chat takes nothing returns nothing
   local integer i = 0
+  local integer c = 0
   local player p = GetTriggerPlayer()
+  local player sp = null
   if p != null then  // Making sure local player use
     if W3CWorkerCount == true then
       set W3CWorkerCount = false
@@ -741,8 +758,14 @@ function W3CWorker_chat takes nothing returns nothing
     endif
     loop
       exitwhen i >= W3CMind_Length
-      if W3CWorkTextTag[i] != null then
-        call SetTextTagVisibility(W3CWorkTextTag[i], W3CWorkerCount and W3CWorkers[i] > 0 and (IsPlayerObserver(GetLocalPlayer()) or not IsPlayerEnemy(p, GetLocalPlayer())))
+      if W3CWorkTextTag[i] != null and W3CWorkerCount and W3CWorkers[i] > 0 then
+        loop
+          exitwhen c >= GetBJMaxPlayers()
+          set sp = Player(c)
+          call SetTextTagVisibility(W3CWorkTextTag[i], IsPlayerObserver(sp) or not IsPlayerEnemy(p, sp))
+          set c = c + 1
+        endloop
+        set sp = null
       endif
       set i = i + 1
     endloop
@@ -791,8 +814,10 @@ function W3CDenyTip takes nothing returns nothing
   local unit u2 = GetKillingUnit()
   local player p1 = GetOwningPlayer(u1)
   local player p2 = GetOwningPlayer(u2)
+  local player p3 = null
   local real x = GetUnitX(u1)
   local real y = GetUnitY(u1)
+  local integer c = 0
   local texttag t = null
   local string s = cs2s("!",GetPlayerColor(p2))
   if (not (IsUnitType(u1,UNIT_TYPE_STRUCTURE) and GetUnitTypeId(u2) == 'uaco')) and GetUnitTypeId(u2) != 'otot' and GetUnitTypeId(u2) != 'usap' and not IsUnitHidden(u1) then
@@ -803,12 +828,18 @@ function W3CDenyTip takes nothing returns nothing
         set s = s + "|cff323232!|r"
       endif
       set t = CreateTextTagUnitBJ(s, u1, -80, 13, 100, 100, 100, 0)
-      call SetTextTagVisibility(t, (IsVisibleToPlayer(x,y,GetLocalPlayer()) and not IsFoggedToPlayer(x,y,GetLocalPlayer()) and not IsMaskedToPlayer(x,y,GetLocalPlayer())) or IsPlayerObserver(GetLocalPlayer()))
+      loop
+        exitwhen c >= GetBJMaxPlayers()
+        set p3 = Player(c)
+        call SetTextTagVisibility(t, (IsVisibleToPlayer(x,y,p3) and not IsFoggedToPlayer(x,y,p3) and not IsMaskedToPlayer(x,y,p3)) or IsPlayerObserver(p3))
+        set c = c + 1
+      endloop
       call SetTextTagPermanentBJ(t, false)
       call SetTextTagVelocityBJ(t, 20, 90)
       call SetTextTagLifespanBJ(t, 2)
       call SetTextTagFadepointBJ(t, 1.5)
       set t = null
+      set p3 = null
     endif
   endif
   set s = null
@@ -913,6 +944,7 @@ endfunction
 function ZoomSet takes nothing returns nothing
   local real Zoom = 0
   local integer i = GetPlayerId(GetTriggerPlayer())
+  call TraceToAll("ZOOM SET Triggered")
   if SubStringBJ(GetEventPlayerChatString(), 6, 6) != "k" then
     if SubStringBJ(GetEventPlayerChatString(), 6, 6) != " " then
       set Zoom = S2R(SubStringBJ(GetEventPlayerChatString(), 6, 10))
