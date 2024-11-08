@@ -22,4 +22,8 @@ if "%RESULTOPTVER%"=="1" (
 @call MakeOptREFORGED 1
 if "%RESULTOPTVER%"=="1" (
   pause
+  exit /b %RESULTOPTVER%
+)
+if "%RESULTMAKEVER%"=="1" (
+  exit /b %RESULTMAKEVER%
 )
