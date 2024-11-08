@@ -1,3 +1,4 @@
 @ECHO OFF
-call MakeVERBase.bat 0 ROC
+SET SILENT=%~1
+call MakeVERBase.bat ROC SILENT
 call ForwardsCompat.bat ROC

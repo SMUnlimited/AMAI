@@ -67,7 +67,7 @@ From Windows `CMD`/`PowerShell` or Wine `wineconsole`, run this:
 ```
 .\Install<Version>ToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m" <N>
 ```
-Where `<Version>` should be replaced with `ROC`, `TFT`, or `REFORGED`, `<Map>` with your preferred map, `<N>` with `1` or `0` if you want to install the Commander or not, respectively.
+Where `<Version>` should be replaced with `ROC`, `TFT`, or `REFORGED`, `<Map>` with your preferred map, `<N>` with `0` or `1` or `2` if you want to not install the Commander or install the Commander or install the VS Vanilla AI mode respectively.
 
 Press enter to install AMAI to the selected map.
 
@@ -77,13 +77,13 @@ Note that disabling the Commander makes `-zoom xxxx` non-functional on pre-REFOR
 
 Alternatively, for complex installs, if you have `perl` installed, you can run this:
 ```
-perl .\InstallToDir.pl <Version> "C:\Documents\Warcraft III\Maps\AMAI\"
+perl .\InstallToDir.pl <Version> "C:\Documents\Warcraft III\Maps\AMAI\" "N"
 ```
-This will install AMAI to all maps recursively.
+This will install AMAI to all maps recursively. Replace N with `0` or `1` or `2` if you want to not install the Commander or install the Commander or install the VS Vanilla AI mode respectively.
 
-You can disable the commander for this install by running this:
+e.g You can disable the commander for this install by running this:
 ```
-perl .\InstallToDir.pl <Version> "C:\Documents\Warcraft III\Maps\AMAI\" "false"
+perl .\InstallToDir.pl <Version> "C:\Documents\Warcraft III\Maps\AMAI\" "0"
 ```
 
 After installing AMAI on your map, just start Warcraft III and play the map against and/or with computers to make use of AMAI.
@@ -94,7 +94,9 @@ You can manually use the included `MPQEditor.exe` to install to a single map.
 
 You can use this with Wine to install on Linux/macOS systems too.
 
-Copy contents of `AMAI\Scripts\<Version>` and `AMAI\Scripts\Blizzard.j` into the `Scripts` folder in a map.
+Copy contents of `AMAI\Scripts\<Version>` into the `Scripts` folder in a map.
+
+You do not need to include the <race>2.ai files unless you are planning to install the VS Vanilla AI mode.
 
 ## Manual Mod Install
 
@@ -205,13 +207,18 @@ Run up a custom game and select the map to play.
 
 ## Optimise Build
 
-This will optimise previously built AI scripts to make them a little bit faster and leaner. Only useful if you are having performance issues, as it's not shipped by default.
+This will optimise previously built AI scripts to make them a little bit faster and leaner.
 
-Run/double-click one of the `MakeOpt<Version>` bat files. (e.g `MakeOptROC.bat` to create optimized ROC scripts for the classic ROC game version.)
+This requires the existing compiled version as it makes a copy into `Scripts\OPT<Version>`
+Run/double-click one of the `MakeOpt<Version>` bat files. (e.g `MakeOptROC.bat` to create optimized ROC scripts for the classic ROC game version.) 
 
-Then install like normal by running this: 
+Currently can only be installed by running this special command, note the OPT<Version> passed in:
 ```
-.\InstallROCToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m" <N>
+.\InstallVERToMap.bat OPTREFORGED "0" "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m" 0
+```
+or 
+```
+perl .\InstallToDir.pl OPTREFORGED "C:\Documents\Warcraft III\Maps\AMAI\" "0"
 ```
 
 ## VS AI Build
@@ -219,15 +226,16 @@ Then install like normal by running this:
 This special version will make *odd* teams run with AMAI and *even* teams run with the standard Blizzard AI.
 
 Useful for testing how much better AMAI is against the original AI.
+You cannot use the standard commander with this option.
 
-Not shipped by default as it creates a very different `Blizzard.j` file.
+A special `Blizzard_VSAI.j` file in your scripts directory during standard compilation.
 
-Run/double click one of the `MakeVAI<Version>` bat files. (e.g `MakeVAITFT.bat` to create the AMAI vs Blizzard AI scripts for the classic TFT version.)
-
-Then install like normal by running this: 
+Enable during install by setting the commander option to 2: 
 ```
-InstallTFTToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m" <N>
+InstallTFTToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m" 2
 ```
+
+Note for manual install you will need to rename back to Blizzard.j before including in your map.
 
 # Features
 

@@ -73,7 +73,7 @@ const createWindow = (): BrowserWindow => {
   return win;
 }
 
-const execInstall = async (signal, commander: boolean = true, isMap: boolean = false, ver: String = "REFORGED") => {
+const execInstall = async (signal, commander: number = 1, isMap: boolean = false, ver: String = "REFORGED") => {
   const controller = new AbortController();
   const response = dialog.showOpenDialogSync(win, {
     // TODO: add i18n here
@@ -173,56 +173,80 @@ const execInstall = async (signal, commander: boolean = true, isMap: boolean = f
 const installProcess = () => {
   let signal = {};
 
-  ipcMain && ipcMain.on('install-folder', async () => {
+  ipcMain?.on('install-folder', async () => {
     execInstall(signal);
   });
   
-  ipcMain && ipcMain.on('install-folder-noc', async () => {
-    execInstall(signal, false, false);
+  ipcMain?.on('install-folder-noc', async () => {
+    execInstall(signal, 0, false);
   });
 
-  ipcMain && ipcMain.on('install-map', async () => {
-    execInstall(signal, true, true);
-  });
-  
-  ipcMain && ipcMain.on('install-map-noc', async () => {
-    execInstall(signal, false, true);
-  });
-  
-  ipcMain && ipcMain.on('install-folder-TFT', async () => {
-    execInstall(signal, true, false, "TFT");
-  });
-  
-  ipcMain && ipcMain.on('install-folder-noc-TFT', async () => {
-    execInstall(signal, false, false, "TFT");
+  ipcMain?.on('install-folder-vai', async () => {
+    execInstall(signal, 2, false);
   });
 
-  ipcMain && ipcMain.on('install-map-TFT', async () => {
-    execInstall(signal, true, true, "TFT");
+  ipcMain?.on('install-map', async () => {
+    execInstall(signal, 1, true);
   });
   
-  ipcMain && ipcMain.on('install-map-noc-TFT', async () => {
-    execInstall(signal, false, true, "TFT");
-  });
-  
-  ipcMain && ipcMain.on('install-folder-ROC', async () => {
-    execInstall(signal, true, false, "ROC");
-  });
-  
-  ipcMain && ipcMain.on('install-folder-noc-ROC', async () => {
-    execInstall(signal, false, false, "ROC");
+  ipcMain?.on('install-map-noc', async () => {
+    execInstall(signal, 0, true);
   });
 
-  ipcMain && ipcMain.on('install-map-ROC', async () => {
-    execInstall(signal, true, true, "ROC");
+  ipcMain?.on('install-map-vai', async () => {
+    execInstall(signal, 2, true);
   });
   
-  ipcMain && ipcMain.on('install-map-noc-ROC', async () => {
-    execInstall(signal, false, true, "ROC");
+  ipcMain?.on('install-folder-TFT', async () => {
+    execInstall(signal, 1, false, "TFT");
+  });
+  
+  ipcMain?.on('install-folder-noc-TFT', async () => {
+    execInstall(signal, 0, false, "TFT");
+  });
+
+  ipcMain?.on('install-folder-vai-TFT', async () => {
+    execInstall(signal, 2, false, "TFT");
+  });
+
+  ipcMain?.on('install-map-TFT', async () => {
+    execInstall(signal, 1, true, "TFT");
+  });
+  
+  ipcMain?.on('install-map-noc-TFT', async () => {
+    execInstall(signal, 0, true, "TFT");
+  });
+
+  ipcMain?.on('install-map-vai-TFT', async () => {
+    execInstall(signal, 2, true, "TFT");
+  });
+  
+  ipcMain?.on('install-folder-ROC', async () => {
+    execInstall(signal, 1, false, "ROC");
+  });
+  
+  ipcMain?.on('install-folder-noc-ROC', async () => {
+    execInstall(signal, 0, false, "ROC");
+  });
+
+  ipcMain?.on('install-folder-vai-ROC', async () => {
+    execInstall(signal, 2, false, "ROC");
+  });
+
+  ipcMain?.on('install-map-ROC', async () => {
+    execInstall(signal, 1, true, "ROC");
+  });
+  
+  ipcMain?.on('install-map-noc-ROC', async () => {
+    execInstall(signal, 0, true, "ROC");
+  });
+
+  ipcMain?.on('install-map-vai-ROC', async () => {
+    execInstall(signal, 2, true, "ROC");
   });
 
   // TODO: stop process with signal
-  ipcMain && ipcMain.on('on-stop-process', async () => {
+  ipcMain?.on('on-stop-process', async () => {
     // stop process here
   });
 }

@@ -1,2 +1,3 @@
 @ECHO OFF
-call MakeOptVER TFT
+SET SILENT=%~1
+call MakeOptVER TFT SILENT

@@ -16,8 +16,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (Installer) Added translations to installer and will attempt to automatically set language based on users system.
   - If that fails you can manually change language from the menu toolbar.
   - Translations may not be perfect as are auto-generated from bing translate except chinese from jzy-chitong56.
+- (Installer) You can now install VSAI mode as a commander option. (jzy-chitong56)  
 - (DevTools) Observer debugging when debug turned on for vanilla AI in VSAI mode.
 - (DevTools) New racial setting `racial_burrow` to set unit used for peons not exiting burrow fix.
+- (DevTools) VSAI is now compiled by default and included in the output scripts (jzy-chitong56)
+- (DevTools) Optimised scripts additionally compiled by default via MakeAll and available to use.
+- (DevTools) Optimise now works with VSAI scripts.
+
 
 ### Changed
 

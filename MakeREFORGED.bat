@@ -1,2 +1,3 @@
 @ECHO OFF
-call MakeVERBase.bat 0 REFORGED
+SET SILENT=%~1
+call MakeVERBase.bat REFORGED SILENT

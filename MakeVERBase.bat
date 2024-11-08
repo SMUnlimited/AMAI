@@ -1,18 +1,20 @@
 @ECHO OFF
-SET VSAI=%~1
-SET VER=%~2
+SET VER=%~1
+SET SILENT=%~2
 SET RESULTMAKEVER=0
-if %VSAI% == 1 (
-  ECHO Making AMAI %VER% VS AI
-) else (
-  ECHO Making AMAI %VER%
+where perl
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+if "%RESULTMAKEVER%"=="1" (
+  ECHO Compilation AMAI Optimization %VER% error
+  ECHO Please install Perl as a requirement to compile AMAI. Download : https://strawberryperl.com/
+  exit /b %RESULTMAKEVER%
 )
 mkdir Scripts\
 mkdir Scripts\%VER%\
 ECHO _____________________________
 ECHO creating \Scripts\%VER%\common.ai
 perl ejass.pl common.eai %VER% VER:%VER% > Scripts\%VER%\common.ai
-ECHO IGNORE jasshelper --scriptonly common.j Scripts\Blizzard.j Scripts\%VER%\common.ai Scripts\%VER%\common2.ai
+ECHO IGNORE jasshelper --scriptonly common.j Scripts\%VER%\Blizzard.j Scripts\%VER%\Blizzard_VSAI.j Scripts\%VER%\common.ai Scripts\%VER%\common2.ai
 ECHO \Scripts\%VER%\common.ai created
 pjass %VER%\common.j Scripts\%VER%\common.ai
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
@@ -51,29 +53,33 @@ if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 jassparser %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\undead.ai
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 ECHO _____________________________
-ECHO creating \Scripts\Blizzard.j VSAI Flag set to %VSAI%
-perl SplitBlizzardJ.pl %VER% %VSAI%
-if %VSAI% == 1 perl ejass.pl Blizzard3VAI.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
-if %VSAI% == 0 perl ejass.pl Blizzard3.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
-perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\Blizzard_%VER%.j
-copy /b/v/y "Scripts\Blizzard_%VER%.j" "Scripts\Blizzard.j"
-ECHO \Scripts\Blizzard_%VER%.j created
-pjass %VER%\common.j Scripts\Blizzard_%VER%.j
+perl SplitBlizzardJ.pl %VER%
+ECHO _____________________________
+ECHO creating \Scripts\%VER%\Blizzard_VSAI.j
+perl ejass.pl Blizzard3VAI.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
+perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\%VER%\Blizzard_VSAI.j
+pjass %VER%\common.j Scripts\%VER%\Blizzard_VSAI.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
-jassparser %VER%\common.j Scripts\Blizzard_%VER%.j
+jassparser %VER%\common.j Scripts\%VER%\Blizzard_VSAI.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+ECHO \Scripts\%VER%\Blizzard_VSAI.j created
+ECHO _____________________________
+ECHO creating \Scripts\%VER%\Blizzard.j
+perl ejass.pl Blizzard3.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
+perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\%VER%\Blizzard.j
+pjass %VER%\common.j Scripts\%VER%\Blizzard.j
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+jassparser %VER%\common.j Scripts\%VER%\Blizzard.j
+ECHO \Scripts\%VER%\Blizzard.j created
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+ECHO _____________________________
+rmdir /s /q "%VER%/tmp"
 if "%RESULTMAKEVER%"=="1" (
-  if %VSAI% == 1 (
-    ECHO Compilation %VER% VS AI error
-  ) else (
-    ECHO Compilation %VER% error
+  ECHO Compilation AMAI %VER% error
+  if "%SILENT%" neq "1" (
+    ECHO Exiting
+    exit /b %RESULTMAKEVER%
   )
-  exit /b %RESULTMAKEVER%
 ) else (
-  if %VSAI% == 1 (
-    ECHO Compilation %VER% VS AI successful
-  ) else (
-    ECHO Compilation %VER% successful
-  )
+  ECHO Making AMAI %VER% finish
 )
-ECHO =============================

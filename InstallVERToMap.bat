@@ -2,7 +2,7 @@
 SET VER=%~1
 SET RESULTMAKEVER=0
 if not exist "%~2" (
-	ECHO %2 Map cannot be found
+	ECHO %2 map cannot be found
 	exit /b 1
 )
 MPQEditor htsize "%~2" 64
@@ -10,9 +10,15 @@ if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
 MPQEditor a "%~2" "%~dp0Scripts\%VER%\*.ai" Scripts
 if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
 if "%~3" == "1" (
-  ECHO Installed Commander to Map
+  ECHO Installing Commander to map
   MPQEditor a "%~2" "%~dp0Scripts\Blizzard_%VER%.j" Scripts\Blizzard.j
   if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
+) else if "%~3" == "2" (
+  ECHO Installing VS Vanilla AI to map
+  MPQEditor a "%~2" "%~dp0Scripts\%VER%\Blizzard_VSAI.j" Scripts\Blizzard.j
+  if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
+) else (
+  ECHO Commander not installed
 )
 MPQEditor f "%~2"
 if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
@@ -22,6 +28,7 @@ if "%RESULTMAKEVER%"=="5" (
 ) else (
   if not "%RESULTMAKEVER%"=="0" (
     ECHO Possibly failed to install to map %2, an unknown error occured %RESULTMAKEVER%
+    exit /b %RESULTMAKEVER%
   )
   ECHO Installed %VER% AMAI to Map %2
 )

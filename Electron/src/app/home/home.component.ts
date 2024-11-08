@@ -131,11 +131,18 @@ export class HomeComponent implements OnInit {
           this.modeState = this.Mode_State ? '-folder' : '-map';
           console.log('mode',this.modeState,this.Mode_State);
           break;
-        case 'BJSwitch':
-          this.BJ_State = !this.BJ_State;
-          this.bjState = this.BJ_State ? '' : '-noc';
-          console.log('BJ',this.bjState,this.BJ_State);
-          break;
+        case 'BJoptionOn':
+            this.bjState = '';
+            console.log('BJ',this.bjState);
+            break;
+        case 'BJoptionVsAI':
+            this.bjState = '-vai';
+            console.log('BJ',this.bjState);
+            break;
+        case 'BJoptionOff':
+            this.bjState = '-noc';
+            console.log('BJ',this.bjState);
+            break;  
       }
     };
   }
