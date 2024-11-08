@@ -1,25 +1,25 @@
 @ECHO OFF
-@call MakeRoC
+@call MakeRoC 1
 if "%RESULTMAKEVER%"=="1" (
   pause
 )
-@call MakeTFT
+@call MakeTFT 1
 if "%RESULTMAKEVER%"=="1" (
   pause
 )
-@call MakeREFORGED
+@call MakeREFORGED 1
 if "%RESULTMAKEVER%"=="1" (
   pause
 )
-@call MakeOptROC
+@call MakeOptROC 1
 if "%RESULTOPTVER%"=="1" (
   pause
 )
-@call MakeOptTFT
+@call MakeOptTFT 1
 if "%RESULTOPTVER%"=="1" (
   pause
 )
-@call MakeOptREFORGED
+@call MakeOptREFORGED 1
 if "%RESULTOPTVER%"=="1" (
   pause
 )
