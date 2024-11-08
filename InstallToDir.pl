@@ -40,7 +40,7 @@ sub process_dir {
         printf "ERROR: Unknown. AMAI not have installed correctly. Adding ai scripts:%d\n", $? >> 8;
       }
       if (!(defined($commander)) || $commander eq "1" || $commander eq "2") {
-        if ($commander eq "1") {
+        if (!(defined($commander)) || $commander eq "1") {
           system "MPQEditor a \"$dirname/$filename\" Scripts\\$ver\\Blizzard.j Scripts\\Blizzard.j";
         } elsif ($commander eq "2") {
           system "MPQEditor a \"$dirname/$filename\" Scripts\\$ver\\Blizzard_VSAI.j Scripts\\Blizzard.j";
