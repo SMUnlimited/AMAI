@@ -1,3 +1,3 @@
 @ECHO OFF
 SET SILENT=%~1
-call MakeOptVER ROC SILENT
+call MakeOptVER ROC %SILENT%

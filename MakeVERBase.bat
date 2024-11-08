@@ -77,6 +77,7 @@ rmdir /s /q "%VER%/tmp"
 if "%RESULTMAKEVER%"=="1" (
   ECHO Compilation AMAI %VER% error
   if "%SILENT%" neq "1" (
+    pause
     ECHO Exiting
     exit /b %RESULTMAKEVER%
   )

@@ -71,6 +71,7 @@ if "%errorlevel%"=="1" SET RESULTOPTVER=1
 if "%RESULTOPTVER%"=="1" (
   ECHO Optimization %VER% error
   if "%SILENT%" neq "1" (
+    pause
     ECHO Exiting
     exit /b %RESULTOPTVER%
   )

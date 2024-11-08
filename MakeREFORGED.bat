@@ -1,3 +1,3 @@
 @ECHO OFF
 SET SILENT=%~1
-call MakeVERBase.bat REFORGED SILENT
+call MakeVERBase.bat REFORGED %SILENT%
