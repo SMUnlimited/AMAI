@@ -15,7 +15,9 @@ if "%~3" == "1" (
   if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
 ) else if "%~3" == "2" (
   ECHO Installing VS Vanilla AI to map
-  MPQEditor a "%~2" "%~dp0Scripts\%VER%\Blizzard_VSAI.j" Scripts\Blizzard.j
+  MPQEditor a "%~2" "%~dp0Scripts\%VER%\vsai\*.ai" Scripts
+  if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
+  MPQEditor a "%~2" "%~dp0Scripts\%VER%\vsai\Blizzard.j" Scripts\Blizzard.j
   if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
 ) else (
   ECHO Commander not installed

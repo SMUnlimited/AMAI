@@ -43,7 +43,15 @@ sub process_dir {
         if (!(defined($commander)) || $commander eq "1") {
           system "MPQEditor a \"$dirname/$filename\" Scripts\\$ver\\Blizzard.j Scripts\\Blizzard.j";
         } elsif ($commander eq "2") {
-          system "MPQEditor a \"$dirname/$filename\" Scripts\\$ver\\Blizzard_VSAI.j Scripts\\Blizzard.j";
+          system "MPQEditor a \"$dirname/$filename\" Scripts\\$ver\\vsai\\*.ai Scripts";
+          if ($? == -1) {
+            printf "Unable to spawn MPQEditor process";
+          } elsif ($? >> 8 == 5) {
+            printf "ERROR: Failed to add vsai scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location %d\n", $? >> 8;
+          } elsif ($? >> 8 > 0) {
+            printf "ERROR: Unknown. AMAI not have installed correctly. Adding commander:%d\n", $? >> 8;
+          }
+          system "MPQEditor a \"$dirname/$filename\" Scripts\\$ver\\vsai\\Blizzard.j Scripts\\Blizzard.j";
         }
         if ($? == -1) {
           printf "Unable to spawn MPQEditor process";

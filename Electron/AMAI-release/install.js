@@ -35,9 +35,7 @@ const installOnDirectory = async () => {
   const ver = args[2]
   const installCommander = commander == 1
   const vsAICommander = commander == 2
-  let bj = null 
-  if (installCommander) {bj = 'Blizzard.j'}
-  if (vsAICommander) {bj = 'Blizzard_VSAI.j'}   
+  const bj = 'Blizzard.j' 
 
   process.send(`#### Installing AMAI for ${ver} Commander ${bj || 'none'} ####`);
 
@@ -62,8 +60,8 @@ const installOnDirectory = async () => {
     process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\Blizzard.j`)
     return
   }
-  if (vsAICommander && !fs.existsSync(`Scripts\\${ver}\\Blizzard_VSAI.j`)) {
-    process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\Blizzard_VSAI.j`)
+  if (vsAICommander && !fs.existsSync(`Scripts\\${ver}\\vsai\Blizzard.j`)) {
+    process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\vsai\Blizzard.j`)
     return
   }
 
@@ -137,6 +135,30 @@ const installOnDirectory = async () => {
             : process.send(`Add ai scripts ${file}`);
  
         if (bj) {
+          
+          if (vsAICommander) {
+                const f1AddVSAIToMPQ =  spawnSync(
+                `MPQEditor.exe`,
+                [
+                  'a',
+                  file,
+                  `Scripts\\${ver}\\vsai\*.ai`,
+                  `Scripts`
+                ],
+                { encoding : `utf8` }
+              );
+              if (f1AddVSAIToMPQ.status == 5) {
+                process.send(`WARN: ${file} Failed to add vsai scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+                continue;
+              } else if (f1AddVSAIToMPQ.status > 0) {
+                process.send(`WARN: ${file} Possibly failed to add vsai scripts, Unknown error occurred: ${f1AddVSAIToMPQ.status}`)
+                continue;
+              }
+              f1AddVSAIToMPQ.error ?
+                process.send(f1AddVSAIToMPQ.error.message)
+                  : process.send(`Installing VS Vanilla AI Scripts ${file}`);
+            
+          }
 
           const f2AddToMPQ =  spawnSync(
             `MPQEditor.exe`,
@@ -162,7 +184,7 @@ const installOnDirectory = async () => {
           }
           f2AddToMPQ.error ?
             process.send(f2AddToMPQ.error.message)
-              : process.send(installCommander ? `Installing commander ${file}` : `Installing VS Vanilla AI ${file}`);
+              : process.send(installCommander ? `Installing commander ${file}` : `Installing VS Vanilla AI commander ${file}`);
 
         }
 

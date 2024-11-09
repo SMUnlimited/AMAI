@@ -96,7 +96,7 @@ You can use this with Wine to install on Linux/macOS systems too.
 
 Copy contents of `AMAI\Scripts\<Version>` into the `Scripts` folder in a map.
 
-You do not need to include the <race>2.ai files unless you are planning to install the VS Vanilla AI mode.
+If wanting to use VS Vanilla AI mode copy the above scripts, but then also copy contents of `AMAI\Scripts\<Version>\vsai` into the `Scripts` folder in a map. You must copy the blizzard.j here instead of the original.
 
 ## Manual Mod Install
 
@@ -228,7 +228,7 @@ This special version will make *odd* teams run with AMAI and *even* teams run wi
 Useful for testing how much better AMAI is against the original AI.
 You cannot use the standard commander with this option.
 
-A special `Blizzard_VSAI.j` file in your scripts directory during standard compilation.
+There are additional scripts compiled in your `scripts\vsai` directory during standard compilation.
 
 Enable during install by setting the commander option to 2: 
 ```

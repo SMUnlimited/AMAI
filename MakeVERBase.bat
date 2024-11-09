@@ -57,10 +57,10 @@ perl SplitBlizzardJ.pl %VER%
 ECHO _____________________________
 ECHO creating \Scripts\%VER%\Blizzard_VSAI.j
 perl ejass.pl Blizzard3VAI.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
-perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\%VER%\Blizzard_VSAI.j
-pjass %VER%\common.j Scripts\%VER%\Blizzard_VSAI.j
+perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\%VER%\vsai\Blizzard.j
+pjass %VER%\common.j Scripts\%VER%\vsai\Blizzard.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
-jassparser %VER%\common.j Scripts\%VER%\Blizzard_VSAI.j
+jassparser %VER%\common.j Scripts\%VER%\vsai\Blizzard.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 ECHO \Scripts\%VER%\Blizzard_VSAI.j created
 ECHO _____________________________
