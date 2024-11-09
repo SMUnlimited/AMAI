@@ -35,7 +35,8 @@ const installOnDirectory = async () => {
   const ver = args[2]
   const installCommander = commander == 1
   const vsAICommander = commander == 2
-  const bj = 'Blizzard.j' 
+  let bj = 'Blizzard.j' 
+  if (vsAICommander) { bj = 'vsai\\Blizzard.j'}
 
   process.send(`#### Installing AMAI for ${ver} Commander ${bj || 'none'} ####`);
 
