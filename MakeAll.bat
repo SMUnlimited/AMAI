@@ -4,9 +4,15 @@ set FAILURE=0
 if "%RESULTMAKEVER%"=="1" (
   set FAILURE=1
   pause
+)else if "%RESULTFWCOMPAT%"=="1" (
+  set FAILURE=1
+  pause
 )
 @call MakeTFT 1
 if "%RESULTMAKEVER%"=="1" (
+  set FAILURE=1
+  pause
+)else if "%RESULTFWCOMPAT%"=="1" (
   set FAILURE=1
   pause
 )
