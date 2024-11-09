@@ -41,6 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Teleport control improvements and fixes. (jzy-chitong56)
 - (Installer) Changed name to Installer instead of Electron Manager.
 - (DevTools) Updated MPQEditor to 4.0.0.924.
+- (DevTools) Set mpq size limit to 128 to reduce chance of failed installs with some maps and VSAI mode. (jzy-chitong56)
 
 ### Fixed
 

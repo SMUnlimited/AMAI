@@ -5,7 +5,7 @@ if not exist "%~2" (
 	ECHO %2 map cannot be found
 	exit /b 1
 )
-MPQEditor htsize "%~2" 64
+MPQEditor htsize "%~2" 128
 if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
 MPQEditor a "%~2" "%~dp0Scripts\%VER%\*.ai" Scripts
 if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%

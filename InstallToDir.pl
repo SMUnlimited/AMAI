@@ -23,7 +23,7 @@ sub process_dir {
       } else {
         print "Installing $ver AMAI without Commander to $dirname/$filename\n";
       }
-      system "MPQEditor htsize \"$dirname/$filename\" 64";
+      system "MPQEditor htsize \"$dirname/$filename\" 128";
       if ($? == -1) {
         printf "Unable to spawn MPQEditor process";
       } elsif ($? >> 8 == 5) {

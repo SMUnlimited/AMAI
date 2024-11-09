@@ -93,7 +93,7 @@ const installOnDirectory = async () => {
 
         const mpqEditor = spawnSync(
           `MPQEditor.exe`,
-          [`htsize`, file, `64`],
+          [`htsize`, file, `128`],
           { encoding : `utf8` }
         );
 
