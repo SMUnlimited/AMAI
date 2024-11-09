@@ -8,7 +8,7 @@ if not exist "%~2" (
 MPQEditor htsize "%~2" 128
 if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
 MPQEditor a "%~2" "%~dp0Scripts\%VER%\*.ai" Scripts
-if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
+if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
 if "%~3" == "1" (
   ECHO Installing Commander to map
   MPQEditor a "%~2" "%~dp0Scripts\%VER%\Blizzard.j" Scripts\Blizzard.j
@@ -16,7 +16,7 @@ if "%~3" == "1" (
 ) else if "%~3" == "2" (
   ECHO Installing VS Vanilla AI to map
   MPQEditor a "%~2" "%~dp0Scripts\%VER%\vsai\*.ai" Scripts
-  if "%errorlevel%"=="5" SET RESULTMAKEVER=%errorlevel%
+  if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
   MPQEditor a "%~2" "%~dp0Scripts\%VER%\vsai\Blizzard.j" Scripts\Blizzard.j
   if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
 ) else (
