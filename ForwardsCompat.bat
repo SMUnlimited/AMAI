@@ -77,6 +77,20 @@ perl -i -pe"s/PLAYER_NEUTRAL_AGGRESSIVE/PLAYER_AMAI_NEUTRAL_AGGRESSIVE/g" Script
 
 pjass %VER%\common.j Scripts\%VER%\common.ai
 if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
+jassparser %VER%\common.j Scripts\%VER%\common.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
+pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\elf.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
+jassparser %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\elf.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
+pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\human.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
+jassparser %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\human.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
+pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\orc.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
+jassparser %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\orc.ai
+if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\undead.ai
 if "%errorlevel%"=="1" SET RESULTFWCOMPAT=1
 jassparser %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\undead.ai
