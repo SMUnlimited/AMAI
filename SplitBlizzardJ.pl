@@ -9,6 +9,7 @@ sub process_blizzj {
   my $ver = $_[0];
   mkdir "$ver/tmp";
   mkdir "Scripts/$ver";
+  mkdir "Scripts/$ver/vsai";
   open my $in, '<', "$ver/blizzard.j" or die "blizzard.j not found $!";
   open my $bliz1, '>',"$ver/tmp/Blizzard1.j" or die "Unable to write blizzard1.j $!";
   open my $bliz2, '>',"$ver/tmp/Blizzard2.j" or die "Unable to write blizzard2.j $!";
@@ -66,10 +67,7 @@ sub process_blizzj {
 my $ver = $ARGV[0];
 process_blizzj($ver);
 
-my $vsai = $ARGV[1];
-if ($vsai eq "1") {
-  copy("$ver/VanillaAI/elf2.ai", "Scripts/$ver/elf2.ai") or die "Copy failed: $!";
-  copy("$ver/VanillaAI/human2.ai", "Scripts/$ver/human2.ai") or die "Copy failed: $!";
-  copy("$ver/VanillaAI/orc2.ai", "Scripts/$ver/orc2.ai") or die "Copy failed: $!";
-  copy("$ver/VanillaAI/undead2.ai", "Scripts/$ver/undead2.ai") or die "Copy failed: $!";
-}
+copy("$ver/VanillaAI/elf2.ai", "Scripts/$ver/vsai/elf2.ai") or die "Copy failed: $!";
+copy("$ver/VanillaAI/human2.ai", "Scripts/$ver/vsai/human2.ai") or die "Copy failed: $!";
+copy("$ver/VanillaAI/orc2.ai", "Scripts/$ver/vsai/orc2.ai") or die "Copy failed: $!";
+copy("$ver/VanillaAI/undead2.ai", "Scripts/$ver/vsai/undead2.ai") or die "Copy failed: $!";

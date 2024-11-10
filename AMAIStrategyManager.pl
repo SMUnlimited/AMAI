@@ -167,16 +167,12 @@ $lframe->Button(
                 -width => 15)->pack;
 $lframe->Button(
                 -text => 'Compile',
-                -command => sub { system "Make$ver.bat" },
+                -command => sub { system("Make$ver.bat", "1") },
                 -width => 15)->pack;
 $lframe->Button(
                 -text => 'Compile, Optimize',
-                -command => sub { system "MakeOpt$ver.bat" },
+                -command => sub { system("MakeOpt$ver.bat", "1") },
                 -width => 15)->pack;
-$lframe->Button(
-		-text => 'Compile AMAIvsAI',
-		-command => sub { system "MakeVAI$ver.bat" },
-		-width => 15)->pack;
 MainLoop;
 
 sub GetRaces {

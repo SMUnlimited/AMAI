@@ -1,8 +1,8 @@
 @ECHO OFF
 SET VER=%~1
-SET MAKEALL=%~2
+SET SILENT=%~2
 SET RESULTOPTVER=0
-ECHO Making AMAI Optimizing %VER%
+ECHO Optimizing %VER% Scripts
 where perl
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
 if "%RESULTOPTVER%"=="1" (
@@ -10,34 +10,86 @@ if "%RESULTOPTVER%"=="1" (
   ECHO Please install Perl as a requirement to compile AMAI. Download : https://strawberryperl.com/
   exit /b %RESULTOPTVER%
 )
-perl Optimize.pl %VER%\common.j Scripts\%VER%\common.ai -l %VER%\Races.txt Scripts\%VER%\$2
-perl Optimize.pl -b Scripts\Blizzard_%VER%.j
+mkdir Scripts\OPT%VER%
+mkdir Scripts\OPT%VER%\vsai
+COPY Scripts\%VER%\common.ai Scripts\OPT%VER%\common.ai
+COPY Scripts\%VER%\human.ai Scripts\OPT%VER%\human.ai
+COPY Scripts\%VER%\orc.ai Scripts\OPT%VER%\orc.ai
+COPY Scripts\%VER%\undead.ai Scripts\OPT%VER%\undead.ai
+COPY Scripts\%VER%\elf.ai Scripts\OPT%VER%\elf.ai
+COPY Scripts\%VER%\vsai\human2.ai Scripts\OPT%VER%\vsai\human2.ai
+COPY Scripts\%VER%\vsai\orc2.ai Scripts\OPT%VER%\vsai\orc2.ai
+COPY Scripts\%VER%\vsai\undead2.ai Scripts\OPT%VER%\vsai\undead2.ai
+COPY Scripts\%VER%\vsai\elf2.ai Scripts\OPT%VER%\vsai\elf2.ai
+COPY Scripts\%VER%\Blizzard.j Scripts\OPT%VER%\Blizzard.j
+COPY Scripts\%VER%\vsai\Blizzard.j Scripts\OPT%VER%\vsai\Blizzard.j
 ECHO _____________________________
-pjass %VER%\common.j Scripts\%VER%\common.ai
+perl Optimize.pl %VER%\common.j Scripts\OPT%VER%\common.ai -l %VER%\Races.txt Scripts\OPT%VER%\$2 Scripts\OPT%VER%\vsai\$3
+perl Optimize.pl -b Scripts\OPT%VER%\vsai\Blizzard.j
+perl Optimize.pl -b Scripts\OPT%VER%\Blizzard.j
+ECHO Optimizing finished
+ECHO _____________________________
+pjass %VER%\common.j Scripts\OPT%VER%\common.ai
+if "%errorlevel%"=="1" SET RESULTOPTVER=1
+jassparser %VER%\common.j Scripts\OPT%VER%\common.ai
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+ECHO _____________________________
+pjass %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\elf.ai
+if "%errorlevel%"=="1" SET RESULTOPTVER=1
+jassparser %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\elf.ai
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+ECHO _____________________________
+pjass %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\human.ai
+if "%errorlevel%"=="1" SET RESULTOPTVER=1
+jassparser %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\human.ai
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+ECHO _____________________________
+pjass %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\orc.ai
+if "%errorlevel%"=="1" SET RESULTOPTVER=1
+jassparser %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\orc.ai
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+ECHO _____________________________
+pjass %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\undead.ai
+if "%errorlevel%"=="1" SET RESULTOPTVER=1
+jassparser %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\undead.ai
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+ECHO _____________________________
+pjass %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\vsai\elf2.ai
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+jassparser %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\vsai\elf2.ai
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+ECHO _____________________________
+pjass %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\vsai\human2.ai
+if "%errorlevel%"=="1" SET RESULTOPTVER=1
+jassparser %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\vsai\human2.ai
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+ECHO _____________________________
+pjass %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\vsai\orc2.ai
+if "%errorlevel%"=="1" SET RESULTOPTVER=1
+jassparser %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\vsai\orc2.ai
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+ECHO _____________________________
+pjass %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\vsai\undead2.ai
+if "%errorlevel%"=="1" SET RESULTOPTVER=1
+jassparser %VER%\common.j Scripts\OPT%VER%\common.ai Scripts\OPT%VER%\vsai\undead2.ai
+if "%errorlevel%"=="1" SET RESULTMAKEVER=1
+ECHO _____________________________
+pjass %VER%\common.j Scripts\OPT%VER%\vsai\Blizzard.j
+if "%errorlevel%"=="1" SET RESULTOPTVER=1
+jassparser %VER%\common.j Scripts\OPT%VER%\vsai\Blizzard.j
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
 ECHO _____________________________
-pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\elf.ai
+pjass %VER%\common.j Scripts\OPT%VER%\Blizzard.j
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
-ECHO _____________________________
-pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\human.ai
+jassparser %VER%\common.j Scripts\OPT%VER%\Blizzard.j
 if "%errorlevel%"=="1" SET RESULTOPTVER=1
-ECHO _____________________________
-pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\orc.ai
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
-ECHO _____________________________
-pjass %VER%\common.j Scripts\%VER%\common.ai Scripts\%VER%\undead.ai
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
-ECHO _____________________________
-pjass %VER%\common.j Scripts\Blizzard_%VER%.j
-if "%errorlevel%"=="1" SET RESULTOPTVER=1
-copy /b/v/y "Scripts\Blizzard_%VER%.j" "Scripts\Blizzard.j"
-ECHO copy \Scripts\Blizzard.j
 if "%RESULTOPTVER%"=="1" (
-  ECHO Compilation AMAI Optimization %VER% error
-  if %MAKEALL% == 1 (
-    SET RESULTMAKEVER=0
+  ECHO Optimization %VER% error
+  if "%SILENT%" neq "1" (
+    pause
+    ECHO Exiting
+    exit /b %RESULTOPTVER%
   )
-  exit /b %RESULTOPTVER%
 ) else (
-  ECHO Compilation AMAI Optimization %VER% finished
+  ECHO Optimization %VER% successful
 )

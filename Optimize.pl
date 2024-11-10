@@ -35,7 +35,7 @@ if ($ARGV[0] eq '-b') {
 }
 else {
   if ($ARGV[2] eq '-l') {
-    @scriptfiles = AssembleScriptNames($ARGV[3], $ARGV[4]);
+    @scriptfiles = AssembleScriptNames($ARGV[3], $ARGV[4], $ARGV[5]);
   }
   else {
     @scriptfiles = @ARGV[2..$#ARGV];
@@ -112,12 +112,15 @@ close(LIBFILE);
 print "File <$libfile> opened for writing!\n";
 
 sub AssembleScriptNames {
-  my ($tablefile, $template) = @_;
+  my ($tablefile, $template, $template2) = @_;
   my @scripts = ();
   open(TABLE, $tablefile) or die "File <$tablefile> not found!";
   while (<TABLE>) {
     my @columns = split /[\t\n]/;
     push @scripts, tablerep($template, \@columns);
+    if ($template2) {
+      push @scripts, tablerep($template2, \@columns);
+    }
   }
   close(TABLE);
   return @scripts;

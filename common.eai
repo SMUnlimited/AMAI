@@ -1515,7 +1515,9 @@ endfunction
 function DisplayToAll takes string s returns nothing
   local integer i = 0
   loop
-    call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
+    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING then
+      call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
+    endif
     set i = i + 1
     exitwhen i >= GetBJMaxPlayers()
   endloop
@@ -1526,7 +1528,9 @@ endfunction
 function DisplayToAllImportant takes string s returns nothing
   local integer i = 0
   loop
-    call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
+    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING then
+      call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
+    endif
     set i = i + 1
     exitwhen i >= GetBJMaxPlayers()
   endloop
@@ -1538,7 +1542,7 @@ function DisplayToAllies takes string s returns nothing
   local integer i = 0
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if IsPlayerAlly(ai_player,Player(i)) then
+    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(ai_player,Player(i)) then
       call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
       call StartSound(chatSound)
     endif
@@ -1551,7 +1555,7 @@ function DisplayToAlliesImportant takes string s returns nothing
   local integer i = 0
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if IsPlayerAlly(ai_player,Player(i)) then
+    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(ai_player,Player(i)) then
       call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
       call StartSound(importantSound)
     endif
@@ -1564,7 +1568,7 @@ function DisplayToEnemy takes string s returns nothing
   local integer i = 0
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if IsPlayerEnemy(ai_player,Player(i)) then
+    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerEnemy(ai_player,Player(i)) then
       call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
       call StartSound(chatSound)
     endif
@@ -1577,7 +1581,7 @@ function DisplayToEnemyImportant takes string s returns nothing
   local integer i = 0
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if IsPlayerEnemy(ai_player,Player(i)) then
+    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerEnemy(ai_player,Player(i)) then
       call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
       call StartSound(importantSound)
     endif
@@ -1590,7 +1594,7 @@ function DisplayToObservers takes string s returns nothing
   local integer i = 0
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if IsPlayerObserver(Player(i)) and not IsPlayerAlly(ai_player,Player(i)) then
+    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerObserver(Player(i)) then
       call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
       call StartSound(chatSound)
     endif
@@ -1603,7 +1607,7 @@ function DisplayToObserversImportant takes string s returns nothing
   local integer i = 0
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if IsPlayerObserver(Player(i)) and not IsPlayerAlly(ai_player,Player(i)) then
+    if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerObserver(Player(i)) then
       call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
       call StartSound(importantSound)
     endif
@@ -1655,7 +1659,9 @@ function DisplayToAllFromPlayer takes string s, integer playernum, boolean impor
 	local integer i = 0
 	if Player(GetAiPlayer()) == Player(playernum) then
 		loop
-			call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
+			if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING then
+				call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
+			endif
 			set i = i + 1
 			exitwhen i >= GetBJMaxPlayers()
 		endloop
@@ -1752,7 +1758,7 @@ function DisplayToAlliesChat takes string s returns nothing
   if chatting then
     loop
       exitwhen i >= GetBJMaxPlayers()
-      if IsPlayerAlly(ai_player,Player(i)) then
+      if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(ai_player,Player(i)) then
         call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
         call StartSound(chatSound)
       endif
@@ -1767,7 +1773,7 @@ function DisplayToEnemyChat takes string s returns nothing
   if chatting then
     loop
       exitwhen i >= GetBJMaxPlayers()
-      if IsPlayerEnemy(ai_player,Player(i)) then
+      if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerEnemy(ai_player,Player(i)) then
         call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
         call StartSound(chatSound)
       endif
@@ -1782,7 +1788,7 @@ function DisplayToAlliesDebug takes string s returns nothing
   if debugging then
     loop
       exitwhen i >= GetBJMaxPlayers()
-      if IsPlayerAlly(ai_player,Player(i)) then
+      if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(ai_player,Player(i)) then
         call DisplayTimedTextToPlayer(Player(i),0,0,15,message_add+s)
         call StartSound(chatSound)
       endif
@@ -7400,15 +7406,12 @@ function GetHealer takes unit u returns unit
   local integer id = 0
   loop
     set u = FirstOfGroup(healer_group)
-    exitwhen u == null or id < -1
-    set id = GetHealerId(GetUnitTypeId(u))
-    if id > -1 and not IsUnitLoaded(u) and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) then
-      set id = -2
-    endif
+    exitwhen u == null
     call GroupRemoveUnit(healer_group, u)
+    set id = GetHealerId(GetUnitTypeId(u))
+    exitwhen id > -1 and not IsUnitLoaded(u) and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id]))
     call GroupAddUnit(g, u)
   endloop
-  call GroupRemoveUnit(g, u)
   call GroupAddGroup(healer_group, g)
   call DestroyGroup(g)
   set g = null

@@ -398,7 +398,7 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
   // separate integer in bits
   if sum < 0 then
     set source_int[0] = 1
-    set sum = -sum
+    set sum = 0 - sum
   else
     set source_int[0] = 0
   endif
@@ -449,8 +449,6 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
       exitwhen TimerGetRemaining(t) <= 0
       call TriggerSleepAction(0.5)
     endloop
-    call DestroyTimer(t)
-    set t = null
     call SyncSelections()
     set j = 0
     loop
@@ -496,13 +494,14 @@ function SyncInteger takes player sync_p, integer unsynced returns integer
     set i = i - 1
   endloop
   if target_int[0] != 0 then
-    set sum = -sum
+    set sum = 0 - sum
   endif
 
   call DestroyGroup(old_selection)
   set old_selection = null
   set u = null
-
+  call DestroyTimer(t)
+  set t = null
 //  call DisplayToPlayer(sync_p, I2S(sum))
 
   return sum
@@ -514,43 +513,44 @@ endfunction
 //===========================================================================
 function Convert2Player takes string Comp, boolean all_allowed returns player
   //Required Variables
+  local integer p = -1
   local integer j = 0
   local playercolor CColor = ColorPlayer(Comp)  //Gets the player color
-  local player theplayer = null
 
   if Comp == "All" then
     if all_allowed then
-      set theplayer = Player(PLAYER_NEUTRAL_AGGRESSIVE)
+      set p = PLAYER_NEUTRAL_AGGRESSIVE
     else
       call DisplayToTP(all_not_allowed)
     endif
 
   elseif (CColor == null) then
-   //Makes Sure color was typed Correctly
+    //Makes Sure color was typed Correctly
     //Makes sure number is 0 or bigger and 23 or smaller
     if (S2I(Comp) >= 0) and (S2I(Comp) < GetBJMaxPlayers()) then
-      set theplayer = Player(S2I(Comp))
+      set p = S2I(Comp)
     else
       call DisplayToTP(player_id_mistyped)
     endif
   else
-  //Compares the color until we get a match then stores that player
+    //Compares the color until we get a match then stores that player
     loop
       exitwhen((CColor == GetPlayerColor(Player(j))) or (j > GetBJMaxPlayers()))
       set j = j + 1
-      if (j > GetBJMaxPlayers()) then
-        call DisplayToTP(color_word_mistyped)
-      endif
     endloop
     if j <= GetBJMaxPlayers() then
-      set theplayer = Player(j)
+      set p = j
+    else
+      call DisplayToTP(color_word_mistyped)
     endif
   endif
 
   set CColor = null
 
-  //Returns player
-  return theplayer
+  if p != -1 then
+    return Player(p)
+  endif
+  return null
 
 endfunction
 
