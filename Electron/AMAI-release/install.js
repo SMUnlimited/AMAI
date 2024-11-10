@@ -35,7 +35,8 @@ const installOnDirectory = async () => {
   const ver = args[2];
   const installCommander = commander == 1
   const vsAICommander = commander == 2
-  let bj = 'Blizzard.j'
+  let bj = null
+  if (installCommander) {bj = 'Blizzard.j'}
   if (vsAICommander) {bj = 'vsai\\Blizzard.j'}
   const searchFor = /string language = "([^"]*)"/;
   const replaceWith = `string language = "${args[3]}"`;
@@ -46,7 +47,7 @@ const installOnDirectory = async () => {
   let updatedData2 = ``;
   let updatedData3 = ``;
 
-  process.send(`#### Installing AMAI for ${ver} Commander ${bj || 'none'} , Languages ${args[3]} ####`);
+  process.send(`#### Installing AMAI for ${ver} Commander ${installCommander ? 'install' : (vsAICommander ? 'install VS AI' : 'none')} , Languages ${args[3]} ####`);
 
   // TODO: change to receive array of maps
   if (fs.statSync(response).isDirectory()) {
