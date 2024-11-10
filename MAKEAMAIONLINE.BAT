@@ -47,7 +47,7 @@ perl ejass.pl Blizzard3.eai REFORGED VER:REFORGED > REFORGED\tmp\Blizzard3Gen.j
 perl ejass.pl Blizzard.eai REFORGED VER:REFORGED > AMAI\REFORGED\Blizzard.j
 pjass REFORGED\common.j AMAI\REFORGED\Blizzard.j
 if "%errorlevel%"=="1" SET RESULTMAKEREF=1
-jassparser REFORGED\common.j AMAI\Blizzard.j
+jassparser REFORGED\common.j AMAI\REFORGED\Blizzard.j
 ECHO _____________________________
 ECHO 优化代码以减小压缩包体积
 perl Optimize.pl REFORGED\common.j AMAI\REFORGED\common.ai -l REFORGED\Races.txt AMAI\REFORGED\$2
