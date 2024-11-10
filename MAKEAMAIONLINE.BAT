@@ -41,7 +41,7 @@ jassparser REFORGED\common.j AMAI\REFORGED\common.ai AMAI\REFORGED\undead.ai
 if "%errorlevel%"=="1" SET RESULTMAKEREF=1
 ECHO _____________________________
 ECHO 创建控制台
-perl SplitBlizzardJ.pl REFORGED 0
+perl SplitBlizzardJ.pl REFORGED
 perl ejass.pl Blizzard3.eai REFORGED VER:REFORGED > REFORGED\tmp\Blizzard3Gen.j
 perl ejass.pl Blizzard.eai REFORGED VER:REFORGED > AMAI\REFORGED\Blizzard.j
 pjass REFORGED\common.j AMAI\REFORGED\Blizzard.j
@@ -68,7 +68,6 @@ ECHO =============================
 ECHO 编译经典版
 SET RESULTMAKETFT=0
 mkdir AMAI\TFT\
-call TFT/Inherit.bat
 ECHO _____________________________
 ECHO 创建公共库
 perl ejass.pl common.eai TFT VER:TFT > AMAI\TFT\common.ai
@@ -106,7 +105,7 @@ jassparser TFT\common.j AMAI\TFT\common.ai AMAI\TFT\undead.ai
 if "%errorlevel%"=="1" SET RESULTMAKETFT=1
 ECHO _____________________________
 ECHO 创建控制台
-perl SplitBlizzardJ.pl TFT 0
+perl SplitBlizzardJ.pl TFT
 perl ejass.pl Blizzard3.eai TFT VER:TFT > TFT\tmp\Blizzard3Gen.j
 perl ejass.pl Blizzard.eai TFT VER:TFT > AMAI\TFT\Blizzard.j
 pjass TFT\common.j AMAI\TFT\Blizzard.j
