@@ -38,7 +38,7 @@ const installOnDirectory = async () => {
   let bj = 'Blizzard.j' 
   if (vsAICommander) { bj = 'vsai\\Blizzard.j'}
 
-  process.send(`#### Installing AMAI for ${ver} Commander ${bj || 'none'} ####`);
+  process.send(`#### Installing AMAI for ${ver} Commander ${commander > 0 ? bj : 'None'} ####`);
 
   // TODO: change to receive array of maps
   if (fs.statSync(response).isDirectory()) {
@@ -135,7 +135,7 @@ const installOnDirectory = async () => {
           process.send(f1AddToMPQ.error.message)
             : process.send(`Add ai scripts ${file}`);
  
-        if (bj) {
+        if (commander > 0) {
           
           if (vsAICommander) {
                 const f1AddVSAIToMPQ =  spawnSync(
