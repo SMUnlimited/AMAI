@@ -35,8 +35,7 @@ const installOnDirectory = async () => {
   const ver = args[2];
   const installCommander = commander == 1
   const vsAICommander = commander == 2
-  let bj = null
-  if (installCommander) {bj = 'Blizzard.j'}
+  let bj = 'Blizzard.j'
   if (vsAICommander) {bj = 'vsai\\Blizzard.j'}
   const searchFor = /string language = "([^"]*)"/;
   const replaceWith = `string language = "${args[3]}"`;
