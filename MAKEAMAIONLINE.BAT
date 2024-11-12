@@ -1,6 +1,8 @@
 @ECHO OFF
 ECHO 编译 AMAI 冰封王座 AMAI VS AMAI
 mkdir AMAI\
+SET RESULTMAKEALL=0
+ECHO =============================
 ECHO 编译重制版
 SET RESULTMAKEREF=0
 mkdir AMAI\REFORGED\
@@ -134,6 +136,7 @@ ECHO =============================
 ECHO 输出编译结果
 ECHO _____________________________
 if "%RESULTMAKEREF%"=="1" (
+  exit /b %RESULTMAKEREF%
   ECHO 重制版编译失败，附件重制版不可用--请改天再来
   rmdir /s /q "AMAI\REFORGED"  
   echo 附件重制版不可用--请勿安装并等待新的在线编译附件 > AMAI\重制版脚本不可用.txt
@@ -150,15 +153,7 @@ if "%RESULTMAKETFT%"=="1" (
   ECHO 经典版编译成功，经典版附件可用--请按教程安装
   echo 经典版附件可用--请按教程安装（为减少压缩包体积，代码已优化且失去阅读性）...支持冰封王座1.24e+，平衡性为1.24e > AMAI\经典版脚本可用.txt
 )
-ECHO _____________________________
-SET RESULTMAKEALL=0
 for /f "delims=" %%a in ('cmd /c echo %RESULTMAKEREF%*%RESULTMAKETFT%') do set RESULTMAKEALL=%%a
 if "%RESULTMAKEALL%"=="2" (
   exit /b %RESULTMAKEALL%
-)
-if "%RESULTMAKEREF%"=="1" (
-  exit /b %RESULTMAKEREF%
-)
-if "%RESULTMAKETFT%"=="1" (
-  exit /b %RESULTMAKETFT%
 )
