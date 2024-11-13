@@ -607,11 +607,11 @@ function updateMineText takes integer i returns nothing
     else
       call SetTextTagColorBJ(W3CWorkTextTag[i], 100, 100, 30, 100)
     endif
-    if W3CWorkerCount and W3CWorkers[i] > 0 then
+    if W3CWorkers[i] > 0 then
       loop
         exitwhen c >= GetBJMaxPlayers()
         set sp = Player(c)
-        call SetTextTagVisibility(W3CWorkTextTag[i], IsPlayerObserver(sp) or (GetPlayerSlotState(sp) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerEnemy(p, sp)))
+        call SetTextTagVisibility(W3CWorkTextTag[i], W3CWorkerCount and (IsPlayerObserver(sp) or (GetPlayerSlotState(sp) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(p, sp))))
         set c = c + 1
       endloop
       set sp = null
@@ -760,11 +760,11 @@ function W3CWorker_chat takes nothing returns nothing
     endif
     loop
       exitwhen i >= W3CMind_Length
-      if W3CWorkTextTag[i] != null and W3CWorkerCount and W3CWorkers[i] > 0 then
+      if W3CWorkTextTag[i] != null and W3CWorkers[i] > 0 then
         loop
           exitwhen c >= GetBJMaxPlayers()
           set sp = Player(c)
-          call SetTextTagVisibility(W3CWorkTextTag[i], IsPlayerObserver(sp) or (GetPlayerSlotState(sp) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerEnemy(p, sp)))
+          call SetTextTagVisibility(W3CWorkTextTag[i], W3CWorkerCount and (IsPlayerObserver(sp) or (GetPlayerSlotState(sp) == PLAYER_SLOT_STATE_PLAYING and IsPlayerAlly(p, sp))))
           set c = c + 1
         endloop
         set sp = null
@@ -784,6 +784,9 @@ function InitW3CWorkerCount takes nothing returns nothing
   local trigger issuedPointOrder = CreateTrigger()
   local trigger lossOfUnitTrigger = CreateTrigger()
   local trigger lossOfMineTrigger = CreateTrigger()
+  if GetPlayerController(Player(12)) != MAP_CONTROL_CREEP then
+    set W3CWorkerCount = false  // use war3 2.0
+  endif
   loop
     exitwhen i >= GetBJMaxPlayers()
     set p = Player(i)
@@ -838,8 +841,8 @@ function W3CDenyTip takes nothing returns nothing
       endloop
       call SetTextTagPermanentBJ(t, false)
       call SetTextTagVelocityBJ(t, 20, 90)
-      call SetTextTagLifespanBJ(t, 2)
       call SetTextTagFadepointBJ(t, 1.5)
+      call SetTextTagLifespanBJ(t, 2)
       set t = null
       set p3 = null
     endif
@@ -916,7 +919,7 @@ function TPEffect takes nothing returns nothing
       loop
         exitwhen i >= GetBJMaxPlayers()
         set p2 = Player(i)
-        if (GetPlayerSlotState(p2) == PLAYER_SLOT_STATE_PLAYING and (GetPlayerController(p2) == MAP_CONTROL_USER) and IsPlayerAlly(p1, p2)) or IsPlayerObserver(p2) then
+        if (GetPlayerSlotState(p2) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p2) == MAP_CONTROL_USER and IsPlayerAlly(p1, p2)) or IsPlayerObserver(p2) then
           set KK_TP_num = KK_TP_num + 1
           set KK_TPEffect[KK_TP_num] = AddSpecialEffect("Doodads\\Cityscape\\Props\\MagicRunes\\MagicRunes0.mdl", x, y)
           set KK_TPTimer[KK_TP_num] = CreateTimer()
@@ -925,6 +928,7 @@ function TPEffect takes nothing returns nothing
         set i = i + 1
       endloop
       set p2 = null
+      set u = null
     endif
   endif
   call DestroyGroup(g)
