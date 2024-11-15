@@ -20,11 +20,14 @@ export class HomeComponent implements OnInit {
   TFTInstall: boolean = false; 
   REFInstall: boolean = false; 
   Mode_State: boolean = true;
-  BJ_State: boolean = true;
+  BJ_State: number = 1;
   isInteractive: boolean = true;
   modeState: string = '-folder';
   bjState: string = '';
   message: string = '';
+  optimize: boolean = true;
+  forcelang: boolean = false;
+  installEvent: string = 'install'
 
   ngOnInit(): void {
     console.log('HomeComponent INIT');
@@ -89,7 +92,7 @@ export class HomeComponent implements OnInit {
             this.TFTInstall = false;
             this.REFInstall = false;
             this.ROCInstall = !this.ROCInstall;
-            this.electronService.ipcRenderer.send(this.message);
+            this.electronService.ipcRenderer.send(this.installEvent, 'ROC', this.Mode_State, this.BJ_State, this.optimize, this.forcelang);
             console.log('message',this.message);
           }
           break;
@@ -99,7 +102,7 @@ export class HomeComponent implements OnInit {
             this.ROCInstall = false;
             this.REFInstall = false;
             this.TFTInstall = !this.TFTInstall;
-            this.electronService.ipcRenderer.send(this.message);
+            this.electronService.ipcRenderer.send(this.installEvent, 'TFT', this.Mode_State, this.BJ_State, this.optimize, this.forcelang);
             console.log('message',this.message);
           }
           break;
@@ -109,7 +112,7 @@ export class HomeComponent implements OnInit {
             this.ROCInstall = false;
             this.TFTInstall = false;
             this.REFInstall = !this.REFInstall;
-            this.electronService.ipcRenderer.send(this.message);
+            this.electronService.ipcRenderer.send(this.installEvent, 'REFORGED', this.Mode_State, this.BJ_State, this.optimize, this.forcelang);
             console.log('message',this.message);
           }
           break;
@@ -133,16 +136,31 @@ export class HomeComponent implements OnInit {
           break;
         case 'BJoptionOn':
             this.bjState = '';
+            this.BJ_State = 1;
             console.log('BJ',this.bjState);
             break;
         case 'BJoptionVsAI':
             this.bjState = '-vai';
+            this.BJ_State = 2;
             console.log('BJ',this.bjState);
             break;
         case 'BJoptionOff':
             this.bjState = '-noc';
+            this.BJ_State = 0;
             console.log('BJ',this.bjState);
-            break;  
+            break;
+        case 'Optimise':
+          this.optimize = !this.optimize;
+          if (this.optimize) {
+            this.forcelang = false;
+          }
+          break;
+        case 'ForceLang':
+          this.forcelang = !this.forcelang;
+          if (this.forcelang) {
+            this.optimize = false;
+          }
+          break;      
       }
     };
   }

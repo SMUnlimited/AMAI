@@ -310,6 +310,8 @@ The language selection dialog box will not show up again when the game starts, i
 
 The `game_mode` setting works exactly the same way, but that setting will only apply if you play a game where different game modes are available, like if you got an allied computer in the game, else the normal melee game type will always be used.
 
+NOTE: The installer can set the default language for AI and commander based on the set language in the installer for you.
+
 ## Custom Maps
 
 AMAI is designed to work with melee maps.

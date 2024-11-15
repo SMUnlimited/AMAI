@@ -8,6 +8,7 @@ const cp = require('child_process');
 
 let win: BrowserWindow = null;
 let translations : { [key: string]: string };
+let currentLanguage: string = "English";
 const args = process.argv.slice(1),
   serve = args.some(val => val === '--serve');
 
@@ -73,7 +74,7 @@ const createWindow = (): BrowserWindow => {
   return win;
 }
 
-const execInstall = async (signal, commander: number = 1, isMap: boolean = false, ver: String = "REFORGED") => {
+const execInstall = async (signal, commander: number = 1, isMap: boolean = false, ver: string = "REFORGED", forceLang: boolean) => {
   const controller = new AbortController();
   const response = dialog.showOpenDialogSync(win, {
     // TODO: add i18n here
@@ -148,7 +149,7 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
           `../${currentExecDir}install.js`
         )
       ),
-      [ response[0], commander, ver ],
+      [ response[0], commander, ver, forceLang ? currentLanguage : '-' ],
       { signal },
       (err) => {
         win.webContents.send('on-install-error', err);
@@ -173,76 +174,8 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
 const installProcess = () => {
   let signal = {};
 
-  ipcMain?.on('install-folder', async () => {
-    execInstall(signal);
-  });
-  
-  ipcMain?.on('install-folder-noc', async () => {
-    execInstall(signal, 0, false);
-  });
-
-  ipcMain?.on('install-folder-vai', async () => {
-    execInstall(signal, 2, false);
-  });
-
-  ipcMain?.on('install-map', async () => {
-    execInstall(signal, 1, true);
-  });
-  
-  ipcMain?.on('install-map-noc', async () => {
-    execInstall(signal, 0, true);
-  });
-
-  ipcMain?.on('install-map-vai', async () => {
-    execInstall(signal, 2, true);
-  });
-  
-  ipcMain?.on('install-folder-TFT', async () => {
-    execInstall(signal, 1, false, "TFT");
-  });
-  
-  ipcMain?.on('install-folder-noc-TFT', async () => {
-    execInstall(signal, 0, false, "TFT");
-  });
-
-  ipcMain?.on('install-folder-vai-TFT', async () => {
-    execInstall(signal, 2, false, "TFT");
-  });
-
-  ipcMain?.on('install-map-TFT', async () => {
-    execInstall(signal, 1, true, "TFT");
-  });
-  
-  ipcMain?.on('install-map-noc-TFT', async () => {
-    execInstall(signal, 0, true, "TFT");
-  });
-
-  ipcMain?.on('install-map-vai-TFT', async () => {
-    execInstall(signal, 2, true, "TFT");
-  });
-  
-  ipcMain?.on('install-folder-ROC', async () => {
-    execInstall(signal, 1, false, "ROC");
-  });
-  
-  ipcMain?.on('install-folder-noc-ROC', async () => {
-    execInstall(signal, 0, false, "ROC");
-  });
-
-  ipcMain?.on('install-folder-vai-ROC', async () => {
-    execInstall(signal, 2, false, "ROC");
-  });
-
-  ipcMain?.on('install-map-ROC', async () => {
-    execInstall(signal, 1, true, "ROC");
-  });
-  
-  ipcMain?.on('install-map-noc-ROC', async () => {
-    execInstall(signal, 0, true, "ROC");
-  });
-
-  ipcMain?.on('install-map-vai-ROC', async () => {
-    execInstall(signal, 2, true, "ROC");
+  ipcMain?.on('install', async (_event, ver: string, toFolder: boolean, commander: number, optimize: boolean, forceLang : boolean) => {
+    execInstall(signal, commander, !toFolder, optimize ? `OPT${ver}` : ver, forceLang);
   });
 
   // TODO: stop process with signal
@@ -288,7 +221,42 @@ const init = () => {
 }
 
 const installTrans = () => {
-  ipcMain?.on('Trans', (_event, data) => {
+  ipcMain?.on('Trans', (_event, currentLang: string, data) => {
+    switch (currentLang) {
+      case 'en':
+        currentLanguage = "English";
+        break;
+      case 'zh':
+        currentLanguage = "Chinese";
+        break;
+      case 'fr':
+        currentLanguage = "French";
+        break;
+      case 'de':
+        currentLanguage = "Deutsch";
+        break;
+      case 'no':
+        currentLanguage = "Norwegian";
+        break;
+      case 'pt':
+        currentLanguage = "Portuguese";
+        break;
+      case 'ro':
+        currentLanguage = "Romanian";
+        break;
+      case 'ru':
+        currentLanguage = "Russian";
+        break;
+      case 'es':
+        currentLanguage = "Spanish";
+        break;
+      case 'sv':
+        currentLanguage = "Swedish";
+        break;
+      default:
+        currentLanguage = "English";
+        console.log('Current Language: Unknown so change to English');
+    }
     translations = data as { [key: string]: string };
     if (win != null) {
       win.setTitle(translations['PAGES.HOME.TITLE'])

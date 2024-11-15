@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { takeHeapSnapshot } = require("process");
 const spawnSync = require("child_process").spawnSync;
 const arrayOfFiles = [];
 
@@ -33,12 +34,16 @@ const installOnDirectory = async () => {
   const response = args[0];
   const commander = args[1];
   const ver = args[2]
+  const language =  args[3]
   const installCommander = commander == 1
   const vsAICommander = commander == 2
   let bj = 'Blizzard.j' 
   if (vsAICommander) { bj = 'vsai\\Blizzard.j'}
 
-  process.send(`#### Installing AMAI for ${ver} Commander ${commander > 0 ? bj : 'None'} ####`);
+  const commonAIPath = `Scripts\\${ver}\\common.ai`
+  const blizzardPath =`Scripts\\${ver}\\Blizzard.j`
+
+  process.send(`#### Installing AMAI for ${ver} Commander ${commander > 0 ? bj : 'None'} forcing ai language to ${language || 'default'} ####`);
 
   // TODO: change to receive array of maps
   if (fs.statSync(response).isDirectory()) {
@@ -49,22 +54,37 @@ const installOnDirectory = async () => {
     arrayOfFiles.push(response);
   }
 
-  if (!fs.existsSync(`Scripts\\${ver}\\common.ai`)) {
-    process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\common.ai`)
+  if (!fs.existsSync(commonAIPath)) {
+    process.send(`ERROR: Cannot find ${process.cwd()}\\${commonAIPath}`)
     return
   }
   if (!fs.existsSync(`MPQEditor.exe`)) {
     process.send(`ERROR: Cannot find ${process.cwd()}\\MPQEditor.exe`)
     return
   }
-  if (installCommander && !fs.existsSync(`Scripts\\${ver}\\Blizzard.j`)) {
-    process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\Blizzard.j`)
+  if (installCommander && !fs.existsSync(blizzardPath)) {
+    process.send(`ERROR: Cannot find ${process.cwd()}\\${blizzardPath}`)
     return
   }
   if (vsAICommander && !fs.existsSync(`Scripts\\${ver}\\vsai\Blizzard.j`)) {
     process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\vsai\Blizzard.j`)
     return
   }
+
+
+
+  if (language !== '-') {
+    setLanguage(commonAIPath, language);
+    if (installCommander) {
+      setLanguage(blizzardPath, language);
+    }
+  } else {
+    setLanguage(commonAIPath, "English");
+    if (installCommander) {
+      setLanguage(blizzardPath, ""); // Select at game start
+    }
+  }
+
 
   if(arrayOfFiles) {
     for (const file of arrayOfFiles) {
@@ -219,6 +239,14 @@ const installOnDirectory = async () => {
     }
   }
 
+
+  function setLanguage(file, language) {
+    let data = fs.readFileSync(file, 'utf8');
+    const searchFor = /string language = "([^"]*)"/;
+    const replaceWith = `string language = "${language}"`;
+    data = data.replace(searchFor, replaceWith);
+    fs.writeFileSync(file, data, 'utf8');
+  }
   // spawnSync(`echo`, [`finish install processing into folder ${dirPath}`]);
 }
 
