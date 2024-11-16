@@ -1,7 +1,6 @@
 @ECHO OFF
 ECHO 编译 AMAI 冰封王座 AMAI VS AMAI
 mkdir AMAI\
-SET RESULTMAKEALL=0
 ECHO =============================
 ECHO 编译重制版
 SET RESULTMAKEREF=0
@@ -50,6 +49,7 @@ perl ejass.pl Blizzard.eai REFORGED VER:REFORGED > AMAI\REFORGED\Blizzard.j
 pjass REFORGED\common.j AMAI\REFORGED\Blizzard.j
 if "%errorlevel%"=="1" SET RESULTMAKEREF=1
 jassparser REFORGED\common.j AMAI\REFORGED\Blizzard.j
+if "%errorlevel%"=="1" SET RESULTMAKEREF=1
 ECHO _____________________________
 ECHO 优化代码以减小压缩包体积
 perl Optimize.pl REFORGED\common.j AMAI\REFORGED\common.ai -l REFORGED\Races.txt AMAI\REFORGED\$2
@@ -115,6 +115,7 @@ perl ejass.pl Blizzard.eai TFT VER:TFT > AMAI\TFT\Blizzard.j
 pjass TFT\common.j AMAI\TFT\Blizzard.j
 if "%errorlevel%"=="1" SET RESULTMAKETFT=1
 jassparser TFT\common.j AMAI\TFT\Blizzard.j
+if "%errorlevel%"=="1" SET RESULTMAKETFT=1
 ECHO _____________________________
 ECHO 优化代码以减小压缩包体积
 perl Optimize.pl TFT\common.j AMAI\TFT\common.ai -l TFT\Races.txt AMAI\TFT\$2
@@ -138,7 +139,7 @@ ECHO _____________________________
 if "%RESULTMAKEREF%"=="1" (
   exit /b %RESULTMAKEREF%
   ECHO 重制版编译失败，附件重制版不可用--请改天再来
-  rmdir /s /q "AMAI\REFORGED"  
+  rmdir /s /q "AMAI\REFORGED"
   echo 附件重制版不可用--请勿安装并等待新的在线编译附件 > AMAI\重制版脚本不可用.txt
 ) else (
   ECHO 重制版编译成功，重制版附件可用--请按教程安装
@@ -147,13 +148,9 @@ if "%RESULTMAKEREF%"=="1" (
 ECHO _____________________________
 if "%RESULTMAKETFT%"=="1" (
   ECHO 经典版编译失败，附件经典版不可用--请改天再来
-  rmdir /s /q "AMAI\TFT"  
+  rmdir /s /q "AMAI\TFT"
   echo 附件经典版不可用--请勿安装并等待新的在线编译附件 > AMAI\经典版脚本不可用.txt
 ) else (
   ECHO 经典版编译成功，经典版附件可用--请按教程安装
   echo 经典版附件可用--请按教程安装（为减少压缩包体积，代码已优化且失去阅读性）...支持冰封王座1.24e+，平衡性为1.24e > AMAI\经典版脚本可用.txt
-)
-for /f "delims=" %%a in ('cmd /c echo %RESULTMAKEREF%*%RESULTMAKETFT%') do set RESULTMAKEALL=%%a
-if "%RESULTMAKEALL%"=="2" (
-  exit /b %RESULTMAKEALL%
 )
