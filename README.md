@@ -335,7 +335,7 @@ AMAI has built in support to be able to write new strategies and profiles using 
 
 The official version will not use the shutdown function, but permissions will be open to community map authors, especially those who use AMAI but are not clear about its internal operating logic, don't need you study AMAI code. These APIs will quickly help you modify AMAI's system and this is real time intervention in the game.
 
-You can use `AI - Send Command` in trigger. 
+You can use `AI - Send Command` in trigger. But it can only be sent after the action of running the AI script is completed.
 
 Most functions only determine cmd, but a small portion of functions can be precisely controlled using data.
 For example, when data is -1, it refers to all AI players, while other values correspond to specific players.
