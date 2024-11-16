@@ -337,7 +337,8 @@ The official version will not use the shutdown function, but permissions will be
 
 You can use `AI - Send Command` in trigger. 
 
-Most functions only determine cmd, but a small portion of functions can be precisely controlled using data. For example, when data is -1, it refers to all AI players, while other values correspond to specific players.
+Most functions only determine cmd, but a small portion of functions can be precisely controlled using data.
+For example, when data is -1, it refers to all AI players, while other values correspond to specific players.
 
 This API is still under improvement.If the function you want to implement is not here, please provide feedback.
 
