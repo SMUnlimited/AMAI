@@ -340,9 +340,7 @@ You can use `AI - Send Command` in trigger.
 This API is still under improvement.
 
 | **AMAI API** | **cmd value** | **data value** | **Submit during initialization** | **Describe** |
-
-| ----------------- | ------------------- | ------------------ | ------------------ |
-
+| ----------------- | ------------------- | ------------------ | ------------------ | ------------------ |
 | **No Use Neutral Heros** | 8000 | 0 | should be | all AI No Use Neutral Heros |
 
 # Credits
