@@ -20,7 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (Installer) New option to force the default AI language to current language of the installer, and if commander is installed it will not show the language dialog popup anymore. 
   - Unsetting will reverse the change and re-enable english as default and commander will display language selection.
   - Can not apply when using optimised scripts.
-- (Installer) You can now install VSAI mode as a commander option. (jzy-chitong56)  
+- (Installer) You can now install VSAI mode as a commander option. (jzy-chitong56)
+- (DevTools) Custom maps can trigger command 80 to tell AMAI the tavern is no longer usable. (Slayer95)
 - (DevTools) Observer debugging when debug turned on for vanilla AI in VSAI mode.
 - (DevTools) New racial setting `racial_burrow` to set unit used for peons not exiting burrow fix.
 - (DevTools) VSAI is now compiled by default and included in the output scripts (jzy-chitong56)
@@ -43,6 +44,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Moved AMAI tags to after player names as various replays and leaderboards cannot display name correctly in those cases.
 - If home town is destroyed, the AI will now ensure it defends an existing town instead.
 - Teleport control improvements and fixes. (jzy-chitong56)
+- Spanish translation improvements (Slayer95)
 - (Installer) Changed name to Installer instead of Electron Manager.
 - (DevTools) Updated MPQEditor to 4.0.0.924.
 - (DevTools) Set mpq size limit to 128 to reduce chance of failed installs with some maps and VSAI mode. (jzy-chitong56)
@@ -68,6 +70,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issue where attacks were not being cancelled unless only an ally was under threat.
 - Fixed an issue where ghouls would start attacking then all run back to harvest wood leaving forces on there own, now extra ghouls will reinforce ongoing attacks too just like other troops.
 - Fix an issue where ranged micro could sometimes move ally computer and player units.
+- Fix PERIAPT_OF_VITALITY gold cost to correct reforged value. (Slayer95)
 - Fix ally attack target not being reset, particularly expansion seemed to be slower without fix. (jzy-chitong56)
 - Fix Goblin Tinker Skill not upgrading past rockets on one of the trees. (jzy-chitong56)
 - Reduce lengthy unnecessary wait during distraction attack. (jzy-chitong56)
