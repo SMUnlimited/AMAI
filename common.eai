@@ -432,6 +432,7 @@ globals
     boolean race_has_moonwells = false  // Racial farms have healing properties
     integer groundid = 'ewsp'  // Used to create path units, must be different from race peon
     integer racial_burrow = 0 // Building id that can house peons/units and then shoot enemies.
+    integer structid = 'ngnh'  // Used to trigger melee defeat conditions on surrender.
 
 #PRAGMA END RACIAL SETTINGS
 
@@ -440,7 +441,7 @@ globals
 //==============================================================
 
 #PRAGMA START VERSION SETTINGS
-    boolean destroy_buildings_on_defeat = true  // Should the buildings of the AI be destroyed on defeat or given to neutral player ?
+    boolean destroy_buildings_on_defeat = false  // Should the buildings of the AI be destroyed on defeat or given to neutral player ?
     integer attack_reform_length = 20  // reform the attack group (getting new units) every that time on an attack (in seconds / 2)
     real front_base_distance = 1100  // the distance of the front locations from the start location
     boolean ver_heroes = true  // Does this version have heroes?
@@ -1362,7 +1363,7 @@ function Int2Str takes integer ic returns string
     set i = i * -1
   endif
   loop
-    exitwhen i == 0
+    exitwhen i < 1
     set ialt = i
     set i = i / 10
     set s = digit_map[ ialt - 10*i ] + s
@@ -1859,7 +1860,7 @@ function Abs takes integer a returns integer
   if a >= 0 then
     return a
   else
-    return 0 - a
+    return a * -1
   endif
 endfunction
 
@@ -1867,7 +1868,7 @@ function RAbs takes real a returns real
   if a >= 0 then
     return a
   else
-    return 0 - a
+    return a * -1
   endif
 endfunction
 
@@ -2559,6 +2560,9 @@ endfunction
 // Counts other units that count as this unit, can optionally pass an upgradeid that is ignored from the count
 function GetUnitCountAlt takes integer unitid, integer upgradeid, boolean only_done, integer townid returns integer
   local integer have_qty = 0
+  if unitid < 1 then
+    return 0
+  endif
   if IsAMAI then
     if upgradeid != tc_add1[unitid] and not isSameUpgradeLine(tc_add1[unitid], upgradeid) then
       set have_qty = have_qty + GetUnitCountEx(tc_add1[unitid],only_done,townid)
@@ -3323,9 +3327,9 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
       // Only send a limited number of greetings to a single player
       set parsed_chat = ApplyChatVars(chat_list[rand])
       if chat == C_Goldproblem then
-        set parsed_chat = parsed_chat + " " + ApplyTrans("CurrentGold") + ":" + Int2Str(GetGold())
+        set parsed_chat = parsed_chat + " " + ApplyTrans("CurrentGold") + ": " + Int2Str(GetGold())
       elseif chat == C_Ally or chat == C_Attack or chat == C_Megatarget then
-        set parsed_chat = parsed_chat + " " + ApplyTrans("Target") + ":" + ApplyTrans(GetChatVar("TargetColor"))
+        set parsed_chat = parsed_chat + " " + ApplyTrans("Target") + " (" + ApplyTrans(GetChatVar("TargetColor")) + ")"
       endif
       if chat == C_Greet then
         if (HaveStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i))) then
@@ -8330,6 +8334,8 @@ function cmd_misc takes integer cmd, integer data returns nothing
   elseif cmd == 73 then
     set console_on = true
 
+  elseif cmd == 80 then
+    set recalculate_heros = true
   endif
 endfunction
 
@@ -12241,7 +12247,7 @@ function SleepInCombatAM takes nothing returns nothing
     exitwhen R2I(count) >= 900 // Took longer than 15 mins to stop lingering something is wrong
     if lastcaptainx != 0 and lastcaptainy != 0 then
       call CreateDebugTagLoc("Sleep at captainloc", 10, lastcaptainx, lastcaptainy, 1.00, 0.80)
-      if u == null or not UnitAlive(u) or not IsUnitInvisible(u, ai_player) then
+      if u == null or not UnitAlive(u) or IsUnitInvisible(u, ai_player) then
         call GroupEnumUnitsInRange(g, lastcaptainx, lastcaptainy, battle_radius,null)
         loop
           set u = FirstOfGroup(g)
