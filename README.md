@@ -337,8 +337,8 @@ The official version will not use the shutdown function, but permissions will be
 You can use `AI - Send Command` in trigger.
 This API is still under improvement.
 
-| AMAI cmd API | cmd value | data value | Submit during initialization | Describe |
-| ----------------- | ------------------- | ------------------| ------------------ |
+| AMAI API | cmd value | data value | Submit during initialization | Describe |
+| ----------------- | ------------------- | ------------------ | ------------------ |
 | **No Use Neutral Heros** | 8000 | 0 | should be | all AI No Use Neutral Heros |
 
 # Credits
