@@ -333,7 +333,7 @@ AMAI has built in support to be able to write new strategies and profiles using 
 
 ## Community API
 
-The official version will not use the shutdown function, but permissions will be open to community map authors, especially those who use AMAI but are not clear about its internal operating logic. These APIs will quickly help you modify AMAI's system and this is real time intervention in the game.You don't need to study AMAI code.
+The official version will not use the shutdown function, but permissions will be open to community map authors, especially those who use AMAI but are not clear about its internal operating logic, don't need you study AMAI code. These APIs will quickly help you modify AMAI's system and this is real time intervention in the game.
 
 You can use `AI - Send Command` in trigger.
 
