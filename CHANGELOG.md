@@ -43,6 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Town defense control optimized so that the army tracker controls where defense is best placed in all cases.
 - Moved AMAI tags to after player names as various replays and leaderboards cannot display name correctly in those cases.
 - If home town is destroyed, the AI will now ensure it defends an existing town instead.
+- Reworked defeat logic so giving units to a neutral player does still trigger defeat. (Slayer95)
 - Teleport control improvements and fixes. (jzy-chitong56)
 - Spanish translation improvements (Slayer95)
 - (Installer) Changed name to Installer instead of Electron Manager.
@@ -70,6 +71,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issue where attacks were not being cancelled unless only an ally was under threat.
 - Fixed an issue where ghouls would start attacking then all run back to harvest wood leaving forces on there own, now extra ghouls will reinforce ongoing attacks too just like other troops.
 - Fix an issue where ranged micro could sometimes move ally computer and player units.
+- Logic to build multiple unit buildings takes better account of cost to construct these to avoid building multiple when there is no resources available to do so.
 - Fix PERIAPT_OF_VITALITY gold cost to correct reforged value. (Slayer95)
 - Fix ally attack target not being reset, particularly expansion seemed to be slower without fix. (jzy-chitong56)
 - Fix Goblin Tinker Skill not upgrading past rockets on one of the trees. (jzy-chitong56)

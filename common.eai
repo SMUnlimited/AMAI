@@ -9155,17 +9155,18 @@ function GetMinesHarvested takes nothing returns integer
 endfunction
 
 //============================================================================
-// Total excepted income per second (plus spare gold)
+// Total expected income per second (plus spare gold)
 function GetGoldIncome takes nothing returns real
   local integer inc = GetMinesHarvested()*income_per_mine
   if inc > GetGoldOwned() then
     set inc = GetGoldOwned()
   endif
-  return I2R(inc + GetGold())
+  return I2R(inc + GetGold()) * gold_unit_percentage
 endfunction
 
 //============================================================================
-function GetIncomePercentage takes integer qty returns real
+// Returns % impact such that more units required is negligable, while less units greatly reduces the rate
+function GetFactoryRate takes integer qty returns real
   if qty <= 3 then
     return 0.0
   endif
@@ -9173,13 +9174,25 @@ function GetIncomePercentage takes integer qty returns real
 endfunction
 
 //============================================================================
-// in_percent = gold cost building / income rate
+// in_percent = total gold cost of units required / gold_income
 // gold_income = (GetGoldRate of mines + current gold) * 0.9
-function GetFactoryQty takes integer qty, integer build_time, integer gold_cost, real in_percentage returns integer
-  local real gip = GetIncomePercentage(qty) * gold_income * (1-in_percentage)
-  local real gic = I2R(Max(gold_cost,1)) / I2R(Max(build_time, 1))
+function GetFactoryQty takes integer qty, integer build_time, integer gold_cost, integer buildingid, real in_percentage returns integer
+  local real gIncomePerSecond = GetFactoryRate(qty) * gold_income
+  local real gPerSecondToAffordUnit = I2R(gold_cost) / I2R(Max(build_time, 1))
 //  call DisplayToAll("factory number returned: "+Int2Str(Max(Min(R2I(gip / gic), difficulty),1)))
-  return Max(Min(R2I(gip / gic), difficulty),1) // Difficulty no more than 3 on insane, 2 on normal
+  //call Trace("Income per second " + Real2Str(gIncomePerSecond) + " gold required per second " + gPerSecondToAffordUnit)
+  local integer requiredFactories = Max(Min(R2I(gIncomePerSecond / RMax(gPerSecondToAffordUnit,1)), difficulty),1) // Difficulty no more than 3 on insane, 2 on normal
+  if buildingid != 0 and TownCount(buildingid) < requiredFactories and requiredFactories > 1 then
+    loop
+      exitwhen requiredFactories == 1
+      if GetGold() > ((requiredFactories - TownCount(buildingid)) * GetUnitGoldCost2(buildingid)*1.75) and GetWood() > ((requiredFactories - TownCount(buildingid)) * GetUnitWoodCost2(buildingid)*1.75)  then
+        return requiredFactories
+      else
+        set requiredFactories = requiredFactories - 1
+      endif
+    endloop
+  endif
+  return requiredFactories
 endfunction
 
 //============================================================================
@@ -9198,7 +9211,7 @@ function Get_f_qty takes integer qty, integer unitid, integer town  returns inte
   if buy_type[unitid] != BT_UNIT or unitid == racial_peon or IsOneOnlyBuilding(needed1[unitid]) then
     return 1
   endif
-  return GetFactoryQty(qty - TownCountTown(unitid, town), GetUnitBuildTime(old_id[unitid]), GetUnitGoldCost2(unitid), income_percentage[needed1[unitid]])
+  return GetFactoryQty(qty - TownCountTown(unitid, town), GetUnitBuildTime(old_id[unitid]), GetUnitGoldCost2(unitid), needed1[unitid], income_percentage[needed1[unitid]])
 endfunction
 
 //============================================================================
@@ -11308,7 +11321,7 @@ function FactoryNumberUpdate takes nothing returns nothing
   local integer i = 0
   local integer j = 0
   local real g = GetRandomReal(0.8,1.1)
-  set gold_income = GetGoldIncome() * gold_unit_percentage
+  set gold_income = GetGoldIncome()
   if gold_income != 0 then
     set g = gold_income
   endif
@@ -11324,10 +11337,10 @@ function FactoryNumberUpdate takes nothing returns nothing
   loop
     exitwhen i >= building_length
     set j = building[i]
-    set income_percentage[j] = I2R(gold_sum[j]) / g
-    if build_num[j] > 0 then
-      call BuildUnit(GetFactoryQty(build_num[j], build_time_sum[j] / build_num[j], gold_sum[j] / build_num[j], income_percentage[j]), j, prio_sum[j] / build_num[j])
-    endif
+    set income_percentage[j] = I2R(gold_sum[j]) / g // gold_sum = total costs for the qty of units required
+    //if build_num[j] > 0 then
+      //call BuildUnit(GetFactoryQty(build_num[j], build_time_sum[j] / build_num[j], gold_sum[j] / build_num[j], income_percentage[j]), j, prio_sum[j] / build_num[j])
+    //endif
     set i = i + 1
   endloop
 endfunction

@@ -228,14 +228,12 @@ This special version will make *odd* teams run with AMAI and *even* teams run wi
 Useful for testing how much better AMAI is against the original AI.
 You cannot use the standard commander with this option.
 
-There are additional scripts compiled in your `scripts\vsai` directory during standard compilation.
+There are additional scripts compiled in your `scripts\vsai` directory during standard compilation. The `vsai\Blizzard.j` must be included over the original when installing manually.
 
 Enable during install by setting the commander option to 2: 
 ```
 InstallTFTToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m" 2
 ```
-
-Note for manual install you will need to rename back to Blizzard.j before including in your map.
 
 # Features
 
