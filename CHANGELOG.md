@@ -27,6 +27,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) VSAI is now compiled by default and included in the output scripts (jzy-chitong56)
 - (DevTools) Optimised scripts additionally compiled by default via MakeAll and available to use.
 - (DevTools) Optimise now works with VSAI scripts.
+- (DevTools) Testing build script to run AMAI against another version of AMAI from git tags `PitVersions TFT devbranch "(12)EmeraldGardens.w3x"` then install via secret commander number `3`
+   - Only racial changes are garunteed to work between tags, changes in common.eai could break the AI.
 
 
 ### Changed
