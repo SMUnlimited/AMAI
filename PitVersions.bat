@@ -2,6 +2,7 @@
 SET VER=%~1
 SET TAG=%~2
 SET MAP=%~3
+SET FORCE=%~4
 @rem git.exe instead of just git, because some git.cmd commands cause the entire batch script to exit.
 where git.exe
 if "%errorlevel%"=="1" (
@@ -9,9 +10,19 @@ if "%errorlevel%"=="1" (
   ECHO Please install Git as a requirement. Download : https://gitforwindows.org/
   exit /b 1
 )
+git.exe rev-parse --verify --quiet %TAG%
 if "%errorlevel%"=="1" (
   ECHO Reference %TAG% not found
   exit /b 1
+)
+git.exe diff --quiet %TAG% -- common.eai
+if "%errorlevel%"=="1" (
+  ECHO %TAG% is not compatible because common.eai does not match cross-versions.
+  if "%FORCE%" neq "1" (
+    ECHO Install can be forced with PitVersions "%VER%" "%TAG%" "%MAP%" 1
+    ECHO Exiting
+    exit /b 1
+  )
 )
 if not exist Scripts\%VER%\a\NUL mkdir Scripts\%VER%\a
 if not exist Scripts\%VER%\b\NUL mkdir Scripts\%VER%\b
