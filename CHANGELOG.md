@@ -46,6 +46,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Town defense control optimized so that the army tracker controls where defense is best placed in all cases.
 - Moved AMAI tags to after player names as various replays and leaderboards cannot display name correctly in those cases.
 - If home town is destroyed, the AI will now ensure it defends an existing town instead.
+- Elf will now build 1 farm at front locations again.
+- Automatic upgrades now have a 10% chance to upgrade up from 1%, anything under 10 was extremly difficult to trigger. Strategies can apply a max that will limit this to a lower value though.
 - Reworked defeat logic so giving units to a neutral player does still trigger defeat. (Slayer95)
 - Teleport control improvements and fixes. (jzy-chitong56)
 - Spanish translation improvements (Slayer95)
