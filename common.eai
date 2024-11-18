@@ -7240,21 +7240,27 @@ function HealUnit takes unit healer, unit to_heal, boolean hero_heal returns not
         call IssueTargetOrderById(healer, healer_spell[id], to_heal)
       endif
     endif
+    call GroupRemoveUnit(unit_healing, healer)
   endif
 endfunction
 
 //============================================================================
 function GetHealer takes unit u returns unit
   local integer id = 0
+  local group rg = CopyGroup(healer_group)
   loop
-    set u = FirstOfGroup(healer_group)
+    set u = FirstOfGroup(rg)
     exitwhen u == null
     set id = GetHealerId(GetUnitTypeId(u))
-    if id != -1 and not IsUnitLoaded(u) and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) then
+    if id != -1 and not IsUnitLoaded(u) and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) and not IsUnitInGroup(u, unit_healing) then
+      call DestroyGroup(rg)
+      set rg = null
       return u
     endif
-    call GroupRemoveUnit(healer_group, u)
+    call GroupRemoveUnit(rg, u)
   endloop
+  call DestroyGroup(rg)
+  set rg = null
   return u
 endfunction
 
