@@ -479,7 +479,7 @@ globals
     integer total_food              = 0
     integer wood_buffer             = 0
     real    gold_income             = 0
-    integer income_per_mine         = 50
+    integer income_per_mine         = 10  // rate per second
     real    gold_unit_percentage    = 0.9
     boolean take_all_ghouls_along = false
 
@@ -538,6 +538,7 @@ globals
     integer array upkeep_allowed
     integer array last_upkeep_allowed
     integer array upkeep_border
+    real array upkeep_goldchange
     integer array upkeep_resistance
     integer array upkeep_save_time
     integer array upkeep_time
@@ -8223,6 +8224,7 @@ function InitUpkeep takes nothing returns nothing
   set upkeep_save_time[UPKEEP_%1] = %4
   set upkeep_mines_needed[UPKEEP_%1] = %5
   set upkeep_time[UPKEEP_%1] = -1
+  set upkeep_goldchange[UPKEEP_%1] = %6
 #ENDINCLUDE
 endfunction
 
@@ -9158,11 +9160,21 @@ endfunction
 //============================================================================
 // Total expected income per second (plus spare gold)
 function GetGoldIncome takes nothing returns real
-  local integer inc = GetMinesHarvested()*income_per_mine
+  local real inc = I2R(GetMinesHarvested()*income_per_mine)
+  local integer i = 0
+  local real upkeep = 1
+  loop
+    exitwhen i >= UPKEEP_NUM
+    if FoodUsed() >= upkeep_border[i] then
+      set upkeep = upkeep_goldchange[i]
+    endif  
+    set i = i + 1
+  endloop
+  set inc = inc * upkeep
   if inc > GetGoldOwned() then
     set inc = GetGoldOwned()
   endif
-  return I2R(inc + GetGold()) * gold_unit_percentage
+  return inc + GetGold() * gold_unit_percentage
 endfunction
 
 //============================================================================
