@@ -109,7 +109,7 @@ export class MenuService {
 
       this.translate.get([_('PAGES.MENU.SELECT_LANG'), _('PAGES.MENU.ENGLISH'), _('PAGES.MENU.CHINESE'), _('PAGES.MENU.FRENCH')
         , _('PAGES.MENU.GERMAN'), _('PAGES.MENU.NORWEGIAN'), _('PAGES.MENU.PORTUGUESE'), _('PAGES.MENU.ROMANIAN')
-        , _('PAGES.MENU.RUSSIAN'), _('PAGES.MENU.SPANISH'), _('PAGES.MENU.SWEDISH')
+        , _('PAGES.MENU.RUSSIAN'), _('PAGES.MENU.SPANISH'), _('PAGES.MENU.SWEDISH'), _('PAGES.MENU.ABOUT')
       ]).subscribe((translations: { [key: string]: string }) => {
         template.push(
           {
@@ -196,23 +196,28 @@ export class MenuService {
                 }
               }
             ]
+          },
+          {
+            label: 'View',
+            submenu: [
+              //{ role: 'reload' },
+              //{ role: 'forceReload' },
+              { role: 'toggleDevTools' },
+              { type: 'separator' },
+              { role: 'resetZoom' },
+              { role: 'zoomIn' },
+              { role: 'zoomOut' },
+              { type: 'separator' },
+              { role: 'togglefullscreen' }
+            ]
+          },
+          {
+            label: translations['PAGES.MENU.ABOUT'],
+            click: () => {
+              const { shell } = window.require('electron');
+              shell.openExternal('https://github.com/SMUnlimited/AMAI');
           }
         );
-      });
-
-      template.push({
-        label: 'View',
-        submenu: [
-          //{ role: 'reload' },
-          //{ role: 'forceReload' },
-          { role: 'toggleDevTools' },
-          { type: 'separator' },
-          { role: 'resetZoom' },
-          { role: 'zoomIn' },
-          { role: 'zoomOut' },
-          { type: 'separator' },
-          { role: 'togglefullscreen' }
-        ]
       });
 
       console.log(template);
