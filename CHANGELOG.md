@@ -79,6 +79,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Logic to build multiple unit buildings takes better account of cost to construct these to avoid building multiple when there is no resources available to do so.
 - Fix critical issue where retreating forces never fully retreated home, they could just immediately go back into battle.
 - Fix an issue where healer units are not available until next attack iteration.
+- Fix critical issue where if only part of creeps are killed at mine in some cases this could trigger the mine being flagged as empty.
 - Fix PERIAPT_OF_VITALITY gold cost to correct reforged value. (Slayer95)
 - Fix ally attack target not being reset, particularly expansion seemed to be slower without fix. (jzy-chitong56)
 - Fix Goblin Tinker Skill not upgrading past rockets on one of the trees. (jzy-chitong56)
