@@ -216,6 +216,7 @@ export class MenuService {
             click: () => {
               const { shell } = window.require('electron');
               shell.openExternal('https://github.com/SMUnlimited/AMAI');
+            }
           }
         );
       });
