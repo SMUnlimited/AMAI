@@ -76,7 +76,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issue where attacks were not being cancelled unless only an ally was under threat.
 - Fixed an issue where ghouls would start attacking then all run back to harvest wood leaving forces on there own, now extra ghouls will reinforce ongoing attacks too just like other troops.
 - Fix an issue where ranged micro could sometimes move ally computer and player units.
-- Logic to build multiple unit buildings takes better account of cost to construct these to avoid building multiple when there is no resources available to do so.
+- Logic to build multiple unit buildings takes better account of cost (and now includes wood levels) to construct these to avoid building multiple when there is no resources available to do so.
 - Fix critical issue where retreating forces never fully retreated home, they could just immediately go back into battle.
 - Fix an issue where healer units are not available until next attack iteration.
 - Fix critical issue where if only part of creeps are killed at mine in some cases this could trigger the mine being flagged as empty.

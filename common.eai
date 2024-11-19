@@ -9194,12 +9194,15 @@ endfunction
 //============================================================================
 // in_percent = total gold cost of units required / gold_income
 // gold_income = (GetGoldRate of mines + current gold) * 0.9
-function GetFactoryQty takes integer qty, integer build_time, integer gold_cost, integer buildingid, real in_percentage returns integer
+function GetFactoryQty takes integer qty, integer build_time, integer gold_cost, integer wood_cost, integer buildingid, real in_percentage returns integer
   local real gIncomePerSecond = GetFactoryRate(qty) * gold_income
   local real gPerSecondToAffordUnit = I2R(gold_cost) / I2R(Max(build_time, 1))
+  local real wIncomePerSecond = (GetFactoryRate(qty) * (GetWood()*gold_unit_percentage + 10)) // Assuming flat 10 wood per second
+  local integer woodFactories = R2I(wIncomePerSecond/ RMax(I2R(wood_cost)/I2R(Max(build_time, 1)), 1))
 //  call DisplayToAll("factory number returned: "+Int2Str(Max(Min(R2I(gip / gic), difficulty),1)))
   //call Trace("Income per second " + Real2Str(gIncomePerSecond) + " gold required per second " + gPerSecondToAffordUnit)
-  local integer requiredFactories = Max(Min(R2I(gIncomePerSecond / RMax(gPerSecondToAffordUnit,1)), difficulty),1) // Difficulty no more than 3 on insane, 2 on normal
+  // Smallest factories number based on gold per second and wood per second, if both are in a good state then factory output will be higher
+  local integer requiredFactories = Max(Min(Min(R2I(gIncomePerSecond / RMax(gPerSecondToAffordUnit,1)),woodFactories), difficulty),1) // Difficulty no more than 3 on insane, 2 on normal
   if buildingid != 0 and TownCount(buildingid) < requiredFactories and requiredFactories > 1 then
     loop
       exitwhen requiredFactories == 1
@@ -9229,7 +9232,7 @@ function Get_f_qty takes integer qty, integer unitid, integer town  returns inte
   if buy_type[unitid] != BT_UNIT or unitid == racial_peon or IsOneOnlyBuilding(needed1[unitid]) then
     return 1
   endif
-  return GetFactoryQty(qty - TownCountTown(unitid, town), GetUnitBuildTime(old_id[unitid]), GetUnitGoldCost2(unitid), needed1[unitid], income_percentage[needed1[unitid]])
+  return GetFactoryQty(qty - TownCountTown(unitid, town), GetUnitBuildTime(old_id[unitid]), GetUnitGoldCost2(unitid), GetUnitWoodCost2(unitid), needed1[unitid], income_percentage[needed1[unitid]])
 endfunction
 
 //============================================================================
