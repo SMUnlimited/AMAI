@@ -17,7 +17,16 @@ if "%~3" == "1" (
   ECHO Installing VS Vanilla AI to map
   MPQEditor a "%~2" "%~dp0Scripts\%VER%\vsai\*.ai" Scripts
   if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
-  MPQEditor a "%~2" "%~dp0Scripts\%VER%\Blizzard_VSAI.j" Scripts\Blizzard.j
+  MPQEditor a "%~2" "%~dp0Scripts\%VER%\vsai\Blizzard.j" Scripts\Blizzard.j
+  if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
+) else if "%~3" == "3" (
+  ECHO Installing Tag VS Tag to map
+  MPQEditor a "%~2" "%~dp0Scripts\%VER%\a\*.txt" Scripts
+  MPQEditor a "%~2" "%~dp0Scripts\%VER%\a\*.ai" Scripts
+  MPQEditor a "%~2" "%~dp0Scripts\%VER%\b\*.txt" Scripts
+  MPQEditor a "%~2" "%~dp0Scripts\%VER%\b\*.ai" Scripts
+  if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
+  MPQEditor a "%~2" "%~dp0Scripts\%VER%\vsai\Blizzard.j" Scripts\Blizzard.j
   if not "%errorlevel%"=="0" SET RESULTMAKEVER=%errorlevel%
 ) else (
   ECHO Commander not installed

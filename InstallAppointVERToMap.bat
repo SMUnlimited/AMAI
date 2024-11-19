@@ -40,15 +40,15 @@ ECHO.
 set /p choice=请输入(1 ~ 3):
 
 if "%choice%"=="1" (
-  SET COMMAND=0
+  SET COMMAND=1
   SET COMMAND_STATE =安装常规控制台
 )
 if "%choice%"=="2" (
-  SET COMMAND=1
+  SET COMMAND=2
   SET COMMAND_STATE =安装 VS AI 控制台
 )
 if "%choice%"=="3" (
-  SET COMMAND=2
+  SET COMMAND=0
   SET COMMAND_STATE =不安装控制台
 )
 
@@ -86,7 +86,7 @@ set /p searchPath=请输入:
 
 setlocal enabledelayedexpansion
 for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
-  call InstallVERToMap !VER! "!%%~fF!" "!COMMAND!"
+  call InstallVERToMap !VER! "!%%~fF!" "%COMMAND%"
 )
 endlocal
 goto EndScript

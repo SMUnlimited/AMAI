@@ -493,7 +493,7 @@ globals
     integer total_food              = 0
     integer wood_buffer             = 0
     real    gold_income             = 0
-    integer income_per_mine         = 50
+    integer income_per_mine         = 10  // rate per second
     real    gold_unit_percentage    = 0.9
     boolean take_all_ghouls_along = false
 
@@ -564,6 +564,7 @@ globals
     integer array upkeep_allowed
     integer array last_upkeep_allowed
     integer array upkeep_border
+    real array upkeep_goldchange
     integer array upkeep_resistance
     integer array upkeep_save_time
     integer array upkeep_time
@@ -6114,7 +6115,7 @@ function MultipleMinefix takes nothing returns boolean
   local group g = null
   local unit u = null
   local boolean b = true
-  if town_threatened or not hero_built[1] or (not race_manual_loading and not race_uses_mine_expansion and ((not_taken_expansion != null and DistanceBetweenPoints_kd(home_location,GetUnitLoc(not_taken_expansion)) < expansion_taken_radius) or (fixmine != null and GetResourceAmount(fixmine) > 200))) or (race_manual_loading and GetUnitCount(old_id[race_manual_loading_mine]) < TownCount(racial_expansion)) or (race_uses_mine_expansion and GetUnitCount(old_id[racial_peon]) > 5 * TownCount(racial_expansion)) then
+  if town_threatened or not hero_built[1] or (not race_manual_loading and not race_uses_mine_expansion and ((not_taken_expansion != null and DistanceBetweenPoints_kd(home_location,GetUnitLoc(not_taken_expansion)) < expansion_taken_radius) or (fixmine != null and GetResourceAmount(fixmine) > 200))) or (race_manual_loading and GetUnitCount(old_id[race_manual_loading_mine]) > 1) or (race_uses_mine_expansion and (GetUnitCount(old_id[racial_peon]) == 5 * TownCount(racial_expansion) or TownCount(racial_expansion) > 1)) then
     return b  //no first hero priority build army , human and orc just harvest
   endif
   call Trace("Check Multiple Mine")
@@ -7440,24 +7441,28 @@ function HealUnit takes unit healer, unit to_heal, boolean hero_heal returns not
         call IssueTargetOrderById(healer, healer_spell[id], to_heal)
       endif
     endif
+    call GroupRemoveUnit(unit_healing, healer)
   endif
 endfunction
 
 //============================================================================
 function GetHealer takes unit u returns unit
-  local group g = CreateGroup()
   local integer id = 0
+  local group rg = null
+  set rg = CopyGroup(healer_group, rg)
   loop
-    set u = FirstOfGroup(healer_group)
+    set u = FirstOfGroup(rg)
     exitwhen u == null
-    call GroupRemoveUnit(healer_group, u)
     set id = GetHealerId(GetUnitTypeId(u))
-    exitwhen id > -1 and not IsUnitLoaded(u) and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id]))
-    call GroupAddUnit(g, u)
+    if id != -1 and not IsUnitLoaded(u) and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) and not IsUnitInGroup(u, unit_healing) then
+      call DestroyGroup(rg)
+      set rg = null
+      return u
+    endif
+    call GroupRemoveUnit(rg, u)
   endloop
-  call GroupAddGroup(healer_group, g)
-  call DestroyGroup(g)
-  set g = null
+  call DestroyGroup(rg)
+  set rg = null
   return u
 endfunction
 
@@ -8503,6 +8508,7 @@ function InitUpkeep takes nothing returns nothing
   set upkeep_save_time[UPKEEP_%1] = %4
   set upkeep_mines_needed[UPKEEP_%1] = %5
   set upkeep_time[UPKEEP_%1] = -1
+  set upkeep_goldchange[UPKEEP_%1] = %6
 #ENDINCLUDE
 endfunction
 
@@ -9462,17 +9468,28 @@ function GetMinesHarvested takes nothing returns integer
 endfunction
 
 //============================================================================
-// Total excepted income per second (plus spare gold)
+// Total expected income per second (plus spare gold)
 function GetGoldIncome takes nothing returns real
-  local integer inc = GetMinesHarvested()*income_per_mine
+  local real inc = I2R(GetMinesHarvested()*income_per_mine)
+  local integer i = 0
+  local real upkeep = 1
+  loop
+    exitwhen i >= UPKEEP_NUM
+    if FoodUsed() >= upkeep_border[i] then
+      set upkeep = upkeep_goldchange[i]
+    endif
+    set i = i + 1
+  endloop
+  set inc = inc * upkeep
   if inc > GetGoldOwned() then
     set inc = GetGoldOwned()
   endif
-  return I2R(inc + GetGold())
+  return inc + GetGold() * gold_unit_percentage
 endfunction
 
 //============================================================================
-function GetIncomePercentage takes integer qty returns real
+// Returns % impact such that more units required is negligable, while less units greatly reduces the rate
+function GetFactoryRate takes integer qty returns real
   if qty <= 3 then
     return 0.0
   endif
@@ -9480,13 +9497,28 @@ function GetIncomePercentage takes integer qty returns real
 endfunction
 
 //============================================================================
-// in_percent = gold cost building / income rate
+// in_percent = total gold cost of units required / gold_income
 // gold_income = (GetGoldRate of mines + current gold) * 0.9
-function GetFactoryQty takes integer qty, integer build_time, integer gold_cost, real in_percentage returns integer
-  local real gip = GetIncomePercentage(qty) * gold_income * (1-in_percentage)
-  local real gic = I2R(Max(gold_cost,1)) / I2R(Max(build_time, 1))
-//  call DisplayToAll("factory number returned: "+Int2Str(Max(Min(R2I(gip / gic), difficulty),1)))
-  return Max(Min(R2I(gip / gic), difficulty),1)  // Difficulty no more than 3 on insane, 2 on normal
+function GetFactoryQty takes integer qty, integer build_time, integer gold_cost, integer wood_cost, integer buildingid, real in_percentage returns integer
+  local real gIncomePerSecond = GetFactoryRate(qty) * gold_income
+  local real gPerSecondToAffordUnit = I2R(gold_cost) / I2R(Max(build_time, 1))
+  local real wIncomePerSecond = (GetFactoryRate(qty) * (GetWood()*gold_unit_percentage + 10)) // Assuming flat 10 wood per second
+  local integer woodFactories = R2I(wIncomePerSecond/ RMax(I2R(wood_cost)/I2R(Max(build_time, 1)), 1))
+  //call DisplayToAll("factory number returned: "+Int2Str(Max(Min(R2I(gip / gic), difficulty),1)))
+  //call Trace("Income per second " + Real2Str(gIncomePerSecond) + " gold required per second " + gPerSecondToAffordUnit)
+  // Smallest factories number based on gold per second and wood per second, if both are in a good state then factory output will be higher
+  local integer requiredFactories = Max(Min(Min(R2I(gIncomePerSecond / RMax(gPerSecondToAffordUnit,1)),woodFactories), difficulty),1) // Difficulty no more than 3 on insane, 2 on normal
+  if buildingid != 0 and TownCount(buildingid) < requiredFactories and requiredFactories > 1 then
+    loop
+      exitwhen requiredFactories == 1
+      if GetGold() > ((requiredFactories - TownCount(buildingid)) * GetUnitGoldCost2(buildingid)*1.75) and GetWood() > ((requiredFactories - TownCount(buildingid)) * GetUnitWoodCost2(buildingid)*1.75) then
+        return requiredFactories
+      else
+        set requiredFactories = requiredFactories - 1
+      endif
+    endloop
+  endif
+  return requiredFactories
 endfunction
 
 //============================================================================
@@ -9505,7 +9537,7 @@ function Get_f_qty takes integer qty, integer unitid, integer town  returns inte
   if buy_type[unitid] != BT_UNIT or unitid == racial_peon or IsOneOnlyBuilding(needed1[unitid]) then
     return 1
   endif
-  return GetFactoryQty(qty - TownCountTown(unitid, town), GetUnitBuildTime(old_id[unitid]), GetUnitGoldCost2(unitid), income_percentage[needed1[unitid]])
+  return GetFactoryQty(qty - TownCountTown(unitid, town), GetUnitBuildTime(old_id[unitid]), GetUnitGoldCost2(unitid), GetUnitWoodCost2(unitid), needed1[unitid], income_percentage[needed1[unitid]])
 endfunction
 
 //============================================================================
@@ -9782,7 +9814,7 @@ endfunction
 // Note the random element is re-run very often.
 // Note tier bonus priority is a fixed bonus.
 // Param : quantity-num to build, unitid-the upgrade,  start tier- must be at this tier to research, unitcount- number of units (NOTE must calculate yourself and then pass)
-//              unitper - Number of units to give a 1% chance of building upgrade,
+//              unitper - Number of units to give a 10% chance of building upgrade,
 //              max - Maximum chance to research
 //              prio - Base priority
 //============================================================================
@@ -9790,11 +9822,11 @@ endfunction
 function BuildAdvUpgr2 takes integer qty, integer upgid, integer starttier, integer unitcount, real unitper, integer max, integer prio returns nothing
 //set num = (R2I((100 - FoodUsed())/GetFoodUsed(old_id[])) - 1) * prio_q_inc   // build upgrade priority at priority of unit
   if tier >= starttier then
-    if unitcount > 0 then
+    if unitcount > unitper then
       if unitper == 0 then
         set unitper = 1
       endif
-      if GetRandomInt(1, 100) <= Min(R2I(unitcount / unitper), max) then
+      if GetRandomInt(1, 100) <= Min(R2I((10*unitcount) / unitper), max) or (unitcount > unitper*2 and GetRandomInt(1, 100) <= max) then
         if qty >= tier-starttier+1 then
           call BuildUpgr(tier-starttier + 1, upgid, prio + ((tier-starttier)*4))
         else
@@ -11852,7 +11884,7 @@ function FactoryNumberUpdate takes nothing returns nothing
   local integer i = 0
   local integer j = 0
   local real g = GetRandomReal(0.8,1.1)
-  set gold_income = GetGoldIncome() * gold_unit_percentage
+  set gold_income = GetGoldIncome()
   loop
     exitwhen i >= building_length
     set g_sum = g_sum + gold_sum[building[i]]
@@ -11868,10 +11900,10 @@ function FactoryNumberUpdate takes nothing returns nothing
   loop
     exitwhen i >= building_length
     set j = building[i]
-    set income_percentage[j] = I2R(gold_sum[j]) / g
-    if build_num[j] > 0 then
-      call BuildUnit(GetFactoryQty(build_num[j], build_time_sum[j] / build_num[j], gold_sum[j] / build_num[j], income_percentage[j]), j, prio_sum[j] / build_num[j])
-    endif
+    set income_percentage[j] = I2R(gold_sum[j]) / g // gold_sum = total costs for the qty of units required
+    //if build_num[j] > 0 then
+      //call BuildUnit(GetFactoryQty(build_num[j], build_time_sum[j] / build_num[j], gold_sum[j] / build_num[j], income_percentage[j]), j, prio_sum[j] / build_num[j])
+    //endif
     set i = i + 1
   endloop
 endfunction
@@ -12357,10 +12389,11 @@ function DesperationAssault takes nothing returns nothing
   endif
 endfunction
 
-function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boolean reform returns nothing
+function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boolean reform, boolean ally_override returns nothing
   local real dist = 0
   local integer attack_length_counter = 0
   local integer combat_length_counter = 0
+  local unit ally_target = null
   //local group g = null
   if target == null or not UnitAlive(target) then  // ints lastcaptain
     set lastcaptainx = 0
@@ -12419,16 +12452,24 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     else
       set lastcaptainx = GetUnitX(target)
       set lastcaptainy = GetUnitY(target)
+      set ally_target = I2U(GetStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0"))
+      // We now control ally, only certain attack operations will let AMAI join around a shared ally target
+      if (ally_override and c_ally_total > 0 and ally_target != null and ally_target != target) then
+        set target = ally_target
+      endif
+      call AttackMoveKill(target)
+      // Below is old style alliance but this overrides all hardcoded attacks whether you want it to or not
       //if (GetAllianceTarget() == target) then
-        call AttackMoveKill(target)
+      //  call AttackMoveKill(target)
       //else
       //  call AttackMoveXY(R2I(lastcaptainx), R2I(lastcaptainy)) // Override and ignore the alliance target
       //endif
-      if (c_ally_total > 0 and I2U(GetStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0")) == target) then
+      if (c_ally_total > 0 and ally_target == target) then
         call CreateDebugTag("Reform until ally dead", 10, target, 1.00, 0.80)
       else
         call CreateDebugTag("Reform until target dead", 10, target, 1.00, 0.80)
       endif
+      set ally_target = null
     endif
 
     call StaggerSleep(1 * sleep_multiplier, (1 * sleep_multiplier) + 2)
@@ -12470,13 +12511,13 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
 endfunction
 
 //============================================================================
-function ReformUntilTargetDeadAM takes unit target, boolean iscreeping returns nothing
-	call CommonSleepUntilTargetDeadAM(target,iscreeping,true)
+function ReformUntilTargetDeadAM takes unit target, boolean iscreeping, boolean ally_override returns nothing
+  call CommonSleepUntilTargetDeadAM(target,iscreeping,true, ally_override)
 endfunction
 
 //============================================================================
-function SleepUntilTargetDeadAM takes unit target, boolean iscreeping returns nothing
-	call CommonSleepUntilTargetDeadAM(target,iscreeping,false)
+function SleepUntilTargetDeadAM takes unit target, boolean iscreeping, boolean ally_override returns nothing
+  call CommonSleepUntilTargetDeadAM(target,iscreeping,false, ally_override)
 endfunction
 
 //============================================================================
@@ -12502,9 +12543,11 @@ endfunction
 
 function SetChatVarsAttack takes unit u returns nothing
   local player p = GetOwningPlayer(u)
-  call SetChatVar("TargetRace", race_name[player_race[GetPlayerId(p)]])
-  call SetChatVar("TargetColor", ColorText(GetPlayerColor(p)))
-  call SetChatVarR("TargetStrength", GetPlayerStrength(p))
+  if GetPlayerId(p) < PLAYER_NEUTRAL_AGGRESSIVE then
+    call SetChatVar("TargetRace", race_name[player_race[GetPlayerId(p)]])
+    call SetChatVar("TargetColor", ColorText(GetPlayerColor(p)))
+    call SetChatVarR("TargetStrength", GetPlayerStrength(p))
+  endif
   set p = null
 endfunction
 
@@ -12567,7 +12610,7 @@ function BRRush takes nothing returns nothing
     call Sleep(2.8)  //unroot time
     call IssuePointOrder(utemp, "attack", GetUnitX(rushcreep_target), GetUnitY(rushcreep_target))
     call AttackMoveKill(rushcreep_target)
-    call ReformUntilTargetDeadAM(rushcreep_target, true)
+    call ReformUntilTargetDeadAM(rushcreep_target, true, false)
     call Chat(C_Done)
     call SleepInCombatAM()
     call Trace("===BR Finished===")
@@ -12585,7 +12628,7 @@ function BRRush takes nothing returns nothing
     set l = null
   else
     call AttackMoveKill(rushcreep_target)
-    call ReformUntilTargetDeadAM(rushcreep_target, true)
+    call ReformUntilTargetDeadAM(rushcreep_target, true, false)
     call Chat(C_Done)
     call SleepInCombatAM()
     call Trace("===BR Finished , no tree===")
@@ -12599,7 +12642,7 @@ function BRRush takes nothing returns nothing
 endfunction
 
 //============================================================================
-function AttackMoveKillAAM takes unit target returns nothing
+function AttackMoveKillAAM takes unit target, boolean ally_override returns nothing
   if target == null or not UnitAlive(target) then
     call Trace("Bad target passed to AttackMoveKillAAM")
     call Sleep(3 * sleep_multiplier)
@@ -12613,7 +12656,7 @@ function AttackMoveKillAAM takes unit target returns nothing
     endif
   endif
   call AttackMoveKill(target)
-  call ReformUntilTargetDeadAM(target, false)
+  call ReformUntilTargetDeadAM(target, false, ally_override)
   call Chat(C_Done)
   call SleepInCombatAM()
   call Trace("===Attack Fully Finished===")
@@ -12624,7 +12667,7 @@ endfunction
 //============================================================================
 // Attack target code without the battle radius set so uses the creep radius
 // and without distraction attack
-function AttackMoveKillCreep takes unit target returns nothing
+function AttackMoveKillCreep takes unit target, boolean ally_override returns nothing
   if target == null or not UnitAlive(target) then
     call Trace("Bad target passed to AttackMoveKillCreep")
     call Sleep(3 * sleep_multiplier)
@@ -12640,7 +12683,7 @@ function AttackMoveKillCreep takes unit target returns nothing
     call TQAddJob(2 * sleep_multiplier, RETREAT_CONTROL, 0)
   endif
   call AttackMoveKill(target)
-  call ReformUntilTargetDeadAM(target, true)
+  call ReformUntilTargetDeadAM(target, true, ally_override)
   call Chat(C_Done)
   call SleepInCombatAM()
   call Trace("===Attack Fully Finished===")
@@ -12714,7 +12757,7 @@ function AttackMoveTowerRush takes nothing returns nothing
 			if mine != null and u != null and GetPlayerStrength(rushedplayer) < 3 and towers_built > 3 then
 				call CreateDebugTag("TRush: take mine", 10, u, 4.00, 2.00)
 				call Trace("TR : take mine" )
-				call AttackMoveKillCreep(u)
+				call AttackMoveKillCreep(u, false)
 				call ClearCaptainTargets()
 				set u = null
 			endif
@@ -12909,7 +12952,7 @@ function CreepAttack takes integer str returns nothing
     call SetAllianceTargetIfLeadAndChat(target, C_Creep)
   endif
   call FormGroupAM(3)
-  call AttackMoveKillCreep(target)
+  call AttackMoveKillCreep(target, true)
   call ClearAllianceTarget(target)
   set target = null
 endfunction
@@ -13123,13 +13166,19 @@ endfunction
 
 //============================================================================
 function GetRace takes player p returns integer
-  return player_race[GetPlayerId(p)]
+  local integer i = GetPlayerId(p)
+  if i < PLAYER_NEUTRAL_AGGRESSIVE then
+    return player_race[i]
+  endif
+  return 0
 endfunction
 
 //============================================================================
 function GetRaceAggression takes unit target returns integer
-  local integer i = Max((GetRace(GetOwningPlayer(target)) - 1) * tiernum + tier - 1,0)
-  return race_aggression[i]
+  if GetPlayerId(GetOwningPlayer(target)) < PLAYER_NEUTRAL_AGGRESSIVE then
+    return race_aggression[Max((GetRace(GetOwningPlayer(target)) - 1) * tiernum + tier - 1,0)]
+  endif
+  return 0
 endfunction
 
 //============================================================================
@@ -13327,7 +13376,7 @@ function Militia_Expansion takes integer m returns nothing
   set town_threat_break = false
   //set captain_flee = false
   //call SetCaptainHome(ATTACK_CAPTAIN, GetUnitX(efoe), GetUnitY(efoe)) //
-  //call AttackMoveKillCreep(efoe)
+  //call AttackMoveKillCreep(efoe, false)
   set attack_running = true
   //if not retreat_controlled then
   //  call Trace("===Retreat control started===")
@@ -13337,7 +13386,7 @@ function Militia_Expansion takes integer m returns nothing
   //  call TQAddJob(2 * sleep_multiplier, RETREAT_CONTROL, 0)
   //endif
   call AttackMoveKill(efoe)
-  call SleepUntilTargetDeadAM(efoe, true)
+  call SleepUntilTargetDeadAM(efoe, true, false)
   call Chat(C_Done)
   call SleepInCombatAM()
   call Trace("===Attack Fully Finished===")
@@ -13423,10 +13472,7 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
       set defense_length_counter = 0
       call FormGroupAM(0)
     endif
-    if not CaptainIsHome() and not CaptainRetreating() then
-      call ClearCaptainTargets()
-      call CaptainGoHome()
-    endif
+    call CaptainGoHome() // town threat check will already set this to correct place to defend
     exitwhen not town_threatened and not TownThreatened() and not CaptainInCombat(false)
     exitwhen player_defeated
     call StaggerSleep(2 * sleep_multiplier, (2 * sleep_multiplier) + 2)
@@ -13479,7 +13525,7 @@ if desperation_assault and not no_attack then
         //call Chat(C_Ally)
         call FormGroupAM(3)
         call DesperationAssault()
-        call AttackMoveKillAAM(common)
+        call AttackMoveKillAAM(common, true)
         call ClearAllianceTarget(common)
         set common = null
         return
@@ -13493,7 +13539,7 @@ if desperation_assault and not no_attack then
     call SetAllianceTargetIfLeadAndChat(common, C_Ally)
     call FormGroupAM(3)
     call DesperationAssault()
-    call AttackMoveKillAAM(common)
+    call AttackMoveKillAAM(common, true)
     call ClearAllianceTarget(common)
     set common = null
     return
@@ -13546,7 +13592,7 @@ if queue_running then
     else
       call Trace("Attacking unit" )
       call FormGroupAM(3)
-      call AttackMoveKillAAM(queue_t_u)
+      call AttackMoveKillAAM(queue_t_u, false)
       call Trace("Attack complete" )
       return
     endif
@@ -13563,7 +13609,7 @@ if attack_player then
     return
   endif
   call FormGroupAM(3)
-  call AttackMoveKillAAM(hall)
+  call AttackMoveKillAAM(hall, false)
   call Trace("Attack complete" )
   set hall = null
   return
@@ -13587,7 +13633,7 @@ if attack_unit then
   else
     call Trace("Attacking unit" )
     call FormGroupAM(3)
-    call AttackMoveKillAAM(target_unit)
+    call AttackMoveKillAAM(target_unit, false)
     call Trace("Attack complete" )
     return
   endif
@@ -13627,7 +13673,7 @@ if not creeping_only then	// Do the normal attack sequence
       call FormGroupAM(3)
       set creep = GetExpFoe(creep)
       if creep != null then
-        call AttackMoveKillCreep(creep)
+        call AttackMoveKillCreep(creep, false)
         set creep = null
       endif
       if ancient_attack_running then
@@ -13648,7 +13694,7 @@ if not creeping_only then	// Do the normal attack sequence
       set creep = GetExpFoe(creep)
       if creep != null then
         call FormGroupAM(3)
-        call AttackMoveKillCreep(creep)
+        call AttackMoveKillCreep(creep, false)
         set creep = null
         return
       endif
@@ -13664,7 +13710,7 @@ if not creeping_only then	// Do the normal attack sequence
     call Trace("Double Expansion Attack")
     call SetAllianceTargetIfLeadAndChat(double_expansion_target, C_Ally)
     call FormGroupAM(3)
-    call AttackMoveKillAAM(double_expansion_target)
+    call AttackMoveKillAAM(double_expansion_target, false)
     call ClearAllianceTarget(double_expansion_target)
     if not UnitAlive(double_expansion_target) then
       set double_expansion_target = null
@@ -13687,7 +13733,7 @@ if not creeping_only then	// Do the normal attack sequence
           set battle_radius = creep_battle_radius
           call SetAllianceTargetIfLeadAndChat(creep, C_Expansion)
           call FormGroupAM(3)
-          call AttackMoveKillCreep(creep)
+          call AttackMoveKillCreep(creep, false)
           call ClearAllianceTarget(creep)
           if creep == null or not UnitAlive(creep) then
             set take_exp = false
@@ -13711,7 +13757,7 @@ if not creeping_only then	// Do the normal attack sequence
         call Trace("Attack Alliance Target")
         //call Chat(C_Ally)
         call FormGroupAM(3)
-        call AttackMoveKillAAM(common)
+        call AttackMoveKillAAM(common, true)
         call Trace("Attack Alliance Target complete")
         call ClearAllianceTarget(common)
         set common = null
@@ -13731,7 +13777,7 @@ if not creeping_only then	// Do the normal attack sequence
         call Trace("Attack real human player")
         call SetAllianceTargetIfLead(humanhall)
         call FormGroupAM(3)
-        call AttackMoveKillAAM(humanhall)
+        call AttackMoveKillAAM(humanhall, true)
         call ClearAllianceTarget(humanhall)
         set humanhall = null
         return
@@ -13748,7 +13794,7 @@ if not creeping_only then	// Do the normal attack sequence
         //call SetChatVarsAttack(mega)
         call Chat(C_Mega) // This chat is to enemies not allies
         call FormGroupAM(3)
-        call AttackMoveKillAAM(mega)
+        call AttackMoveKillAAM(mega, true)
         call ClearAllianceTarget(mega)
         set mega = null
         return
@@ -13761,7 +13807,7 @@ if not creeping_only then	// Do the normal attack sequence
       if hall != null and UnitAlive(hall) then
         call SetAllianceTargetIfLeadAndChat(alli_target, C_Attack)
         call FormGroupAM(3)
-        call AttackMoveKillAAM(hall)
+        call AttackMoveKillAAM(hall, true)
         //call ClearAllianceTarget(null)
         set hall = null
         return
@@ -14181,14 +14227,20 @@ function universal_attack_sequence takes nothing returns nothing
 
   loop
     exitwhen not teleporting
-    //call Trace("UNIVERSAL ATTACK: Units are teleporting")
+    call CreateDebugTagLoc("Teleporting Home", 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
     call Sleep(1)
+  endloop
+
+  loop
+    exitwhen not retreat_controlled
+    call CreateDebugTagLoc("Sleep until retreated", 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
+    call Sleep(1) // Retreat must have fully run its course, units are sent home via job
   endloop
 
   if town_threatened or TownThreatened() then // Attack has finished so any AMAI detections or hardcoded threat detections should be dealt with
     set break_attack = false
     set isfleeing = false
-    call FormGroupAM(1)
+    //call FormGroupAM(1)
     call SleepUntilTownDefended(ai_strength)
   //elseif not towerrush and not ancient_expanding and not militia_expanding and not item_expanding then
     //call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
