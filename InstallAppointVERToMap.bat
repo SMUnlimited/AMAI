@@ -40,15 +40,15 @@ ECHO.
 set /p choice=Input(1 ~ 3):
 
 if "%choice%"=="1" (
-  SET COMMAND=0
+  SET COMMAND=1
   SET COMMAND_STATE=Install Commander
 )
 if "%choice%"=="2" (
-  SET COMMAND=1
+  SET COMMAND=2
   SET COMMAND_STATE=Install VS AI Commander
 )
 if "%choice%"=="3" (
-  SET COMMAND=2
+  SET COMMAND=0
   SET COMMAND_STATE=Not Install Commander
 )
 
@@ -85,7 +85,7 @@ set /p searchPath=Input:
 
 setlocal enabledelayedexpansion
 for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
-  call InstallVERToMap !VER! "!%%~fF!" "!COMMAND!"
+  call InstallVERToMap !VER! "!%%~fF!" "%COMMAND%"
 )
 endlocal
 goto EndScript
