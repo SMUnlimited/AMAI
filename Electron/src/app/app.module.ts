@@ -8,7 +8,7 @@ import { SharedModule } from './shared/shared.module';
 import { AppRoutingModule } from './app-routing.module';
 
 // NG Translate
-import { TranslateLoader, provideTranslateService } from '@codeandweb/ngx-translate';
+import { TranslateLoader, TranslateService, provideTranslateService } from '@codeandweb/ngx-translate';
 import { TranslateHttpLoader } from '@codeandweb/http-loader';
 
 import { HomeModule } from './home/home.module';
@@ -43,4 +43,6 @@ const httpLoaderFactory = (http: HttpClient): TranslateHttpLoader =>  new Transl
   ],
   bootstrap: [AppComponent]
 })
-export class AppModule {}
+export class AppModule {
+  constructor(translate: TranslateService) { translate.setDefaultLang('en'); }
+}

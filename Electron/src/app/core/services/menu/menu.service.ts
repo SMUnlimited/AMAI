@@ -18,77 +18,29 @@ export class MenuService {
         label: 'Install',
         submenu: [
           {
-            label: 'Install Reforged on Folder',
+            label: 'Install Opt Reforged on Folder with Commander',
             click: () => {
-              this.electronService.ipcRenderer.send('install-folder');
+              this.electronService.ipcRenderer.send('install', 'REFORGED', true, true, true, false);
             }
           },
           {
-            label: 'Install Reforged on Folder (No Commander)',
+            label: 'Install Opt Reforged on Folder (No Commander)',
             click: () => {
-              this.electronService.ipcRenderer.send('install-folder-noc');
+              this.electronService.ipcRenderer.send('install', true, false, true, false);
             }
           },
           {
-            label: 'Install Reforged on Map',
+            label: 'Install Opt Reforged on Map with Commander',
             click: () => {
-              this.electronService.ipcRenderer.send('install-map');
+              this.electronService.ipcRenderer.send('install','REFORGED', false, true, true, false);
             }
           },
           {
-            label: 'Install Reforged on Map (No Commander)',
+            label: 'Install Opt Reforged on Map (No Commander)',
             click: () => {
-              this.electronService.ipcRenderer.send('install-map-noc');
+              this.electronService.ipcRenderer.send('install', false, false, true, false);
             }
           },
-          {
-            label: 'Install classic TFT on Folder',
-            click: () => {
-              this.electronService.ipcRenderer.send('install-folder-TFT');
-            }
-          },
-          {
-            label: 'Install classic TFT on Folder (No Commander)',
-            click: () => {
-              this.electronService.ipcRenderer.send('install-folder-noc-TFT');
-            }
-          },
-          {
-            label: 'Install classic TFT on Map',
-            click: () => {
-              this.electronService.ipcRenderer.send('install-map-TFT');
-            }
-          },
-          {
-            label: 'Install classic TFT on Map (No Commander)',
-            click: () => {
-              this.electronService.ipcRenderer.send('install-map-noc-TFT');
-            }
-          },
-                  {
-            label: 'Install classic ROC on Folder',
-            click: () => {
-              this.electronService.ipcRenderer.send('install-folder-ROC');
-            }
-          },
-          {
-            label: 'Install classic ROC on Folder (No Commander)',
-            click: () => {
-              this.electronService.ipcRenderer.send('install-folder-noc-ROC');
-            }
-          },
-          {
-            label: 'Install classic ROC on Map',
-            click: () => {
-              this.electronService.ipcRenderer.send('install-map-ROC');
-            }
-          },
-          {
-            label: 'Install classic ROC on Map (No Commander)',
-            click: () => {
-              this.electronService.ipcRenderer.send('install-map-noc-ROC');
-            }
-          }
           // TODO: recreate MakeTFT script
           // FIXME: convert MakeTFTBase.bat to JS script
           // FIXME: convert MakeTFT.bat to JS script
@@ -118,7 +70,7 @@ export class MenuService {
               {
                 label: translations['PAGES.MENU.ENGLISH'],
                 type: 'radio',
-                checked: this.translate.currentLang == 'en',
+                checked: this.translate.currentLang == 'en' ,
                 click: () => {
                   this.translate.use('en')
                 }
@@ -197,28 +149,32 @@ export class MenuService {
               }
             ]
           },
-          {
-            label: 'View',
-            submenu: [
-              //{ role: 'reload' },
-              //{ role: 'forceReload' },
-              { role: 'toggleDevTools' },
-              { type: 'separator' },
-              { role: 'resetZoom' },
-              { role: 'zoomIn' },
-              { role: 'zoomOut' },
-              { type: 'separator' },
-              { role: 'togglefullscreen' }
-            ]
-          },
-          {
-            label: translations['PAGES.MENU.ABOUT'],
-            click: () => {
-              const { shell } = window.require('electron');
-              shell.openExternal('https://github.com/SMUnlimited/AMAI');
-            }
-          }
         );
+      });
+
+      template.push({
+        label: 'View',
+        submenu: [
+          //{ role: 'reload' },
+          //{ role: 'forceReload' },
+          { role: 'toggleDevTools' },
+          { type: 'separator' },
+          { role: 'resetZoom' },
+          { role: 'zoomIn' },
+          { role: 'zoomOut' },
+          { type: 'separator' },
+          { role: 'togglefullscreen' }
+        ]
+      });
+
+      this.translate.get([_('PAGES.MENU.ABOUT')]).subscribe((translations: { [key: string]: string }) => {
+        template.push({
+          label: translations['PAGES.MENU.ABOUT'],
+          click: () => {
+            const { shell } = window.require('electron');
+            shell.openExternal('https://github.com/SMUnlimited/AMAI');
+          }
+        });
       });
 
       console.log(template);
@@ -232,6 +188,10 @@ export class MenuService {
       const menu = Menu.buildFromTemplate(this.getTemplate(this.translate));
       Menu.setApplicationMenu(menu);
       this.translate.onLangChange.subscribe((event: LangChangeEvent) => {
+        const menu = Menu.buildFromTemplate(this.getTemplate(this.translate));
+        Menu.setApplicationMenu(menu);
+      });
+      this.translate.onDefaultLangChange.subscribe((event: LangChangeEvent) => {
         const menu = Menu.buildFromTemplate(this.getTemplate(this.translate));
         Menu.setApplicationMenu(menu);
       });

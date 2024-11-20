@@ -27,12 +27,17 @@ export class AppComponent implements AfterViewChecked {
     private readonly menuService: MenuService,
     private readonly cdr: ChangeDetectorRef,
   ) {
-    this.translate.setDefaultLang('en');
     const lang = this.translate.getBrowserLang();
     this.translate.use(lang)
     console.log('APP_CONFIG', APP_CONFIG);
 
     // Refresh app when language changes
+    this.translate.onDefaultLangChange.subscribe((event: LangChangeEvent) => {
+      this.translate.get([t_('PAGES.HOME.TITLE'),t_('PAGES.ELECTRON.OPEN_MAP'), t_('PAGES.ELECTRON.OPEN_DIR'), t_('PAGES.ELECTRON.MAPFILE')]).subscribe((translations: { [key: string]: string } ) => {
+        this.electronService.ipcRenderer.send('Trans', event.lang, translations);
+      })
+      this.cdr.detectChanges();
+    });
     this.translate.onLangChange.subscribe((event: LangChangeEvent) => {
       this.translate.get([t_('PAGES.HOME.TITLE'),t_('PAGES.ELECTRON.OPEN_MAP'), t_('PAGES.ELECTRON.OPEN_DIR'), t_('PAGES.ELECTRON.MAPFILE')]).subscribe((translations: { [key: string]: string } ) => {
         this.electronService.ipcRenderer.send('Trans', event.lang, translations);

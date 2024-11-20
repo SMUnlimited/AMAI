@@ -7,7 +7,7 @@ const ipcMain = require('electron').ipcMain;
 const cp = require('child_process');
 
 let win: BrowserWindow = null;
-let translations : { [key: string]: string };
+let translations : { [key: string]: string } = {};
 let currentLanguage: string = "English";
 const args = process.argv.slice(1),
   serve = args.some(val => val === '--serve');
@@ -78,12 +78,12 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
   const controller = new AbortController();
   const response = dialog.showOpenDialogSync(win, {
     // TODO: add i18n here
-    title : isMap ? translations["PAGES.ELECTRON.OPEN_MAP"]: translations["PAGES.ELECTRON.OPEN_DIR"],
+    title : isMap ? translations["PAGES.ELECTRON.OPEN_MAP"] || '': translations["PAGES.ELECTRON.OPEN_DIR"] || '',
     // TODO: Change to let multiples selections when is map
     properties: isMap ? ['openFile'] : ['openDirectory'],
     // TODO: add i18n here
     filters: isMap ? [
-      { name: translations["PAGES.ELECTRON.MAPFILE"], extensions: ['w3x', 'w3m'] },
+      { name: translations["PAGES.ELECTRON.MAPFILE"] || '', extensions: ['w3x', 'w3m'] },
     ] : null,
   });
 
@@ -222,6 +222,7 @@ const init = () => {
 
 const installTrans = () => {
   ipcMain?.on('Trans', (_event, currentLang: string, data) => {
+    console.log(`Setting language to:${currentLang}`);
     switch (currentLang) {
       case 'en':
         currentLanguage = "English";
@@ -259,7 +260,7 @@ const installTrans = () => {
     }
     translations = data as { [key: string]: string };
     if (win != null) {
-      win.setTitle(translations['PAGES.HOME.TITLE'])
+      win.setTitle(translations['PAGES.HOME.TITLE'] || '')
     }
   });
 }
