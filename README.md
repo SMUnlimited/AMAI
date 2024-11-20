@@ -55,7 +55,12 @@ Unzip the contents of the installer to a folder of your choice.
 
 Double-click amai-installer.exe to open the installer.
 
-You can install to a single map or a whole directory.
+Select whether to install to a map or whole directory.
+
+Select if Commander is enabled, or if you want to have AMAI play against the vanilla AI. Even teams are Vanilla AI, odd teams are AMAI.
+
+Use Optimised Scripts: Optimises the scripts to use less CPU and memory. On by default.
+Override Default AI Language: Sets the default chat language of AMAI to current language of the installer and disables initial game prompt of language in the Commander.
 
 ![installer](installer.jpg)
 
