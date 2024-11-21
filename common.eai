@@ -2626,6 +2626,8 @@ endfunction
 function StaggerSleep takes real base, real spread returns nothing
   local real sleep = base + spread * I2R(GetAiPlayer()) / I2R(GetPlayers()) + GetRandomReal(-0.1, 0.1)
   if sleep <= 0 then
+    return
+  elseif sleep <= 0.1 then
     set sleep = 0.1
   endif
   call Sleep(sleep)
@@ -7612,7 +7614,7 @@ endfunction
 
 function GetSleepMultipler takes integer aiCount returns real
   local real i = LinearInterpolation(I2R(slm_start), I2R(slm_end), slm_start_mult, slm_end_mult, I2R(aiCount)) + GetRandomReal(-0.2, 0.2)
-  if i <= 0 then
+  if i <= 0.1 then
     set i = 0.1
   endif
   return i
@@ -9406,11 +9408,18 @@ endfunction
 
 //============================================================================
 function ChooseFirstHero takes nothing returns integer
-  //if ver_neutral_heroes_available and neutral_available[NEUTRAL_TAVERN] and neutral_guarded[NEUTRAL_TAVERN] then
-  //call remove_hero(7)
-  //set first_choosable_hero = ver_neutral_hero_number
-  //endif
-  if IsMapFlagSet(MAP_RANDOM_HERO) then
+  local integer i = 0
+  if hero_built[1] and recalculate_heros then
+    loop
+      exitwhen i >= hero_number
+      if hero[1] == all_heroes[i] then
+        set chosen = i
+        return chosen
+      endif
+      set i = i + 1
+    endloop
+  endif
+  if IsMapFlagSet(MAP_RANDOM_HERO) and hero[1] == null then
 //    call DisplayToAll("Map flag set")
     set hero[1] = GetExistingHero()
   else
@@ -9423,16 +9432,38 @@ endfunction
 
 //============================================================================
 function ChooseSecondHero takes nothing returns nothing
+  local integer i = 0
   call make_hero_rp_positive()
   call remove_hero(chosen)
+  if hero_built[2] and recalculate_heros then
+    loop
+      exitwhen i >= hero_number
+      if hero[2] == all_heroes[i] then
+        set chosen = i
+        return
+      endif
+      set i = i + 1
+    endloop
+  endif
   set chosen = ChooseHero()
   set hero[2] = all_heroes[chosen]
 endfunction
 
 //============================================================================
 function ChooseRestHeroes takes nothing returns nothing
+  local integer i = 0
   call make_hero_rp_positive()
   call remove_hero(chosen)
+  if hero_built[3] and recalculate_heros then
+    loop
+      exitwhen i >= hero_number
+      if hero[3] == all_heroes[i] then
+        set chosen = i
+        return
+      endif
+      set i = i + 1
+    endloop
+  endif
   set hero[3] = all_heroes[ChooseHero()]
 endfunction
 
