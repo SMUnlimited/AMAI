@@ -5228,14 +5228,28 @@ function GetNeutralNumber takes integer id returns integer
   endif
 endfunction
 
+function GetTQLock takes nothing returns nothing
+  loop
+    exitwhen tq_lock
+    call Sleep(0.5)
+  endloop
+  set tq_lock = false
+endfunction
+
+function ReleaseTQLock takes nothing returns nothing
+  set tq_lock = true
+endfunction
+
 // To run a sleep within the job thread, will delay all other jobs as well
 function TQSleep takes real time returns nothing
   local integer i = 1
+  call GetTQLock()
   loop
     exitwhen i > tq_length
     set tq_time[i] = tq_time[i] + time
     set i = i + 1
   endloop
+  call ReleaseTQLock()
   call Sleep(time)
 endfunction
 
@@ -5717,18 +5731,6 @@ endfunction
 //============================================================================
 // (AMAI) Time Priority Queue (Controls Job Timings)
 //============================================================================
-function GetTQLock takes nothing returns nothing
-  loop
-    exitwhen tq_lock
-    call Sleep(0.5)
-  endloop
-  set tq_lock = false
-endfunction
-
-//============================================================================
-function ReleaseTQLock takes nothing returns nothing
-  set tq_lock = true
-endfunction
 
 //============================================================================
 function TQDisplay takes nothing returns nothing
@@ -9262,7 +9264,6 @@ function finish_strategy_change takes nothing returns nothing
   set strategy_roll = GetRandomInt(1,sum)
   set sum = 0
   loop
-    exitwhen i >= rp_strat_length
     set sum = sum + rp_strat[rp_strat_sort[i]]
     if strategy_roll <= sum then
       //if rp_strat[rp_strat_sort[i]] / Max(rp_strat[strategy], 1) > strategy_change_threshold then
