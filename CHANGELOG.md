@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## Unreleased
+
+### Fixed
+
+- Fix to avoid rare crashes in job thread.
+- Fix to avoid a case where AMAI tries to buy more than one hero in tier 1 and when using the recalculate heros ai command.
+
 ## [3.4.0] - 2024-11-19
 
 ### Added

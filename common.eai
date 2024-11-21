@@ -9103,11 +9103,18 @@ endfunction
 
 //============================================================================
 function ChooseFirstHero takes nothing returns integer
-  //if ver_neutral_heroes_available and neutral_available[NEUTRAL_TAVERN] and neutral_guarded[NEUTRAL_TAVERN] then
-    //call remove_hero(7)
-    //set first_choosable_hero = ver_neutral_hero_number
-  //endif
-  if IsMapFlagSet(MAP_RANDOM_HERO) then
+  local integer i = 0
+  if hero_built[1] and recalculate_heros then
+    loop
+      exitwhen i >= hero_number
+      if hero[1] == all_heroes[i] then
+        set chosen = i
+        return chosen
+      endif
+      set i = i + 1
+    endloop
+  endif
+  if IsMapFlagSet(MAP_RANDOM_HERO) and hero[1] == null then
 //    call DisplayToAll("Map flag set")
     set hero[1] = GetExistingHero()
   else
@@ -9120,16 +9127,38 @@ endfunction
 
 //============================================================================
 function ChooseSecondHero takes nothing returns nothing
+  local integer i = 0
   call make_hero_rp_positive()
   call remove_hero(chosen)
+  if hero_built[2] and recalculate_heros then
+    loop
+      exitwhen i >= hero_number
+      if hero[2] == all_heroes[i] then
+        set chosen = i
+        return
+      endif
+      set i = i + 1
+    endloop
+  endif
   set chosen = ChooseHero()
   set hero[2] = all_heroes[chosen]
 endfunction
 
 //============================================================================
 function ChooseRestHeroes takes nothing returns nothing
+  local integer i = 0
   call make_hero_rp_positive()
   call remove_hero(chosen)
+  if hero_built[3] and recalculate_heros then
+    loop
+      exitwhen i >= hero_number
+      if hero[3] == all_heroes[i] then
+        set chosen = i
+        return
+      endif
+      set i = i + 1
+    endloop
+  endif
   set hero[3] = all_heroes[ChooseHero()]
 endfunction
 
@@ -10113,11 +10142,15 @@ function GetNeutralHero takes integer unitid returns integer
 
   if (unitid == hero[1] and hero_built[1]) or (unitid == hero[2] and hero_built[2]) or (unitid == hero[3] and hero_built[3]) then
     call Trace("Try To Resurrect Tavern Hero")
-	if SetProduce(1,old_id[unitid],-1) then
+    if SetProduce(1,old_id[unitid],-1) then
       return BUILT_ALL
     else
       return CANNOT_BUILD
     endif
+  endif
+  
+  if (unitid != hero[1] and unitid != hero[2] and unitid != hero[3]) then
+    return CANNOT_BUILD // Mismatch we somehow trying to build a hero that isn't the chosen hero we now want to build
   endif
 
  //   if neutral_sent[NEUTRAL_TAVERN] == null then
