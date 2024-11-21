@@ -422,6 +422,7 @@ globals
     integer groundid = 'ewsp'  // Used to create path units, must be different from race peon
     integer racial_burrow = 0 // Building id that can house peons/units and then shoot enemies.
     integer structid = 'ngnh'  // Used to trigger melee defeat conditions on surrender.
+    integer race_ancient_barracks_rush_chance = 0  // If above 0 will set the chance to attack first nearby creep camp using an ancient building, uses the rushcreep flag in standardunits if available for race
 
 #PRAGMA END RACIAL SETTINGS
 
@@ -501,6 +502,8 @@ globals
     integer racial_ghoul = 0
     integer racial_lumber = 0
     integer racial_rushcreep = 0
+    boolean br_rush_built = false
+    boolean br_rush_attacked = false
     unit rushcreep_target = null
     integer neutral_shredder = 0
     integer neutral_zeppelin = 0
@@ -5564,6 +5567,9 @@ function GetOwnStrength takes nothing returns integer
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
+    if GetUnitTypeId(u) == old_id[racial_rushcreep] and br_rush_attacked and UnitAlive(u) and not IsUnitHidden(u) then
+      set sum = sum + 5 // Include boost in strength calculations
+    endif
     if UnitAlive(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitInGroup(u, unit_healing) and not IsUnitHidden(u) then
       set strength = GetUnitStrength(u)
       if GetUnitTypeId(u) == old_id[racial_ghoul] then
@@ -5876,9 +5882,10 @@ function BuildBRAtCreep takes nothing returns boolean
   local unit array uc
   local location loc = null
   local boolean success = false
-  if GetRandomInt(1, 100) > 0 then
+  if GetRandomInt(1, 100) <= race_ancient_barracks_rush_chance then
     return false
   endif
+  call Trace("Build Ancient Barracks for creeping")
   set g = CreateGroup()
   call GroupEnumUnitsInRange(g,GetLocationX(home_location), GetLocationY(home_location),distance,null)
   set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
@@ -5947,11 +5954,17 @@ function BuildBRAtCreep takes nothing returns boolean
         set u = FirstOfGroup(g)
         call DestroyGroup(g)
         set g = null
+        if u == null then
+          call RemoveLocation(loc)
+          set loc = null
+          return false
+        endif  
         call IssueTargetOrder(own_town_mine[0], "unload", u)
         call Sleep(0.01)
       endif
-      call RemoveGuardPosition(u)  // no need reset guard , the tree can train
+      call RemoveGuardPosition(u)
       call IssuePointOrderByIdLoc(u, old_id[racial_rushcreep], loc)
+      set br_rush_built = true
       set success = true
       set u = null
     endif
@@ -10537,14 +10550,13 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       return GetNeutralHero(unitid)
     endif
 
-   if unitid == racial_rushcreep then
+   if unitid == racial_rushcreep and not br_rush_built then
+     set br_rush_built = true //just run once
      if CreepsOnMap() and not towerrush then
        if BuildBRAtCreep() then
-          set racial_rushcreep = 0 
           return BUILT_SOME // Success
        endif
      endif
-     set racial_rushcreep = 0 //just run once
    endif
 
     if buy_type[unitid] > BT_RACIAL_ITEM and buy_type[unitid] < BT_MERCHANT_ITEM then
@@ -12081,7 +12093,7 @@ function ClearAllianceTarget takes unit old returns nothing
 endfunction
 
 //============================================================================
-function BRRush takes nothing returns nothing
+function BRRush takes nothing returns boolean
   local location buildloc = null
   local location loc = null
   local unit u = null
@@ -12101,13 +12113,15 @@ function BRRush takes nothing returns nothing
   endloop
   call DestroyGroup(g)
   set g = null
-  set attack_running = true
-  if i != 1 and GetUnitState(utemp, UNIT_STATE_LIFE) >= GetUnitState(utemp, UNIT_STATE_MAX_LIFE) * 0.65 then
+  if i != 1 and utemp != null and GetUnitState(utemp, UNIT_STATE_LIFE) >= GetUnitState(utemp, UNIT_STATE_MAX_LIFE) * 0.65 then
+    call Trace("Ancient Barracks Creep Rush Attack")
+    set attack_running = true
+    set br_rush_attacked = true
     set buildloc = GetUnitLoc(utemp)
     call RemoveGuardPosition(utemp)
     call IssueImmediateOrderById(utemp, 851976) // Cancel building order
     call IssueImmediateOrder(utemp, "unroot")  //try unroot
-    call Sleep(2.8)  //unroot time
+    call FromGroupAndGhoulsAM(3) // unroot time
     set loc = GetUnitLoc(rushcreep_target)
     call IssuePointOrderLoc(utemp, "attack", loc)
     call RemoveLocation(loc)
@@ -12120,22 +12134,20 @@ function BRRush takes nothing returns nothing
     call IssuePointOrderLoc( utemp, "move", buildloc)  //prevent inability cannot root
     call Sleep(0.02)
     call IssuePointOrderLoc( utemp, "root", buildloc)  //root tree
-    call TQAddUnitJob(GetTimeToReachLoc(utemp, buildloc) + 2, RESET_GUARD_POSITION, 0, u)
+    call TQAddUnitJob(GetTimeToReachLoc(utemp, buildloc) + 2, RESET_GUARD_POSITION, 0, utemp)
     call RemoveLocation(buildloc)
     set buildloc = null
-  else
-    call AttackMoveKill(rushcreep_target)
-    call ReformUntilTargetDeadAM(rushcreep_target, true, false)
-    call Chat(C_Done)
-    call SleepInCombatAM()
-    call Trace("===BR Finished , no tree ===")
   endif
   set attack_running = false
-  if not UnitAlive(rushcreep_target) then
-    set rushcreep_target = null
-  endif
+  set rushcreep_target = null // after attack ends put don't try to repeat as after a retreat tree may not be in a good position
   set utemp = null
   set u = null
+  if br_rush_attacked then
+    set br_rush_attacked = false
+    return true
+  else
+    return false
+  endif
 endfunction
 
 //============================================================================
@@ -12831,7 +12843,7 @@ endfunction
 //============================================================================
 // AMAI SingleMeleeAttack
 //============================================================================
-function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean br_rush, integer ai_strength returns nothing
+function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer ai_strength returns nothing
   local unit hall = null
   local unit mega = null
   local unit creep = null
@@ -13141,11 +13153,11 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, boolean
   //
   set battle_radius = creep_battle_radius
   
-  if br_rush and rushcreep_target != null and UnitAlive(rushcreep_target) then
+  if rushcreep_target != null and UnitAlive(rushcreep_target) then
     call Trace("ELF BR Attack")
-    call FromGroupAndGhoulsAM(3)
-    call BRRush()  //try BR
-    return
+    if BRRush() then
+      return
+    endif  
   endif
   call Trace("Just gonna be creeping")
   call CreepAttack(own_strength)
@@ -13485,7 +13497,6 @@ endfunction
 function universal_attack_sequence takes nothing returns nothing
   local boolean needs_exp = false
   local boolean has_siege = false
-  local boolean br_rush = false
   local integer ai_strength = 0
   //local integer ai_antiair_strength = 0
   local integer exp_strength = 0
@@ -13500,11 +13511,6 @@ function universal_attack_sequence takes nothing returns nothing
   if current_expansion != null then
     set exp_strength = GetExpansionStrength()
   endif
-  if rushcreep_target != null and UnitAlive(rushcreep_target) then
-    set br_rush = true //GetLocationCreepStrength(GetUnitX(rushcreep_target), GetUnitY(rushcreep_target), 510) <= ai_strength * 0.6
-  else
-    set br_rush = false
-  endif
   if major_hero == null or not UnitAlive(major_hero) or not IsStandardUnit(major_hero) or (IsUnitType(major_hero, UNIT_TYPE_HERO) == false and ver_heroes) then
     set major_hero = GetMajorHero(major_hero)
   endif
@@ -13515,7 +13521,7 @@ function universal_attack_sequence takes nothing returns nothing
   set has_siege        = has_siege or TownCountDone(%1) > 0
 #ENDINCLUDE
 
-  call SingleMeleeAttackAM(needs_exp,has_siege,br_rush,ai_strength)
+  call SingleMeleeAttackAM(needs_exp,has_siege,ai_strength)
   set added_target_aggression = 0
   set added_racial_aggression = 0
 

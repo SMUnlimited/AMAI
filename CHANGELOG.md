@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+### Added
+- Elf players now have a 50% chance to perform an Ancient Barracks creep rush, various issues in its original introduction now fixed. 
+
 ### Fixed
 
 - Fix to avoid rare crashes in job thread.
