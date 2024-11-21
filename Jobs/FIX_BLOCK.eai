@@ -45,11 +45,32 @@ function RootAncient takes nothing returns nothing
   set blockancient = null
 endfunction
 
-function TeleportFixBlock takes unit u returns nothing
-  if GetSlotsFreeOnUnit(u) == 0 then
-    call SetItemPosition(UnitItemInSlot(u, 0), GetLocationX(home_location), GetLocationY(home_location))
+function TeleportFixBlock takes unit u, takes player p returns nothing
+  local group g = null
+  local location l = null
+  local real x = GetLocationX(home_location)
+  local real y = GetLocationY(home_location)
+  if p != ai_player then
+    set g = CreateGroup()
+    set l = GetPlayerStartLocationLoc(p)
+    call GroupEnumUnitsInRangeOfLoc(g, l, 850, null)
+    set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+    set g = SelectByPlayer(g, p, true)
+    set g = SelectByHidden(g, false)
+    set g = SelectByAlive(g, true)
+    if FirstOfGroup(g) != null then
+      set x = GetLocationX(l)
+      set y = GetLocationY(l)
+    endif
+    call RemoveLocation(l)
+    set l = null
+    call DestroyGroup(g)
+    set g = null
   endif
-  call UnitUseItemPoint(u, UnitAddItemById(u, old_id[tp_item]), GetLocationX(home_location), GetLocationY(home_location))
+  if GetSlotsFreeOnUnit(u) == 0 then
+    call SetItemPosition(UnitItemInSlot(u, 0), x, y)
+  endif
+  call UnitUseItemPoint(u, UnitAddItemById(u, old_id[tp_item]), x, y)
 endfunction
 
 function TryFixBlock takes integer fixmode, location l, real range, boolean action returns nothing
@@ -121,7 +142,7 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean acti
           set blockunit = u
         elseif p != ai_player and IsPlayerAlly(ai_player, p) and not allyhero[GetPlayerId(p)] and GetPlayerController(p) == MAP_CONTROL_COMPUTER and IsUnitType(u, UNIT_TYPE_HERO) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitLoaded(u) and not IsUnitType(u, UNIT_TYPE_FLYING) then
           call CreateDebugTagLoc("fix block : ally hero block", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
-          call TeleportFixBlock(u)
+          call TeleportFixBlock(u, p)
           set allyhero[GetPlayerId(p)] = true  //  case one loop let hero teleport too much
         endif
         call GroupRemoveUnit(g,u)
@@ -245,7 +266,7 @@ function FixBlockJob takes nothing returns nothing
       set u = hero_unit[i]
       if u != null and UnitAlive(u) and not IsUnitLoaded(u) and not IsUnitBuying(u) and IsStandardUnit(u) and (DistanceBetweenPoints_kd(home_location, GetUnitLoc(u)) < front_base_distance or (nearest_neutral[NEUTRAL_TAVERN] != null and DistanceBetweenPoints_kd(home_location, GetUnitLoc(nearest_neutral[NEUTRAL_TAVERN])) < front_base_distance and DistanceBetweenUnits(u, nearest_neutral[NEUTRAL_TAVERN]) < 1000)) then
         call CreateDebugTagLoc("fix block : hero block", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
-        call TeleportFixBlock(u)
+        call TeleportFixBlock(u, ai_player)
         set i = 3  // once check one
       endif
       set i = i + 1

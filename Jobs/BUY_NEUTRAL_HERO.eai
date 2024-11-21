@@ -39,28 +39,27 @@ function BuyNeutralHero takes integer id returns nothing
     set tavern = nearest_neutral[nn]
     set place_guarded = neutral_guarded[nn]
   endif
-  if TownCount(id) >= neutral_wanted[nn] or id != hero[tier] then
+  if TownCount(id) >= neutral_wanted[nn] or tavern == null or not neutral_available[nn] then
     set tavern = ResetBuyNeutralHero(nn, id)
     return
+  endif
+  if neutral_sent[nn] == null or GetUnitState(neutral_sent[nn], UNIT_STATE_LIFE) <= 0 or not IsStandardUnit(neutral_sent[nn]) then
+    if neutral_sent[nn] != null then
+      call GroupRemoveUnit(unit_buying_tavern, neutral_sent[nn])
+    endif
+    set neutral_sent[nn] = GetUnitToBuy(neutral_sent[nn], tavern)
+    if neutral_sent[nn] == null then
+      set tavern = ResetBuyNeutralHero(nn, id)
+      call Trace("No unit to get neutral hero")
+      return
+    endif
+    call Trace("unit for neutral hero obtained")
+    call GroupAddUnit(unit_buying_tavern, neutral_sent[nn])
   endif
 
   if place_guarded and daytime >= 5 and daytime < 18 then
     set time_next_try = (18 - daytime)*20
   else
-
-    if neutral_sent[nn] == null or GetUnitState(neutral_sent[nn], UNIT_STATE_LIFE) <= 0 or not IsStandardUnit(neutral_sent[nn]) then
-      if neutral_sent[nn] != null then
-        call GroupRemoveUnit(unit_buying_tavern, neutral_sent[nn])
-      endif
-      set neutral_sent[nn] = GetUnitToBuy(neutral_sent[nn], tavern)
-      if neutral_sent[nn] == null then
-        set tavern = ResetBuyNeutralHero(nn, id)
-        call Trace("No unit to get neutral hero")
-        return
-      endif
-      call Trace("unit for neutral hero obtained")
-      call GroupAddUnit(unit_buying_tavern, neutral_sent[nn])
-    endif
     set timetotravel = GetTimeToReachUnit(neutral_sent[nn], tavern)
 
     if current_time < (neutral_hero_time*5) - timetotravel then
