@@ -5882,9 +5882,6 @@ function BuildBRAtCreep takes nothing returns boolean
   local unit array uc
   local location loc = null
   local boolean success = false
-  if GetRandomInt(1, 100) <= race_ancient_barracks_rush_chance then
-    return false
-  endif
   call Trace("Build Ancient Barracks for creeping")
   set g = CreateGroup()
   call GroupEnumUnitsInRange(g,GetLocationX(home_location), GetLocationY(home_location),distance,null)
@@ -11725,21 +11722,23 @@ function FromGroupAndGhoulsAM takes integer seconds returns nothing
 endfunction
 
 //============================================================================
+function EnableRetreatControl takes nothing returns nothing
+  set break_attack = false
+  if not retreat_controlled then
+    call Trace("===Retreat control started===")
+    set retreat_controlled = true
+    call SetGroupsFlee(false)
+    call SetTargetHeroes(false)
+    call TQAddJob(2 * sleep_multiplier, RETREAT_CONTROL, 0)
+  endif
+endfunction
+
 function DoAttackJobs takes nothing returns nothing
   if major_hero == null or not UnitAlive(major_hero) then
     set major_hero = GetMajorHero(major_hero)
   endif
   set battle_radius = normal_battle_radius
-  set break_attack = false
-  //if major_hero != null and UnitAlive(major_hero) then
-    if not retreat_controlled then
-      call Trace("===Retreat control started===")
-      set retreat_controlled = true
-      call SetGroupsFlee(false)
-      call SetTargetHeroes(false)
-      call TQAddJob(2 * sleep_multiplier, RETREAT_CONTROL, 0)
-    endif
-  //endif
+  call EnableRetreatControl()
 endfunction
 
 //============================================================================
@@ -12116,6 +12115,7 @@ function BRRush takes nothing returns boolean
   if i != 1 and utemp != null and GetUnitState(utemp, UNIT_STATE_LIFE) >= GetUnitState(utemp, UNIT_STATE_MAX_LIFE) * 0.65 then
     call Trace("Ancient Barracks Creep Rush Attack")
     set attack_running = true
+    call EnableRetreatControl()
     set br_rush_attacked = true
     set buildloc = GetUnitLoc(utemp)
     call RemoveGuardPosition(utemp)
@@ -12182,15 +12182,9 @@ function AttackMoveKillCreep takes unit target, boolean ally_override returns no
     call Sleep(3 * sleep_multiplier)
     return
   endif
+  call FromGroupAndGhoulsAM(3)
   set attack_running = true
-  set break_attack = false
-  if not retreat_controlled then
-    call Trace("===Retreat control started===")
-    set retreat_controlled = true
-    call SetGroupsFlee(false)
-    call SetTargetHeroes(false)
-    call TQAddJob(2 * sleep_multiplier, RETREAT_CONTROL, 0)
-  endif
+  call EnableRetreatControl()
   call AttackMoveKill(target)
   call ReformUntilTargetDeadAM(target, true, ally_override)
   call Chat(C_Done)
@@ -12341,7 +12335,6 @@ function CreepAttack takes integer str returns nothing
   if air_strength > 15 then
     call SetAllianceTargetIfLeadAndChat(target, C_Creep)
   endif
-  call FormGroupAM(3)
   call AttackMoveKillCreep(target, true)
   call ClearAllianceTarget(target)
   set target = null
@@ -13011,7 +13004,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
       elseif ancient_exp_state == 4 then
         set ancient_attack_running = true
         call Trace("An Ancient Expansion - Final stage")
-        call FromGroupAndGhoulsAM(3)
         //call AddAssault(1, old_id[racial_hall[1]])
         call SetCaptainHome(BOTH_CAPTAINS,GetUnitX(ancient_exp_unit),GetUnitY(ancient_exp_unit))
         set creep = GetExpFoe(creep)
@@ -13031,12 +13023,13 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
     if item_expanding then
       call Trace("An Item Expansion Attack or Guard")
       set item_attack_running = true
-      call FromGroupAndGhoulsAM(3)
+      
       if item_exp_state == 1 then
         call AttackMoveKillCreep(GetExpFoe(creep), false)
         set item_attack_running = false
         set creep = null
       elseif item_exp_state > 0 then
+        call FromGroupAndGhoulsAM(3)
         call AttackMoveKillXYAAM(R2I(GetLocationX(item_exp_guard_loc)),R2I(GetLocationY(item_exp_guard_loc)))  //Prevent the army from leaving before using the item , so no set item_attack_running
       endif
       return
@@ -13070,7 +13063,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
             set attacking_expansion = true
             set battle_radius = creep_battle_radius
             call SetAllianceTargetIfLeadAndChat(creep, C_Expansion)
-            call FromGroupAndGhoulsAM(3)
             call AttackMoveKillCreep(creep, false)
             call ClearAllianceTarget(creep)
             if creep == null or not UnitAlive(creep) then
@@ -13153,7 +13145,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
   //
   set battle_radius = creep_battle_radius
   
-  if rushcreep_target != null and UnitAlive(rushcreep_target) then
+  if rushcreep_target != null and UnitAlive(rushcreep_target) and GetLocationCreepStrength(GetUnitX(rushcreep_target), GetUnitY(rushcreep_target), 510) < own_strength + 5 then // Matches getOwnStrength +5 addition for ancient
     call Trace("ELF BR Attack")
     if BRRush() then
       return
