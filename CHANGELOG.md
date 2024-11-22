@@ -17,6 +17,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [3.4.0] - 2024-11-19
 
+### Patched - 2024-11-22
+- Installer does not work if run with different language
+- Installer Unable to install VSAI
+
 ### Added
 
 - Basic AI interopability for LUA maps but with some issues: 
