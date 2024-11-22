@@ -66,8 +66,8 @@ const installOnDirectory = async () => {
     process.send(`ERROR: Cannot find ${process.cwd()}\\${blizzardPath}`)
     return
   }
-  if (vsAICommander && !fs.existsSync(`Scripts\\${ver}\\vsai\Blizzard.j`)) {
-    process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\vsai\Blizzard.j`)
+  if (vsAICommander && !fs.existsSync(`Scripts\\${ver}\\vsai\\Blizzard.j`)) {
+    process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\vsai\\Blizzard.j`)
     return
   }
 
