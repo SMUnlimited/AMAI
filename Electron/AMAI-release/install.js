@@ -163,7 +163,7 @@ const installOnDirectory = async () => {
                 [
                   'a',
                   file,
-                  `Scripts\\${ver}\\vsai\*.ai`,
+                  `Scripts\\${ver}\\vsai\\*.ai`,
                   `Scripts`
                 ],
                 { encoding : `utf8` }
