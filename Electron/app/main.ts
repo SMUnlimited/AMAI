@@ -260,7 +260,21 @@ const installTrans = () => {
     }
     translations = data as { [key: string]: string };
     if (win != null) {
-      win.setTitle(translations['PAGES.HOME.TITLE'] || '')
+      let packageJson = {};
+      let version = '';
+      let WinTitle = translations['PAGES.HOME.TITLE'];
+      let WinTitle_err = '';
+      fs.readFile(path.join(__dirname, 'package.json'), 'utf8', (err, data) => {
+        if (err) {
+          console.warn('Error reading package.json:', err);
+        } else {
+          packageJson = JSON.parse(data);
+          version = packageJson.version;
+          WinTitle = '${WinTitle}   v${version}';
+          WinTitle_err = 'v${version}';
+        }
+      }
+      win.setTitle(${WinTitle} || ${WinTitle_err})
     }
   });
 }
