@@ -260,7 +260,10 @@ const installTrans = () => {
     }
     translations = data as { [key: string]: string };
     if (win != null) {
-      let packageJson = {};
+      interface PackageJson {
+        version: string;
+      }
+      let packageJson: PackageJson = {} as PackageJson;
       let version = '';
       let WinTitle = translations['PAGES.HOME.TITLE'];
       let WinTitle_err = '';
@@ -273,8 +276,8 @@ const installTrans = () => {
           WinTitle = '${WinTitle}   v${version}';
           WinTitle_err = 'v${version}';
         }
-      }
-      win.setTitle(${WinTitle} || ${WinTitle_err})
+      });
+      win.setTitle(WinTitle || WinTitle_err)
     }
   });
 }
