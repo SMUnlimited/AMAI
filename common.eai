@@ -6860,6 +6860,7 @@ function GetExpFoe takes unit nearunit returns unit
       set nearunit = u
       set nearest = tempnear
     endif
+    call GroupRemoveUnit(g, u)
   endloop
   call RemoveLocation(l)
   set l = null
@@ -10622,7 +10623,6 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     endif
 
    if unitid == racial_rushcreep and not br_rush_built then
-    call DisplayToAll("BUILDING BR RUSH")
      set br_rush_built = true //just run once
      if CreepsOnMap() and not towerrush then
        if BuildBRAtCreep() then
@@ -11845,7 +11845,7 @@ function DoDistractionAttack takes unit target returns nothing
 endfunction
 
 //============================================================================
-function SleepInCombatAM takes nothing returns nothing
+function SleepInCombatAM takes boolean ally_override returns nothing
     local integer count = 0
     local integer noenemycount = 0
     //local real sleep = 0.1
@@ -11899,6 +11899,9 @@ function SleepInCombatAM takes nothing returns nothing
             call FormGroupAM(0)
         endif
         call AttackMoveKill(u) // Use existing troops
+        if (c_ally_total > 0 and not ally_override) then
+          call TeleportCaptain(GetUnitX(target), GetUnitY(target)) // Override hardcoded logic with attackmovekill which will help allies
+        endif  
         call CreateDebugTag("Combat sleep attack", 10, u, 1.00, 0.80)
       endif
       exitwhen (not CaptainInCombat(true) or CaptainRetreating() or CaptainIsHome()) and count > 180  // Fail safe using hardcoded checks
@@ -12032,11 +12035,12 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     //	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationCreepStrength(unitx, unity, 500) <= 0			
     //endif
     set dist = DistanceBetweenPoints_kd(ally_loc, GetUnitLoc(target))
-    if c_ally_total > 0 and dist > 1300 and dist < 2500 and CheckAttackWait(target) then
+    if c_ally_total > 0 and dist > 1300 and dist < 2500 and CheckAttackWait(target) and ally_override then
       set lastcaptainx = GetLocationX(ally_loc)
       set lastcaptainy = GetLocationY(ally_loc)
       //call SetCaptainHome(, lastcaptainx, lastcaptainy)
-      call AttackMoveXY(R2I(GetLocationX(ally_loc)), R2I(GetLocationY(ally_loc))) // Override and help nearby ally
+      call AttackMoveXY(R2I(GetLocationX(ally_loc)), R2I(GetLocationY(ally_loc))) 
+      call TeleportCaptain(GetLocationX(ally_loc), GetLocationY(ally_loc)) // Override and help nearby ally
       call CreateDebugTagLoc("Reform near ally", 10, GetLocationX(ally_loc), GetLocationY(ally_loc), 1.00, 0.80)
     else
       set lastcaptainx = GetUnitX(target)
@@ -12046,7 +12050,10 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       if (ally_override and c_ally_total > 0 and ally_target != null and ally_target != target) then
         set target = ally_target
       endif
-      call AttackMoveKill(target)
+      call AttackMoveKill(target) 
+      if (c_ally_total > 0 and not ally_override) then
+        call TeleportCaptain(GetUnitX(target), GetUnitY(target)) // Override hardcoded logic from attackmovekill which will help allies
+      endif  
       // Below is old style alliance but this overrides all hardcoded attacks whether you want it to or not
       //if (GetAllianceTarget() == target) then
       //  call AttackMoveKill(target)
@@ -12204,7 +12211,7 @@ function BRRush takes nothing returns boolean
     call AttackMoveKill(rushcreep_target)
     call ReformUntilTargetDeadAM(rushcreep_target, true, false)
     call Chat(C_Done)
-    call SleepInCombatAM()
+    call SleepInCombatAM(false)
     call Trace("===BR Finished===")
     call IssuePointOrderLoc( utemp, "move", buildloc)  //prevent inability cannot root
     call Sleep(0.02)
@@ -12242,7 +12249,7 @@ function AttackMoveKillAAM takes unit target, boolean ally_override returns noth
   call AttackMoveKill(target)
   call ReformUntilTargetDeadAM(target, false, ally_override)
   call Chat(C_Done)
-  call SleepInCombatAM()
+  call SleepInCombatAM(ally_override)
   call Trace("===Attack Fully Finished===")
   set attack_running = false
   call Sleep(2.5)
@@ -12263,7 +12270,7 @@ function AttackMoveKillCreep takes unit target, boolean ally_override returns no
   call AttackMoveKill(target)
   call ReformUntilTargetDeadAM(target, true, ally_override)
   call Chat(C_Done)
-  call SleepInCombatAM()
+  call SleepInCombatAM(ally_override)
   call Trace("===Attack Fully Finished===")
   set attack_running = false
 endfunction
@@ -12280,7 +12287,7 @@ function AttackMoveKillXYAAM takes integer x, integer y returns nothing
   set lastcaptainx = x
   set lastcaptainy = y
   call SleepUntilAtGoalAM()
-  call SleepInCombatAM()
+  call SleepInCombatAM(true)
   set attack_running = false
 endfunction
 
@@ -12314,7 +12321,7 @@ function AttackMoveTowerRush takes nothing returns nothing
 			call FormGroupAM(2)
 		endif
 	endloop
-	call SleepInCombatAM()
+	call SleepInCombatAM(false)
 	set attack_running = false
 endfunction
 
@@ -12429,7 +12436,7 @@ function QueueAttackMoveXY takes integer x, integer y returns nothing
   endloop
   set lastcaptainx = x
   set lastcaptainy = y
-  call SleepInCombatAM()
+  call SleepInCombatAM(false)
   if CaptainAtGoal() then
     call QueueGetNextCommand()
   endif
@@ -12828,7 +12835,7 @@ function Militia_Expansion takes integer m returns nothing
   call AttackMoveKill(efoe)
   call SleepUntilTargetDeadAM(efoe, true, false)
   call Chat(C_Done)
-  call SleepInCombatAM()
+  call SleepInCombatAM(false)
   call Trace("===Attack Fully Finished===")
   //call GroupPointOrder(g, "move", GetLocationX(home_location), GetLocationY(home_location))
   call GroupImmediateOrder(g, "militiaoff")
