@@ -875,8 +875,9 @@ globals
 	constant integer LOCY = 8
 	constant integer STATE_RETREAT = 9
 	constant integer WINDWALK_COUNT = 10
-	constant integer HARASS_GROUP = 11
-	constant integer START_STRENGTH_TEMP = 12
+	constant integer START_STRENGTH_TEMP = 11
+  constant integer HARASS_TARGET = 12
+  constant integer HARASS_UNITGROUP = 13 // permanent store of the unit group
 	hashtable com = InitHashtable()
 	constant integer TEAM_STATEGY_INUSE = 1
 	constant integer IS_AMAI = 2
@@ -1851,6 +1852,99 @@ function LinearInterpolation takes real x1, real x2, real y1, real y2, real p re
     endif
     return y1 + ((p - x1)/(i)) * (y2 - y1)
   endif
+endfunction
+
+// This is just size of hashtable not total number of real units
+// If storing other things in hashtable start value can be the 
+function UnitHashtableSize takes hashtable ht, integer key, integer start returns integer
+  return LoadInteger(ht, key, start) + start
+endfunction
+
+// Persist units into a hash table for long term storage
+// normal groups units become null when they die which makes iterating them later impossible
+function AddUnitsToHashtable takes hashtable ht, integer key, integer start, group gunits returns hashtable
+  local integer i = UnitHashtableSize(ht, key, start)
+  local unit u = null
+  loop
+    set u = FirstOfGroup(gunits)
+    exitwhen u == null
+    set i = i + 1
+    call SaveUnitHandle(ht, key, i, u)
+    call GroupRemoveUnit(gunits, u)
+  endloop
+  call SaveInteger(ht, key, 0, i) // First number is the group size
+  return ht
+endfunction
+
+// Only returns valid units, null entries are ignored
+function ReturnUnitsOfHashtable takes hashtable ht, integer key, integer start, group gunits returns group
+  local integer size = UnitHashtableSize(ht, key, start)
+  local integer i = 0
+  local unit u = null
+  call GroupClear(gunits)
+  if size <= 0 then
+    return gunits
+  endif
+  loop
+    exitwhen i >= size
+    set i = i + 1
+    set u = LoadUnitHandle(ht, key, i)
+    if u != null then
+      call GroupAddUnit(gunits, u)
+    endif
+  endloop
+  set u = null
+  return gunits
+endfunction
+
+function ReturnLivingUnitsOfHashtable takes hashtable ht, integer key, integer start, group gunits returns group
+  local integer size = UnitHashtableSize(ht, key, start)
+  local integer i = 0
+  local unit u = null
+  call GroupClear(gunits)
+  if size <= 0 then
+    return gunits
+  endif
+  loop
+    exitwhen i >= size
+    set i = i + 1
+    set u = LoadUnitHandle(ht, key, i)
+    if u != null and UnitAlive(u) then
+      call GroupAddUnit(gunits, u)
+    endif
+  endloop
+  set u = null
+  return gunits
+endfunction
+
+// Remove dead entries to make iteration more optimal
+function FlushUnitHashtable takes hashtable ht, integer key, integer start returns hashtable
+  local integer size = UnitHashtableSize(ht, key, start)
+  local integer i = 0
+  local integer j = 0
+  local unit u = null
+  local unit copy = null
+  if size <= 0 then
+    return ht
+  endif
+  loop
+    exitwhen i >= size
+    set i = i + 1
+    set u = LoadUnitHandle(ht, key, i)
+    if u == null then
+      // TODO Not implemented
+      loop
+        exitwhen j >= size
+        set j = j + 1
+        set copy = LoadUnitHandle(ht, key, j)
+        call SaveUnitHandle(ht, key, i, copy)
+      endloop
+      set size = size - 1
+    endif
+  endloop
+  call SaveInteger(ht, key, 0, size)
+  set u = null
+  return ht
 endfunction
 
 //============================================================================
@@ -6151,21 +6245,12 @@ endfunction
 //==============================================================
 function AddExpansion takes unit u, real d returns nothing
   local group g = CreateGroup()
-  local unit creep = null
-  local integer i = 0
   set expansion_list[expansion_list_length] = u
   set expansion_dist[expansion_list_length] = d
   set g = GetExpFoeGroup(g,u)  // group of the the creeps that guard this mine
-  loop
-    set creep = FirstOfGroup(g)
-    exitwhen creep == null
-    set i = i + 1
-    call SaveUnitHandle(expansion_creeps, expansion_list_length, i, creep)
-    call GroupRemoveUnit(g, creep)
-  endloop
+  call AddUnitsToHashtable(expansion_creeps, expansion_list_length, 0, g)
   call DestroyGroup(g)
   set g = null
-  call SaveInteger(expansion_creeps, expansion_list_length, 0, i) // Store size in first element
   if first_expansion_chosen == false then
     set first_expansion_chosen = d > front_base_distance and not CheckExpansionTaken(u)
   endif
@@ -6178,22 +6263,13 @@ endfunction
 //==============================================================
 function AddWaterExpansion takes unit u, real d returns nothing
   local group g = CreateGroup()
-  local unit creep = null
-  local integer i = 0
   set water_expansion_list[water_expansion_list_length] = u
   set water_expansion_dist[water_expansion_list_length] = d
   call GroupAddUnit(water_expansion, u)
   set g = GetExpFoeGroup(g,u)  // group of the the creeps that guard this mine
-  loop
-    set creep = FirstOfGroup(g)
-    exitwhen creep == null
-    set i = i + 1
-    call SaveUnitHandle(water_expansion_creeps, water_expansion_list_length, i, creep)
-    call GroupRemoveUnit(g, creep)
-  endloop
+  call AddUnitsToHashtable(water_expansion_creeps, water_expansion_list_length, 0, g)
   call DestroyGroup(g)
   set g = null
-  call SaveInteger(water_expansion_creeps, water_expansion_list_length, 0, i) // Store size in first element
   set water_expansion_list_length = water_expansion_list_length + 1
 endfunction
 
@@ -6754,38 +6830,41 @@ endfunction
 //============================================================================
 function GetExpFoe takes unit nearunit returns unit
   local location l = null
-  local hashtable t = expansion_creeps
+  local group g = CreateGroup()
   local real nearest = 10000000
   local real tempnear = 0
   local integer i = 0
   local integer c = 0
   local unit u = null
+  
+
   if current_expansion_iswater then
-    set t = water_expansion_creeps
+    set g = ReturnLivingUnitsOfHashtable(water_expansion_creeps, current_expansion_creeps, 0, g)
+  else
+    set g = ReturnLivingUnitsOfHashtable(expansion_creeps, current_expansion_creeps, 0, g)
   endif
-  if LoadInteger(t, current_expansion_creeps , 0) <= 0 then
+  if BlzGroupGetSize(g) <= 0 then
     call Trace("GetExpFoe: No creeps in current expansion")
-    set t = null
+    call DestroyGroup(g)
+    set g = null
     return null
   endif
   set nearunit = null
   set l = GetUnitLoc(current_expansion)
   loop
-    exitwhen i > LoadInteger(t, current_expansion_creeps, 0)
-    set i = i + 1
-    set u = LoadUnitHandle(t, current_expansion_creeps, i)
-    if u != null and UnitAlive(u) then
-      set tempnear = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
-      set c = c + 1
-      if tempnear < nearest then
-        set nearunit = u
-        set nearest = tempnear
-      endif
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    set tempnear = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
+    set c = c + 1
+    if tempnear < nearest then
+      set nearunit = u
+      set nearest = tempnear
     endif
   endloop
   call RemoveLocation(l)
   set l = null
-  set t = null
+  call DestroyGroup(g)
+  set g = null
   set u = null
   //if nearunit != null then
     //call Trace("GetExpFoe: Have a foe")
@@ -9843,7 +9922,7 @@ function AddHarassUnittype takes integer groupnum, integer harassnum, group g, g
   local real player_sum = 0
   set cg = SelectNumberOfId(cg, qty, old_id[uid])
   set cg = SelectByUnitFree(cg, true)
-  set cg = SelectByUnitStandard(cg, true)  //Reduce usage IsUnitInGroup
+  set cg = SelectByUnitStandard(cg, true) // Will ensure units are not already harassing somewhere else
   loop
     set u = FirstOfGroup(cg)
     exitwhen u == null
@@ -9896,7 +9975,6 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   set harass_time[groupnum] = ai_time
   call GroupRemoveGuardPositionInstant(harasser)
   call GroupAddGroup(unit_harassing, harasser)
-  set g = LoadGroupHandle(additional_info, i, HARASS_GROUP)
   call SaveReal(additional_info, key, START_STRENGTH, strength)
   call SaveBoolean(additional_info, key, AVOID_TOWERS, avoid_towers)
   call SaveReal(additional_info, key, STRENGTH_LIMIT, strength_limit)
@@ -9906,8 +9984,11 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   call SaveInteger(additional_info, key, INVISIBLE_COUNT, 0)
   call SaveReal(additional_info, key, LOCX, lx)
   call SaveReal(additional_info, key, LOCY, ly)
-  call TQAddGroupJob(0, HARASS, harass_target, null, harasser)
+  call SaveInteger(additional_info, key, HARASS_TARGET, harass_target)
+  call AddUnitsToHashtable(additional_info, key, HARASS_UNITGROUP, harasser)
+  call TQAddUnitJob(0, HARASS, key, null)
   call Trace("StartHarass : start harass job" )
+  call DestroyGroup(harasser)
   set harasser = null
 endfunction
 
