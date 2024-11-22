@@ -17,7 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fix to avoid a case where AMAI tries to buy more than one hero in tier 1 and when using the recalculate heros ai command.
 - Fix Panda clones to not be canceled early when hero is going home or buying items.
 - If no units to attack with windwalk, then will exit windwalk and just attack a building rather than just stand around doing nothing.
-- Fix issue where harass attacks could lose the units in the group when just one is killed, ending the harass early.
+- Fixed an issue where harass attacks could failed to track harass units correctly and lose more units in the group when just one is killed, ending the harass early.
+- Fixed an issue where harass attacks could cause units to permanently stop moving.
 
 ## [3.4.0] - 2024-11-19
 
