@@ -1855,7 +1855,7 @@ function LinearInterpolation takes real x1, real x2, real y1, real y2, real p re
 endfunction
 
 // This is just size of hashtable not total number of real units
-// If storing other things in hashtable start value can be the 
+// If storing other things in hashtable start value can be set to start later.
 function UnitHashtableSize takes hashtable ht, integer key, integer start returns integer
   return LoadInteger(ht, key, start)
 endfunction
@@ -1872,13 +1872,13 @@ function AddUnitsToHashtable takes hashtable ht, integer key, integer start, gro
     call SaveUnitHandle(ht, key, i, u)
     call GroupRemoveUnit(gunits, u)
   endloop
-  call SaveInteger(ht, key, 0, i) // First number is the group size
+  call SaveInteger(ht, key, start, i - start) // First number is the group size
   return ht
 endfunction
 
 // Only returns valid units, null entries are ignored
 function ReturnUnitsOfHashtable takes hashtable ht, integer key, integer start, group gunits returns group
-  local integer size = UnitHashtableSize(ht, key, start)
+  local integer size = UnitHashtableSize(ht, key, start) + start
   local integer i = start
   local unit u = null
   call GroupClear(gunits)
@@ -1898,7 +1898,7 @@ function ReturnUnitsOfHashtable takes hashtable ht, integer key, integer start, 
 endfunction
 
 function ReturnLivingUnitsOfHashtable takes hashtable ht, integer key, integer start, group gunits returns group
-  local integer size = UnitHashtableSize(ht, key, start)
+  local integer size = UnitHashtableSize(ht, key, start) + start
   local integer i = start
   local unit u = null
   call GroupClear(gunits)
@@ -1917,33 +1917,25 @@ function ReturnLivingUnitsOfHashtable takes hashtable ht, integer key, integer s
   return gunits
 endfunction
 
-// Remove dead entries to make iteration more optimal
+// Remove dead entries to make iteration more optimal in the future
 function FlushUnitHashtable takes hashtable ht, integer key, integer start returns hashtable
   local integer size = UnitHashtableSize(ht, key, start)
   local integer i = 0
   local integer j = 0
-  local unit u = null
-  local unit copy = null
+  local group g = null
   if size <= 0 then
     return ht
   endif
+  set g = CreateGroup()
+  set g = ReturnUnitsOfHashtable(ht, key, start, g)
   loop
     exitwhen i >= size
     set i = i + 1
-    set u = LoadUnitHandle(ht, key, i)
-    if u == null then
-      // TODO Not implemented
-      loop
-        exitwhen j >= size
-        set j = j + 1
-        set copy = LoadUnitHandle(ht, key, j)
-        call SaveUnitHandle(ht, key, i, copy)
-      endloop
-      set size = size - 1
-    endif
+    call RemoveSavedHandle(ht, key, i)
   endloop
-  call SaveInteger(ht, key, 0, size)
-  set u = null
+  set ht = AddUnitsToHashtable(ht, key, start, g)
+  call DestroyGroup(g)
+  set g = null
   return ht
 endfunction
 
@@ -6837,7 +6829,6 @@ function GetExpFoe takes unit nearunit returns unit
   local integer c = 0
   local unit u = null
   
-
   if current_expansion_iswater then
     set g = ReturnLivingUnitsOfHashtable(water_expansion_creeps, current_expansion_creeps, 0, g)
   else
@@ -10002,9 +9993,9 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   call SaveReal(additional_info, key, LOCX, lx)
   call SaveReal(additional_info, key, LOCY, ly)
   call SaveInteger(additional_info, key, HARASS_TARGET, harass_target)
+  call DisplayToAll("StartHarass : start harass job " + Int2Str(BlzGroupGetSize(harasser)))
   call AddUnitsToHashtable(additional_info, key, HARASS_UNITGROUP, harasser)
   call TQAddUnitJob(0, HARASS, key, null)
-  call Trace("StartHarass : start harass job" )
   call DestroyGroup(harasser)
   set harasser = null
 endfunction
