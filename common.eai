@@ -11509,6 +11509,7 @@ function OneBuildLoopAM takes nothing returns nothing
     local integer tracednoresources = 0
     local integer tracedall = 0
     local string logtype = ""
+    local boolean blocktierup = false
 
     call InitLastUpkeep()
 
@@ -11558,7 +11559,9 @@ function OneBuildLoopAM takes nothing returns nothing
 //        call DumpInteger("Prio"+Int2Str(index),build_prio[index])
 
         if qty > mo and qty > 0 then
-          if tp == BUILD_UNIT then
+          if tp == BUILD_UNIT and IsRacialHallId(id, 1) and blocktierup then
+              set ret = CANNOT_BUILD // Not ready to tier up
+          elseif tp == BUILD_UNIT then
               set logtype = "unit "
               set ret = StartUnitAM(qty,id,build_town[index], build_loc[index], build_prio[index], mo)
           elseif tp == BUILD_UPGRADE then
@@ -11566,7 +11569,8 @@ function OneBuildLoopAM takes nothing returns nothing
               set ret = StartUpgradeAM(qty,id)
           elseif tp == BUILD_EXPAND then
               set logtype = "expand "
-              set ret = StartExpansionAM(qty,id)
+              set ret = StartExpansionAM(qty,id) // Don't tier up while doing a higher priority expansion
+              set blocktierup = true
           elseif tp == BUILD_ITEM then
               set logtype = "item "
               set ret = StartItem(qty,id)
@@ -11593,6 +11597,9 @@ function OneBuildLoopAM takes nothing returns nothing
           elseif ret == NOT_ENOUGH_RES and tracednoresources == 0 then
             call Trace("NO RESOURCES " + logtype + unitNames[id] + " " + Int2Str(id))
             set tracednoresources = id
+          endif
+          if tp == BUILD_UNIT and (ret == CANNOT_BUILD or ret == BUILT_SOME) and qty < build_qty[index] *0.75 then
+            set blocktierup = true // Block tier up if a large proportion of requested units of strategy not built
           endif
           exitwhen ret == NOT_ENOUGH_RES and tp != BUILD_ITEM and tp != BUILD_UPGRADE // Don't try and build anything else as thing we trying to buy is too expensive
           if ret == CANNOT_BUILD or ret == BUILT_SOME or ret == NOT_ENOUGH_RES or (ret == BUILT_ALL and qty < build_qty[index]) then

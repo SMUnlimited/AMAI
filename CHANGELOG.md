@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 - Further improvements for team attacks where AI should ignore its teammates attacks e.g for the ancient barracks rush above.
+- When we enhanced the build code to build other things if it can't build the current priorities it caused strategies to tier up much earlier than designed, so now tier ups can only happen once most higher priority unit production is done honoring the strategy and and they are not currently expanding.
 
 ### Fixed
 
