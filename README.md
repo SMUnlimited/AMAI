@@ -292,7 +292,7 @@ To *disable* the Commander, pass the correct option to the install scripts in th
 Once installed another dialog will appear with game mode options:
 
 1) `No Commander` - Disables the Commander during this game.
-2) `With Commander` - Commander is availaable. Press `ESC` key to bring up the Commander menu.
+2) `With Commander` - Commander is availaable. Press `ESC` key to bring up the Commander menu (Alternatively in the chat window type `-cmd`)
 3) `Computers Only` - Same as `With Commander`, except real players do not play, real player forces are removed and real players can only issue orders via the Commander to try and make AMAI ally win.
 4) `Joint Control` - Same as `Computers Only`, but real players can also directly control their ally AMAI's forces.
 
