@@ -9941,29 +9941,33 @@ function InitHarass takes nothing returns nothing
     exitwhen i > max_harass_groups
     set harass_size[i] = 0
     set harass_time[i] = -1000000
-    if harass_groups[i] == null then
-      set harass_groups[i] = InitHashtable()
-    else
-      call FlushParentHashtable(harass_groups[i])
-      set harass_groups[i] = InitHashtable()
-    endif  
     set i = i + 1
   endloop
-  set harass_group_length = 0
+  //call Trace("InitHarass")
+  if harass_groups == null then
+    set harass_groups = InitHashtable()
+  else
+    call FlushParentHashtable(harass_groups)
+    set harass_groups = InitHashtable()
+  endif
+  //call Trace("InitHarassEnd")
   set distraction_group = 0
 endfunction
 
 function AddHarass takes integer groupnum, integer qty, integer unitid returns nothing
   if groupnum >= max_harass_groups then
-    call Trace("ERROR: Harass group is set over max allowed:" + Int2Str(groupnum))
+    call DisplayToAll("ERROR: A Harass group is set over max allowed:" + Int2Str(groupnum))
   endif
-    call SaveInteger(harass_groups[groupnum], harass_size[groupnum], HARASS_STORE_QTY, qty)
-    call SaveInteger(harass_groups[groupnum], harass_size[groupnum], HARASS_STORE_UNITS, unitid)
-    set harass_size[groupnum] = harass_size[groupnum] + 1
-    set harass_group_length = harass_group_length + 1
+  if groupnum == 0 then
+    call DisplayToAll("ERROR: A Harass group has been set to 0")
+  endif
+  call SaveInteger(harass_groups, groupnum, harass_size[groupnum], qty)
+  call SaveInteger(harass_groups, groupnum, harass_size[groupnum] + 1, unitid)
+  set harass_size[groupnum] = harass_size[groupnum] + 2
+  //call Trace("Add Harrass:" + Int2Str(harass_size[groupnum]))
 endfunction
 
-function AddHarassUnittype takes integer groupnum, integer harassnum, group g, group harasser, integer qty, integer uid, integer key returns group
+function AddHarassUnittype takes group g, group harasser, integer qty, integer uid, integer key returns group
   local group cg = CopyGroup(g)
   local unit u = null
   local real player_sum = 0
@@ -10003,9 +10007,9 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
   loop
-    exitwhen i >= harass_size[groupnum] or FirstOfGroup(g) == null or t >= 12
-    set qty = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_QTY)
-    set uid = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_UNITS)
+    exitwhen i >= harass_size[key] or FirstOfGroup(g) == null or t >= 12
+    set qty = LoadInteger(harass_groups, key, i)
+    set uid = LoadInteger(harass_groups, key, i+1)
     if t + qty > 12 then  // Group Order max control 12 unit
       set qty = 12 - t
       set t = 12
@@ -10013,10 +10017,10 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
       set t = t + qty
     endif
     if qty > 0 then
-      set harasser = AddHarassUnittype(groupnum, i , g, harasser, qty, uid, key)
+      set harasser = AddHarassUnittype(g, harasser, qty, uid, key)
       set strength = strength + LoadReal(additional_info, key, START_STRENGTH_TEMP)
     endif
-    set i = i + 1
+    set i = i + 2
   endloop
   call DestroyGroup(g)
   set g = null
@@ -10055,8 +10059,8 @@ function GetHarassGroupStrength takes integer groupnum returns real
   local integer t = 0
   loop
     exitwhen i >= harass_size[groupnum] or t >= 12
-    set id = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_UNITS)
-    set qty = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_QTY)
+    set id = LoadInteger(harass_groups, groupnum, i)
+    set qty = LoadInteger(harass_groups, groupnum, i + 1)
     set t = t + qty 
     if t + qty > 12 then
       set qty = 12 - t
@@ -10065,7 +10069,7 @@ function GetHarassGroupStrength takes integer groupnum returns real
       set t = t + qty
     endif  
     set sum = sum + Min(qty, TownCountDone(id)) * GetFoodUsed(old_id[id]) * p
-    set i = i + 1
+    set i = i + 2
   endloop
   return sum
 endfunction
