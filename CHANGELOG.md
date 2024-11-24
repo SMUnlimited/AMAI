@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed an issue where harass attacks could failed to track harass units correctly and lose more units in the group when just one is killed, ending the harass early.
 - Fixed an issue where harass attacks could cause units to permanently stop moving.
 - Team game defeated ai's that cannot share to a same race player will share to victim neutral player same as in single matches.
+- Ensure focus fire controls are not running during a players retreat.
 - (Classic) Include missing hero harass attacks that are applicable from reforged scripts.
 
 ## [3.4.0] - 2024-11-19
