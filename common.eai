@@ -1644,6 +1644,12 @@ function Trace takes string s returns nothing
   endif
 endfunction
 
+function TraceAll takes string s returns nothing
+  if debugging then
+    call DisplayToAll(s)
+  endif
+endfunction
+
 //============================================================================
 function TraceI takes string s, integer val returns nothing	
   if debugging then
@@ -1882,7 +1888,7 @@ function ReturnUnitsOfHashtable takes hashtable ht, integer key, integer start, 
   local integer i = start
   local unit u = null
   call GroupClear(gunits)
-  if size <= 0 then
+  if size - start <= 0 then
     return gunits
   endif
   loop
@@ -1902,7 +1908,7 @@ function ReturnLivingUnitsOfHashtable takes hashtable ht, integer key, integer s
   local integer i = start
   local unit u = null
   call GroupClear(gunits)
-  if size <= 0 then
+  if size - start <= 0 then
     return gunits
   endif
   loop
@@ -1919,11 +1925,10 @@ endfunction
 
 // Remove dead entries to make iteration more optimal in the future
 function FlushUnitHashtable takes hashtable ht, integer key, integer start returns hashtable
-  local integer size = UnitHashtableSize(ht, key, start)
-  local integer i = 0
-  local integer j = 0
+  local integer size = UnitHashtableSize(ht, key, start) + start
+  local integer i = start
   local group g = null
-  if size <= 0 then
+  if size - start <= 0 then
     return ht
   endif
   set g = CreateGroup()
@@ -1938,6 +1943,29 @@ function FlushUnitHashtable takes hashtable ht, integer key, integer start retur
   set g = null
   return ht
 endfunction
+
+function RemoveUnitFromHashtable takes hashtable ht, integer key, integer start, unit u returns hashtable
+  local integer size = UnitHashtableSize(ht, key, start) + start
+  local integer i = start
+  local group g = null
+  if size - start <= 0 then
+    return ht
+  endif
+  set g = CreateGroup()
+  set g = ReturnUnitsOfHashtable(ht, key, start, g)
+  call GroupRemoveUnit(g, u)
+  loop
+    exitwhen i >= size
+    set i = i + 1
+    call RemoveSavedHandle(ht, key, i)
+  endloop
+  set ht = AddUnitsToHashtable(ht, key, start, g)
+  call DestroyGroup(g)
+  set g = null
+  return ht
+endfunction
+
+
 
 //============================================================================
 // These utility functions return the rescource cost correctly for upgraded units/buildings
@@ -3910,6 +3938,23 @@ function SelectByPlayer takes group rg, player p, boolean is_owner returns group
   return rg
 endfunction
 
+function SelectByInvisibleAM takes group rg, player enemy, boolean is_visible returns group
+  local unit u = null
+  local group g = rg
+  set rg = CreateGroup()
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if IsUnitInvisibleAM(u, enemy) == is_visible then
+      call GroupAddUnit(rg, u )
+    endif
+    call GroupRemoveUnit(g, u )
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  return rg
+endfunction
+
 function SelectByInvisible takes group rg, player enemy, boolean is_visible returns group
   local unit u = null
   local group g = rg
@@ -5324,13 +5369,23 @@ function GetUnitStrengthEx takes unit u returns integer
   return 0
 endfunction
 
+function IsUnitTower takes unit u returns boolean
+  if IsUnitType(u, UNIT_TYPE_STRUCTURE) and IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) then
+    return true
+  endif
+  return false
+endfunction
+
 //============================================================================
 function GetUnitStrength takes unit u returns real
   if GetUnitState(u, UNIT_STATE_MAX_LIFE) == 0 then
     call DisplayToAll("ERROR: Major error has occured and caused amai system to crash at function GetUnitStrength")
     call DisplayToAll("Please contact the creator and provide this replay to them")
   endif
-  return RMax(GetUnitStrengthEx(u) * GetPlayerStrengthHandicap(GetOwningPlayer(u)) * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)), 1.00)
+  if IsUnitTower(u) then
+    return 1 * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE))
+  endif
+  return GetUnitStrengthEx(u) * GetPlayerStrengthHandicap(GetOwningPlayer(u)) * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE))
 endfunction
 
 //============================================================================
@@ -5561,26 +5616,17 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
   return sum
 endfunction
 
-
 //============================================================================
-function IsUnitTower takes unit u returns boolean
-  if IsUnitType(u, UNIT_TYPE_STRUCTURE) and IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) then
-    return true
-  endif
-  return false
-endfunction
-
-//============================================================================
-function GetLocationTowerStrength takes real x, real y, real radius returns integer
+function GetLocationTowerStrength takes real x, real y, real radius returns real
   local group g = CreateGroup()
   local unit u = null
-  local integer sum = 0
+  local real sum = 0
   call GroupEnumUnitsInRange(g,x,y,radius,null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
     if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitTower(u) and UnitAlive(u) and not IsUnitHidden(u) then
-      set sum = sum + 1
+      set sum = sum + GetUnitStrength(u)
     endif
     call GroupRemoveUnit(g,u)
   endloop
@@ -9993,7 +10039,7 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   call SaveReal(additional_info, key, LOCX, lx)
   call SaveReal(additional_info, key, LOCY, ly)
   call SaveInteger(additional_info, key, HARASS_TARGET, harass_target)
-  call DisplayToAll("StartHarass : start harass job " + Int2Str(BlzGroupGetSize(harasser)))
+  call TraceAll("StartHarass : start harass job " + Int2Str(BlzGroupGetSize(harasser)))
   call AddUnitsToHashtable(additional_info, key, HARASS_UNITGROUP, harasser)
   call TQAddUnitJob(0, HARASS, key, null)
   call DestroyGroup(harasser)
@@ -12624,8 +12670,8 @@ function GetFFAEnemy takes nothing returns player
 endfunction
 
 //============================================================================
-function GetTowerFactor takes unit target returns integer
-  local integer tstrength = GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_tower_check_radius)
+function GetTowerFactor takes unit target returns real
+  local real tstrength = GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_tower_check_radius)
   if h_siege then
     return tstrength
   else

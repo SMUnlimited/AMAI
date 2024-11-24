@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Further improvements for team attacks where AI should ignore its teammates attacks e.g for the ancient barracks rush above.
 - When we enhanced the build code to build other things if it can't build the current priorities it caused strategies to tier up much earlier than designed, so now tier ups can only happen once most higher priority unit production is done honoring the strategy and and they are not currently expanding.
 - Building additional factory buildings should not be done while actively tiering up as the buildings needed for tier 2/3 may be different.
+- Harass will correctly keep harassing if no units can harm its air harass.
+- Harass attacks will return harassing units faster to the ai's control when complete.
 
 ### Fixed
 
@@ -21,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - If no units to attack with windwalk, then will exit windwalk and just attack a building rather than just stand around doing nothing.
 - Fixed an issue where harass attacks could failed to track harass units correctly and lose more units in the group when just one is killed, ending the harass early.
 - Fixed an issue where harass attacks could cause units to permanently stop moving.
+- (Classic) Include missing hero harass attacks that are applicable from reforged scripts.
 
 ## [3.4.0] - 2024-11-19
 
