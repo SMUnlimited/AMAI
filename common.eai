@@ -1746,6 +1746,12 @@ function Trace takes string s returns nothing
 	endif
 endfunction
 
+function TraceAll takes string s returns nothing
+  if debugging then
+    call DisplayToAll(s)
+  endif
+endfunction
+
 //============================================================================
 function TraceI takes string s, integer val returns nothing
 	if debugging then
@@ -2003,7 +2009,7 @@ function ReturnUnitsOfHashtable takes hashtable ht, integer key, integer start, 
   local integer i = start
   local unit u = null
   call GroupClear(gunits)
-  if size <= 0 then
+  if size - start <= 0 then
     return gunits
   endif
   loop
@@ -2022,7 +2028,7 @@ function ReturnLivingUnitsOfHashtable takes hashtable ht, integer key, integer s
   local integer i = start
   local unit u = null
   call GroupClear(gunits)
-  if size <= 0 then
+  if size - start <= 0 then
     return gunits
   endif
   loop
@@ -2038,15 +2044,35 @@ function ReturnLivingUnitsOfHashtable takes hashtable ht, integer key, integer s
 endfunction
 // Remove dead entries to make iteration more optimal in the future
 function FlushUnitHashtable takes hashtable ht, integer key, integer start returns hashtable
-  local integer size = UnitHashtableSize(ht, key, start)
-  local integer i = 0
-  local integer j = 0
+  local integer size = UnitHashtableSize(ht, key, start) + start
+  local integer i = start
   local group g = null
-  if size <= 0 then
+  if size - start <= 0 then
     return ht
   endif
   set g = CreateGroup()
   set g = ReturnUnitsOfHashtable(ht, key, start, g)
+  loop
+    exitwhen i >= size
+    set i = i + 1
+    call RemoveSavedHandle(ht, key, i)
+  endloop
+  set ht = AddUnitsToHashtable(ht, key, start, g)
+  call DestroyGroup(g)
+  set g = null
+  return ht
+endfunction
+
+function RemoveUnitFromHashtable takes hashtable ht, integer key, integer start, unit u returns hashtable
+  local integer size = UnitHashtableSize(ht, key, start) + start
+  local integer i = start
+  local group g = null
+  if size - start <= 0 then
+    return ht
+  endif
+  set g = CreateGroup()
+  set g = ReturnUnitsOfHashtable(ht, key, start, g)
+  call GroupRemoveUnit(g, u)
   loop
     exitwhen i >= size
     set i = i + 1
@@ -4057,6 +4083,23 @@ function SelectByPlayer takes group rg, player p, boolean is_owner returns group
   return rg
 endfunction
 
+function SelectByInvisibleAM takes group rg, player enemy, boolean is_visible returns group
+  local unit u = null
+  local group g = rg
+  set rg = CreateGroup()
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if IsUnitInvisibleAM(u, enemy) == is_visible then
+      call GroupAddUnit(rg, u )
+    endif
+    call GroupRemoveUnit(g, u )
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  return rg
+endfunction
+
 function SelectByInvisible takes group rg, player enemy, boolean is_visible returns group
   local unit u = null
   local group g = rg
@@ -5460,13 +5503,23 @@ function GetUnitStrengthEx takes unit u returns integer
   return 0
 endfunction
 
+function IsUnitTower takes unit u returns boolean
+  if IsUnitType(u, UNIT_TYPE_STRUCTURE) and IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) then
+    return true
+  endif
+  return false
+endfunction
+
 //============================================================================
 function GetUnitStrength takes unit u returns real
   if GetUnitState(u, UNIT_STATE_MAX_LIFE) == 0 then
     call DisplayToAll("ERROR: Major error has occured and caused amai system to crash at function GetUnitStrength")
     call DisplayToAll("Please contact the creator and provide this replay to them")
   endif
-  return RMax(GetUnitStrengthEx(u) * GetPlayerStrengthHandicap(GetOwningPlayer(u)) * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)), 1.00)
+  if IsUnitTower(u) then
+    return 1 * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE))
+  endif
+  return GetUnitStrengthEx(u) * GetPlayerStrengthHandicap(GetOwningPlayer(u)) * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE))
 endfunction
 
 //============================================================================
@@ -5702,24 +5755,16 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
 endfunction
 
 //============================================================================
-function IsUnitTower takes unit u returns boolean
-  if IsUnitType(u, UNIT_TYPE_STRUCTURE) and IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) then
-    return true
-  endif
-  return false
-endfunction
-
-//============================================================================
-function GetLocationTowerStrength takes real x, real y, real radius returns integer
+function GetLocationTowerStrength takes real x, real y, real radius returns real
   local group g = CreateGroup()
   local unit u = null
-  local integer sum = 0
+  local real sum = 0
   call GroupEnumUnitsInRange(g,x,y,radius,null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
     if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and IsUnitTower(u) and UnitAlive(u) and not IsUnitHidden(u) then
-      set sum = sum + 1
+      set sum = sum + GetUnitStrength(u)
     endif
     call GroupRemoveUnit(g,u)
   endloop
@@ -10254,33 +10299,37 @@ function InitHarass takes nothing returns nothing
     exitwhen i > max_harass_groups
     set harass_size[i] = 0
     set harass_time[i] = -1000000
-    if harass_groups[i] == null then
-      set harass_groups[i] = InitHashtable()
-    else
-      set g = CreateGroup()
-      set g = ReturnLivingUnitsOfHashtable(additional_info, i, HARASS_UNITGROUP, g)
-      call GroupRecycleGuardPositionInstant(g)
-      call FlushParentHashtable(harass_groups[i])
-      set harass_groups[i] = InitHashtable()
-    endif
     set i = i + 1
   endloop
-  set harass_group_length = 0
+  //call Trace("InitHarass")
+  if harass_groups == null then
+    set harass_groups = InitHashtable()
+  else
+    set g = CreateGroup()
+    set g = ReturnLivingUnitsOfHashtable(additional_info, i, HARASS_UNITGROUP, g)
+    call GroupRecycleGuardPositionInstant(g)
+    call FlushParentHashtable(harass_groups)
+    set harass_groups = InitHashtable()
+  endif
+  //call Trace("InitHarassEnd")
   set distraction_group = 0
   set g = null
 endfunction
 
 function AddHarass takes integer groupnum, integer qty, integer unitid returns nothing
   if groupnum >= max_harass_groups then
-    call Trace("ERROR: Harass group is set over max allowed:" + Int2Str(groupnum))
+    call DisplayToAll("ERROR: A Harass group is set over max allowed:" + Int2Str(groupnum))
   endif
-  call SaveInteger(harass_groups[groupnum], harass_size[groupnum], HARASS_STORE_QTY, qty)
-  call SaveInteger(harass_groups[groupnum], harass_size[groupnum], HARASS_STORE_UNITS, unitid)
-  set harass_size[groupnum] = harass_size[groupnum] + 1
-  set harass_group_length = harass_group_length + 1
+  if groupnum == 0 then
+    call DisplayToAll("ERROR: A Harass group has been set to 0")
+  endif
+  call SaveInteger(harass_groups, groupnum, harass_size[groupnum], qty)
+  call SaveInteger(harass_groups, groupnum, harass_size[groupnum] + 1, unitid)
+  set harass_size[groupnum] = harass_size[groupnum] + 2
+  //call Trace("Add Harrass:" + Int2Str(harass_size[groupnum]))
 endfunction
 
-function AddHarassUnittype takes integer groupnum, integer harassnum, group g, group harasser, integer qty, integer uid, integer key returns group
+function AddHarassUnittype takes group g, group harasser, integer qty, integer uid, integer key returns group
   local group cg = null
   local unit u = null
   local real player_sum = 0
@@ -10327,7 +10376,7 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     set g = null
     return
   endif
-  call Trace("StartHarass : get harass unit" )
+  call TraceAll("StartHarass : get harass unit" )
   set getstrength = LoadReal(additional_info, key, START_STRENGTH)
   set t = c
   set harasser = CreateGroup()
@@ -10336,9 +10385,9 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
   loop
-    exitwhen i >= harass_size[groupnum] or FirstOfGroup(g) == null or t >= 12
-    set qty = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_QTY)
-    set uid = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_UNITS)
+    exitwhen i >= harass_size[key] or FirstOfGroup(g) == null or t >= 12
+    set qty = LoadInteger(harass_groups, key, i)
+    set uid = LoadInteger(harass_groups, key, i+1)
     if t + qty > 12 then  // Group Order max control 12 unit
       set qty = 12 - t
       set t = 12
@@ -10346,17 +10395,17 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
       set t = t + qty
     endif
     if qty > 0 then
-      set harasser = AddHarassUnittype(groupnum, i, g, harasser, qty, uid, key)
+      set harasser = AddHarassUnittype(g, harasser, qty, uid, key)
       set strength = strength + LoadReal(additional_info, key, START_STRENGTH_TEMP)
     endif
-    set i = i + 1
+    set i = i + 2
   endloop
   call DestroyGroup(g)
   set g = null
   if FirstOfGroup(harasser) == null or strength <= 0 then
     call DestroyGroup(harasser)
     set harasser = null
-    call Trace("StartHarass : get harass unit fail" )
+    call TraceAll("StartHarass : get harass unit fail" )
     return
   endif
   if c == 0 then
@@ -10374,7 +10423,7 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     call SaveReal(additional_info, key, LOCX, lx)
     call SaveReal(additional_info, key, LOCY, ly)
     call SaveInteger(additional_info, key, HARASS_TARGET, harass_target)
-    call Trace("StartHarass : start harass job " + Int2Str(i))
+    call TraceAll("StartHarass : start harass job " + Int2Str(i))
     call AddUnitsToHashtable(additional_info, key, HARASS_UNITGROUP, harasser)
     call TQAddUnitJob(0, HARASS, key, null)
   else
@@ -10382,7 +10431,7 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     call SaveReal(additional_info, key, START_STRENGTH, strength + getstrength)
     call GroupAddGroup(unit_harassing, harasser)
     call AddUnitsToHashtable(additional_info, key, HARASS_UNITGROUP + BlzGroupGetSize(harasser) + c, harasser)
-    call Trace("StartHarass : add new unit to harass group" )
+    call TraceAll("StartHarass : add new unit to harass group" )
   endif
   call DestroyGroup(harasser)
   set harasser = null
@@ -10397,8 +10446,8 @@ function GetHarassGroupStrength takes integer groupnum returns real
   local integer t = 0
   loop
     exitwhen i >= harass_size[groupnum] or t >= 12
-    set id = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_UNITS)
-    set qty = LoadInteger(harass_groups[groupnum], i, HARASS_STORE_QTY)
+    set id = LoadInteger(harass_groups, groupnum, i)
+    set qty = LoadInteger(harass_groups, groupnum, i + 1)
     set t = t + qty
     if t + qty > 12 then
       set qty = 12 - t
@@ -10407,7 +10456,7 @@ function GetHarassGroupStrength takes integer groupnum returns real
       set t = t + qty
     endif
     set sum = sum + Min(qty, TownCountDone(id)) * GetFoodUsed(old_id[id]) * p
-    set i = i + 1
+    set i = i + 2
   endloop
   return sum
 endfunction
@@ -13311,8 +13360,8 @@ function GetFFAEnemy takes nothing returns player
 endfunction
 
 //============================================================================
-function GetTowerFactor takes unit target returns integer
-  local integer tstrength = GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_tower_check_radius)
+function GetTowerFactor takes unit target returns real
+  local real tstrength = GetLocationTowerStrength(GetUnitX(target), GetUnitY(target), ver_tower_check_radius)
   if h_siege then
     return tstrength
   else
