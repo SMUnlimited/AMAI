@@ -10305,9 +10305,14 @@ function InitHarass takes nothing returns nothing
   if harass_groups == null then
     set harass_groups = InitHashtable()
   else
-    set g = CreateGroup()
-    set g = ReturnLivingUnitsOfHashtable(additional_info, i, HARASS_UNITGROUP, g)
-    call GroupRecycleGuardPositionInstant(g)
+    set i = 0
+    loop
+      exitwhen i > max_harass_groups
+      set g = CreateGroup()
+      set g = ReturnLivingUnitsOfHashtable(additional_info, i, HARASS_UNITGROUP, g)
+      call GroupRecycleGuardPositionInstant(g)
+      set i = i + 1
+    endloop
     call FlushParentHashtable(harass_groups)
     set harass_groups = InitHashtable()
   endif
@@ -10377,7 +10382,6 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     return
   endif
   call TraceAll("StartHarass : get harass unit" )
-  set getstrength = LoadReal(additional_info, key, START_STRENGTH)
   set t = c
   set harasser = CreateGroup()
   call GroupClear(g)
@@ -10409,7 +10413,7 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     return
   endif
   if c == 0 then
-    set harass_time[groupnum] = ai_time
+    set harass_time[key] = ai_time
     call GroupAddGroup(unit_harassing, harasser)
     call FlushChildHashtable(additional_info,key)
     call SaveReal(additional_info, key, START_STRENGTH, strength)
@@ -10423,14 +10427,14 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     call SaveReal(additional_info, key, LOCX, lx)
     call SaveReal(additional_info, key, LOCY, ly)
     call SaveInteger(additional_info, key, HARASS_TARGET, harass_target)
-    call TraceAll("StartHarass : start harass job " + Int2Str(i))
+    call TraceAll("StartHarass : start harass job " + Int2Str(t))
     call AddUnitsToHashtable(additional_info, key, HARASS_UNITGROUP, harasser)
     call TQAddUnitJob(0, HARASS, key, null)
   else
     set getstrength = LoadReal(additional_info, key, START_STRENGTH)
     call SaveReal(additional_info, key, START_STRENGTH, strength + getstrength)
     call GroupAddGroup(unit_harassing, harasser)
-    call AddUnitsToHashtable(additional_info, key, HARASS_UNITGROUP + BlzGroupGetSize(harasser) + c, harasser)
+    call AddUnitsToHashtable(additional_info, key, HARASS_UNITGROUP + t - c, harasser)
     call TraceAll("StartHarass : add new unit to harass group" )
   endif
   call DestroyGroup(harasser)
@@ -12486,7 +12490,9 @@ function SleepInCombatAM takes boolean ally_override returns nothing
       if u == null then
         exitwhen noenemycount >= 8 // no enemies so exit
         set noenemycount = noenemycount + 1 // 8 seconds to pick up items on ground
-        call TeleportCaptain(lastcaptainx, lastcaptainy)
+        if not CaptainInCombat(true) then
+          call TeleportCaptain(lastcaptainx, lastcaptainy)
+        endif
       endif
     else
       call CreateDebugTagLoc("Sleep in combat", 10, GetLocationX(home_location),GetLocationY(home_location), 1.00, 0.80)
@@ -12498,11 +12504,11 @@ function SleepInCombatAM takes boolean ally_override returns nothing
         call FormGroupAM(0)
       endif
       if CaptainInCombat(true) then
+        call AttackMoveKill(u) // Use existing troops
+      else
         if c_ally_total > 0 and not ally_override and not CaptainInCombat(true) then
           call TeleportCaptain(GetUnitX(u), GetUnitY(u)) // Override hardcoded logic with attackmovekill which will help allies
         endif
-      else
-        call AttackMoveKill(u) // Use existing troops
       endif
       call CreateDebugTag("Combat sleep attack", 10, u, 1.00, 0.80)
     endif
