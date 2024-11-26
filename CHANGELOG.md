@@ -14,16 +14,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Building additional factory buildings should not be done while actively tiering up as the buildings needed for tier 2/3 may be different.
 - Harass will correctly keep harassing if no units can harm its air harass.
 - Harass attacks will return harassing units faster to the ai's control when complete.
+- Reduced time heros wait to pick up items after creeping in half.
 
 ### Fixed
 - Fix to avoid rare crashes in job thread.
 - Fix to avoid a case where AMAI tries to buy more than one hero in tier 1 and when using the recalculate heros ai command.
 - Fix Panda clones to not be canceled early when hero is going home or buying items.
 - If no units to attack with windwalk, then will exit windwalk and just attack a building rather than just stand around doing nothing.
-- Fixed an issue where harass attacks could failed to track harass units correctly and lose more units in the group when just one is killed, ending the harass early.
+- Fixed an issue where harass attacks fail to start.
+- Fixed an issue where harass attacks could fail to track harass units correctly.
 - Fixed an issue where harass attacks could cause units to permanently stop moving.
 - Team game defeated ai's that cannot share to a same race player will share to victim neutral player same as in single matches.
 - Ensure focus fire controls are not running during a players retreat.
+- Natural retreat will now actually trigger instead of staying stuck in combat.
+- Alliance targets are once again flagged to allies with a ping on the minimap.
 - (Classic) Include missing hero harass attacks that are applicable from reforged scripts.
 
 ## [3.4.0] - 2024-11-19
