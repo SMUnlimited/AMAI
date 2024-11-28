@@ -9304,15 +9304,15 @@ function GetMinesHarvested takes nothing returns integer
     set mine = race_manual_loading_mine
   endif
   if b or first_town_mine > 0 then  //home_location have multiple mine or just one mine but UD and ELF cannot harvested
-    set twm = TownCountDone(mine)
-    set i = twm
+    set twm = TownCountDone(mine) - 1
   endif
   if twm < 0 then
     return 0
   endif
   if b then
-    return i
+    return twm + 1
   endif
+  set i = twm
   loop
     exitwhen i > twm + 3
     if TownHasMine(i) and TownCountEx(mine,true,i) > 0 then
@@ -10681,12 +10681,12 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     endif
 
    if unitid == racial_rushcreep and not br_rush_built then
-     set br_rush_built = true //just run once
      if CreepsOnMap() and not towerrush then
        if BuildBRAtCreep() then
           return BUILT_SOME // Success
        endif
      endif
+     set br_rush_built = true //just run once
    endif
 
     if buy_type[unitid] > BT_RACIAL_ITEM and buy_type[unitid] < BT_MERCHANT_ITEM then
@@ -13758,26 +13758,24 @@ function universal_peon_assignment takes nothing returns nothing
   endif
   
   if TownHasMine(T) then
-    call Trace("Harvest Gold at Town:" + Int2Str(T))
+    //call Trace("Harvest Gold at Town:" + Int2Str(T))
   endif
   if TownHasMine(T+1) then
-    call Trace("Harvest Gold at Town:" + Int2Str(T+1))
+    //call Trace("Harvest Gold at Town:" + Int2Str(T+1))
   endif
   if TownHasMine(T+2) then
-    call Trace("Harvest Gold at Town:" + Int2Str(T+2))
+    //call Trace("Harvest Gold at Town:" + Int2Str(T+2))
   endif
 
-  if (true or fixharvest < 30) and own_town_mine[0] != null and UnitAlive(own_town_mine[0]) then
+  if own_town_mine[0] != null and UnitAlive(own_town_mine[0]) and T < 1 then
     // Override hardcoded mining logic for humans and orcs. Some maps like (10)dustwallowkeys register multiple mines or a single mine thats far away rather than the nearest mine to the town hall
+    // Once this mine is gone switch over to hardcoded logic.
     set gr = CreateGroup()
     set peons = CreateGroup()
     // Unforunately some cases closest gold mine isn't registered because its bound to another player location
     if (fixharvest < 30) then
-    set fixharvest = fixharvest + 1
+      set fixharvest = fixharvest + 1
     endif
-    call HarvestWood(0,1)
-    call HarvestWood(0,pwh)
-    call HarvestWood(0,swh)
     call GroupEnumUnitsOfPlayer(gr, ai_player, null)
     loop 
       set u = FirstOfGroup(gr)
@@ -13792,7 +13790,10 @@ function universal_peon_assignment takes nothing returns nothing
       endif  
       call GroupRemoveUnit(gr, u)
     endloop
-    call Trace("Already Harvesting:" + Int2Str(count))
+    call HarvestWood(0,1)
+    call HarvestWood(0,pwh)
+    call HarvestWood(0,swh)
+    //call Trace("Already Harvesting:" + Int2Str(count))
     call GroupClear(gr)
     call GroupEnumUnitsOfPlayer(gr, ai_player, null)
     loop 
@@ -13800,23 +13801,22 @@ function universal_peon_assignment takes nothing returns nothing
       exitwhen u == null
       if GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) then
         call CreateDebugTagLoc("Order:" + Int2Str(GetUnitCurrentOrder(u))+ " Distance:" + Real2Str(DistanceBetweenUnits(u, own_town_mine[0])), 10, GetUnitX(u), GetUnitY(u), 1.00, 0.80)
-        if ((TownCountDone(racial_peon) <= 5 and count < ver_optimal_gold - 1) or (TownCountDone(racial_peon) > 5 and count < ver_optimal_gold)) and GetUnitCurrentOrder(u) <= 852678 and GetUnitCurrentOrder(u) != 852024 and DistanceBetweenUnits(u, own_town_mine[0]) > 500 then //852024 = repair, // anything higher than 852678 has got to be a building order
+        if ((TownCountDone(racial_peon) <= 5 and count < ver_optimal_gold - 1) or (TownCountDone(racial_peon) > 5 and count < ver_optimal_gold)) and GetUnitCurrentOrder(u) <= 852678 and GetUnitCurrentOrder(u) != 852024 and (fixharvest == 1 or DistanceBetweenUnits(u, own_town_mine[0]) > 500) then //852024 = repair, // anything higher than 852678 has got to be a building order
           set count = count + 1
           call GroupAddUnit(peons, u)
-        elseif (DistanceBetweenUnits(u, own_town_mine[0]) > front_base_distance and fixharvest < 30 and GetUnitCurrentOrder(u) > 852678) then // going on adventure building far away too early so force them back
+        elseif (DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) > front_base_distance and fixharvest < 30 and GetUnitCurrentOrder(u) > 852678) then // going on adventure building far away too early so force them back
           call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
         endif
-      endif  
+      endif
       call GroupRemoveUnit(gr, u)
     endloop
-    call Trace("Correcting Harvest:" + Int2Str(count))
+    //call Trace("Correcting Harvest:" + Int2Str(count))
     call GroupTargetOrder(peons, "smart", own_town_mine[0])
     call DestroyGroup(gr)
     call DestroyGroup(peons)
     set gr = null
     set peons = null
   else
-    //set fixharvest = false
     call HarvestGold(T,ver_optimal_gold - 1)
     call HarvestWood(0,1)
     call HarvestGold(T,1)
@@ -13825,7 +13825,7 @@ function universal_peon_assignment takes nothing returns nothing
   endif
 
   set T = Max(T + 3,TownCountDone(racial_expansion))
-  //call CreateDebugTagLoc("MINES:" + Int2Str(GetMinesOwned()), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
+
   loop
     exitwhen i > T
     if T != i and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then

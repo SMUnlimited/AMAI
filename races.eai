@@ -655,6 +655,9 @@ endfunction
 //  peon_asignment
 //============================================================================
 function peon_assignment takes nothing returns nothing
+  local group g = null
+  local unit u = null
+
   call ClearHarvestAI()
 
   if desperation_assault then
@@ -693,6 +696,26 @@ function peon_assignment takes nothing returns nothing
   elseif race_manual_loading then
     call HarvestWood(0, 20)
   endif
+  
+  if fixharvest < 30 then
+    set g = CreateGroup()
+    set fixharvest = fixharvest + 1
+    call GroupEnumUnitsOfPlayer(g, ai_player, null)
+    loop 
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      if GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) then
+        call CreateDebugTagLoc("Order:" + Int2Str(GetUnitCurrentOrder(u))+ " Distance:" + Real2Str(DistanceBetweenUnits(u, own_town_mine[0])), 10, GetUnitX(u), GetUnitY(u), 1.00, 0.80)
+        if DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) > front_base_distance and GetUnitCurrentOrder(u) > 852678 and (racial_rushcreep == 0 or (TownCount(racial_rushcreep) <= 0 and GetUnitCurrentOrder(u) != old_id[racial_rushcreep])) then // going on adventure building far away too early so force them back
+          call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
+        endif
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+    call DestroyGroup(g)
+    set g = null
+  endif
+  
 endfunction
 
 //============================================================================

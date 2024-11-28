@@ -27,7 +27,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Ensure focus fire controls are not running during a players retreat.
 - Natural retreat will now actually trigger instead of staying stuck in combat.
 - Alliance targets are once again flagged to allies with a ping on the minimap.
-- Fixing mining behaviour in maps like dustwallowkeys for humans and orcs. Effectively implemented our own mining logic so we do correctly mine the nearest mine we own. This also helps protect against building farm and alter far away from base.
+- Fixing mining behaviour in maps like dustwallowkeys. Effectively implemented our own mining logic so we do correctly mine the nearest mine we own. 
+  - This also helps protect all races from building initial base buildings at the wrong mine.
+- Fixed issue where harvested mines is calculated incorrectly for humans and orcs for various use cases.
 - (Classic) Include missing hero harass attacks that are applicable from reforged scripts.
 
 ## [3.4.0] - 2024-11-19
