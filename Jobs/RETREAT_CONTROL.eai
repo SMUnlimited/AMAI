@@ -7,6 +7,7 @@
     location home_location = null
     real enemy_strength_sum = 0
     real ally_strength_sum = 0
+    boolean canflee = false
     boolean isfleeing = false
     integer added_target_aggression = 0  // The current bonus aggression added to current attack specified in the profiles
     integer added_racial_aggression = 0  // The current bonus added to current attack based on which race amai is attacking
@@ -114,11 +115,17 @@ function RetreatControlJob takes nothing returns nothing
     return
   endif
 
-  if (not attack_running and not isfleeing) or (isfleeing and (CaptainRetreating() or CaptainIsHome())) or town_threatened then
+  if not isfleeing and canflee and (CaptainRetreating() or CaptainIsHome()) then
+    call TraceAll("RETREAT_CONTROL: Natural Flee !!!")
+    set isfleeing = true
+  endif
+
+  if ((not attack_running and not isfleeing) or isfleeing or (town_threatened and town_threat_break)) then
     set break_attack = attack_running
     if CaptainIsHome() or (not attack_running and not isfleeing) then
       call Trace("===Retreat control ended===")
       set retreat_controlled = false
+      set canflee = false
       set isfleeing = false     // home so no need to be retreating. Also prevents bug in the captainretreating condition
       call SetGroupsFlee(false)
       return
@@ -127,7 +134,8 @@ function RetreatControlJob takes nothing returns nothing
     endif
   endif
 
-  if isfleeing or town_threatened then
+  if isfleeing or (town_threatened and town_threat_break) then
+    call ClearCaptainTargets()
     call CaptainGoHome()
   endif
   if attack_running then
@@ -204,19 +212,20 @@ function RetreatControlJob takes nothing returns nothing
     set ally_strength_sum = ally_sum
     call Trace("RETREAT_CONTROL: Our strength: " + Real2Str(ally_strength_sum) + " Enemy strength: " + Real2Str(enemy_strength_sum))
 
-    if not desperation_assault and (enemy_strength_sum > LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple2,ver_flee_multiple3,attacking_aggression + added_aggression + added_target_aggression + added_racial_aggression)*ally_strength_sum or (town_threatened and attack_running) or ally_strength_sum == 0) then
-      call Trace("RETREAT_CONTROL: Flee!!!!")
+    if not desperation_assault and (enemy_strength_sum > LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple2,ver_flee_multiple3,attacking_aggression + added_aggression + added_target_aggression + added_racial_aggression)*ally_strength_sum or (town_threatened and town_threat_break and attack_running) or ally_strength_sum == 0) then
+      call TraceAll("RETREAT_CONTROL: Flee!!!!")
       set break_attack = attack_running
       call ClearCaptainTargets()
       call CaptainGoHome()
       set isfleeing = true
     elseif not desperation_assault and (enemy_strength_sum > LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression + added_aggression + added_target_aggression + added_racial_aggression)*ally_strength_sum or (battle_radius == creep_battle_radius and enemy_strength_sum > ally_strength_sum )) then
-      call Trace("RETREAT_CONTROL: Allowed to Flee")
+      call TraceAll("RETREAT_CONTROL: Allowed to Flee")
       call SetGroupsFlee(true)
-      set isfleeing = true
+      set canflee = true
     else
       call SetGroupsFlee(false) // Prevent natural fleeing
       set isfleeing = false
+      set canflee = false
     endif
   endif
   call TQAddJob(2 * sleep_multiplier, RETREAT_CONTROL, 0)
