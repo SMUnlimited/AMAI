@@ -597,7 +597,7 @@ endfunction
 //===========================================================================
 function updateMineText takes integer i returns nothing
   local player p = GetTriggerPlayer()
-  if W3CWorkTextTag[i] != null then
+  if W3CWorkTextTag[i] != null and p != null and p == GetLocalPlayer() then
     call SetTextTagTextBJ(W3CWorkTextTag[i], I2S(W3CWorkers[i]) + "/5", 13)
     call SetTextTagPos(W3CWorkTextTag[i], GetUnitX(W3CMines[i]) - 30, GetUnitY(W3CMines[i]) - 140, 0)
     if W3CWorkers[i] == 5 then
@@ -608,7 +608,7 @@ function updateMineText takes integer i returns nothing
       call SetTextTagColorBJ(W3CWorkTextTag[i], 100, 100, 30, 100)
     endif
     if W3CWorkers[i] > 0 then
-      call SetTextTagVisibility(W3CWorkTextTag[i], IsPlayerObserver(GetLocalPlayer()) or (W3CWorkerCount and IsPlayerAlly(GetTriggerPlayer(), GetLocalPlayer())))
+      call SetTextTagVisibility(W3CWorkTextTag[i], IsPlayerObserver(GetLocalPlayer()) or (W3CWorkerCount and IsPlayerAlly(p, GetLocalPlayer())))
     endif
   endif
   set p = null
@@ -742,7 +742,7 @@ endfunction
 function W3CWorker_chat takes nothing returns nothing
   local integer i = 0
   local player p = GetTriggerPlayer()
-  if p != null then  // Making sure local player use
+  if p != null and p == GetLocalPlayer() then  // Making sure local player use
     if W3CWorkerCount == true then
       set W3CWorkerCount = false
       call DisplayTextToPlayer(p, 0, 0, "Worker count |cfffd0000[off]|r")
@@ -776,7 +776,7 @@ function InitW3CWorkerCount takes nothing returns nothing
   loop
     exitwhen i >= GetBJMaxPlayers()
     set p = Player(i)
-    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and not IsPlayerObserver(p) and GetPlayerController(p) == MAP_CONTROL_USER then
+    if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) == MAP_CONTROL_USER then
       call TriggerRegisterPlayerChatEvent(workerCountTrigger, p, "-workercount", true)
       call TriggerRegisterPlayerUnitEventSimple(issuedTargetOrderTrigger, p, EVENT_PLAYER_UNIT_ISSUED_TARGET_ORDER)
       call TriggerRegisterPlayerUnitEventSimple(issuedOrder, p, EVENT_PLAYER_UNIT_ISSUED_ORDER)
@@ -805,12 +805,10 @@ function W3CDenyTip takes nothing returns nothing
   local unit u2 = GetKillingUnit()
   local player p1 = GetOwningPlayer(u1)
   local player p2 = GetOwningPlayer(u2)
-  local real x = GetUnitX(u1)
-  local real y = GetUnitY(u1)
   local texttag t = null
   local string s = cs2s("!",GetPlayerColor(p2))
   local boolean b = W3CDenySign
-  if (not (IsUnitType(u1,UNIT_TYPE_STRUCTURE) and GetUnitTypeId(u2) == 'uaco')) and GetUnitTypeId(u2) != 'otot' and GetUnitTypeId(u2) != 'usap' and not IsUnitHidden(u1) then
+  if not (IsUnitType(u1,UNIT_TYPE_STRUCTURE) and GetUnitTypeId(u2) == 'uaco') and GetUnitTypeId(u2) != 'otot' and GetUnitTypeId(u2) != 'usap' and not IsUnitHidden(u1) then
     if (IsPlayerAlly(p1,p2) or p1 == Player(PLAYER_NEUTRAL_AGGRESSIVE) or p2 == Player(PLAYER_NEUTRAL_AGGRESSIVE)) and p1 != Player(PLAYER_NEUTRAL_PASSIVE) then
       if p2 == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
         set s = "|cff323232!|r"
@@ -826,11 +824,12 @@ function W3CDenyTip takes nothing returns nothing
         endif
       endif
       set t = CreateTextTagUnitBJ(s, u1, -80, 13, 100, 100, 100, 0)
-      call SetTextTagVisibility(t, (W3CDenySign and IsVisibleToPlayer(x,y,GetLocalPlayer()) and not IsFoggedToPlayer(x,y,GetLocalPlayer()) and not IsMaskedToPlayer(x,y,GetLocalPlayer())) or IsPlayerObserver(GetLocalPlayer()))
-      call SetTextTagPermanentBJ(t, false)
-      call SetTextTagVelocityBJ(t, 20, 90)
-      call SetTextTagFadepointBJ(t, 1.5)
-      call SetTextTagLifespanBJ(t, 2)
+      call SetTextTagPermanent(t, false)
+      call SetTextTagVelocity(t, 20, 90)
+      call SetTextTagLifespan(t, 2)
+      call SetTextTagFadepoint(t, 1.5)
+                                                    
+      call SetTextTagVisibility(t, (W3CDenySign and IsUnitInvisible(u1, GetLocalPlayer()) and not IsUnitMasked(u1, GetLocalPlayer()) and not IsUnitFogged(u1, GetLocalPlayer())) or IsPlayerObserver(GetLocalPlayer()))
       set t = null
     endif
   endif
@@ -865,7 +864,7 @@ function W3CDenyTipControl takes nothing returns nothing
   endif
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER then
+    if GetPlayerController(Player(i)) == MAP_CONTROL_USER then
       call TriggerRegisterPlayerChatEvent(W3CDenyControl, Player(i), "-deny", false)
     endif
     set i = i + 1
