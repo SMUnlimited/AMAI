@@ -1064,6 +1064,7 @@ globals
     boolean current_expansion_iswater = false
     unit current_expansion = null
     unit fixmine = null
+    integer fixharvest = 0
     boolean first_expansion_chosen = false
     unit not_taken_expansion = null  // used to MultipleMinefix , militai expansion , ancient expansion and item expansion system
     unit chaos_expansion = null
@@ -1187,6 +1188,16 @@ endfunction
 //  return 0
 //endfunction
 
+#INCLUDETABLE <1.txt> #ENC:utf8
+{
+  "code": %3,
+  "name": %2,
+  "descript": "",
+  "kind": %1,
+  "race": "特殊",
+  "type": "物编-技能"
+},
+#ENDINCLUDE
 //============================================================================
 function DoNothing takes nothing returns nothing
 endfunction
@@ -10466,7 +10477,7 @@ function GetHarassGroupStrength takes integer groupnum returns real
 endfunction
 
 function Harass takes integer groupnum, integer harass_target, boolean avoid_towers, real strength_limit, real flee_percent, integer flee_number, boolean cond, integer min_time, integer time returns nothing
-  if cond and ai_time - harass_time[groupnum] >= time and ai_time >= min_time then
+  if cond and ai_time - harass_time[groupnum] >= time and ai_time >= min_time and not attack_running then
     call StartHarass(groupnum, harass_target, avoid_towers, strength_limit, flee_percent, flee_number, 0, 0)
   endif
 endfunction
@@ -12475,6 +12486,7 @@ function SleepInCombatAM takes boolean ally_override returns nothing
     exitwhen break_attack // forced attack to end
     exitwhen CaptainIsEmpty()// no troops so stop attack
     exitwhen R2I(count) >= 900 // Took longer than 15 mins to stop lingering something is wrong
+    exitwhen isfleeing // Retreat control says to retreat
     if lastcaptainx != 0 and lastcaptainy != 0 then
       call CreateDebugTagLoc("Sleep at captainloc", 10, lastcaptainx, lastcaptainy, 1.00, 0.80)
       if u == null or not UnitAlive(u) or IsUnitInvisible(u, ai_player) then
@@ -12488,7 +12500,7 @@ function SleepInCombatAM takes boolean ally_override returns nothing
         call GroupClear(g)
       endif
       if u == null then
-        exitwhen noenemycount >= 8 // no enemies so exit
+        exitwhen noenemycount >= 4 // no enemies so exit
         set noenemycount = noenemycount + 1 // 8 seconds to pick up items on ground
         if not CaptainInCombat(true) then
           call TeleportCaptain(lastcaptainx, lastcaptainy)
@@ -12503,12 +12515,10 @@ function SleepInCombatAM takes boolean ally_override returns nothing
         set attack_length_counter = 0
         call FormGroupAM(0)
       endif
-      if CaptainInCombat(true) then
+      if true or CaptainAtGoal() or (attack_length_counter == 0 and not CaptainInCombat(true)) or CaptainInCombat(true) or ally_override or c_ally_total == 0 then
         call AttackMoveKill(u) // Use existing troops
-      else
-        if c_ally_total > 0 and not ally_override and not CaptainInCombat(true) then
-          call TeleportCaptain(GetUnitX(u), GetUnitY(u)) // Override hardcoded logic with attackmovekill which will help allies
-        endif
+      elseif (c_ally_total > 0 and not ally_override) then
+        call CaptainAttack(GetUnitX(u), GetUnitY(u)) // Override hardcoded logic with attackmovekill as ally targets will change the attackmovekill we wanted. Teleport ignores the ally control.
       endif
       call CreateDebugTag("Combat sleep attack", 10, u, 1.00, 0.80)
     endif
@@ -12615,7 +12625,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     exitwhen break_attack and not desperation_assault
     //exitwhen captain_flee and CaptainRetreating()
     //call Trace("SleepExitFlee:" + B2S(isfleeing and (CaptainRetreating() or CaptainIsHome()) and not desperation_assault))
-    exitwhen isfleeing and (CaptainRetreating() or CaptainIsHome()) and not desperation_assault
+    exitwhen isfleeing and not desperation_assault
     //call Trace("SleepExitEmpty:" + B2S(CaptainIsEmpty() and not desperation_assault))
     exitwhen CaptainIsEmpty() and not desperation_assault
     //if (c_ally_total > 0 and GetAllianceTarget() != null) then // If alliance target exists this overrides hardcoded attack controls regardless of unit you pass, so reconfigure attack to be aware of this
@@ -12653,10 +12663,10 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       set lastcaptainx = GetLocationX(ally_loc)
       set lastcaptainy = GetLocationY(ally_loc)
       //call SetCaptainHome(, lastcaptainx, lastcaptainy)
-      if CaptainInCombat(true) then
-        call AttackMoveXY(R2I(lastcaptainx), R2I(lastcaptainx))
-      else
-        call TeleportCaptain(lastcaptainx, lastcaptainx) // Override and help nearby ally
+      if true or CaptainAtGoal() or attack_length_counter == 0 or CaptainInCombat(true) or ally_override or c_ally_total == 0 then
+        call AttackMoveXY(R2I(GetLocationX(ally_loc)), R2I(GetLocationY(ally_loc))) 
+      elseif (c_ally_total > 0 and not ally_override) then
+        call CaptainAttack(GetLocationX(ally_loc), GetLocationY(ally_loc)) // Override and help nearby ally
       endif
       call CreateDebugTagLoc("Reform near ally", 10, lastcaptainx, lastcaptainy, 1.00, 0.80)
     else
@@ -12667,11 +12677,17 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       if (ally_override and c_ally_total > 0 and ally_target != null and ally_target != target) then
         set target = ally_target
       endif
-      if CaptainInCombat(true) then
-        call AttackMoveKill(target)
-      elseif c_ally_total > 0 and not ally_override then
-        call TeleportCaptain(GetUnitX(target), GetUnitY(target)) // Override hardcoded logic from attackmovekill which will help allies
+      if true or CaptainAtGoal() or (attack_length_counter == 0 and not CaptainInCombat(true)) or CaptainInCombat(true) or ally_override or c_ally_total == 0 then
+        call AttackMoveKill(target) // use attack length counter to do an ocassional attack move incase enemies nearby
+      elseif (c_ally_total > 0 and not ally_override) then // CURRENTLY DISABLED AS FIGHTS WITH ABOVE, NEED NEW COMBAT ATTACK MOVE FUNCTION
+        call CaptainAttack(GetUnitX(target), GetUnitY(target)) // Override hardcoded logic from attackmovekill which will help allies, but this is not an attack move operation
       endif
+      // Below is old style alliance but this overrides all hardcoded attacks whether you want it to or not
+      //if (GetAllianceTarget() == target) then
+      //  call AttackMoveKill(target)
+      //else
+      //  call AttackMoveXY(R2I(lastcaptainx), R2I(lastcaptainy)) // Override and ignore the alliance target
+      //endif
       // Below is old style alliance but this overrides all hardcoded attacks whether you want it to or not
       //if (GetAllianceTarget() == target) then
       //  call AttackMoveKill(target)
@@ -12711,7 +12727,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
         set attack_length_counter = attack_length_counter + 1
         set combat_length_counter = 0
       endif
-      if CaptainInCombat(true) and combat_length_counter > attack_reform_length * 3 then
+      if CaptainInCombat(true) and combat_length_counter > attack_reform_length then
         set combat_length_counter = 0
         call FormGroupAM(0)
       elseif not CaptainInCombat(true) and attack_length_counter > attack_reform_length then
@@ -12741,9 +12757,8 @@ function SleepUntilAtGoalAM takes nothing returns nothing
   loop
     exitwhen town_threat_break and town_threatened
     set lcount = lcount + 1
-    call StaggerSleep(0.8, 1*sleep_multiplier)
     exitwhen break_attack
-    exitwhen CaptainRetreating() and isfleeing
+    exitwhen isfleeing
     if lcount >= 6 then
       exitwhen CaptainAtGoal()        // reached goal
       exitwhen CaptainIsHome()        // failed to path and returned home
@@ -12778,11 +12793,11 @@ endfunction
 function SetAllianceTargetIfLeadAndChat takes unit u, integer chat returns nothing
   if (not HaveStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0") and u != null) then // if leadally
     call StoreInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0", GetHandleId(u))
-    //call SetAllianceTarget(u)
+    call SetAllianceTarget(u) // Just sends alliance attack signal, doesn't actually control ally attack target as originally thought, thats hardcoded into attackmovekill
     call SetChatVarsAttack(u)
     call Chat(chat)
   elseif (HaveStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0") and u == null) then
-    //call SetAllianceTarget(u)
+    call SetAllianceTarget(u)
     call FlushStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0")
   endif
 endfunction
@@ -13455,7 +13470,7 @@ function ChooseEnemyBaseTarget takes unit u returns unit
   call StartGetEnemyBase()
   loop
     exitwhen not WaitGetEnemyBase()
-    if c > 4 or town_threatened or isfleeing or CaptainRetreating() or CaptainIsEmpty() then
+    if c > 4 or town_threatened or isfleeing or CaptainIsEmpty() then
       return null
     endif
     call Sleep(1)
@@ -13760,7 +13775,6 @@ endif
 
 if town_threatened then
   set break_attack = false
-  set isfleeing = false
   call SleepUntilTownDefended(ai_strength)
   return
 endif
@@ -14444,7 +14458,6 @@ function universal_attack_sequence takes nothing returns nothing
 
   if town_threatened or TownThreatened() then // Attack has finished so any AMAI detections or hardcoded threat detections should be dealt with
     set break_attack = false
-    set isfleeing = false
     //call FormGroupAM(1)
     call SleepUntilTownDefended(ai_strength)
   //elseif not towerrush and not ancient_expanding and not militia_expanding and not item_expanding then
@@ -14541,8 +14554,15 @@ function universal_peon_assignment takes nothing returns nothing
     return
   endif
 
-  call Trace("Harvest Gold at Town:" + Int2Str(T))
-  call CreateDebugTagLoc("MINES:" + Int2Str(GetMinesOwned()) + ":" + Int2Str(T), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
+  if TownHasMine(T) then
+    call Trace("Harvest Gold at Town:" + Int2Str(T))
+  endif
+  if TownHasMine(T+1) then
+    call Trace("Harvest Gold at Town:" + Int2Str(T+1))
+  endif
+  if TownHasMine(T+2) then
+    call Trace("Harvest Gold at Town:" + Int2Str(T+2))
+  endif
   call HarvestGold(T,ver_optimal_gold - 1)
   call HarvestWood(0,1)
   call HarvestGold(T,1)
