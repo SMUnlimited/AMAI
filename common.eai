@@ -6112,27 +6112,29 @@ function MultipleMinefix takes nothing returns boolean
   local integer gold = 0
   local real i = 0
   local real distance = 10000
+  local location l = null
   local group g = null
   local unit u = null
   local boolean b = true
-  if town_threatened or not hero_built[1] or (GetGold() < 600 and GetWood() < 400 and current_expansion != null) or (race_manual_loading and TownCount(race_manual_loading_mine) > 1) or (race_uses_mine_expansion and TownCount(racial_expansion) > 1) then
+if town_threatened or not hero_built[1] or (not race_manual_loading and not race_uses_mine_expansion and ((not_taken_expansion != null and DistanceBetweenPoints_kd(home_location,GetUnitLoc(not_taken_expansion)) < expansion_taken_radius) or (fixmine != null and GetResourceAmount(fixmine) > 200))) or (race_manual_loading and GetUnitCount(old_id[race_manual_loading_mine]) > 1) or (race_uses_mine_expansion and (GetUnitCount(old_id[racial_peon]) == 5 * TownCount(racial_expansion) or TownCount(racial_expansion) > 1)) then
     return b  //no first hero priority build army , human and orc just harvest
   endif
   call Trace("Check Multiple Mine")
   set g = CreateGroup()
-  call GroupEnumUnitsInRangeOfLoc(g, home_location, 1600, null)
+  call GroupEnumUnitsInRangeOfLoc(g, home_location, expansion_taken_radius, null)
   set g = SelectById(g, old_id[GOLD_MINE], true)
   set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
   if FirstOfGroup(g) == null then
     call DestroyGroup(g)
     set g = null
+    set not_taken_expansion = null
     if not race_manual_loading then
       set first_town_mine = -1  //home_location no mine , if not ELF , need end HARVEST CHECK job , return to normal
     else
       set first_town_mine = 0
     endif
-    call Trace("Multiple Mine fix done , no more mines")
+    call Trace("Multiple Mine fix done , no mine")
     return false
   endif
   loop
@@ -6142,7 +6144,7 @@ function MultipleMinefix takes nothing returns boolean
       set i = DistanceBetweenPoints_kd(home_location,GetUnitLoc(u))
       if i <= distance then
         set distance = i
-        if fixmine == null or GetResourceAmount(fixmine) == 0 or (race_manual_loading and TownCount(race_manual_loading_mine) < 2) or (race_uses_mine_expansion and TownCount(racial_expansion) < 2) then
+        if fixmine == null or GetResourceAmount(fixmine) == 0 then
           set fixmine = u
         endif
       endif
@@ -6151,27 +6153,49 @@ function MultipleMinefix takes nothing returns boolean
     endif
     call GroupRemoveUnit(g, u)
   endloop
-  if race_manual_loading then
-    if fixmine != null and TownCount(race_manual_loading_mine) < 1 then
-      call GroupEnumUnitsInRangeOfLoc(g, home_location, 1600, null)
+  if fixmine != null and not_taken_expansion != fixmine and first_town_mine > 1 then
+    set not_taken_expansion = fixmine  // prevent build too many TOWNHALL , only first_town_mine > 1 mode need set
+  endif
+  if race_manual_loading and fixmine != null then
+    if GetUnitCount(old_id[race_manual_loading_mine]) < TownCount(racial_expansion) then
+      call GroupEnumUnitsInRangeOfLoc(g, home_location, expansion_taken_radius, null)
       set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL,true)
       set g = SelectByHidden(g, false)
       set g = SelectByAlive(g, true)
       set u = FirstOfGroup(g)
-      if u != null and (GetUnitCurrentOrder(u) != OrderId("entangle") or GetRandomInt(0,3) == 1) then
-        call IssueTargetOrder(u, "entangle", fixmine)  // first entangle , no need build
+      if u != null and (GetUnitCurrentOrder(u) != OrderId("entangle") or GetRandomInt(0,3) == 1) then  // random prevent tree stop
+        call IssueTargetOrder(u, "entangle", fixmine)  // first entangle , not build , this API only return false , cannot set b
+        set b = true
       endif
-    elseif TownCount(race_manual_loading_mine) < 2 and ((c > 1 and gold > 2 * GetUnitGoldCost2(racial_expansion)) or (c == 1 and gold > 5 * GetUnitGoldCost2(racial_expansion))) then  //  build one tree
-      set b = false
+      set u = null
+    elseif TownCount(racial_expansion) < 2 and c > 1 and gold > 3 * GetUnitGoldCost(old_id[racial_expansion]) then  //  build one tree
+      set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(fixmine), GetUnitY(fixmine), 270.0)
+      set l = GetUnitLoc(u)
+      call RemoveUnit(u)
+      set u = null
+      if expansion_peon == null or not UnitAlive(expansion_peon) then
+        set expansion_peon = GetExpansionPeon()
+      endif
+      if expansion_peon != null and UnitAlive(expansion_peon) and DistanceBetweenPoints_kd(l, GetUnitLoc(fixmine)) <= race_max_expa_mine_distance and GetGold() > GetUnitGoldCost(old_id[racial_expansion]) and GetWood() > GetUnitGoldCost(old_id[racial_expansion]) then
+        call IssuePointOrderByIdLoc(expansion_peon, old_id[racial_expansion], l)  // this API only return false , cannot set b
+        set b = true
+      endif
+      call RemoveLocation(l)
+      set l = null
     endif
-  elseif race_uses_mine_expansion then
-    set b = gold <= GetUnitGoldCost2(racial_expansion) / 3 and gold > 0
+  elseif race_uses_mine_expansion and fixmine != null and (TownCount(racial_expansion) < 2 or (GetGold() > 1200 and TownCount(racial_expansion) < 3)) and not (gold <= GetUnitGoldCost(old_id[racial_expansion]) / 3 and gold > 0) then
+    if expansion_peon == null or not UnitAlive(expansion_peon) then
+      set expansion_peon = GetExpansionPeon()
+    endif
+    if expansion_peon != null and UnitAlive(expansion_peon) and GetGold() > GetUnitGoldCost(old_id[racial_expansion]) and GetWood() > GetUnitGoldCost(old_id[racial_expansion]) then
+      call IssueTargetOrderById(expansion_peon, old_id[racial_expansion], fixmine)  // this API only return false , cannot set b
+      set b = true
+    endif
   elseif c < 2 then
     set b = false
   endif
   call DestroyGroup(g)
   set g = null
-  set u = null
   return b  // return false can expansion
 endfunction
 
@@ -8254,71 +8278,78 @@ function InitCheckHarvest takes nothing returns nothing
   local group g = CreateGroup()
   local unit u = null
   local integer i = GOLD_MINE
-  local integer c = 0
-  local integer s = 0
-  local integer m = 0
-  local integer p = 1
+  local integer c = 0 // gold mine count
+  local integer s = 0 // captured gold mine count
+  local integer m = 0 // captured by other player
+  local integer p = 1 // number of players claimed a mine
   local real check = 0
   local real distance = 10000
+  local boolean array b
   // some map home_location 1500 radius just one mine , but old war3 (maybe 1.24~1.28 , 1.36 no this bug) UD and ELF still cannot harvest(maybe need 2300 radius no more mine)
   if race_manual_loading then
     set i = race_manual_loading_mine
   elseif race_uses_mine_expansion then
     set i = racial_expansion
   endif
-  call GroupEnumUnitsInRangeOfLoc(g, home_location, 1600, null)
+  call GroupEnumUnitsInRangeOfLoc(g, home_location, 2300, null)
     set g = SelectByHidden(g,false)
   set g = SelectByAlive(g,true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set m = 0
-    if GetResourceAmount(u) > 0 then  // fix home_location mine
-      if GetUnitTypeId(u) == old_id[GOLD_MINE] then
-        set check = DistanceBetweenPoints_kd(home_location,GetUnitLoc(u))  // human and orc need find closest mine
-        if check < distance then
-          set distance = check
-          if i == GOLD_MINE and own_town_mine[0] == null then
-            set own_town_mine[0] = u
-          elseif fixmine == null then
-            set fixmine = u
+    if UnitAlive(u) and not IsUnitHidden(u) then
+      set m = 0
+      if GetResourceAmount(u) > 0 then
+        if GetUnitTypeId(u) == old_id[GOLD_MINE] then
+          set check = DistanceBetweenPoints_kd(home_location,GetUnitLoc(u))  // human and orc need find closest mine
+          if check < expansion_taken_radius and check < distance then
+            set distance = check
+            if i == GOLD_MINE and own_town_mine[0] == null then
+              set own_town_mine[0] = u
+            else
+              set fixmine = u
+            endif
           endif
+          set c = c + 1
+        else
+          if i != GOLD_MINE and GetOwningPlayer(u) == ai_player and (own_town_mine[0] == null or GetUnitTypeId(own_town_mine[0]) != old_id[i]) then
+             set own_town_mine[0] = u
+          endif
+          if GetOwningPlayer(u) != ai_player then
+            set m = 1
+          endif
+          set s = s + 1
         endif
-        set c = c + 1
-      else
-        if i != GOLD_MINE and GetOwningPlayer(u) == ai_player and (own_town_mine[0] == null or GetUnitTypeId(own_town_mine[0]) != old_id[i]) then
-           set own_town_mine[0] = u
-        endif
-        if GetOwningPlayer(u) != ai_player then
-          set m = 1
-        endif
-        set s = s + 1
       endif
-    endif
-    if GetOwningPlayer(u) != ai_player and (IsUnitType(u, UNIT_TYPE_TOWNHALL) or m > 0) then
-      set p = p + 1  // have more player , need fix harvest , but maybe no need fix expensive
+      if (IsUnitType(u, UNIT_TYPE_TOWNHALL) or m > 0) and GetOwningPlayer(u) != ai_player and GetPlayerSlotState(GetOwningPlayer(u)) == PLAYER_SLOT_STATE_PLAYING then
+        if b[GetPlayerId(GetOwningPlayer(u))] == false then  // town and mine of the same player cannot be calculated repeatedly
+          set b[GetPlayerId(GetOwningPlayer(u))] = true
+          set p = p + 1
+        endif
+      endif
     endif
     call GroupRemoveUnit(g, u)
   endloop
-  if p > 1 then  // more mine and more player
+  if p > 1 then
     if c + s == p and i != GOLD_MINE then
-      set first_town_mine = 1  // mode one , one player have one mine , and this mine too close (like (4)synergybigpaved.w3x) , just fix UD and ELF harvest
+      set first_town_mine = 1  // mode one , Right number of players and mines or this mine too close (like (4)synergybigpaved.w3x) , just fix UD and ELF harvest
     elseif c > p then
-      set first_town_mine = 2  // mode two , one player have more mine , fix UD and ELF harvest and all race expensive - prior take closest home_location mine
+      set first_town_mine = 2  // mode two , more mines than players, one player have more mine , fix UD and ELF harvest and all race expensive - prior take closest home_location mine
     endif
   elseif (i == GOLD_MINE and c > p) or (i != GOLD_MINE and c > 0) then  // more mine and one player
     set first_town_mine = 3  // mode three , one player have this mine , fix all race harvest and expensive - prior take closest home_location mine
   endif
   if first_town_mine == 0 and GetMinesOwned() > 1 then
-    set first_town_mine = 3  // redundance , fix harvest
+    set first_town_mine = 3  // Hardcoded redundent check
   endif
   call DestroyGroup(g)
   set g = null
-  if first_town_mine > 0 and race_manual_loading then
+  if first_town_mine > 0 and (race_manual_loading or race_uses_mine_expansion) then
     call HarvestGold(0,3)
     call HarvestWood(0,2)  // Early triggering Harvest , convenient HARVEST_CHECK job check peon
   endif
-  call Trace("first town mine mode :" + Int2Str(first_town_mine))
+  call CreateDebugTag("FIX mine", 10, fixmine, 4.00, 2.00)
+  call Trace("first town mine mode :" + Int2Str(first_town_mine) + ", sys mine : " + Int2Str(GetMinesOwned()) + ", gold mine :" + Int2Str(c) + ", race mine :"+ Int2Str(s) + ", player :" + Int2Str(p))
 endfunction
 
 //===========================================================================
@@ -8769,7 +8800,7 @@ function AMAI takes code heroes, code peons, code attacks returns nothing
   call SetHeroLevels(heroes)
   call Trace("heros set")
   call Sleep(0.3) // Run before harvest to help hardcoded mine claims to help hint to only collect resources from owned mines.
-  call InitCheckHarvest() // check home_location distance 1600 mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix
+  call InitCheckHarvest() // Fix harvest logic for multiple mines and elf and undead unable to harvest
   // Job Thread
   call StartThread(function TQLoop)
   //call Trace("TQLoop")
@@ -10811,11 +10842,27 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   local integer wood_cost = 0
   local boolean f = false
   local boolean w = false
+  
+  if race_manual_loading then  //check actual number mines
+    set count = TownCount(race_manual_loading_mine)
+    set countdone = TownCountDone(race_manual_loading_mine)  
+  elseif not race_uses_mine_expansion and first_town_mine > 0 then
+    set countdone = Min(countdone, GetMinesOwned())
+  endif
+  if first_town_mine > 1 or (count == 0 and first_town_mine < 2 and GetMinesOwned() > 0 and (race_manual_loading or race_uses_mine_expansion)) then
+    set f = MultipleMinefix()  // fix home_location multiple mine
+    if first_town_mine > 1 and f then
+      call Trace("AMAIStartexpa: MultiMineFix")  // fix GetMinesOwned bug
+      return BUILT_ALL
+    endif
+    call Trace("AMAIStartexpa: Try ReBuilt Home Mine")  // no take home near mine forced rebuild home mine when UD mine or ELF town lost , but not affect expansion so not add count
+  endif
+  
   if countdone >= qty then
     call Trace("AMAIStartexpa: Built All Expansions")
     return BUILT_ALL
   endif
-  if (count > countdone) then
+  if count > countdone then
     call Trace("AMAIStartexpa: All Expansions being built")
     return BUILT_SOME
   endif
@@ -10823,11 +10870,6 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   if town_threatened then
     call Trace("AMAIStartexpa: Town threatened")
     return BUILT_SOME
-  endif
-
-  if first_town_mine > 1 and MultipleMinefix() then
-    call Trace("AMAIStartexpa: Built All MultiMineFix")
-    return BUILT_ALL
   endif
 
   if current_expansion == null then
@@ -10849,12 +10891,6 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Taken Checked")
 
  // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion choosen")
-  if first_town_mine > 0 and (race_uses_mine_expansion or race_manual_loading) then  //home_location have multiple mine , fix GetMinesOwned bug(ELF and UD)
-    if race_manual_loading then
-      set i = race_manual_loading_mine
-    endif
-    set mines = Min(TownCount(i),mines)  // check actual number of gold mines
-  endif
   set gold_cost = GetUnitGoldCost2(hall)
   set wood_cost = GetUnitWoodCost2(hall)
 
