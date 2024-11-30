@@ -207,6 +207,26 @@ const installOnDirectory = async () => {
             process.send(f2AddToMPQ.error.message)
               : process.send(installCommander ? `Installing commander ${file}` : `Installing VS Vanilla AI commander ${file}`);
 
+        } else {
+          const f2AddToMPQ =  spawnSync(
+            `MPQEditor.exe`,
+            [
+              'd',
+              file,
+              `Scripts\\Blizzard.j`,
+            ],
+            { encoding : `utf8` }
+          );
+          if (f2AddToMPQ.status == 5) {
+            process.send(`WARN: ${file} to disable ${bj} script failed, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+            continue;
+          } else if (f2AddToMPQ.status > 0) {
+            process.send(`WARN: ${file} Possibly failed to disable ${bj} script, Unknown error occurred: ${f2AddToMPQ.status}`)
+            continue;
+          }
+          f2AddToMPQ.error ?
+            process.send(f2AddToMPQ.error.message)
+              : process.send(`Disable commander ${file}`);
         }
 
         const f3AddToMPQ =  spawnSync(
