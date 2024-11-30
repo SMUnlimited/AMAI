@@ -20,25 +20,109 @@ export class MenuService {
           {
             label: 'Install Opt Reforged on Folder with Commander',
             click: () => {
-              this.electronService.ipcRenderer.send('install', 'REFORGED', true, true, true, false);
+              this.electronService.ipcRenderer.send('install', 'REFORGED', true, 1, true, true);
+            }
+          },
+          {
+            label: 'Install Opt Reforged on Folder with VS AI Commander',
+            click: () => {
+              this.electronService.ipcRenderer.send('install', 'REFORGED', true, 2, true, true);
             }
           },
           {
             label: 'Install Opt Reforged on Folder (No Commander)',
             click: () => {
-              this.electronService.ipcRenderer.send('install', true, false, true, false);
+              this.electronService.ipcRenderer.send('install', 'REFORGED', true, 0, true, true);
             }
           },
           {
             label: 'Install Opt Reforged on Map with Commander',
             click: () => {
-              this.electronService.ipcRenderer.send('install','REFORGED', false, true, true, false);
+              this.electronService.ipcRenderer.send('install','REFORGED', false, 1, true, true);
+            }
+          },
+          {
+            label: 'Install Opt Reforged on Map with VS AI Commander',
+            click: () => {
+              this.electronService.ipcRenderer.send('install','REFORGED', false, 2, true, true);
             }
           },
           {
             label: 'Install Opt Reforged on Map (No Commander)',
             click: () => {
-              this.electronService.ipcRenderer.send('install', false, false, true, false);
+              this.electronService.ipcRenderer.send('install', 'REFORGED', false, 0, true, true);
+            }
+          },
+          {
+            label: 'Install Opt TFT on Folder with Commander',
+            click: () => {
+              this.electronService.ipcRenderer.send('install', 'TFT', true, 1, true, true);
+            }
+          },
+          {
+            label: 'Install Opt TFT on Folder with VS AI Commander',
+            click: () => {
+              this.electronService.ipcRenderer.send('install', 'TFT', true, 2, true, true);
+            }
+          },
+          {
+            label: 'Install Opt TFT on Folder (No Commander)',
+            click: () => {
+              this.electronService.ipcRenderer.send('install', 'TFT', true, 0, true, true);
+            }
+          },
+          {
+            label: 'Install Opt TFT on Map with Commander',
+            click: () => {
+              this.electronService.ipcRenderer.send('install','TFT', false, 1, true, true);
+            }
+          },
+          {
+            label: 'Install Opt TFT on Map with VS AI Commander',
+            click: () => {
+              this.electronService.ipcRenderer.send('install','TFT', false, 2, true, true);
+            }
+          },
+          {
+            label: 'Install Opt TFT on Map (No Commander)',
+            click: () => {
+              this.electronService.ipcRenderer.send('install', 'TFT', false, 0, true, true);
+            }
+          },
+          {
+            label: 'Install Opt ROC on Folder with Commander',
+            click: () => {
+              this.electronService.ipcRenderer.send('install', 'ROC', true, 1, true, true);
+            }
+          },
+          {
+            label: 'Install Opt ROC on Folder with VS AI Commander',
+            click: () => {
+              this.electronService.ipcRenderer.send('install', 'ROC', true, 2, true, true);
+            }
+          },
+          {
+            label: 'Install Opt ROC on Folder (No Commander)',
+            click: () => {
+              this.electronService.ipcRenderer.send('install', 'ROC', true, 0, true, true);
+            }
+          },
+          {
+            label: 'Install Opt ROC on Map with Commander',
+            click: () => {
+              this.electronService.ipcRenderer.send('install','ROC', false, 1, true, true);
+            }
+          },
+          {
+            label: 'Install Opt ROC on Map with VS AI Commander',
+            click: () => {
+              this.electronService.ipcRenderer.send('install','ROC', false, 2, true, true);
+            }
+          },
+          {
+            label: 'Install Opt ROC on Map (No Commander)',
+            click: () => {
+              this.electronService.ipcRenderer.send('install', 'ROC', false, 0, true, true);
             }
           },
           // TODO: recreate MakeTFT script
