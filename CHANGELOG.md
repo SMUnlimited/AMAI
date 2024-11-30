@@ -34,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Multiple mine control fixes (jzy-chitong56)
 - Fixed 4th mine chance was evaluated incorrectly. (jzy-chitong56)
 - (Classic) Include missing hero harass attacks that are applicable from reforged scripts.
+- (Installer) Fix menu install options not working (jzy-chitong56)
 
 ## [3.4.0] - 2024-11-19
 

@@ -20,25 +20,25 @@ export class MenuService {
           {
             label: 'Install Opt Reforged on Folder with Commander',
             click: () => {
-              this.electronService.ipcRenderer.send('install', 'REFORGED', true, true, true, false);
+              this.electronService.ipcRenderer.send('install', 'REFORGED', true, 1, true, false);
             }
           },
           {
             label: 'Install Opt Reforged on Folder (No Commander)',
             click: () => {
-              this.electronService.ipcRenderer.send('install', true, false, true, false);
+              this.electronService.ipcRenderer.send('install', 'REFORGED', true, 0, true, false);
             }
           },
           {
             label: 'Install Opt Reforged on Map with Commander',
             click: () => {
-              this.electronService.ipcRenderer.send('install','REFORGED', false, true, true, false);
+              this.electronService.ipcRenderer.send('install', 'REFORGED', false, 1, true, false);
             }
           },
           {
             label: 'Install Opt Reforged on Map (No Commander)',
             click: () => {
-              this.electronService.ipcRenderer.send('install', false, false, true, false);
+              this.electronService.ipcRenderer.send('install', 'REFORGED', false, 0, true, false);
             }
           },
           // TODO: recreate MakeTFT script
