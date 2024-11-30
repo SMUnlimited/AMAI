@@ -655,9 +655,6 @@ endfunction
 //  peon_asignment
 //============================================================================
 function peon_assignment takes nothing returns nothing
-  local group g = null
-  local unit u = null
-
   call ClearHarvestAI()
 
   if desperation_assault then
@@ -697,6 +694,12 @@ function peon_assignment takes nothing returns nothing
     call HarvestWood(0, 20)
   endif
   
+endfunction
+
+// Prevent building too far from base during early game start
+function KeepHarvestLocal takes nothing returns nothing
+  local group g = null
+  local unit u = null
   if fixharvest < 30 then
     set g = CreateGroup()
     set fixharvest = fixharvest + 1
@@ -706,7 +709,7 @@ function peon_assignment takes nothing returns nothing
       exitwhen u == null
       if GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) then
         call CreateDebugTagLoc("Order:" + Int2Str(GetUnitCurrentOrder(u))+ " Distance:" + Real2Str(DistanceBetweenUnits(u, own_town_mine[0])), 10, GetUnitX(u), GetUnitY(u), 1.00, 0.80)
-        if DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) > front_base_distance and GetUnitCurrentOrder(u) > 852678 and (racial_rushcreep == 0 or (TownCount(racial_rushcreep) <= 0 and GetUnitCurrentOrder(u) != old_id[racial_rushcreep])) then // going on adventure building far away too early so force them back
+        if not IsUnitInGroup(u, harvestgrp) and DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) > front_base_distance and IsConstructionOrder(GetUnitCurrentOrder(u)) and (racial_rushcreep == 0 or (TownCount(racial_rushcreep) <= 0 and GetUnitCurrentOrder(u) != old_id[racial_rushcreep])) then // going on adventure building far away too early so force them back
           call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
         endif
       endif
@@ -715,7 +718,6 @@ function peon_assignment takes nothing returns nothing
     call DestroyGroup(g)
     set g = null
   endif
-  
 endfunction
 
 //============================================================================
@@ -733,6 +735,7 @@ function peon_assignment_all takes nothing returns nothing
   else
     call universal_peon_assignment()
   endif
+  call KeepHarvestLocal()
 endfunction
 
 function calculate_strat_timer_seconds takes integer seconds returns integer

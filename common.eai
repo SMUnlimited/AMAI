@@ -13752,10 +13752,6 @@ function universal_peon_assignment takes nothing returns nothing
   local integer swh = 0
   local real gdivw = I2R(g) / I2R(Max(w,1))
   local integer i = T + 1
-  local group gr = null
-  local group peons = null
-  local integer count = 0
-  local unit u = null
 
   if T < 0 then
     set T = 0
@@ -13808,55 +13804,13 @@ function universal_peon_assignment takes nothing returns nothing
     //call Trace("Harvest Gold at Town:" + Int2Str(T+2))
   endif
 
-  if own_town_mine[0] != null and UnitAlive(own_town_mine[0]) and T < 1 then
+  if own_town_mine[0] != null and UnitAlive(own_town_mine[0]) and T < 1 and GetResourceAmount(own_town_mine[0]) > 0 then
     // Override hardcoded mining logic for humans and orcs. Some maps like (10)dustwallowkeys register multiple mines or a single mine thats far away rather than the nearest mine to the town hall
     // Once this mine is gone switch over to hardcoded logic.
-    set gr = CreateGroup()
-    set peons = CreateGroup()
-    // Unforunately some cases closest gold mine isn't registered because its bound to another player location
-    if (fixharvest < 30) then
-      set fixharvest = fixharvest + 1
-    endif
-    call GroupEnumUnitsOfPlayer(gr, ai_player, null)
-    loop 
-      set u = FirstOfGroup(gr)
-      exitwhen u == null
-      if GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) and not IsUnitHidden(u) and (GetUnitCurrentOrder(u) == 852018 or GetUnitCurrentOrder(u) == 852017) and DistanceBetweenUnits(u, own_town_mine[0]) <= 500 and IsStandardUnit(u) and not IsUnitBuying(u) then 
-      //852018= harvest, 852017=resume harvest, 851971 = smart
-      // unforunately this could be either wood or gold
-          set count = count + 1 //already harvesting
-          if count > ver_optimal_gold then
-            call IssueImmediateOrder(u, "stop")
-          endif
-      endif  
-      call GroupRemoveUnit(gr, u)
-    endloop
     call HarvestWood(0,1)
     call HarvestWood(0,pwh)
     call HarvestWood(0,swh)
-    //call Trace("Already Harvesting:" + Int2Str(count))
-    call GroupClear(gr)
-    call GroupEnumUnitsOfPlayer(gr, ai_player, null)
-    loop 
-      set u = FirstOfGroup(gr)
-      exitwhen u == null
-      if GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) and not IsUnitHidden(u) then
-        call CreateDebugTagLoc("Order:" + Int2Str(GetUnitCurrentOrder(u))+ " Distance:" + Real2Str(DistanceBetweenUnits(u, own_town_mine[0])), 10, GetUnitX(u), GetUnitY(u), 1.00, 0.80)
-        if ((TownCountDone(racial_peon) <= 5 and count < ver_optimal_gold - 1) or (TownCountDone(racial_peon) > 5 and count < ver_optimal_gold)) and GetUnitCurrentOrder(u) <= 852678 and GetUnitCurrentOrder(u) != 852024 and (fixharvest == 1 or DistanceBetweenUnits(u, own_town_mine[0]) > 500) and IsStandardUnit(u) and not IsUnitBuying(u) then //852024 = repair, // anything higher than 852678 has got to be a building order
-          set count = count + 1
-          call GroupAddUnit(peons, u)
-        elseif (DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) > front_base_distance and fixharvest < 30 and GetUnitCurrentOrder(u) > 852678) then // going on adventure building far away too early so force them back
-          call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
-        endif
-      endif
-      call GroupRemoveUnit(gr, u)
-    endloop
-    //call Trace("Correcting Harvest:" + Int2Str(count))
-    call GroupTargetOrder(peons, "smart", own_town_mine[0])
-    call DestroyGroup(gr)
-    call DestroyGroup(peons)
-    set gr = null
-    set peons = null
+    call ForcedHarvest()
   else
     call HarvestGold(T,ver_optimal_gold - 1)
     call HarvestWood(0,1)
