@@ -616,6 +616,9 @@ globals
     integer rbl_length = 0
 
     boolean build_lock = true
+    integer array bl_tier_foodlock
+    real array bl_tier_unitlock
+    boolean array bl_tier_expansionblock
 
     //==============================================================
     // (AMAI)  Standard Unit Variables
@@ -9707,6 +9710,19 @@ function Get_f_qty takes integer qty, integer unitid, integer town  returns inte
 endfunction
 
 //============================================================================
+// Tier is the block levels set if tier is the current tier
+// unitper is % of previously built units must have been built, otherwise tier up is blocked
+// foodlimit is amount of food used that must bypass Block
+// expansionblock if set expanding will block tier up
+function SetTierBlock takes integer tier, real unitper, integer foodlimit, boolean expansionblock returns nothing
+  if tier < 1 then
+    set tier = 1
+  endif
+  set bl_tier_foodlock[tier - 1] = foodlimit
+  set bl_tier_unitlock[tier - 1] = unitper
+  set bl_tier_expansionblock[tier - 1] = expansionblock
+endfunction
+
 function AddBlock takes integer req_qty, integer req_type, boolean only_done, integer allow_qty, integer allow_type, integer expire_time returns nothing
   set bl_req_qty[bl_length] = req_qty
   set bl_req_type[bl_length] = req_type
@@ -9718,7 +9734,15 @@ function AddBlock takes integer req_qty, integer req_type, boolean only_done, in
 endfunction
 
 function InitBlockList takes nothing returns nothing
+  local integer i = 0
   set bl_length = 0
+  loop
+    exitwhen i >= tier
+    set bl_tier_foodlock[i] = 0
+    set bl_tier_unitlock[i] = 0
+    set bl_tier_expansionblock[i] = false
+    set i = i + 1
+  endloop
 endfunction
 
 function BlockListCheck takes integer qty, integer t returns integer
@@ -10538,10 +10562,11 @@ function DefendTownsEx takes boolean only_done, boolean at_front, integer qty, i
   local integer i = twm
   //call Trace("DefendTownsEx TownWithMine:" + Int2Str(twm))
   if not at_front then
-    set twm = Max(twm, 1) // Home town is town 0
+    set twm = Max(twm, 1) // Home town is town 0 and exclude if at_front is not set
   else
     set twm = Max(twm, 0)
   endif
+  set i = twm
   loop
     exitwhen i > twm + 2
     if TownHasMine(i) and TownCountEx(racial_expansion,only_done,i) > 0 then
@@ -12158,6 +12183,7 @@ function OneBuildLoopAM takes nothing returns nothing
 
       if qty > mo and qty > 0 then
         if tp == BUILD_UNIT and IsRacialHallId(id, 1) and blocktierup then
+          call Trace("TIER UP block " + logtype + unitNames[id] + " " + Int2Str(id))
           set ret = CANNOT_BUILD // Not ready to tier up
         elseif tp == BUILD_UNIT then
           set logtype = "unit "
@@ -12168,7 +12194,7 @@ function OneBuildLoopAM takes nothing returns nothing
         elseif tp == BUILD_EXPAND then
           set logtype = "expand "
           set ret = StartExpansionAM(qty,id) // Don't tier up while doing a higher priority expansion
-          set blocktierup = true
+          set blocktierup = bl_tier_expansionblock[tier - 1]
         elseif tp == BUILD_ITEM then
           set logtype = "item "
           set ret = StartItem(qty,id)
@@ -12196,8 +12222,8 @@ function OneBuildLoopAM takes nothing returns nothing
           call Trace("NO RESOURCES " + logtype + unitNames[id] + " " + Int2Str(id))
           set tracednoresources = id
         endif
-        if tp == BUILD_UNIT and TownCountTown(id,build_town[index]) < build_qty[index] * 0.75 then
-          set blocktierup = true // Block tier up if a large proportion of requested units of strategy not built
+        if tp == BUILD_UNIT and TownCountTown(id,build_town[index]) < build_qty[index] * bl_tier_unitlock[tier-1] and FoodUsed() < bl_tier_foodlock[tier-1] then
+          set blocktierup = true // Strictly Block tier up if a large proportion of requested units of strategy not built so we follow strategy definition, otherwise will tier up early if spare resources and can't build higher priority tasks first
         endif
         exitwhen ret == NOT_ENOUGH_RES and tp != BUILD_ITEM and tp != BUILD_UPGRADE // Don't try and build anything else as thing we trying to buy is too expensive
         if ret == CANNOT_BUILD or ret == BUILT_SOME or ret == NOT_ENOUGH_RES or (ret == BUILT_ALL and qty < build_qty[index]) then
@@ -12654,7 +12680,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       set lastcaptainy = GetLocationY(ally_loc)
       //call SetCaptainHome(, lastcaptainx, lastcaptainy)
       if true or CaptainAtGoal() or attack_length_counter == 0 or CaptainInCombat(true) or ally_override or c_ally_total == 0 then
-        call AttackMoveXY(R2I(GetLocationX(ally_loc)), R2I(GetLocationY(ally_loc))) 
+        call AttackMoveXY(R2I(GetLocationX(ally_loc)), R2I(GetLocationY(ally_loc)))
       elseif (c_ally_total > 0 and not ally_override) then
         call CaptainAttack(GetLocationX(ally_loc), GetLocationY(ally_loc)) // Override and help nearby ally
       endif
