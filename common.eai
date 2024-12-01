@@ -1188,16 +1188,6 @@ endfunction
 //  return 0
 //endfunction
 
-#INCLUDETABLE <1.txt> #ENC:utf8
-{
-  "code": %3,
-  "name": %2,
-  "descript": "",
-  "kind": %1,
-  "race": "特殊",
-  "type": "物编-技能"
-},
-#ENDINCLUDE
 //============================================================================
 function DoNothing takes nothing returns nothing
 endfunction
@@ -8528,10 +8518,10 @@ function InitCheckHarvest takes nothing returns nothing
   local group g = CreateGroup()
   local unit u = null
   local integer i = GOLD_MINE
-  local integer c = 0
-  local integer s = 0
-  local integer m = 0
-  local integer p = 1
+  local integer c = 0 // gold mine count
+  local integer s = 0 // captured gold mine count
+  local integer m = 0 // captured by other player
+  local integer p = 1 // number of players claimed a mine
   local real check = 0
   local real distance = 10000
   local boolean array b
@@ -8582,15 +8572,15 @@ function InitCheckHarvest takes nothing returns nothing
   endloop
   if p > 1 then
     if c + s == p and i != GOLD_MINE then
-      set first_town_mine = 1  // mode one , one player have one mine , and this mine too close (like (4)synergybigpaved.w3x) , just fix UD and ELF harvest
+      set first_town_mine = 1  // mode one , Right number of players and mines or this mine too close (like (4)synergybigpaved.w3x) , just fix UD and ELF harvest
     elseif c + s > p then
-      set first_town_mine = 2  // mode two , one player have more mine , fix UD and ELF harvest and all race expensive - prior take closest home_location mine
+      set first_town_mine = 2  // mode two , more mines than players, one player have more mine , fix UD and ELF harvest and all race expensive - prior take closest home_location mine
     endif
   elseif (i == GOLD_MINE and c + s > p) or (i != GOLD_MINE and c > 0) then
     set first_town_mine = 3  // mode three , one player have this mine , fix all race harvest and expensive - prior take closest home_location mine
   endif
   if (first_town_mine == 0 and GetMinesOwned() > 1) or (c + s > p and first_town_mine != 3) then
-    set first_town_mine = 3  // redundance , fix harvest
+    set first_town_mine = 3  // Hardcoded redundent check
   endif
   call DestroyGroup(g)
   set g = null
@@ -9070,7 +9060,7 @@ function AMAI takes code heroes, code peons, code attacks returns nothing
     call SetHeroLevels(heroes)
     call Trace("heros set")
     call Sleep(0.3) // Run before harvest to help hardcoded mine claims to help hint to only collect resources from owned mines.
-    call InitCheckHarvest()  // check home_location near mine , ELF and UD cannot harvest (old war3 version distance need 2200+ ), this can fix
+    call InitCheckHarvest()  // Fix harvest logic for multiple mines and elf and undead unable to harvest (old war3 version distance need 2200+ )
     // Job Thread
     call StartThread(function TQLoop)
     //call Trace("TQLoop")
@@ -9614,15 +9604,15 @@ function GetMinesHarvested takes nothing returns integer
     set mine = race_manual_loading_mine
   endif
   if b or first_town_mine > 0 then  //home_location have multiple mine or just one mine but UD and ELF cannot harvested
-    set twm = TownCountDone(mine)
-    set i = twm
+    set twm = TownCountDone(mine) - 1
   endif
   if twm < 0 then
     return 0
   endif
   if b then
-    return i
+    return twm + 1
   endif
+  set i = twm
   loop
     exitwhen i > twm + 3
     if TownHasMine(i) and TownCountEx(mine,true,i) > 0 then
@@ -10546,7 +10536,7 @@ endfunction
 function DefendTownsEx takes boolean only_done, boolean at_front, integer qty, integer unitid, integer prio returns nothing
   local integer twm = TownWithMine()
   local integer i = twm
-  call Trace("DefendTownsEx TownWithMine:" + Int2Str(twm))
+  //call Trace("DefendTownsEx TownWithMine:" + Int2Str(twm))
   if not at_front then
     set twm = Max(twm, 1) // Home town is town 0
   else
@@ -10933,7 +10923,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     if bloc == BLOC_FRONT and not front_locs_computed then
       return BUILT_SOME
     endif
-      
+
     if bloc == BLOC_MINE and mine_loc == null then
       return BUILT_SOME
     endif
@@ -10946,7 +10936,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     //------------------------------------------------------------------------
     // if we have all we're asking for then make nothing
     //
-    set have_qty = Max(TownCountTown(unitid,town),max_order)
+    set have_qty = TownCountTown(unitid,town)
 
     if have_qty >= ask_qty then
       return BUILT_ALL
@@ -11100,12 +11090,12 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     endif
 
     if unitid == racial_rushcreep and not br_rush_built then
-      set br_rush_built = true //just run once
       if CreepsOnMap() and not towerrush then
         if BuildBRAtCreep() then
           return BUILT_SOME  // Success
         endif
       endif
+      set br_rush_built = true //just run once
     endif
 
     if buy_type[unitid] > BT_RACIAL_ITEM and buy_type[unitid] < BT_MERCHANT_ITEM then
@@ -12206,7 +12196,7 @@ function OneBuildLoopAM takes nothing returns nothing
           call Trace("NO RESOURCES " + logtype + unitNames[id] + " " + Int2Str(id))
           set tracednoresources = id
         endif
-        if tp == BUILD_UNIT and (ret == CANNOT_BUILD or ret == BUILT_SOME) and qty < build_qty[index] *0.75 then
+        if tp == BUILD_UNIT and TownCountTown(id,build_town[index]) < build_qty[index] * 0.75 then
           set blocktierup = true // Block tier up if a large proportion of requested units of strategy not built
         endif
         exitwhen ret == NOT_ENOUGH_RES and tp != BUILD_ITEM and tp != BUILD_UPGRADE // Don't try and build anything else as thing we trying to buy is too expensive
@@ -14554,15 +14544,15 @@ function universal_peon_assignment takes nothing returns nothing
     return
   endif
 
-  if TownHasMine(T) then
-    call Trace("Harvest Gold at Town:" + Int2Str(T))
-  endif
-  if TownHasMine(T+1) then
-    call Trace("Harvest Gold at Town:" + Int2Str(T+1))
-  endif
-  if TownHasMine(T+2) then
-    call Trace("Harvest Gold at Town:" + Int2Str(T+2))
-  endif
+  // if TownHasMine(T) then
+  //   call Trace("Harvest Gold at Town:" + Int2Str(T))
+  // endif
+  // if TownHasMine(T+1) then
+  //   call Trace("Harvest Gold at Town:" + Int2Str(T+1))
+  // endif
+  // if TownHasMine(T+2) then
+  //   call Trace("Harvest Gold at Town:" + Int2Str(T+2))
+  // endif
   call HarvestGold(T,ver_optimal_gold - 1)
   call HarvestWood(0,1)
   call HarvestGold(T,1)
@@ -14570,7 +14560,6 @@ function universal_peon_assignment takes nothing returns nothing
   call HarvestWood(0,swh)
 
   set T = Max(T + 3,TownCountDone(racial_expansion))
-  //call CreateDebugTagLoc("MINES:" + Int2Str(GetMinesOwned()), 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
   if not ForcedHarvest() then
     loop
       exitwhen i > T

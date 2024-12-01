@@ -597,7 +597,7 @@ endfunction
 //===========================================================================
 function updateMineText takes integer i returns nothing
   local player p = GetTriggerPlayer()
-  if W3CWorkTextTag[i] != null and p != null and p == GetLocalPlayer() then
+  if p != null and p == GetLocalPlayer() and W3CWorkTextTag[i] != null then
     call SetTextTagTextBJ(W3CWorkTextTag[i], I2S(W3CWorkers[i]) + "/5", 13)
     call SetTextTagPos(W3CWorkTextTag[i], GetUnitX(W3CMines[i]) - 30, GetUnitY(W3CMines[i]) - 140, 0)
     if W3CWorkers[i] == 5 then
@@ -808,7 +808,7 @@ function W3CDenyTip takes nothing returns nothing
   local texttag t = null
   local string s = cs2s("!",GetPlayerColor(p2))
   local boolean b = W3CDenySign
-  if not (IsUnitType(u1,UNIT_TYPE_STRUCTURE) and GetUnitTypeId(u2) == 'uaco') and GetUnitTypeId(u2) != 'otot' and GetUnitTypeId(u2) != 'usap' and not IsUnitHidden(u1) then
+  if p1 == GetLocalPlayer() and p2 == GetLocalPlayer() and not (IsUnitType(u1,UNIT_TYPE_STRUCTURE) and GetUnitTypeId(u2) == 'uaco') and GetUnitTypeId(u2) != 'otot' and GetUnitTypeId(u2) != 'usap' and not IsUnitHidden(u1) then
     if (IsPlayerAlly(p1,p2) or p1 == Player(PLAYER_NEUTRAL_AGGRESSIVE) or p2 == Player(PLAYER_NEUTRAL_AGGRESSIVE)) and p1 != Player(PLAYER_NEUTRAL_PASSIVE) then
       if p2 == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
         set s = "|cff323232!|r"
@@ -818,17 +818,14 @@ function W3CDenyTip takes nothing returns nothing
       elseif IsUnitType(u2,UNIT_TYPE_STRUCTURE) then
         set s = s + "|cff323232!|r"
       endif
-      if p1 == Player(PLAYER_NEUTRAL_AGGRESSIVE) then
-        if W3CDenySign_sys then
-          set W3CDenySign = true  // Temporarily open to display neutral hostile kills, as 2.0 currently does not support them
-        endif
+      if p1 == Player(PLAYER_NEUTRAL_AGGRESSIVE) and W3CDenySign_sys then
+        set W3CDenySign = true  // Temporarily open to display neutral hostile kills, as 2.0 currently does not support them
       endif
       set t = CreateTextTagUnitBJ(s, u1, -80, 13, 100, 100, 100, 0)
       call SetTextTagPermanent(t, false)
       call SetTextTagVelocity(t, 20, 90)
       call SetTextTagLifespan(t, 2)
       call SetTextTagFadepoint(t, 1.5)
-                                                    
       call SetTextTagVisibility(t, (W3CDenySign and IsUnitInvisible(u1, GetLocalPlayer()) and not IsUnitMasked(u1, GetLocalPlayer()) and not IsUnitFogged(u1, GetLocalPlayer())) or IsPlayerObserver(GetLocalPlayer()))
       set t = null
     endif
@@ -895,22 +892,44 @@ function DestroyTPEffect takes nothing returns nothing
 endfunction
 
 function TPEffect takes nothing returns nothing
+  local group g = null
+  local group gt = null
   local unit u = null
-  local group g = CreateGroup()
+  local unit ut = null
   local real x = GetSpellTargetX()
   local real y = GetSpellTargetY()
   local integer i = GetSpellAbilityId()
   local player p1 = GetOwningPlayer(GetTriggerUnit())
   local player p2 = null
   if p1 != null and (i == 'AItp' or i == 'AHmt') then
-    call GroupEnumUnitsInRange(g, x, y, 850, null)
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null
-      exitwhen (IsUnitType(u, UNIT_TYPE_TOWNHALL) or i == 'AHmt') and IsUnitAlly(u, p1) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u)
-      call GroupRemoveUnit(g, u)
-    endloop
-    if u != null then
+    set ut = GetSpellTargetUnit()
+    if ut == null or IsUnitType(ut, UNIT_TYPE_STRUCTURE) then
+      set g = CreateGroup()
+      set gt = CreateGroup()
+      call GroupEnumUnitsInRange(g, x, y, 850, null)
+      call GroupEnumUnitsInRange(gt, x, y, 220, null)
+      loop
+        set u = FirstOfGroup(g)
+        exitwhen u == null
+        if IsUnitAlly(u, p1) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) and not IsUnitInGroup(u, gt) then
+          set x = GetUnitX(u)
+          set y = GetUnitY(u)
+          set ut = u
+          exitwhen ut == u
+        endif
+        call GroupRemoveUnit(g, u)
+      endloop
+      call DestroyGroup(gt)
+      set gt = null
+      call DestroyGroup(g)
+      set g = null
+      set u = null
+      if IsUnitType(ut, UNIT_TYPE_STRUCTURE) then
+        set x = x + 220
+        set y = y + 220
+      endif
+    endif
+    if ut != null then
       set i = 0
       loop
         exitwhen i >= GetBJMaxPlayers()
@@ -924,11 +943,9 @@ function TPEffect takes nothing returns nothing
         set i = i + 1
       endloop
       set p2 = null
-      set u = null
+      set ut = null
     endif
   endif
-  call DestroyGroup(g)
-  set g = null
   set p1 = null
 endfunction
 
