@@ -20,7 +20,7 @@ function SelectByPeons takes group rg returns group
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if ((race_manual_loading and GetUnitTypeId(u) == old_id[race_manual_loading_wisp]) or GetUnitTypeId(u) == old_id[racial_peon]) and UnitAlive(u) and not IsUnitHidden(u) and IsPeonReadyToHarvest(u) then
+    if ((race_manual_loading and GetUnitTypeId(u) == old_id[race_manual_loading_wisp]) or GetUnitTypeId(u) == old_id[racial_peon]) and UnitAlive(u) and IsPeonReadyToHarvest(u) then
       call GroupAddUnit(rg, u )
     endif
     call GroupRemoveUnit(g, u )
@@ -38,12 +38,18 @@ function CountPeonsInMine takes unit mine, integer limit returns integer
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) and not IsUnitHidden(u) and (GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == OrderId("resumeharvesting")) and (DistanceBetweenUnits(u, mine) <= 225 or (not race_uses_mine_expansion and DistanceBetweenUnits(u, mine) <= 350)) then // Min distance for undead which is 221, human and orcs could be variable
+    // When peons in mine they count as hidden units so don't ignore hidden peons
+    if GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) and (GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == OrderId("resumeharvesting")) and (DistanceBetweenUnits(u, mine) <= 225 or (not race_uses_mine_expansion and DistanceBetweenUnits(u, mine) <= 600)) then // Min distance for undead which is 221, human and orcs could be variable
       set i = i + 1
       if i > limit and not race_uses_mine_expansion then
-         call IssueImmediateOrder(u, "stop") // human, orc can have too many peons that shouldn't be harvesting
+         if GetUnitCurrentOrder(u) != OrderId("resumeharvesting") then
+          call IssueImmediateOrder(u, "stop") // human, orc can have too many peons that shouldn't be harvesting
+         endif
          call GroupRemoveUnit(harvestgrp, u)
       else 
+         if not race_uses_mine_expansion and GetUnitCurrentOrder(u) != OrderId("resumeharvesting") then
+          call IssueTargetOrder(u, "harvest", mine) // order in case its fake wood harvesters
+         endif
          call GroupAddUnit(harvestgrp, u)
       endif
     endif
@@ -123,7 +129,9 @@ function PeonMineCheck takes unit mine returns boolean
       loop
         set u = FirstOfGroup(g)
         exitwhen u == null or i >= delaywisps
-        call IssueTargetOrder(u, "harvest", mine)
+        if GetUnitCurrentOrder(u) != OrderId("resumeharvesting") then // resumeharvest is peons returning home so don't interrupt the return of goods
+          call IssueTargetOrder(u, "harvest", mine)
+        endif
         call GroupAddUnit(harvestgrp, u)
         set i = i + 1
         call GroupRemoveUnit(g, u)
