@@ -31,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - This also helps protect all races from building initial base buildings at the wrong mine.
 - Fixed issue where harvested mines is calculated incorrectly for humans and orcs for various use cases.
 - Small fix so that ai does not retreat from creeps sleeping or are not fully engaged.
+- Fixed an issue where undead would try and tier up due to base defense instead of tiering up through the strategy.
 - Multiple mine control fixes (jzy-chitong56)
 - Fixed 4th mine chance was evaluated incorrectly. (jzy-chitong56)
 - (Classic) Include missing hero harass attacks that are applicable from reforged scripts.
