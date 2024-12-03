@@ -29,19 +29,23 @@ endfunction
 function SelectByZiggurat takes group rg returns group
   local unit u = null
   local integer i = 0
+  local integer id = 0
   local group g = rg
   set rg = CreateGroup()
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set i = 0
-    loop
-      exitwhen i > ziggarray
-      if GetUnitTypeId(u) == racial_zigg[i] and UnitAlive(u) and not IsUnitHidden(u) then
-        call GroupAddUnit(rg, u)
-      endif
-      set i = i + 1
-    endloop
+    if UnitAlive(u) and not IsUnitHidden(u) then
+      set id = GetUnitTypeId(u)
+      loop
+        exitwhen i >= ziggarray
+        if id == racial_zigg[i] then
+          call GroupAddUnit(rg, u)
+        endif
+        set i = i + 1
+      endloop
+      set i = 0
+    endif
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
@@ -52,14 +56,11 @@ endfunction
 function CheckSellZiggurat takes unit u returns nothing
   local group g = CreateGroup()
   call GroupEnumUnitsInRange(g, GetUnitX(u), GetUnitY(u), race_ziggurat_keep_distance, null)
+  call GroupRemoveUnit(g, u)
   set g = SelectByPlayer(g, ai_player, true)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, false)
-  set g = SelectByIdOr(g, racial_lumber, racial_expansion, false)
-  set g = SelectByIdOr(g, racial_altar, racial_shop, false)
   set g = SelectByAlive(g, true)
   set g = SelectByHidden(g, false)
-  call GroupRemoveUnit(g, FirstOfGroup(g))
   if FirstOfGroup(g) == null then
     call Unsummon(u)
   endif
@@ -67,22 +68,36 @@ function CheckSellZiggurat takes unit u returns nothing
   set g = null
 endfunction
 
+function CheckSellStructure takes group g returns nothing
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, false)
+  set g = SelectByIdOr(g, old_id[racial_lumber], old_id[racial_expansion], false)
+  set g = SelectByIdOr(g, old_id[racial_altar], old_id[racial_shop], false)
+  set g = SelectByAlive(g, true)
+  set g = SelectByHidden(g, false)
+  call Unsummon(FirstOfGroup(g))
+endfunction
+
 function SellZigguratJob takes nothing returns nothing
   local group g = CreateGroup()
   local unit u = null
-  //local integer i = 0
 
   call DisplayToAllJobDebug("SELL_ZIGGURATS JOB START")
   if not towerrush then
     if TRrecovery == null then
-      call GroupEnumUnitsOfPlayer(g, ai_player, null)
-      set g = SelectByZiggurat(g)
-      loop
-        set u = FirstOfGroup(g)
-        exitwhen u == null
-        call CheckSellZiggurat(u)
-        call GroupRemoveUnit(g,u)
-      endloop
+      if GetGoldOwned() + GetGold() < 800 then  // if insufficient resources, buy more buildings , else ensure there is sufficient food available
+        call CheckSellStructure(g)
+      elseif FoodCap() > ver_food_limit then
+        call GroupEnumUnitsOfPlayer(g, ai_player, null)
+        set g = SelectByZiggurat(g)
+        loop
+          set u = FirstOfGroup(g)
+          exitwhen u == null
+          call CheckSellZiggurat(u)
+          call GroupRemoveUnit(g,u)
+        endloop
+      endif
     else
       if sellbuild != null and UnitAlive(sellbuild) and sellpeon != null and UnitAlive(sellpeon) then
         call IssueTargetOrder(sellpeon, "unsummon", sellbuild)
