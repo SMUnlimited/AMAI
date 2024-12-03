@@ -10,11 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) New block available for strategies. E.g `SetTierBlock(1, 0.75, 60, true)` that blocks tiering up from tier 1 unless more than 75% of higher priority units are built. Unlocks if over 60 food. Final argument prevents tier up while expanding if set to true. Tier block overrides previous tier level block if repeated in a strategy.
 
 ### Changed
-- When we enhanced the build code to build other things if it can't build the current priorities it caused strategies to tier up much earlier than designed, so now tier ups can only happen once most higher priority unit production is done honoring the strategy and and they are not currently expanding.
+- When we enhanced the build code to build other things if it can't build the current priorities it caused strategies to tier up much earlier than designed, so now tier ups can only happen once most higher priority unit production is done honoring the strategy and they are not currently expanding.
 - Building additional factory buildings should not be done while actively tiering up as the buildings needed for tier 2/3 may be different.
 - Harass will correctly keep harassing if no units can harm its air harass.
 - Harass attacks will return harassing units faster to the ai's control when complete.
 - Reduced time heros wait to pick up items after creeping in half.
+- Better management of the captain home locations, the players strength and applying this to retreat control, town threatened and teleport so all locations are in sync.
+- Main army is now calculated to be the biggest army which should prevent issues when hero is not anywhere near the army force.
 
 ### Fixed
 - Fix to avoid rare crashes in job thread.
@@ -33,6 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed issue where harvested mines is calculated incorrectly for humans and orcs for various use cases.
 - Small fix so that ai does not retreat from creeps sleeping or are not fully engaged.
 - Fixed an issue where undead would try and tier up due to base defense instead of tiering up through the strategy.
+- Fixed an issue where when attack forces went home they didn't run to the place where town defense is required.
 - Multiple mine control fixes (jzy-chitong56)
 - Fixed 4th mine chance was evaluated incorrectly. (jzy-chitong56)
 - (Classic) Include missing hero harass attacks that are applicable from reforged scripts.

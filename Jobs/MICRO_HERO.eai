@@ -94,47 +94,23 @@ function GetDensities takes location l, player p, real r returns nothing
 endfunction
 
 function TeleportHome takes integer hn returns nothing
-// Team Game improvements Added by Strategy Master 12/03/05
   local integer i = 0
-  local player p = null
-  local real distance = 9999999
-  //local location teleport_loc = null
-  local real dx = GetLocationX(home_location)
-  local real dy = GetLocationY(home_location)
-  local real actual_diff = 0 
-  local location start_loc = null
-  local boolean b = false
-  //set hero_loc = GetUnitLoc(hero_unit[hn])
-  if major_hero != null and UnitAlive(major_hero) then
-    loop
-      exitwhen i >= c_ally_total
-      set p = ally_force[i]
-      if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
-        set start_loc = GetPlayerStartLocationLoc(p)
-        //set dx = GetLocationX(start_loc) - GetLocationX(hero_loc)
-        //set dy = GetLocationY(start_loc) - GetLocationY(hero_loc)
-        //set actual_diff = SquareRoot(dx * dx + dy * dy)
-        set actual_diff = DistanceBetweenPoints(start_loc, hero_loc[hn])
-        if actual_diff < distance then
-          set distance = actual_diff
-          set dx = GetLocationX(start_loc)
-          set dy = GetLocationY(start_loc)
-          set b = true
-        endif
-        call RemoveLocation(start_loc)
-      endif
-      set i = i + 1
-    endloop
-  endif
-  call ClearCaptainTargets()
-  if b then
-    call SetCaptainHome(BOTH_CAPTAINS, dx, dy)
-    //call CaptainAttack(dx, dy)
-  else
-    call CaptainGoHome()
-  endif
+  local real dx = GetLocationX(captain_home)
+  local real dy = GetLocationY(captain_home)
+  if not captain_tp then // can't teleport here so just go home
+    if home_town >= 0 and town_can_tp[home_town] then
+      set dx = GetLocationX(town_loc[home_town])
+      set dy = GetLocationY(town_loc[home_town])
+    else
+      set dx = GetLocationX(home_location)
+      set dy = GetLocationY(home_location)
+    endif
+  endif  
+  call CaptainGoHome() // Retreat attack captain home
+  call TeleportCaptain(dx, dy)
   call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), dx + GetRandomInt(300,500) * ISign(), dy + GetRandomInt(300,500) * ISign())
   set break_attack = attack_running
+  set isfleeing = true
   set attack_running = false
   set teleporting = true
   if teleportloc != null then
@@ -142,15 +118,6 @@ function TeleportHome takes integer hn returns nothing
   endif
   set teleportloc = Location(dx,dy)  //  set new teleport job move loc
   call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
-  //call RemoveLocation(teleport_loc)
-  //set teleport_loc = null
-  set start_loc = null
-  set p = null
-  set start_loc = null
-  //if hero_loc != null then
-  //call RemoveLocation( hero_loc )
-  //set hero_loc = null
-  //endif
 endfunction
 
 function GetTeleportLandPoint takes location l returns location
@@ -195,11 +162,11 @@ endfunction
 function TeleportToLoc takes unit u, location l returns nothing
   local location loc = GetTeleportLandPoint(l)
   set break_attack = attack_running
+  set isfleeing = true
   set attack_running = false
   set teleporting = true
-  call ClearCaptainTargets()
-  call SetCaptainHome(BOTH_CAPTAINS, GetLocationX(loc), GetLocationY(loc))
-  //call CaptainAttack(GetLocationX(loc), GetLocationY(loc))
+  call CaptainGoHome() // Retreat attack captain. 
+  call TeleportCaptain(GetLocationX(loc), GetLocationY(loc))
   call UnitUseItemPoint(u, GetItemOfTypeOnUnit(tp_item, u), GetLocationX(loc), GetLocationY(loc))
   call TQAddUnitJob(0.5, TELEPORT, 0, u)
   call RemoveLocation(loc)
@@ -339,12 +306,16 @@ function MicroHeroJob takes integer hn returns nothing
     set hero_hp[hn] = new_hp
     call GetDensities(hero_loc[hn], ai_player, hero_radius)
     set hero_enemy_density[hn] = enemy_density
+    if (enemy_density > 0) then
+    call Trace("Hero Enemy Density:" + Real2Str(enemy_density))
+    endif
     call MoveLocation(hero_enemy_loc[hn], GetLocationX(enemy_density_loc), GetLocationY(enemy_density_loc))
     set hero_ally_density[hn] = ally_density
     call MoveLocation(hero_ally_loc[hn], GetLocationX(ally_density_loc), GetLocationY(ally_density_loc))
-    if (not teleporting and (current_order >= 852008 and current_order <= 852013)) or current_order == 852093 then
-      if (current_order != 852093 and GetItemTypeId(UnitItemInSlot(hero_unit[hn], current_order - 852008)) == old_id[tp_item]) or (current_order == 852093 and GetUnitAbilityLevel(hero_unit[hn], 'AHmt') > 0 and GetLocationNonCreepStrength(GetUnitX(hero_unit[hn]), GetUnitY(hero_unit[hn]), 1200) <= 0) then
-        if not teleporting and teleportloc != null then
+    if (not teleporting and (current_order >= 852008 and current_order <= 852013)) or current_order == OrderId("massteleport") then
+      if (current_order != OrderId("massteleport") and GetItemTypeId(UnitItemInSlot(hero_unit[hn], current_order - 852008)) == old_id[tp_item]) or (current_order == OrderId("massteleport") and GetUnitAbilityLevel(hero_unit[hn], 'AHmt') > 0) then
+        call CreateDebugTag("HERO: Already teleporting", 10, hero_unit[hn], 4.00, 2.00)
+        if not teleporting and teleportloc != null then // unknown destination as was triggered by hardcoded logic
           call RemoveLocation(teleportloc)
           set teleportloc = null
         endif
@@ -364,22 +335,12 @@ function MicroHeroJob takes integer hn returns nothing
     endif
     if armyOfHero >= 0 and not teleporting and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 then
       if town_threatened and town_threat[most_threatened_town] >= teleport_min_threat and teleportdistance > LinearInterpolation(teleport_low_threat, teleport_high_threat, teleport_low_threat_distance, teleport_high_threat_distance, town_threat[most_threatened_town]) and town_can_tp[most_threatened_town] and army_strength[armyOfHero] >= teleport_army_min_strength then
-        if LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] * 0.75 then
-          //call PingMinimap(GetLocationX(hero_loc[hn]), GetLocationY(hero_loc[hn]), 10.00)
-          //call PingMinimap(GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]), 10.00)
-          //call DisplayToAll("Protection Town Portal: " + Int2Str(R2I(teleportdistance)))
           call CreateDebugTag("HERO: Teleporting to threatened town", 10, hero_unit[hn], 4.00, 2.00)
           call TeleportToLoc(hero_unit[hn], town_loc[most_threatened_town])
           call TQAddJob(1, MICRO_HERO, hn)
           return
-        elseif DistanceBetweenPoints(hero_loc[hn], home_location) > 2500 then
-          call CreateDebugTag("HERO: Teleporting home town too threatened", 10, hero_unit[hn], 4.00, 2.00)
-          call TeleportHome(hn)
-          call TQAddJob(1, MICRO_HERO, hn)
-          return
-        endif
       // Next statement detects when the main army is outmatched and so teleports back to home base
-      elseif attack_running and main_army >= 0 and army_loc[main_army] != null and IsUnitInRangeXY(hero_unit[hn],GetLocationX(army_loc[main_army]), GetLocationY(army_loc[main_army]), battle_radius) and army_strength[armyOfHero] >= teleport_army_min_strength and isfleeing and DistanceBetweenPoints(hero_loc[hn], home_location) > teleport_low_threat_distance then
+      elseif attack_running and armyOfHero >= 0 and army_loc[armyOfHero] != null and army_strength[armyOfHero] >= teleport_army_min_strength and isfleeing and DistanceBetweenPoints(hero_loc[hn], home_location) > teleport_low_threat_distance then
         call CreateDebugTag("HERO: Army outmatched-teleporting home", 10, hero_unit[hn], 4.00, 2.00)
         call TeleportHome(hn)
         call TQAddJob(1, MICRO_HERO, hn)
