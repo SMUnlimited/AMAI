@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Harass will correctly keep harassing if no units can harm its air harass.
 - Harass attacks will return harassing units faster to the ai's control when complete.
 - Reduced time heros wait to pick up items after creeping in half.
-- Better management of the captain home locations, the players strength and applying this to retreat control, town threatened and teleport so all locations are in sync.
+- Better management of the captain home locations, the players strength and applying this to retreat control, town threatened, town defense and teleport to better react to issues.
 - Main army is now calculated to be the biggest army which should prevent issues when hero is not anywhere near the army force.
 
 ### Fixed
