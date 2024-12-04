@@ -10904,12 +10904,12 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   
   if town_threatened then
     call Trace("AMAIStartexpa: Town threatened")
-    return BUILT_SOME
+    return CANNOT_BUILD
   endif
 
   if current_expansion == null then
     call Trace("AMAIStartexpa: Expansion Not Found")
-    return BUILT_ALL
+    return CANNOT_BUILD
   endif
   if CheckExpansionTaken(current_expansion) then
     call Trace("AMAIStartexpa: Expansion Taken by someone else")
@@ -10921,7 +10921,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
       call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, build_zeppelin)
       call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, expansion_peon)
     endif
-    return BUILT_ALL
+    return CANNOT_BUILD
   endif
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Taken Checked")
 
@@ -10941,7 +10941,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
       set total_wood = total_wood + wood_cost
     endif
     call Trace("AMAIStartexpa: Need to remove creeps from expansion")
-    return BUILT_SOME // If creeps need clearing save the gold but don't block building at the moment as may need troops
+    return CANNOT_BUILD // If creeps need clearing save the gold but don't block building at the moment as may need troops
   endif
 
   if total_gold < 0 and gold_cost > 0 then
@@ -10978,7 +10978,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
       endif
       if (w and build_zeppelin == null) then
         call Trace("AMAIStartexpa: Water expansion required waiting to create a zeppelin")
-        return BUILT_SOME
+        return CANNOT_BUILD
       endif
       if (build_zeppelin != null and not BuildMovePeonZeppelin(expansion_peon, current_expansion)) then
         call Trace("AMAIStartexpa: Expanding via a zeppelin")
@@ -11689,7 +11689,7 @@ function OneBuildLoopAM takes nothing returns nothing
 //        call DumpInteger("Prio"+Int2Str(index),build_prio[index])
 
         if qty > mo and qty > 0 then
-          if tp == BUILD_UNIT and IsRacialHallId(id, 1) and blocktierup then
+          if tp == BUILD_UNIT and IsRacialHallId(id, 2) and blocktierup then
               call Trace("TIER UP block " + logtype + unitNames[id] + " " + Int2Str(id))
               set ret = CANNOT_BUILD // Not ready to tier up
           elseif tp == BUILD_UNIT then
@@ -11700,8 +11700,10 @@ function OneBuildLoopAM takes nothing returns nothing
               set ret = StartUpgradeAM(qty,id)
           elseif tp == BUILD_EXPAND then
               set logtype = "expand "
-              set ret = StartExpansionAM(qty,id) // Don't tier up while doing a higher priority expansion
-              set blocktierup = bl_tier_expansionblock[tier - 1]
+              set ret = StartExpansionAM(qty,id) 
+              if ret == BUILT_SOME then // block tier up while actually expanding
+                set blocktierup = bl_tier_expansionblock[tier - 1]
+              endif
           elseif tp == BUILD_ITEM then
               set logtype = "item "
               set ret = StartItem(qty,id)
@@ -11730,7 +11732,7 @@ function OneBuildLoopAM takes nothing returns nothing
             set tracednoresources = id
           endif
           
-          if tp == BUILD_UNIT and TownCountTown(id,build_town[index]) < build_qty[index] * bl_tier_unitlock[tier-1] and FoodUsed() < bl_tier_foodlock[tier-1] then
+          if tp == BUILD_UNIT and not IsUnitIdType(old_id[id], UNIT_TYPE_STRUCTURE) and TownCountTown(id,build_town[index]) < build_qty[index] * bl_tier_unitlock[tier-1] and FoodUsed() < bl_tier_foodlock[tier-1] then
             set blocktierup = true // Strictly Block tier up if a large proportion of requested units of strategy not built so we follow strategy definition, otherwise will tier up early if spare resources and can't build higher priority tasks first
           endif
           exitwhen ret == NOT_ENOUGH_RES and tp != BUILD_ITEM and tp != BUILD_UPGRADE // Don't try and build anything else as thing we trying to buy is too expensive
