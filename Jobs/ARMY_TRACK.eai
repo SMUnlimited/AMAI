@@ -162,7 +162,7 @@ function SeedNewArmiesForPlayer takes integer p returns nothing
     // Calculate main_army to be the largest group of units
     loop
       exitwhen i >= army_num
-      if army_count[main_army] < army_count[i] then
+      if Player(army_owner[i]) == ai_player and army_count[main_army] < army_count[i] then
         set main_army = i
       endif
       set i = i + 1
@@ -255,7 +255,6 @@ function UpdateTownThreat takes nothing returns nothing
   local real accepted_threat_level = LinearInterpolation(atl_time_start, atl_time_end, atl_time_start_val, atl_time_end_val, TimerGetElapsed(tq_timer)) * LinearInterpolation(atl_enemy_start, atl_enemy_end, atl_enemy_start_mult, atl_enemy_end_mult, c_enemy_total)
   local real playerthreat = 0
   if i == 0 then
-    set town_threatened = false
   //call Trace("ARMY_TRACK: Town threat update")
     set most_threatened_town = -1
     set most_threatened_player_town = -1
@@ -263,14 +262,16 @@ function UpdateTownThreat takes nothing returns nothing
   endif
   loop
     exitwhen i >= town_num
-    exitwhen i != lastFreeNum and ModuloInteger(i, 10) == 0
+    //exitwhen i != lastFreeNum and ModuloInteger(i, 10) == 0 this would cause most threatened town to be negative during this calculation which would break other processes
     call UpdateSpecificTownThreat(i)
     set i = i + 1
   endloop
+  
   set playerthreat = ApplyFleeStrengthModifier(distance_threat_mult * army_strength[main_army] / Pow(full_threat_distance, distance_threat_exponent), false) // Converts the players total strength into threat
   if i >= town_num then
     set mode = 3
     set lastFreeNum = 0
+    set town_threatened = false
     
     if town_threat[most_threatened_town] > 0 then
       call Trace("ThreatenedTownThreat:" + Real2Str(town_threat[most_threatened_town]) + " AcceptedThreatLevel:" + Real2Str(accepted_threat_level))
