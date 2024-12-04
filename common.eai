@@ -13006,39 +13006,48 @@ endfunction
 //============================================================================
 function SleepUntilTownDefended takes integer ai_strength returns nothing
   local integer defense_length_counter = 0
+  local integer enemy_army = -1
   set own_strength = ai_strength
   call Trace("==Sleep Defend Town==" )
+  call CaptainGoHome()
+  call FormGroupAM(0)
+  if town_threatened and most_threatened_town >= 0 then
+    // We want to intercept the army
+    set enemy_army = town_threat_army[most_threatened_town]
+    call CaptainAttack(GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))// Not attack move to get here fast
+  else
+    call CaptainAttack(GetLocationX(captain_home), GetLocationY(captain_home)) // Unknown where the threat is return home
+  endif
   loop
     //call DisplayToAll("Town Threatened:" + B2S(town_threatened) + " HardTown Threatened:" + B2S(TownThreatened()) + " CaptainInCombat:" + B2S(CaptainInCombat(false)) + " i:" )
-    call CreateDebugTagLoc("Sleep until town defended", 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
-    //if town_loc[most_threatened_town] != null and LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] then
-      //if town_threat[most_threatened_town] >= teleport_low_threat then
-        //if not teleporting then
-          //call AttackMoveXY(R2I(GetLocationX(town_loc[most_threatened_town])), R2I(GetLocationY(town_loc[most_threatened_town])))
-        //endif
-      //endif
-      //call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
-    //else
-      //call Trace("Town threatened - retreat" )
-      //if town_threat[most_threatened_town] >= teleport_low_threat then
-        //if not teleporting then
-          //call AttackMoveXY(R2I(GetLocationX(home_location)), R2I(GetLocationY(home_location)))
-        //endif
-      //endif
-      //call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
-      //call ClearCaptainTargets()
-      //call CaptainGoHome()
-    //endif
+    call CreateDebugTagLoc("Sleep until town defended", 10, GetLocationX(captain_home), GetLocationY(captain_home), 1.00, 0.80)
+    exitwhen not town_threatened and not TownThreatened() and not CaptainInCombat(false)
+    exitwhen player_defeated
     set defense_length_counter = defense_length_counter + 1
     if defense_length_counter > attack_reform_length then
       set defense_length_counter = 0
       call FormGroupAM(0)
     endif
-    call CaptainGoHome() // town threat check will already set this to correct place to defend
-    exitwhen not town_threatened and not TownThreatened() and not CaptainInCombat(false)
-    exitwhen player_defeated
+    if CaptainAtGoal() or CaptainInCombat(true) or CaptainInCombat(false) then
+      // Attack move to actually defend
+      if town_threatened and most_threatened_town >= 0 then
+      set enemy_army = town_threat_army[most_threatened_town]
+        call AttackMoveXY(R2I(GetLocationX(army_loc[enemy_army])), R2I(GetLocationY(army_loc[enemy_army]))) // Only attack move when at target
+      else
+        call AttackMoveXY(R2I(GetLocationX(captain_home)), R2I(GetLocationY(captain_home)))
+      endif
+    else
+      // This ensures units return to defend location and don't wonder
+      if town_threatened and most_threatened_town >= 0 then
+      set enemy_army = town_threat_army[most_threatened_town]
+        call CaptainAttack(GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))// Not attack move to get here fast
+      else
+        call CaptainAttack(GetLocationX(captain_home), GetLocationY(captain_home)) // Unknown where the threat is return home
+      endif
+    endif
     call StaggerSleep(2 * sleep_multiplier, (2 * sleep_multiplier) + 2)
   endloop
+  call CaptainGoHome()
   call Trace("==exit Sleep Defend Town==")
 endfunction
 
