@@ -3563,6 +3563,16 @@ function TownCountExForUpgrade takes integer unitid, integer unitid_upgr, boolea
 
 endfunction
 
+function ApplyFleeStrengthModifier takes real strength, boolean isFleeCheck returns real
+  local real fleemultmin = ver_flee_multiple1
+  local real fleemultmax = ver_flee_multiple2
+  if (isFleeCheck) then
+    set fleemultmin = ver_flee_multiple2
+    set fleemultmax = ver_flee_multiple3
+  endif
+  return LinearInterpolation(ver_low_aggression,ver_high_aggression,fleemultmin,fleemultmax,attacking_aggression + added_aggression + added_target_aggression + added_racial_aggression)*strength
+endfunction
+
 //===========================================================================
 // (AMAI)  functions for coordination and choice of strategies
 //===========================================================================
@@ -8535,7 +8545,7 @@ function InitCheckHarvest takes nothing returns nothing
   elseif race_uses_mine_expansion then
     set i = racial_expansion
   endif
-  call GroupEnumUnitsInRangeOfLoc(g, home_location, 2300, null)  // Some maps still need to expand distance , like friends and dustwallowkeys
+  call GroupEnumUnitsInRangeOfLoc(g, home_location, 2500, null)  // Some maps still need to expand distance , like friends and dustwallowkeys
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -8557,8 +8567,7 @@ function InitCheckHarvest takes nothing returns nothing
         else
           if i != GOLD_MINE and play == ai_player and (own_town_mine[0] == null or GetUnitTypeId(own_town_mine[0]) != old_id[i]) then
             set own_town_mine[0] = u
-          endif
-          if play != ai_player then
+          elseif play != ai_player then
             set m = 1
           endif
           set s = s + 1  //race mine and mine cannot be calculated repeatedly
@@ -11267,19 +11276,19 @@ function StartExpansionAM takes integer qty, integer hall returns integer
 
   if town_threatened then
     call Trace("AMAIStartexpa: Town threatened")
-    return BUILT_SOME
+    return CANNOT_BUILD
   endif
 
   if current_expansion == null then
     call Trace("AMAIStartexpa: Expansion Not Found")
-    return BUILT_ALL
+    return CANNOT_BUILD
   endif
   if CheckExpansionTaken(current_expansion) then
     call Trace("AMAIStartexpa: Expansion Taken by someone else")
     if current_expansion != not_taken_expansion then
       set current_expansion = null
     endif
-    return BUILT_ALL
+    return CANNOT_BUILD
   endif
   // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Taken Checked")
 
@@ -11337,7 +11346,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
       endif
       if (w and build_zeppelin == null) then
         call Trace("AMAIStartexpa: Water expansion required waiting to create a zeppelin")
-        return BUILT_SOME
+        return CANNOT_BUILD
       endif
       if build_zeppelin != null then
         if not BuildMovePeonZeppelin(expansion_peon, current_expansion, w) then
@@ -12182,7 +12191,7 @@ function OneBuildLoopAM takes nothing returns nothing
 //        call DumpInteger("Prio"+Int2Str(index),build_prio[index])
 
       if qty > mo and qty > 0 then
-        if tp == BUILD_UNIT and IsRacialHallId(id, 1) and blocktierup then
+        if tp == BUILD_UNIT and IsRacialHallId(id, 2) and blocktierup then
           call Trace("TIER UP block " + logtype + unitNames[id] + " " + Int2Str(id))
           set ret = CANNOT_BUILD // Not ready to tier up
         elseif tp == BUILD_UNIT then
@@ -12193,8 +12202,10 @@ function OneBuildLoopAM takes nothing returns nothing
           set ret = StartUpgradeAM(qty,id)
         elseif tp == BUILD_EXPAND then
           set logtype = "expand "
-          set ret = StartExpansionAM(qty,id) // Don't tier up while doing a higher priority expansion
-          set blocktierup = bl_tier_expansionblock[tier - 1]
+          set ret = StartExpansionAM(qty,id)
+          if ret == BUILT_SOME then // block tier up while actually expanding
+            set blocktierup = bl_tier_expansionblock[tier - 1]
+          endif
         elseif tp == BUILD_ITEM then
           set logtype = "item "
           set ret = StartItem(qty,id)
@@ -12222,7 +12233,7 @@ function OneBuildLoopAM takes nothing returns nothing
           call Trace("NO RESOURCES " + logtype + unitNames[id] + " " + Int2Str(id))
           set tracednoresources = id
         endif
-        if tp == BUILD_UNIT and TownCountTown(id,build_town[index]) < build_qty[index] * bl_tier_unitlock[tier-1] and FoodUsed() < bl_tier_foodlock[tier-1] then
+        if tp == BUILD_UNIT and not IsUnitIdType(old_id[id], UNIT_TYPE_STRUCTURE) and TownCountTown(id,build_town[index]) < build_qty[index] * bl_tier_unitlock[tier-1] and FoodUsed() < bl_tier_foodlock[tier-1] then
           set blocktierup = true // Strictly Block tier up if a large proportion of requested units of strategy not built so we follow strategy definition, otherwise will tier up early if spare resources and can't build higher priority tasks first
         endif
         exitwhen ret == NOT_ENOUGH_RES and tp != BUILD_ITEM and tp != BUILD_UPGRADE // Don't try and build anything else as thing we trying to buy is too expensive
@@ -13681,46 +13692,49 @@ endfunction
 //============================================================================
 function SleepUntilTownDefended takes integer ai_strength returns nothing
   local integer defense_length_counter = 0
-  local boolean b = most_threatened_town >= 0 and Player(town_owner[most_threatened_town]) != ai_player
+  local integer enemy_army = -1
   //set own_strength = ai_strength
   call Trace("==Sleep Defend Town==" )
-  call SetDefendPlayer(b)
-  if not b and not CaptainIsHome() then
-    call CaptainGoHome()
+  call CaptainGoHome()
+  call FormGroupAM(0)
+  if town_threatened and most_threatened_town >= 0 then
+    // We want to intercept the army
+    set enemy_army = town_threat_army[most_threatened_town]
+    call CaptainAttack(GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))// Not attack move to get here fast
+  else
+    call CaptainAttack(GetLocationX(captain_home), GetLocationY(captain_home)) // Unknown where the threat is return home
   endif
   loop
     //call DisplayToAll("Town Threatened:" + B2S(town_threatened) + " HardTown Threatened:" + B2S(TownThreatened()) + " CaptainInCombat:" + B2S(CaptainInCombat(false)) + " i:" )
-    call CreateDebugTagLoc("Sleep until town defended", 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
-    //if town_loc[most_threatened_town] != null and LinearInterpolation(ver_low_aggression,ver_high_aggression,ver_flee_multiple1,ver_flee_multiple2,attacking_aggression)*own_strength > army_strength[town_threat_army[most_threatened_town]] then
-      //if town_threat[most_threatened_town] >= teleport_low_threat then
-        //if not teleporting then
-          //call AttackMoveXY(R2I(GetLocationX(town_loc[most_threatened_town])), R2I(GetLocationY(town_loc[most_threatened_town])))
-        //endif
-      //endif
-      //call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
-    //else
-      //call Trace("Town threatened - retreat" )
-      //if town_threat[most_threatened_town] >= teleport_low_threat then
-        //if not teleporting then
-          //call AttackMoveXY(R2I(GetLocationX(home_location)), R2I(GetLocationY(home_location)))
-        //endif
-      //endif
-      //call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(home_location), GetLocationY(home_location))
-      //call ClearCaptainTargets()
-      //call CaptainGoHome()
-    //endif
+    call CreateDebugTagLoc("Sleep until town defended", 10, GetLocationX(captain_home), GetLocationY(captain_home), 1.00, 0.80)
+    exitwhen not town_threatened and not TownThreatened() and not CaptainInCombat(false)
+    exitwhen player_defeated
     set defense_length_counter = defense_length_counter + 1
     if defense_length_counter > attack_reform_length then
       set defense_length_counter = 0
       call FormGroupAM(0)
     endif
-    call CaptainGoHome() // town threat check will already set this to correct place to defend
-    exitwhen not town_threatened and not TownThreatened() and not CaptainInCombat(false)
-    exitwhen player_defeated
+    if CaptainAtGoal() or CaptainInCombat(true) or CaptainInCombat(false) then
+      // Attack move to actually defend
+      if town_threatened and most_threatened_town >= 0 then
+      set enemy_army = town_threat_army[most_threatened_town]
+        call AttackMoveXY(R2I(GetLocationX(army_loc[enemy_army])), R2I(GetLocationY(army_loc[enemy_army]))) // Only attack move when at target
+      else
+        call AttackMoveXY(R2I(GetLocationX(captain_home)), R2I(GetLocationY(captain_home)))
+      endif
+    else
+      // This ensures units return to defend location and don't wonder
+      if town_threatened and most_threatened_town >= 0 then
+      set enemy_army = town_threat_army[most_threatened_town]
+        call CaptainAttack(GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))// Not attack move to get here fast
+      else
+        call CaptainAttack(GetLocationX(captain_home), GetLocationY(captain_home)) // Unknown where the threat is return home
+      endif
+    endif
     call StaggerSleep(2 * sleep_multiplier, (2 * sleep_multiplier) + 2)
   endloop
+  call CaptainGoHome()
   call Trace("==exit Sleep Defend Town==")
-  call SetDefendPlayer(false)
 endfunction
 
 function SetLeadAlly takes nothing returns nothing
