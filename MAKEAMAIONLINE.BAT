@@ -137,7 +137,6 @@ ECHO =============================
 ECHO 输出编译结果
 ECHO _____________________________
 if "%RESULTMAKEREF%"=="1" (
-  exit /b %RESULTMAKEREF%
   ECHO 重制版编译失败，附件重制版不可用--请改天再来
   rmdir /s /q "AMAI\REFORGED"
   echo 附件重制版不可用--请勿安装并等待新的在线编译附件 > AMAI\重制版脚本不可用.txt
