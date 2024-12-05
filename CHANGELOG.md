@@ -10,7 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) New block available for strategies. E.g `SetTierBlock(1, 0.75, 60, true)` that blocks tiering up from tier 1 unless more than 75% of higher priority units are built. Unlocks if over 60 food. Final argument prevents tier up while expanding if set to true. Tier block overrides previous tier level block if repeated in a strategy.
 
 ### Changed
-- When we enhanced the build code to build other things if it can't build the current priorities it caused strategies to tier up much earlier than designed, so now tier ups can only happen once most higher priority unit production is done honoring the strategy and they are not currently expanding.
+- When we enhanced the build code to build other things if it can't build the current priorities it caused strategies to tier up much earlier than designed. Now tier ups can only occur as follows:
+  - once most higher priority unit production is done honoring the strategy.
+  - No expansion occurring unless we already have multiple mines to support the cost.
+  - Or we have lots and lots of spare gold and wood so should just use it to tier up.
 - Building additional factory buildings should not be done while actively tiering up as the buildings needed for tier 2/3 may be different.
 - Harass will correctly keep harassing if no units can harm its air harass.
 - Harass attacks will return harassing units faster to the ai's control when complete.
