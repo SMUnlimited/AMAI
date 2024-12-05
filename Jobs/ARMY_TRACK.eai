@@ -15,6 +15,8 @@
     integer lastFreeNum = 0
     integer mode = 0
     integer most_threatened_player_town = 0
+    location captain_home = null
+    boolean captain_tp = true
 
 #ELSE
 // Army Tracker
@@ -39,6 +41,7 @@ function TrackArmy takes integer num returns boolean
   local integer p = army_owner[num]
   local player ap = Player(p)
   local player up = null
+  local integer tmpmainarmy = -1
   if u != null then
     // If tracking existing army select range from current position not historic position
     call GroupEnumUnitsInRange(g, GetUnitX(u), GetUnitY(u), army_radius, null)
@@ -52,14 +55,14 @@ function TrackArmy takes integer num returns boolean
     set u = FirstOfGroup(g)
     exitwhen u == null
     set up = GetOwningPlayer(u)
-    if up == ap and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitInGroup(u, in_army_group) then
+    if up == ap and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitInGroup(u, in_army_group) and (up != ai_player or (IsStandardUnit(u) and not IsUnitBuying(u))) then
       call GroupAddUnit(army_group[num], u)
       call GroupAddUnit(in_army_group, u)
       set x = x + GetUnitX(u)  // Prevent loc exceeding map range
       set y = y + GetUnitY(u)
       //set l = GetSumLoc_dd(l, GetUnitLoc(u))
       set army_count[num] = army_count[num] + 1
-      if (up != ai_player and IsUnitInvisible(u, ai_player)) or (up == ai_player and not IsStandardUnit(u)) then 
+      if up != ai_player and IsUnitInvisibleAM(u, ai_player) then
         // Fix using invisible units to exploit amai to force defend its town
       else
         set army_strength[num] = army_strength[num] + GetUnitStrength(u)
@@ -94,6 +97,9 @@ function TrackArmy takes integer num returns boolean
   if Player(p) == ai_player then
     if IsUnitInGroup(major_hero, army_group[num]) then
       set main_army = num
+      if tmpmainarmy < 0 then
+        set tmpmainarmy = num // fallback main army
+      endif
     endif
     call CreateDebugTagLoc("Tracked Army: " + Int2Str(num) + " Strength:" + Int2Str(R2I(army_strength[num])), 10, x, y, 8.00, 3.00)
   endif
@@ -144,6 +150,7 @@ endfunction
 function SeedNewArmiesForPlayer takes integer p returns nothing
   local group g = CreateGroup()
   local unit u = null
+  local integer i = 0
   call GroupEnumUnitsOfPlayer(g, Player(p), null)
   loop
     set u = FirstOfGroup(g)
@@ -153,6 +160,16 @@ function SeedNewArmiesForPlayer takes integer p returns nothing
     endif
     call GroupRemoveUnit(g, u)
   endloop
+  if Player(p) == ai_player then
+    // Calculate main_army to be the largest group of units
+    loop
+      exitwhen i >= army_num
+      if Player(army_owner[i]) == ai_player and army_count[main_army] < army_count[i] then
+        set main_army = i
+      endif
+      set i = i + 1
+    endloop
+  endif
   call DestroyGroup(g)
   set g = null
 endfunction
@@ -255,13 +272,14 @@ function UpdateTownThreat takes nothing returns nothing
   endif
   loop
     exitwhen i >= town_num
-    exitwhen i != lastFreeNum and ModuloInteger(i, 10) == 0
+    //exitwhen i != lastFreeNum and ModuloInteger(i, 10) == 0 this would cause most threatened town to be negative during this calculation which would break other processes
     call UpdateSpecificTownThreat(i)
     set i = i + 1
   endloop
   if i >= town_num then
     set mode = 3
     set lastFreeNum = 0
+    set town_threatened = false
     if most_threatened_town > 0 and town_threat[most_threatened_town] > 0 then
       call Trace("ThreatenedTownThreat:" + Real2Str(town_threat[most_threatened_town]) + " AcceptedThreatLevel:" + Real2Str(accepted_threat_level))
     endif
