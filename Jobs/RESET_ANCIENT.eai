@@ -1,0 +1,50 @@
+#IFDEF GLOBAL
+real lastancientx = -1
+real lastancienty = -1
+integer retry = 0
+
+#ELSE
+
+//Only 1 ancient reset can run at a time
+function ResetAncient takes unit u returns nothing
+local unit buildu = null
+local real buildx = 0
+local real buildy = 0
+local integer i = 0
+
+if not UnitAlive(u) then
+  return
+endif
+
+if UnitAlive(u) and GetUnitCurrentOrder(u) != OrderId("root") and retry < 2 then
+  set i = Max(GetRandomInt(0, front_loc_num - 1),0)
+  if front_locs_computed and front_loc[i] != null then
+      set buildu = CreatePathingUnitFull(buildu, ai_player, GetUnitTypeId(u), GetLocationX(front_loc[i]) + ISign() * GetRandomReal(0, 300), GetLocationY(front_loc[i]) + ISign() * GetRandomReal(0, 300))
+  else
+      set buildu = CreatePathingUnitFull(buildu, ai_player, GetUnitTypeId(u), GetLocationX(home_location) + ISign() * GetRandomReal(500, 750), GetLocationY(home_location) + ISign() * GetRandomReal(500, 750))  
+  endif
+  set buildx = GetUnitX(buildu)
+  set buildy = GetUnitY(buildu)
+  call RemoveUnit(buildu)
+  set buildu = null
+  call IssuePointOrder( u, "root", buildx, buildy)
+  set retry = retry + 1
+elseif GetUnitCurrentOrder(u) != OrderId("root") and retry >= 2 and (GetUnitX(u) != lastancientx or GetUnitY(u) != lastancienty) then
+  // if moving then not rooted
+  set retry = 1
+elseif GetUnitCurrentOrder(u) != OrderId("root") and retry >= 2 and (GetUnitX(u) == lastancientx and GetUnitY(u) == lastancienty) then
+ // Root done as not moved
+   call RecycleGuardPosition(u)
+elseif retry > 0 and GetUnitX(u) != lastancientx or GetUnitY(u) != lastancienty then
+  // moving so all good
+  set retry = 1
+endif
+
+set lastancientx = GetUnitX(u)
+set lastancienty = GetUnitY(u)
+
+call TQAddUnitJob(10, RESET_ANCIENT, 0, u)
+
+endfunction
+
+#ENDIF
