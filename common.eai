@@ -594,6 +594,7 @@ globals
     integer array bl_tier_foodlock
     real array bl_tier_unitlock
     boolean array bl_tier_expansionblock
+    boolean array bl_tier_lockactive
 
 	//==============================================================
     // (AMAI)  Standard Unit Variables
@@ -11639,6 +11640,7 @@ function OneBuildLoopAM takes nothing returns nothing
     local integer tracedall = 0
     local string logtype = ""
     local boolean blocktierup = false
+    local boolean expablocktier = false
 
     call InitLastUpkeep()
 
@@ -11688,10 +11690,13 @@ function OneBuildLoopAM takes nothing returns nothing
 //        call DumpInteger("Prio"+Int2Str(index),build_prio[index])
 
         if qty > mo and qty > 0 then
-          if tp == BUILD_UNIT and IsRacialHallId(id, 2) and blocktierup then
+          if tp == BUILD_UNIT and IsRacialHallId(id, 2) and ((blocktierup and bl_tier_lockactive[tier - 1]) or expablocktier) and GetUnitGoldCost2(id) * 4 > total_gold and GetUnitWoodCost2(id) * 4 > total_wood then
               call Trace("TIER UP block " + logtype + unitNames[id] + " " + Int2Str(id))
               set ret = CANNOT_BUILD // Not ready to tier up
           elseif tp == BUILD_UNIT then
+              if IsRacialHallId(id, 2) then
+                set bl_tier_lockactive[tier - 1] = false // lock only occurs once per tier, once lock is unlocked for that tier it stays unlocked e.g it doesn't have to start from scratch again if strategy changes or units die within tier 1
+              endif  
               set logtype = "unit "
               set ret = StartUnitAM(qty,id,build_town[index], build_loc[index], build_prio[index], mo)
           elseif tp == BUILD_UPGRADE then
@@ -11700,8 +11705,8 @@ function OneBuildLoopAM takes nothing returns nothing
           elseif tp == BUILD_EXPAND then
               set logtype = "expand "
               set ret = StartExpansionAM(qty,id) 
-              if ret == BUILT_SOME then // block tier up while actually expanding
-                set blocktierup = bl_tier_expansionblock[tier - 1]
+              if ret == BUILT_SOME and GetMinesHarvested() < 3 then // block tier up while actually expanding or enough mines to support this
+                set expablocktier = bl_tier_expansionblock[tier - 1]
               endif
           elseif tp == BUILD_ITEM then
               set logtype = "item "
@@ -12141,6 +12146,9 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
   local integer combat_length_counter = 0
   local unit ally_target = null
   //local group g = null
+
+  set lastcaptainx = GetUnitX(target)
+  set lastcaptainy = GetUnitY(target)
 
   loop
     //call Trace("SleepExitThreat:" + B2S(town_threat_break and town_threatened and not desperation_assault))
