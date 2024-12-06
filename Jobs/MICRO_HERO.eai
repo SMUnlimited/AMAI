@@ -97,10 +97,23 @@ function GetDensities takes location l, player p, real r returns nothing
   set up = null
 endfunction
 
+function GoHomeIfMainHero takes unit u, real x, real y returns nothing
+  if main_army >= 0 and IsUnitInGroup(u, army_group[main_army]) then
+    call CaptainGoHome() // Retreat attack captain.
+    call TeleportCaptain(x, y)
+    set break_attack = attack_running
+    set isfleeing = true
+    set attack_running = false
+  endif
+endfunction
+
 function TeleportHome takes integer hn returns nothing
   local integer i = 0
   local real dx = GetLocationX(captain_home)
   local real dy = GetLocationY(captain_home)
+  if teleporting then
+    return
+  endif
   if not captain_tp then // can't teleport here so just go home
     if home_town >= 0 and town_can_tp[home_town] then
       set dx = GetLocationX(town_loc[home_town])
@@ -110,12 +123,8 @@ function TeleportHome takes integer hn returns nothing
       set dy = GetLocationY(home_location)
     endif
   endif
-  call CaptainGoHome() // Retreat attack captain home
-  call TeleportCaptain(dx, dy)
+  call GoHomeIfMainHero(hero_unit[hn], dx, dy)
   call UnitUseItemPoint(hero_unit[hn], GetItemOfTypeOnUnit(tp_item, hero_unit[hn]), dx + GetRandomInt(300,500) * ISign(), dy + GetRandomInt(300,500) * ISign())
-  set break_attack = attack_running
-  set isfleeing = true
-  set attack_running = false
   set teleporting = true
   if teleportloc != null then
     call RemoveLocation(teleportloc)
@@ -164,13 +173,13 @@ function GetTeleportLandPoint takes location l returns location
 endfunction
 
 function TeleportToLoc takes unit u, location l returns nothing
-  local location loc = GetTeleportLandPoint(l)
-  set break_attack = attack_running
-  set isfleeing = true
-  set attack_running = false
+  local location loc = null
+  if teleporting then
+    return
+  endif
+  set loc = GetTeleportLandPoint(l)
+  call GoHomeIfMainHero(u, GetLocationX(loc), GetLocationY(loc))
   set teleporting = true
-  call CaptainGoHome() // Retreat attack captain. 
-  call TeleportCaptain(GetLocationX(loc), GetLocationY(loc))
   call UnitUseItemPoint(u, GetItemOfTypeOnUnit(tp_item, u), GetLocationX(loc), GetLocationY(loc))
   call TQAddUnitJob(0.5, TELEPORT, 0, u)
   call RemoveLocation(loc)
@@ -336,7 +345,7 @@ function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothin
     call GroupAddUnit(unit_healing, hero_unit[hn])
     call TQAddGroupJob(0, ZEPPELIN_MOVE, ZTARGET_FOUNTAIN, hero_unit[hn], g)
     set g = null
-  elseif a == ACTION_TP then
+  elseif a == ACTION_TP and not teleporting then
     call CreateDebugTag("Hero: Town Portalling", 10, hero_unit[hn], 4.00, 2.00)
     call TeleportHome(hn)
   elseif a == ACTION_MOONWELLS then
@@ -405,6 +414,7 @@ function MicroHeroJob takes integer hn returns nothing
     if (not teleporting and (current_order >= 852008 and current_order <= 852013)) or current_order == OrderId("massteleport") then
       if (current_order != OrderId("massteleport") and GetItemTypeId(UnitItemInSlot(hero_unit[hn], current_order - 852008)) == old_id[tp_item]) or (current_order == OrderId("massteleport") and GetUnitAbilityLevel(hero_unit[hn], 'AHmt') > 0) then
         call CreateDebugTag("HERO: Already teleporting", 10, hero_unit[hn], 4.00, 2.00)
+        call GoHomeIfMainHero(hero_unit[hn], GetLocationX(home_location), GetLocationY(home_location))
         if not teleporting and teleportloc != null then // unknown destination as was triggered by hardcoded logic
           call RemoveLocation(teleportloc)
           set teleportloc = null
@@ -445,10 +455,6 @@ function MicroHeroJob takes integer hn returns nothing
         call TQAddJob(1, MICRO_HERO, hn)
         return
       endif
-    endif
-    if not teleporting and hero_enemy_density[hn] > 5 and healing and DistanceBetweenPoints(hero_dir[hn],hero_loc[hn]) <= 225 then
-      call CreateDebugTag("HERO: Surround Detection Teleportation", 10, hero_unit[hn], 4.00, 2.00)
-      call TeleportHome(hn)
     endif
   endif
   call TQAddJob(1 * sleep_multiplier, MICRO_HERO, hn)
