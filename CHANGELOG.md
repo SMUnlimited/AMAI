@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Small fix so that ai does not retreat from creeps sleeping or are not fully engaged.
 - Fixed an issue where undead would try and tier up due to base defense instead of tiering up through the strategy.
 - Fixed an issue where when attack forces went home they didn't run to the place where town defense is required.
+- Fixed an issue where night elf wisps would end up doing nothing as they were flagged for hardcoded gold harvesting but our custom logic had already put wood wisps in the mine.
 - Multiple mine control fixes (jzy-chitong56)
 - Fixed 4th mine chance was evaluated incorrectly. (jzy-chitong56)
 - (Classic) Include missing hero harass attacks that are applicable from reforged scripts.
