@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 - Elf players now have a 50% chance to perform an Ancient Barracks creep rush, various issues in its original introduction now fixed.
+- Added self preservation micro support for burrowing, stoneform, healing wards, healing wave, healing spray and rejuvination. (jzy-chitong56)
 - (DevTools) New block available for strategies. E.g `SetTierBlock(1, 0.75, 60, true)` that blocks tiering up from tier 1 unless more than 75% of higher priority units are built. Unlocks if over 60 food. Final argument prevents tier up while expanding if set to true. Tier block overrides previous tier level block if repeated in a strategy.
 
 ### Changed
@@ -40,6 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed an issue where undead would try and tier up due to base defense instead of tiering up through the strategy.
 - Fixed an issue where when attack forces went home they didn't run to the place where town defense is required.
 - Fixed an issue where night elf wisps would end up doing nothing as they were flagged for hardcoded gold harvesting but our custom logic had already put wood wisps in the mine.
+- Fix that could mean healer units were not fully considered before use.
 - Multiple mine control fixes (jzy-chitong56)
 - Fixed 4th mine chance was evaluated incorrectly. (jzy-chitong56)
 - (Classic) Include missing hero harass attacks that are applicable from reforged scripts.
