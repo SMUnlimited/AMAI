@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 - Elf players now have a 50% chance to perform an Ancient Barracks creep rush, various issues in its original introduction now fixed.
+- Added uninstall command line scripts.
 - Added self preservation micro support for burrowing, stoneform, healing wards, healing wave, healing spray and rejuvination. (jzy-chitong56)
 - (DevTools) New block available for strategies. E.g `SetTierBlock(1, 0.75, 60, true)` that blocks tiering up from tier 1 unless more than 75% of higher priority units are built. Unlocks if over 60 food. Final argument prevents tier up while expanding if set to true. Tier block overrides previous tier level block if repeated in a strategy.
 

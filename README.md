@@ -93,6 +93,21 @@ perl .\InstallToDir.pl <Version> "C:\Documents\Warcraft III\Maps\AMAI\" "0"
 
 After installing AMAI on your map, just start Warcraft III and play the map against and/or with computers to make use of AMAI.
 
+You can uninstall the commander post install using the below command:
+```
+.\UninstallCommander.bat "C:Users\<Username>\Documents\Warcraft III\Maps\AMAI\<Map>.w3m"
+```
+
+You can uninstall the ai scripts using the below command:
+```
+.\Uninstall.bat "C:Users\<Username>\Documents\Warcraft III\Maps\AMAI\<Map>.w3m"
+```
+
+Alternatively, for complex uninstalls, if you have `perl` installed, you can run this to uninstall all scripts and commander from all map files in a directory.
+```
+perl .\UninstallDir.pl "C:\Documents\Warcraft III\Maps\AMAI\" "N"
+```
+
 ## Manual Install
 
 You can manually use the included `MPQEditor.exe` to install to a single map.
@@ -286,7 +301,7 @@ There will also be language selection dialogs to change the language of dialogs 
 
 To *disable* the Commander, pass the correct option to the install scripts in the first place, or run this:
 ```
-.\DisableCommander.bat "C:Users\<Username>\Documents\Warcraft III\Maps\AMAI\<Map>.w3m"
+.\UninstallCommander.bat "C:Users\<Username>\Documents\Warcraft III\Maps\AMAI\<Map>.w3m"
 ```
 
 Once installed another dialog will appear with game mode options:
