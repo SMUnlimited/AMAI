@@ -14,7 +14,7 @@ mkdir Scripts\%VER%\
 ECHO _____________________________
 ECHO creating \Scripts\%VER%\common.ai
 perl ejass.pl common.eai %VER% VER:%VER% > Scripts\%VER%\common.ai
-ECHO IGNORE jasshelper --scriptonly common.j Scripts\%VER%\Blizzard.j Scripts\%VER%\Blizzard_VSAI.j Scripts\%VER%\common.ai Scripts\%VER%\common2.ai
+ECHO IGNORE jasshelper --scriptonly common.j Scripts\%VER%\Blizzard.j Scripts\%VER%\vsai\Blizzard.j Scripts\%VER%\common.ai Scripts\%VER%\common2.ai
 ECHO \Scripts\%VER%\common.ai created
 pjass %VER%\common.j Scripts\%VER%\common.ai
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
@@ -55,14 +55,14 @@ if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 ECHO _____________________________
 perl SplitBlizzardJ.pl %VER%
 ECHO _____________________________
-ECHO creating \Scripts\%VER%\Blizzard_VSAI.j
+ECHO creating \Scripts\%VER%\vsai\Blizzard.j
 perl ejass.pl Blizzard3VAI.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
 perl ejass.pl Blizzard.eai %VER% VER:%VER% > Scripts\%VER%\vsai\Blizzard.j
 pjass %VER%\common.j Scripts\%VER%\vsai\Blizzard.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 jassparser %VER%\common.j Scripts\%VER%\vsai\Blizzard.j
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
-ECHO \Scripts\%VER%\Blizzard_VSAI.j created
+ECHO \Scripts\%VER%\vsai\Blizzard.j created
 ECHO _____________________________
 ECHO creating \Scripts\%VER%\Blizzard.j
 perl ejass.pl Blizzard3.eai %VER% VER:%VER% > %VER%\tmp\Blizzard3Gen.j
