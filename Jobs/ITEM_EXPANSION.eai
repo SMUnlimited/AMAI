@@ -34,25 +34,26 @@ function ItemExpansionJob takes nothing returns nothing
         set itemhero = GetItemHero(exp_item)
       endif
     endif
-    if itemhero == null and expitem_buy == false then
-      set u = null
-      if GetGold() < gold_price[race_item_expansion_item_id] + 120 or GetWood() < wood_price[race_item_expansion_item_id] + 80 then
-        call Trace("Expansion no gold or wood")
-        set item_expanding = false
-        set item_exp_state = 0
-        set itemhero = null
+    if u == null then
+      set item_attack_running = false
+      if itemhero == null and expitem_buy == false then
+        if GetGold() < gold_price[race_item_expansion_item_id] + 120 or GetWood() < wood_price[race_item_expansion_item_id] + 80 then
+          call Trace("Expansion no gold or wood")
+          set item_expanding = false
+          set item_exp_state = 0
+          set itemhero = null
+          return
+        endif
+        set shop_ordered = true
+        call TQAddJob(5, BUY_ITEM, race_item_expansion_item_id)
+        call TQAddJob(20, ITEM_EXPANSION, 0)
         return
       endif
-      set shop_ordered = true
-      call TQAddJob(5, BUY_ITEM, race_item_expansion_item_id)
-      call TQAddJob(20, ITEM_EXPANSION, 0)
-      return
-    endif
-    call SetItemDroppable( GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), false )  //prevent droppable
-    call SetItemPawnable( GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), false )  //can selling
-    set expitem_buy = true
-    set not_taken_expansion = current_expansion
-    if u == null then
+      call RemoveGuardPosition(itemhero) // Potentially a delay though and item can be lost before this happens
+      call SetItemDroppable( GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), false )  //prevent droppable
+      call SetItemPawnable( GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), false )  //can selling
+      set expitem_buy = true
+      set not_taken_expansion = current_expansion
       set temp = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
       set item_exp_loc = GetUnitLoc(temp)
       call RemoveUnit(temp)
@@ -62,25 +63,12 @@ function ItemExpansionJob takes nothing returns nothing
       set item_exp_guard_loc = AIGetProjectedLoc(loc, item_exp_loc, 850, 0)  //Guarding position
       call RemoveLocation(loc)
       set loc = null
-      call RemoveGuardPosition(itemhero)
       call UnitUseItemPoint(itemhero, GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), GetLocationX(item_exp_loc), GetLocationY(item_exp_loc))
+      set time_next_try = 1
       set item_exp_state = 3
       call RemoveLocation(item_exp_loc)
       set item_exp_loc = null
-    else
-      set item_exp_state = 1
     endif
-  elseif item_exp_state == 1 then
-    call Trace("Expansion state 1: Wait Rush Expansion")
-    if u == null then
-      set item_exp_state = 2
-      set item_attack_running = false
-      set time_next_try = 1
-    endif
-  elseif item_exp_state == 2 then
-    call RemoveGuardPosition(itemhero)
-    call UnitUseItemPoint(itemhero, GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), GetLocationX(item_exp_loc), GetLocationY(item_exp_loc))
-    set item_exp_state = 3
   elseif item_exp_state == 3 then
     call Trace("Expansion state 3: Check Use Item")
     if GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero) != null and not CheckExpansionTaken (current_expansion) then
