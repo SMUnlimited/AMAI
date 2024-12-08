@@ -9794,27 +9794,24 @@ function BuildAtMine takes integer qty, integer unitid, integer prio returns not
 endfunction
 
 //============================================================================
+// Unlike other build commands priority works backwards so it always builds first units at prio specified then works backwards. This is because otherwise its unknown how many units it will build as its first units will build at variable priority based on number of units it actually builds.
+// Min value is in addition to the number built within the food use.
+// Builds both units in unison if a mix
 function SetBuildReact takes integer food, integer min1, integer unit1, integer min2, integer unit2, real enemy_strength, real strength1, real strength2, integer prio returns nothing
   local integer num1 = R2I(LinearInterpolation(strength1, strength2, I2R(food), 0, enemy_strength)) / Max(GetFoodUsed(old_id[unit1]),1)
   local integer num2 = (food - num1 * GetFoodUsed(old_id[unit1])) / Max(GetFoodUsed(old_id[unit2]),1)
   local integer prio1 = 0
   local integer prio2 = 0
-  local integer food1 = food / Max(GetFoodUsed(old_id[unit1]),1) 
-  local integer food2 = food / Max(GetFoodUsed(old_id[unit2]),1) 
 
-  if food1 > food2 then
-    set prio1 = prio+(food1-1)*2 - (min1+num1-1)*2        // So builds starting at the max priority possible
-    set prio2 = prio+(food1-1)*2 - (min2+num2-1)*2        // i.e build 6 footmen instead of 12 but will build those 6 starting at same proirity of 12
-  else                                                    // This is so it builds less than the max it still builds at same priority.
-    set prio1 = prio+(food2-1)*2 - (min1+num1-1)*2 - 4    // I assuming the second unit id is less common so make sure it has smaller prioity so that first unit gets its requirements first
-    set prio2 = prio+(food2-1)*2 - (min2+num2-1)*2 - 4
+  if min1+num1 >= min2+num2 then
+    set prio1 = prio - (min1+num1)*2 // Set priority so first units will be build at `prio` first then decrease
+    set prio2 = prio - 1 + (-(min1+num1)+(min2+num2))*2 // Ensure this then builds at same priority as prio1 to interweave the two units by making up the difference
+                                                        //if equal second unit is always slightly less priority
+  elseif min2+num2 > min1+num1 then
+    set prio1 = prio + (-(min2+num2)+(min1+num1))*2
+    set prio2 = prio - (min2+num2)*2 - 1
   endif
 
-//  if min1+num1 > min2 + num2 then
-//    set prio2 = prio+(min1+num1-1)*2 - (min2+num2-1)*2		// So it builds at same priority as the first unit does
-//  elseif min1+num1 < min2+num2 then
-//    set prio1 = prio+(min2+num2-1)*2 - (min1+num1-1)*2
-//  endif
   if min1 + num1 > 0 then
     call BuildUnit(min1 + num1, unit1, prio1)
   endif
