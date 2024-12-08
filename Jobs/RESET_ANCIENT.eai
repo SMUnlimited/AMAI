@@ -1,6 +1,8 @@
 #IFDEF GLOBAL
 real lastancientx = -1
 real lastancienty = -1
+real lastbuildx = 0
+real lastbuildy = 0
 integer retry = 0
 
 #ELSE
@@ -23,11 +25,11 @@ if UnitAlive(u) and GetUnitCurrentOrder(u) != OrderId("root") and retry < 2 then
   else
       set buildu = CreatePathingUnitFull(buildu, ai_player, GetUnitTypeId(u), GetLocationX(home_location) + ISign() * GetRandomReal(500, 750), GetLocationY(home_location) + ISign() * GetRandomReal(500, 750))  
   endif
-  set buildx = GetUnitX(buildu)
-  set buildy = GetUnitY(buildu)
+  set lastbuildx = GetUnitX(buildu)
+  set lastbuildy = GetUnitY(buildu)
   call RemoveUnit(buildu)
   set buildu = null
-  call IssuePointOrder( u, "root", buildx, buildy)
+  call IssuePointOrder( u, "root", lastbuildx, lastbuildy)
   set retry = retry + 1
 elseif GetUnitCurrentOrder(u) != OrderId("root") and retry >= 2 and (GetUnitX(u) != lastancientx or GetUnitY(u) != lastancienty) then
   // if moving then not rooted
@@ -38,6 +40,21 @@ elseif GetUnitCurrentOrder(u) != OrderId("root") and retry >= 2 and (GetUnitX(u)
 elseif retry > 0 and GetUnitX(u) != lastancientx or GetUnitY(u) != lastancienty then
   // moving so all good
   set retry = 1
+  if DistanceBetweenPoints_dd(Location(lastbuildx, lastbuildy), GetUnitLoc(u)) > 400 then
+    // Rather than get to location and we can't build there re-evaluate and make sure no one built there early.
+    set buildu = CreatePathingUnitFull(buildu, ai_player, GetUnitTypeId(u), lastbuildx, lastbuildy)
+    set buildx = GetUnitX(buildu)
+    set buildy = GetUnitY(buildu)
+    if lastbuildx != buildx or lastbuildy != buildy then
+      set lastbuildx = GetUnitX(buildu)
+      set lastbuildy = GetUnitY(buildu)
+      call RemoveUnit(buildu)
+      set buildu = null
+      call IssuePointOrder( u, "root", lastbuildx, lastbuildy)
+    endif
+    call RemoveUnit(buildu)
+    set buildu = null
+  endif
 endif
 
 set lastancientx = GetUnitX(u)
