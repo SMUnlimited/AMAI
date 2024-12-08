@@ -13016,15 +13016,18 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
   local integer enemy_army = -1
   set own_strength = ai_strength
   call Trace("==Sleep Defend Town==" )
-  call CaptainGoHome()
-  call FormGroupAM(0)
-  if town_threatened and most_threatened_town >= 0 then
+  if not CaptainIsHome() and not CaptainRetreating() then
+      call CaptainGoHome()
+   endif  
+  // Attack logic still overridden by allies, so commented out - just return to home location 
+  //call FormGroupAM(0)
+  //if town_threatened and most_threatened_town >= 0 then
     // We want to intercept the army
-    set enemy_army = town_threat_army[most_threatened_town]
-    call CaptainAttack(GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))// Not attack move to get here fast
-  else
-    call CaptainAttack(GetLocationX(captain_home), GetLocationY(captain_home)) // Unknown where the threat is return home
-  endif
+  //  set enemy_army = town_threat_army[most_threatened_town]
+  //  call CaptainAttack(GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))// Not attack move to get here fast
+  //else
+  //  call CaptainAttack(GetLocationX(captain_home), GetLocationY(captain_home)) // Unknown where the threat is return home
+  //endif
   loop
     //call DisplayToAll("Town Threatened:" + B2S(town_threatened) + " HardTown Threatened:" + B2S(TownThreatened()) + " CaptainInCombat:" + B2S(CaptainInCombat(false)) + " i:" )
     call CreateDebugTagLoc("Sleep until town defended", 10, GetLocationX(captain_home), GetLocationY(captain_home), 1.00, 0.80)
@@ -13033,25 +13036,32 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
     set defense_length_counter = defense_length_counter + 1
     if defense_length_counter > attack_reform_length then
       set defense_length_counter = 0
-      call FormGroupAM(0)
+      //call FormGroupAM(0)
     endif
-    if CaptainAtGoal() or CaptainInCombat(true) or CaptainInCombat(false) then
+    if not CaptainIsHome() and not CaptainRetreating() and not CaptainInCombat(false) then
+      call CaptainGoHome()
+    endif  
+    //if CaptainAtGoal() or CaptainInCombat(true) or CaptainInCombat(false) then
       // Attack move to actually defend
-      if town_threatened and most_threatened_town >= 0 then
-      set enemy_army = town_threat_army[most_threatened_town]
-        call AttackMoveXY(R2I(GetLocationX(army_loc[enemy_army])), R2I(GetLocationY(army_loc[enemy_army]))) // Only attack move when at target
-      else
-        call AttackMoveXY(R2I(GetLocationX(captain_home)), R2I(GetLocationY(captain_home)))
-      endif
-    else
+    //  if town_threatened and most_threatened_town >= 0 then
+    //  set enemy_army = town_threat_army[most_threatened_town]
+    //    call AttackMoveXY(R2I(GetLocationX(army_loc[enemy_army])), R2I(GetLocationY(army_loc[enemy_army]))) // Only attack move when at target
+        //call TeleportCaptain(GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))
+    //  else
+    //    call AttackMoveXY(R2I(GetLocationX(captain_home)), R2I(GetLocationY(captain_home)))
+        //call TeleportCaptain(GetLocationX(captain_home), GetLocationY(captain_home))
+    //  endif
+    //else
       // This ensures units return to defend location and don't wonder
-      if town_threatened and most_threatened_town >= 0 then
-      set enemy_army = town_threat_army[most_threatened_town]
-        call CaptainAttack(GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))// Not attack move to get here fast
-      else
-        call CaptainAttack(GetLocationX(captain_home), GetLocationY(captain_home)) // Unknown where the threat is return home
-      endif
-    endif
+    //  if town_threatened and most_threatened_town >= 0 then
+    //  set enemy_army = town_threat_army[most_threatened_town]
+        //call CaptainAttack(GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))// Not attack move to get here fast
+    //    call TeleportCaptain(GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))
+    //  else
+        //call CaptainAttack(GetLocationX(captain_home), GetLocationY(captain_home)) // Unknown where the threat is return home
+    //    call TeleportCaptain(GetLocationX(captain_home), GetLocationY(captain_home))
+    //  endif
+    //endif
     call StaggerSleep(2 * sleep_multiplier, (2 * sleep_multiplier) + 2)
   endloop
   call CaptainGoHome()
@@ -13733,6 +13743,7 @@ function universal_attack_sequence takes nothing returns nothing
   local integer ai_strength = 0
   //local integer ai_antiair_strength = 0
   local integer exp_strength = 0
+  local integer defense_length_counter = attack_reform_length
 
   if hero_unit[1] == null and ver_heroes and not desperation_assault then
     call Sleep(sleep_multiplier)
@@ -13766,9 +13777,25 @@ function universal_attack_sequence takes nothing returns nothing
     call Sleep(1)
   endloop
   
+  
+
   loop
     exitwhen not retreat_controlled
     call CreateDebugTagLoc("Sleep until retreated", 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
+    if retreat_controlled and isfleeing then
+      set defense_length_counter = defense_length_counter + 1
+      if defense_length_counter > attack_reform_length then
+        set defense_length_counter = 0
+        //call FormGroupAM(0)
+        //call TraceAll("Retreat FIX")
+        //call InitAssault()
+      endif
+      //if main_army >= 0
+      //if not CaptainAtGoal() then
+        //call CaptainAttack(GetLocationX(captain_home), GetLocationY(captain_home)) // Prevent fight and flight behaviour
+        //call TeleportCaptain(GetLocationX(captain_home), GetLocationY(captain_home)) // Prevent fight and flight behaviour
+      //endif
+    endif
     call Sleep(1) // Retreat must have fully run its course, units are sent home via job
   endloop
 
@@ -13782,7 +13809,6 @@ function universal_attack_sequence takes nothing returns nothing
 
   if go_home then
     call Trace("UNIVERSAL ATTACK: Going home" )
-    call ClearCaptainTargets()
     call CaptainGoHome()
   endif
   set break_attack = false
