@@ -21,7 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Harass attacks will return harassing units faster to the ai's control when complete.
 - Reduced time heros wait to pick up items after creeping in half.
 - Better management of the captain home locations, the players strength and applying this to retreat control, town threatened, town defense and teleport to better react to issues.
-- Main army is now calculated to be the biggest army which should prevent issues when hero is not anywhere near the army force.
+- Main army is now calculated to be the strongest army which should prevent issues when hero is not anywhere near the army force.
 - (Devtools) Fixed calculation issues with SetReact and made it consistently easy to know the priorities of units it is building by making priority go backwards from value specified instead of increasing.
 
 ### Fixed
