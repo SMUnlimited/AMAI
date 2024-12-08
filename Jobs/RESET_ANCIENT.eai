@@ -1,0 +1,54 @@
+#IFDEF GLOBAL
+// real lastancientx = -1
+// real lastancienty = -1
+// integer retry = 0
+#ELSE
+function ResetAncient takes unit u, integer mode returns nothing
+local unit buildu = null
+local real buildx = 0
+local real buildy = 0
+if not UnitAlive(u) then
+  return
+endif
+if GetUnitCurrentOrder(u) != OrderId("root") and mode > -4 then
+  if mode == -1 or GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) * 0.5 then  // root near
+    set buildu = CreatePathingUnitFull(buildu, ai_player, GetUnitTypeId(u), GetUnitX(u), GetUnitY(u))
+    set mode = -4
+  elseif mode == -2 then  // root home , priority front loc
+    set mode = Max(GetRandomInt(0, front_loc_num - 1),0)
+    if front_locs_computed and front_loc[mode] != null then
+      set buildu = CreatePathingUnitFull(buildu, ai_player, GetUnitTypeId(u), GetLocationX(front_loc[mode]) + ISign() * GetRandomReal(0, 300), GetLocationY(front_loc[mode]) + ISign() * GetRandomReal(0, 300))
+    else
+      set buildu = CreatePathingUnitFull(buildu, ai_player, GetUnitTypeId(u), GetLocationX(home_location) + ISign() * GetRandomReal(500, 750), GetLocationY(home_location) + ISign() * GetRandomReal(500, 750))
+      set mode = -3
+    endif
+  elseif mode == -3 then
+    if DistanceBetweenPoints_kd(home_location, GetUnitLoc(u)) < 800 then
+      set buildu = CreatePathingUnitFull(buildu, ai_player, GetUnitTypeId(u), GetUnitX(u), GetUnitY(u))
+      set mode = -4
+    else
+      set buildu = CreatePathingUnitFull(buildu, ai_player, GetUnitTypeId(u), GetLocationX(home_location) + ISign() * GetRandomReal(500, 750), GetLocationY(home_location) + ISign() * GetRandomReal(500, 750))
+    endif
+  else
+    if DistanceBetweenPoints(home_location, front_loc[mode]) < 300 then
+      set buildu = CreatePathingUnitFull(buildu, ai_player, GetUnitTypeId(u), GetUnitX(u), GetUnitY(u))
+      set mode = -4
+    else
+      set buildu = CreatePathingUnitFull(buildu, ai_player, GetUnitTypeId(u), GetLocationX(front_loc[mode]) + ISign() * GetRandomReal(0, 300), GetLocationY(front_loc[mode]) + ISign() * GetRandomReal(0, 300))
+    endif
+  endif
+  set buildx = GetUnitX(buildu)
+  set buildy = GetUnitY(buildu)
+  call RemoveUnit(buildu)
+  call IssuePointOrder( u, "root", buildx, buildy)
+  set buildu = null
+elseif mode != -4 then
+  // if moving then not rooted
+else
+  // Root done as not moved
+  call RecycleGuardPosition(u)
+  return
+endif
+call TQAddUnitJob(10, RESET_ANCIENT, mode, u)
+endfunction
+#ENDIF

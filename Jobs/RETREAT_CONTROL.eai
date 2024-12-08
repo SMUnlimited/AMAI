@@ -120,10 +120,11 @@ function RetreatControlJob takes nothing returns nothing
     set isfleeing = true
   endif
 
-  if ((not attack_running and not isfleeing) or isfleeing or (town_threatened and town_threat_break)) then
+  if ((not attack_running and not isfleeing) or isfleeing or (town_threatened and town_threat_break) or player_defeated) then
     set break_attack = attack_running
-    if CaptainIsHome() or (not attack_running and not isfleeing) then
-      call Trace("===Retreat control ended===")
+    call TraceAll("RETREAT: Pending End fleeing:" + B2S(isfleeing))
+    if CaptainIsHome() or (not attack_running and not isfleeing) or player_defeated or (main_army >= 0 and DistanceBetweenPoints(army_loc[main_army], captain_home) <= 750) then
+      call TraceAll("===Retreat control ended===")
       set retreat_controlled = false
       set canflee = false
       set isfleeing = false     // home so no need to be retreating. Also prevents bug in the captainretreating condition
@@ -135,8 +136,15 @@ function RetreatControlJob takes nothing returns nothing
   endif
 
   if isfleeing or (town_threatened and town_threat_break) then
-    call ClearCaptainTargets()
-    call CaptainGoHome()
+    //call ClearCaptainTargets()
+    if not CaptainIsHome() and not CaptainRetreating() then
+      call TraceAll("Retreat Home Fix")
+      call CaptainGoHome()
+    endif
+  endif
+  if isfleeing then
+    call TQAddJob(2 * sleep_multiplier, RETREAT_CONTROL, 0)
+    return
   endif
   if attack_running then
     set g = CreateGroup()
@@ -162,7 +170,7 @@ function RetreatControlJob takes nothing returns nothing
       set u = FirstOfGroup(g)
       exitwhen u == null
       if (ModuloInteger(i, 200) == 0) then
-        call TQSleep(0.1)
+        call Sleep(0.1)
       endif
       // set unit_life = GetUnitState(u, UNIT_STATE_LIFE)
       // set unit_mana = GetUnitState(u, UNIT_STATE_MANA)
@@ -212,13 +220,13 @@ function RetreatControlJob takes nothing returns nothing
     set ally_strength_sum = ally_sum
     call Trace("RETREAT_CONTROL: Our strength: " + Real2Str(ally_strength_sum) + " Enemy strength: " + Real2Str(enemy_strength_sum))
 
-    if not desperation_assault and (enemy_strength_sum > ApplyFleeStrengthModifier(ally_strength_sum, true) or (town_threatened and town_threat_break and attack_running) or ally_strength_sum == 0) then
+    if CaptainInCombat(true) and not desperation_assault and (enemy_strength_sum > ApplyFleeStrengthModifier(ally_strength_sum, true) or (town_threatened and town_threat_break and attack_running) or ally_strength_sum == 0) then
       call TraceAll("RETREAT_CONTROL: Flee!!!!")
       set break_attack = attack_running
       call ClearCaptainTargets()
       call CaptainGoHome()
       set isfleeing = true
-    elseif not desperation_assault and (enemy_strength_sum > ApplyFleeStrengthModifier(ally_strength_sum, false) or (battle_radius == creep_battle_radius and enemy_strength_sum > ally_strength_sum )) then
+    elseif CaptainInCombat(true) and not desperation_assault and (enemy_strength_sum > ApplyFleeStrengthModifier(ally_strength_sum, false) or (battle_radius == creep_battle_radius and enemy_strength_sum > ally_strength_sum )) then
       call TraceAll("RETREAT_CONTROL: Allowed to Flee")
       call SetGroupsFlee(true)
       set canflee = true

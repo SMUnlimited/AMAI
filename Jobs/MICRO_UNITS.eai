@@ -116,7 +116,7 @@ function SaveUnit takes unit u , integer id returns nothing
     return
   endif
   if GetUnitAbilityLevel(u, 'AOwk') > 0 or GetUnitAbilityLevel(u, 'ANwk') > 0 then
-    if not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+    if not IsUnitInvisibleAM(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
       //call RemoveGuardPosition(u)
       call IssueImmediateOrder(u, "windwalk")
       //call TQAddUnitJob(2, RESET_WINDWALKER, 0, u)
@@ -134,7 +134,7 @@ function SaveUnit takes unit u , integer id returns nothing
     set healertepy = GetHealerId(GetUnitTypeId(healer))
     if healertepy != -1 then
       set healertepy = healer_type[healertepy]
-      if not CaptainInCombat(true) or ((healertepy == HEALER_TYPE_NO_TARGET or healertepy == HEALER_TYPE_WARD) and GetUnitState(u, UNIT_STATE_LIFE) > GetUnitState(u, UNIT_STATE_MAX_LIFE) * 0.5) then
+      if not attack_running or ((healertepy == HEALER_TYPE_NO_TARGET or healertepy == HEALER_TYPE_WARD) and GetUnitState(u, UNIT_STATE_LIFE) > GetUnitState(u, UNIT_STATE_MAX_LIFE) * 0.55) then
         call CreateDebugTag("Going to Healer", 10, u, 3.00, 1.50)
         // Captain In Combat , if healer no Immediate and extensive treatment , urgent healing need go home , avoid staying on the battlefield
         set unitloc = GetUnitLoc(healer)
@@ -236,8 +236,7 @@ function MicroUnitsJob takes nothing returns nothing
   local real unit_life = 0
   local real unit_life_max = 0
   local real unit_mana = 0
-  local group new_healer_group = CreateGroup()
-  //local boolean ward_check = false
+  local boolean ward_check = false
   local boolean prev_ward = ward_cast
   local boolean deny = (GetGold() > 600 and GetWood() > 400) or GetGoldOwned() > 3000
   //local location unitloc = null
@@ -245,6 +244,7 @@ function MicroUnitsJob takes nothing returns nothing
   local integer count = 0
   local real unit_health_ratio = 0.0
   local integer id = 0
+  local integer hid = -1
   local integer i = 0
   //local boolean itemsave = not teleporting and not town_threatened and (CheckUseSaveItem(1) or CheckUseSaveItem(2) or CheckUseSaveItem(3)) and (GetPlayerStructureCount(ai_player, true) > 0 or TownCountDone(racial_hall[1]) > 0)
   // if major_hero == null or not UnitAlive(major_hero) then
@@ -263,17 +263,16 @@ function MicroUnitsJob takes nothing returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if (ModuloInteger(i, 50) == 0) then
-      call TQSleep(0.1)
-    endif
+    // if (ModuloInteger(i, 200) == 0) then
+    //   call TQSleep(0.1)
+    // endif
     set unit_life = GetUnitState(u, UNIT_STATE_LIFE)
-    if not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitIllusion(u) and unit_life > 0 and not IsUnitHidden(u) and IsStandardUnit(u) then
+    if not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitIllusion(u) and unit_life > 0 and not IsUnitHidden(u) and IsStandardUnit(u) and not IsUnitBuying(u) then
       set unit_life_max = GetUnitState(u, UNIT_STATE_MAX_LIFE)
       set id = GetUnitTypeId(u)
-      // if id == 'ohwd' then
-      //   call GroupAddUnit(new_healer_group, u)
-      //   set ward_check = true
-      // endif
+      if id == 'ohwd' then
+        set ward_check = true
+      endif
       //call DisplayToAllJobDebug("MICRO_UNITS: Main Loop")
       //set unitloc = GetUnitLoc(u)
       //if (attack_running or town_threatened) then //and DistanceBetweenUnits(major_hero, u) <= battle_radius then
@@ -299,8 +298,9 @@ function MicroUnitsJob takes nothing returns nothing
             if not IsUnitType(u, UNIT_TYPE_MECHANICAL) and not IsUnitType(u, UNIT_TYPE_SUMMONED) and id != 'ubsp' and GetUnitState(u, UNIT_STATE_MAX_MANA) > 0 and unit_mana < RMax(0.35 * GetUnitState(u, UNIT_STATE_MAX_MANA), 50) then
               call GetMana(u)
             endif
-            if IsUnitHealer(u) then
-              call GroupAddUnit(new_healer_group, u) // healer have mana
+            set hid = GetHealerId(id)
+            if hid != -1 and GetUnitState(u, UNIT_STATE_MANA) >= (healer_mana_cost[hid] * 2) / 3 and ((healer_upg_id[hid] == 0) or (GetUpgradeLevel(healer_upg_id[hid]) >= healer_upg_level[hid])) then
+              call GroupAddUnit(healer_group, u)
             endif
           endif
         //else
@@ -341,15 +341,11 @@ function MicroUnitsJob takes nothing returns nothing
   //set unitloc = null
 
   //call DisplayToAll("MICRO_UNITS: Clear up code")
-  // if prev_ward or not ward_cast then
-  //   set ward_cast = ward_check
-  // endif
+  if prev_ward or not ward_cast then
+    set ward_cast = ward_check
+  endif
 
 //endif
-  call GroupClear(healer_group)
-  call GroupAddGroup(healer_group, new_healer_group)
-  call DestroyGroup(new_healer_group)
-  set new_healer_group = null
   call DestroyGroup(g)
   set g = null
   call TQAddJob(1.5 * sleep_multiplier, MICRO_UNITS, 0)
