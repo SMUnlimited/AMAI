@@ -3,25 +3,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## Unreleased
+## [3.4.1] - 2024-12-07
 
 ### Added
 - Elf players now have a 50% chance to perform an Ancient Barracks creep rush, various issues in its original introduction now fixed.
-- Added uninstall command line scripts.
 - Added self preservation micro support for burrowing, stoneform, healing wards, healing wave, healing spray and rejuvination. (jzy-chitong56)
-- (DevTools) New block available for strategies. E.g `SetTierBlock(1, 0.75, 60, true)` that blocks tiering up from tier 1 unless more than 75% of higher priority units are built. Unlocks if over 60 food. Final argument prevents tier up while expanding if set to true. Tier block overrides previous tier level block if repeated in a strategy.
+- (Devtools) Added uninstall command line scripts.
 
 ### Changed
 - When we enhanced the build code to build other things if it can't build the current priorities it caused strategies to tier up much earlier than designed. Now tier ups can only occur as follows:
   - once most higher priority unit production is done honoring the strategy.
   - No expansion occurring unless we already have multiple mines to support the cost.
   - Or we have lots and lots of spare gold and wood so should just use it to tier up.
+  - (DevTools) New block available for strategies. E.g `SetTierBlock(1, 0.75, 60, true)` that blocks tiering up from tier 1 unless more than 75% of higher priority units are built. Unlocks if over 60 food. Final argument prevents tier up while expanding if set to true. Tier block overrides previous tier level block if repeated in a strategy.
 - Building additional factory buildings should not be done while actively tiering up as the buildings needed for tier 2/3 may be different.
 - Harass will correctly keep harassing if no units can harm its air harass.
 - Harass attacks will return harassing units faster to the ai's control when complete.
 - Reduced time heros wait to pick up items after creeping in half.
 - Better management of the captain home locations, the players strength and applying this to retreat control, town threatened, town defense and teleport to better react to issues.
 - Main army is now calculated to be the biggest army which should prevent issues when hero is not anywhere near the army force.
+- (Devtools) Fixed calculation issues with SetReact and made it consistently easy to know the priorities of units it is building by making priority go backwards from value specified instead of increasing.
 
 ### Fixed
 - Fix to avoid rare crashes in job thread.
@@ -44,6 +45,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed an issue where night elf wisps would end up doing nothing as they were flagged for hardcoded gold harvesting but our custom logic had already put wood wisps in the mine.
 - Fix that could mean healer units were not fully considered before use.
 - Reliability fix for item expansion.
+- Fixed issue where buying units could not attack nearby units. 
+- When buying a unit/item try and buy before retreating when there is danger.
 - Multiple mine control fixes (jzy-chitong56)
 - Fixed 4th mine chance was evaluated incorrectly. (jzy-chitong56)
 - (Classic) Include missing hero harass attacks that are applicable from reforged scripts.
