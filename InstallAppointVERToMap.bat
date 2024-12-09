@@ -129,9 +129,6 @@ ECHO If the installation is complete, please close this window, else please clic
 pause
 goto InputMap
 
-:EndScript
-pause
-
 :UnInstallComMenu
 if "%SETMAP%"=="1" (
   goto UnInstallComPath
@@ -154,7 +151,7 @@ for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
   call UninstallCommander "!%%~fF!"
 )
 endlocal
-goto EndUnScript
+goto EndScript
 
 :UnInstallComMap
 cls
@@ -170,9 +167,6 @@ call UninstallCommander "%filePath%"
 ECHO If the Remove is complete, please close this window, else please click any key to continue Remove.
 pause
 goto UnInstallComMap
-
-:EndUnScript
-pause
 
 :UnInstallMenu
 if "%SETMAP%"=="1" (
@@ -196,7 +190,7 @@ for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
   call Uninstall "!%%~fF!"
 )
 endlocal
-goto EndUnScript
+goto EndScript
 
 :UnInstallMap
 cls
@@ -213,5 +207,5 @@ ECHO If the Remove is complete, please close this window, else please click any 
 pause
 goto UnInstallMap
 
-:EndUnScript
+:EndScript
 pause
