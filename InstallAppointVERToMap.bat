@@ -1,19 +1,86 @@
 @ECHO off
-chcp 65001
 SET VER=REFORGED
 SET COMMAND=1
-SET COMMAND_STATE=å®‰è£…å¸¸è§„æ§åˆ¶å°
+SET COMMAND_STATE=³£¹æ¿ØÖÆÌ¨
+SET SETMAP=1
+
+:FunctionMenu
+cls
+ECHO. ÇëÑ¡ÔñÄ£Ê½:
+ECHO.
+ECHO 1. °²×° AMAI (³£¹æ¿ØÖÆÌ¨) (Ä¬ÈÏ)
+ECHO 2. °²×° AMAI (VS±©Ñ©AI¿ØÖÆÌ¨)
+ECHO 3. °²×° AMAI (²»°²×°¿ØÖÆÌ¨)
+ECHO 4. ÒÆ³ı AMAI ¿ØÖÆÌ¨
+ECHO 5. Ğ¶ÔØ AMAI ¼°¿ØÖÆÌ¨
+ECHO.
+set /p choice=ÇëÊäÈë²¢»Ø³µ(1 ~ 5):
+
+if "%choice%"=="1" (
+  SET COMMAND=1
+  SET COMMAND_STATE=³£¹æ¿ØÖÆÌ¨
+)
+if "%choice%"=="2" (
+  SET COMMAND=2
+  SET COMMAND_STATE=VS ±©Ñ©AI ¿ØÖÆÌ¨
+)
+if "%choice%"=="3" (
+  SET COMMAND=0
+  SET COMMAND_STATE=²»°²×°¿ØÖÆÌ¨
+)
+if "%choice%"=="4" (
+  SET COMMAND=-1
+  SET COMMAND_STATE=ÒÆ³ı AMAI ¿ØÖÆÌ¨
+)
+if "%choice%"=="5" (
+  SET COMMAND=-2
+  SET COMMAND_STATE=Ğ¶ÔØ AMAI ¼°¿ØÖÆÌ¨
+)
+
+goto InstallMenu
+
+:InstallMenu
+cls
+ECHO.
+ECHO Ä£Ê½: %COMMAND_STATE%
+ECHO.
+ECHO ÇëÑ¡ÔñµØÍ¼´¦Àí·½Ê½:
+ECHO 1. °´ÎÄ¼ş¼ĞÅúÁ¿´¦Àí (Ä¬ÈÏ)
+ECHO 2. ÖğÕÅµØÍ¼´¦Àí
+ECHO.
+set /p choice=ÇëÊäÈë²¢»Ø³µ(1 ~ 2):
+
+if "%choice%"=="1" (
+  if "%COMMAND%"=="-1" (
+    goto UnInstallComMenu
+  ) else if "%COMMAND%"=="-2" (
+    goto UnInstallMenu
+  ) else (
+    goto VERMenu
+  )
+)
+
+if not "%choice%"=="1" (
+  set SETMAP=0
+  if "%COMMAND%"=="-1" (
+    goto UnInstallComMenu
+  ) else if "%COMMAND%"=="-2" (
+    goto UnInstallMenu
+  ) else (
+    goto VERMenu
+  )
+)
 
 :VERMenu
 cls
 ECHO.
-ECHO (1/4) è¯·é€‰æ‹©é­”å…½3ç‰ˆæœ¬:
+ECHO ÇëÑ¡ÔñÄ§ÊŞ3°æ±¾:
 ECHO.
-ECHO 1. é‡åˆ¶ç‰ˆ REFORGED (1.33+) (é»˜è®¤)
-ECHO 2. ç»å…¸ç‰ˆ-å†°å°ç‹åº§ TFT (1.24e+)
-ECHO 3. ç»å…¸ç‰ˆ-æ··ä¹±ä¹‹æ²» ROC (1.24e ~ 1.31)
+ECHO 1. ÖØÖÆ°æ REFORGED (1.33+) (Ä¬ÈÏ)
+ECHO 2. ¾­µä°æ-±ù·âÍõ×ù  (1.24e+)
+ECHO 3. ¾­µä°æ-»ìÂÒÖ®ÖÎ  (1.24e ~ 1.31)
 ECHO.
-set /p choice=è¯·è¾“å…¥(1 ~ 3):
+set /p choice=ÇëÊäÈë²¢»Ø³µ(1 ~ 3):
 
 if "%choice%"=="1" (
   set VER=REFORGED
@@ -24,65 +91,21 @@ if "%choice%"=="2" (
 if "%choice%"=="3" (
   set VER=ROC
 )
-
-goto ComMenu
-
-:ComMenu
-cls
-ECHO.
-ECHO é­”å…½ç‰ˆæœ¬: %VER%
-ECHO.
-ECHO (2/4) æ§åˆ¶å°é€‰é¡¹:
-ECHO 1. å®‰è£…å¸¸è§„æ§åˆ¶å° (é»˜è®¤)
-ECHO 2. å®‰è£… VS AI æ§åˆ¶å° (VS ç¬¬ä¸‰æ–¹ AI)
-ECHO 3. ä¸å®‰è£…æ§åˆ¶å°
-ECHO.
-set /p choice=è¯·è¾“å…¥(1 ~ 3):
-
-if "%choice%"=="1" (
-  SET COMMAND=1
-  SET COMMAND_STATE =å®‰è£…å¸¸è§„æ§åˆ¶å°
-)
-if "%choice%"=="2" (
-  SET COMMAND=2
-  SET COMMAND_STATE =å®‰è£… VS AI æ§åˆ¶å°
-)
-if "%choice%"=="3" (
-  SET COMMAND=0
-  SET COMMAND_STATE =ä¸å®‰è£…æ§åˆ¶å°
-)
-
-goto InstallMenu
-
-:InstallMenu
-cls
-ECHO.
-ECHO é­”å…½ç‰ˆæœ¬: %VER% , æ§åˆ¶å°: %COMMAND_STATE%
-ECHO.
-ECHO (3/4) è¯·é€‰æ‹©å®‰è£…æ–¹å¼:
-ECHO. 1. æ‰¹é‡å®‰è£… (é»˜è®¤)
-ECHO. 2. é€å¼ åœ°å›¾å®‰è£…
-ECHO.
-set /p choice=è¯·è¾“å…¥(1 ~ 2):
-
-if "%choice%"=="1" (
+if "%SETMAP%"=="1" (
   goto InputPath
-)
-
-if not "%choice%"=="1" (
+) else (
   goto InputMap
 )
-
 
 :InputPath
 cls
 ECHO.
-ECHO é­”å…½ç‰ˆæœ¬: %VER% , æ§åˆ¶å°: %COMMAND_STATE% , å®‰è£…æ–¹å¼: æ‰¹é‡å®‰è£…
+ECHO Ä§ÊŞ3°æ±¾: %VER% , ¿ØÖÆÌ¨: %COMMAND_STATE% , µØÍ¼´¦Àí·½Ê½: ÅúÁ¿´¦Àí
 ECHO.
-ECHO (4/4) è¯·è¾“å…¥åœ°å›¾æ–‡ä»¶å¤¹è·¯å¾„.
-ECHO ä¾‹: C:\Documents\Warcraft III\Maps
+ECHO ÇëÊäÈëµØÍ¼ÎÄ¼ş¼ĞÂ·¾¶
+ECHO Àı: C:\Documents\Warcraft III\Maps
 ECHO.
-set /p searchPath=è¯·è¾“å…¥:
+set /p searchPath=ÇëÊäÈë²¢»Ø³µ:
 
 setlocal enabledelayedexpansion
 for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
@@ -94,17 +117,101 @@ goto EndScript
 :InputMap
 cls
 ECHO.
-ECHO é­”å…½ç‰ˆæœ¬: %VER% , æ§åˆ¶å°: %COMMAND_STATE% , å®‰è£…æ–¹å¼: é€å¼ åœ°å›¾å®‰è£…
+ECHO Ä§ÊŞ3°æ±¾: %VER% , ¿ØÖÆÌ¨: %COMMAND_STATE% , µØÍ¼´¦Àí·½Ê½: ÖğÕÅµØÍ¼´¦Àí
 ECHO.
-ECHO (4/4)è¯·è¾“å…¥åœ°å›¾æ–‡ä»¶å¤¹è·¯å¾„åŠåœ°å›¾å(åŒ…æ‹¬æ ¼å¼)
-ECHO ä¾‹: C:\Documents\Warcraft III\Maps\Friends_v1.2.w3x
+ECHO ÇëÊäÈëµØÍ¼ÎÄ¼ş¼ĞÂ·¾¶¼°µØÍ¼Ãû(°üÀ¨¸ñÊ½)
+ECHO Àı: C:\Documents\Warcraft III\Maps\Friends_v1.2.w3x
 ECHO.
-set /p filePath=è¯·è¾“å…¥:
+set /p filePath=ÇëÊäÈë²¢»Ø³µ:
 
 call InstallVERToMap %VER% "%filePath%" "%COMMAND%"
-ECHO è‹¥å®‰è£…å®Œæˆ,è¯·å…³é—­æœ¬çª—å£,å¦åˆ™è¯·ç‚¹å‡»ä»»æ„é”®ç»§ç»­å®‰è£…
+ECHO Èô°²×°Íê³É, Çë¹Ø±Õ±¾´°¿Ú, ·ñÔòÇëµã»÷ÈÎÒâ¼ü¼ÌĞø°²×°
 pause
 goto InputMap
 
 :EndScript
+pause
+
+:UnInstallComMenu
+if "%SETMAP%"=="1" (
+  goto UnInstallComPath
+) else (
+  goto UnInstallComMap
+)
+
+:UnInstallComPath
+cls
+ECHO.
+ECHO ÒÆ³ıAMAI¿ØÖÆÌ¨, µØÍ¼´¦Àí·½Ê½: ÅúÁ¿´¦Àí
+ECHO.
+ECHO ÇëÊäÈëµØÍ¼ÎÄ¼ş¼ĞÂ·¾¶
+ECHO Àı: C:\Documents\Warcraft III\Maps
+ECHO.
+set /p searchPath=ÇëÊäÈë²¢»Ø³µ:
+
+setlocal enabledelayedexpansion
+for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
+  call UninstallCommander "!%%~fF!"
+)
+endlocal
+goto EndUnScript
+
+:UnInstallComMap
+cls
+ECHO.
+ECHO ÒÆ³ıAMAI¿ØÖÆÌ¨, µØÍ¼´¦Àí·½Ê½: ÖğÕÅµØÍ¼´¦Àí
+ECHO.
+ECHO ÇëÊäÈëµØÍ¼ÎÄ¼ş¼ĞÂ·¾¶¼°µØÍ¼Ãû(°üÀ¨¸ñÊ½)
+ECHO Àı: C:\Documents\Warcraft III\Maps\Friends_v1.2.w3x
+ECHO.
+set /p filePath=ÇëÊäÈë²¢»Ø³µ:
+
+call UninstallCommander "%filePath%"
+ECHO ÈôÒÆ³ıÍê³É, Çë¹Ø±Õ±¾´°¿Ú, ·ñÔòÇëµã»÷ÈÎÒâ¼ü¼ÌĞøÒÆ³ı
+pause
+goto UnInstallComMap
+
+:EndUnScript
+pause
+
+:UnInstallMenu
+if "%SETMAP%"=="1" (
+  goto UnInstallPath
+) else (
+  goto UnInstallMap
+)
+
+:UnInstallPath
+cls
+ECHO.
+ECHO Ğ¶ÔØAMAI¼°¿ØÖÆÌ¨, µØÍ¼´¦Àí·½Ê½: ÅúÁ¿´¦Àí
+ECHO.
+ECHO ÇëÊäÈëµØÍ¼ÎÄ¼ş¼ĞÂ·¾¶
+ECHO Àı: C:\Documents\Warcraft III\Maps
+ECHO.
+set /p searchPath=ÇëÊäÈë²¢»Ø³µ:
+
+setlocal enabledelayedexpansion
+for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
+  call Uninstall "!%%~fF!"
+)
+endlocal
+goto EndUnScript
+
+:UnInstallMap
+cls
+ECHO.
+ECHO Ğ¶ÔØAMAI¼°¿ØÖÆÌ¨, µØÍ¼´¦Àí·½Ê½: ÖğÕÅµØÍ¼´¦Àí
+ECHO.
+ECHO ÇëÊäÈëµØÍ¼ÎÄ¼ş¼ĞÂ·¾¶¼°µØÍ¼Ãû(°üÀ¨¸ñÊ½)
+ECHO Àı: C:\Documents\Warcraft III\Maps\Friends_v1.2.w3x
+ECHO.
+set /p filePath=ÇëÊäÈë²¢»Ø³µ:
+
+call Uninstall "%filePath%"
+ECHO ÈôĞ¶ÔØÍê³É, Çë¹Ø±Õ±¾´°¿Ú, ·ñÔòÇëµã»÷ÈÎÒâ¼ü¼ÌĞøĞ¶ÔØ
+pause
+goto UnInstallMap
+
+:EndUnScript
 pause

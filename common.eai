@@ -5384,7 +5384,7 @@ function ReleaseTQLock takes nothing returns nothing
   set tq_lock = true
 endfunction
 
-// To run a sleep within the job thread, will delay all other jobs as well
+// To run a sleep within the job thread, that will delay all other jobs as well
 function TQSleep takes real time returns nothing
   local integer i = 1
   call GetTQLock()
@@ -7596,7 +7596,7 @@ function GetHealer takes unit u returns unit
     set u = FirstOfGroup(rg)
     exitwhen u == null
     set id = GetHealerId(GetUnitTypeId(u))
-    if id != -1 and not IsUnitLoaded(u) and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) and not IsUnitInGroup(u, unit_healing) then
+    if id != -1 and not IsUnitLoaded(u) and UnitAlive(u) and GetUnitState(u, UNIT_STATE_MANA) >= healer_mana_cost[id] and ((healer_upg_id[id] == 0) or (GetUpgradeLevel(healer_upg_id[id]) >= healer_upg_level[id])) and IsStandardUnit(u) and not IsUnitBuying(u) then
       call DestroyGroup(rg)
       set rg = null
       return u
@@ -10069,27 +10069,23 @@ function BuildAtMine takes integer qty, integer unitid, integer prio returns not
 endfunction
 
 //============================================================================
+// Unlike other build commands priority works backwards so it always builds first units at prio specified then works backwards. This is because otherwise its unknown how many units it will build as its first units will build at variable priority based on number of units it actually builds.
+// Min value is in addition to the number built within the food use.
+// Builds both units in unison if a mix
 function SetBuildReact takes integer food, integer min1, integer unit1, integer min2, integer unit2, real enemy_strength, real strength1, real strength2, integer prio returns nothing
   local integer num1 = R2I(LinearInterpolation(strength1, strength2, I2R(food), 0, enemy_strength)) / Max(GetFoodUsed(old_id[unit1]),1)
   local integer num2 = (food - num1 * GetFoodUsed(old_id[unit1])) / Max(GetFoodUsed(old_id[unit2]),1)
   local integer prio1 = 0
   local integer prio2 = 0
-  local integer food1 = food / Max(GetFoodUsed(old_id[unit1]),1)
-  local integer food2 = food / Max(GetFoodUsed(old_id[unit2]),1)
-
-  if food1 > food2 then
-    set prio1 = prio+(food1-1)*2 - (min1+num1-1)*2        // So builds starting at the max priority possible
-    set prio2 = prio+(food1-1)*2 - (min2+num2-1)*2        // i.e build 6 footmen instead of 12 but will build those 6 starting at same proirity of 12
-  else                                                    // This is so it builds less than the max it still builds at same priority.
-    set prio1 = prio+(food2-1)*2 - (min1+num1-1)*2 - 4    // I assuming the second unit id is less common so make sure it has smaller prioity so that first unit gets its requirements first
-    set prio2 = prio+(food2-1)*2 - (min2+num2-1)*2 - 4
+  if min1+num1 >= min2+num2 then
+    set prio1 = prio - (min1+num1)*2 // Set priority so first units will be build at `prio` first then decrease
+    set prio2 = prio - 1 + (-(min1+num1)+(min2+num2))*2 // Ensure this then builds at same priority as prio1 to interweave the two units by making up the difference
+                                                        //if equal second unit is always slightly less priority
+  elseif min2+num2 > min1+num1 then
+    set prio1 = prio + (-(min2+num2)+(min1+num1))*2
+    set prio2 = prio - (min2+num2)*2 - 1
   endif
 
-//  if min1+num1 > min2 + num2 then
-//    set prio2 = prio+(min1+num1-1)*2 - (min2+num2-1)*2		// So it builds at same priority as the first unit does
-//  elseif min1+num1 < min2+num2 then
-//    set prio1 = prio+(min2+num2-1)*2 - (min1+num1-1)*2
-//  endif
   if min1 + num1 > 0 then
     call BuildUnit(min1 + num1, unit1, prio1)
   endif
@@ -12867,20 +12863,21 @@ function BRRush takes nothing returns boolean
     call EnableRetreatControl()
     set br_rush_attacked = true
     set l = GetUnitLoc(utemp)
-    call IssueImmediateOrderById(utemp, 851976) // Cancel building order
+    call IssueImmediateOrderById(utemp, OrderIdCancel) // Cancel building order
     call IssueImmediateOrder(utemp, "unroot")  //try unroot
     call FromGroupAndGhoulsAM(3) // unroot time
     call IssuePointOrder(utemp, "attack", GetUnitX(rushcreep_target), GetUnitY(rushcreep_target))
     call AttackMoveKill(rushcreep_target)
     call ReformUntilTargetDeadAM(rushcreep_target, true, false)
-    call Chat(C_Done)
     call SleepInCombatAM(false)
+    call Chat(C_Done)
     call Trace("===BR Finished===")
     set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), 'eaom', GetLocationX(l), GetLocationY(l), 270.0)
     set loc = GetUnitLoc(u)
     call RemoveUnit(u)
     set u = null
     call IssuePointOrderLoc(utemp, "root", loc)
+    call TQAddUnitJob(10, RESET_ANCIENT, -1, utemp)
     // if not IssuePointOrderLoc(utemp, "root", l) then  //root tree , this code olny return false
     //   call IssuePointOrderLoc(utemp, "move", GetLocationX(l) + ISign() * GetRandomReal(200, 400), GetLocationY(l) + ISign() * GetRandomReal(200, 400))  // no remove GuardPosition , no need send root order
     // endif
@@ -13695,15 +13692,18 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
   local integer enemy_army = -1
   //set own_strength = ai_strength
   call Trace("==Sleep Defend Town==" )
-  call CaptainGoHome()
-  call FormGroupAM(0)
-  if town_threatened and most_threatened_town >= 0 then
-    // We want to intercept the army
-    set enemy_army = town_threat_army[most_threatened_town]
-    call CaptainAttack(GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))// Not attack move to get here fast
-  else
-    call CaptainAttack(GetLocationX(captain_home), GetLocationY(captain_home)) // Unknown where the threat is return home
+  if not CaptainIsHome() and not CaptainRetreating() then
+    call CaptainGoHome()
   endif
+  // Attack logic still overridden by allies, so commented out - just return to home location 
+  //call FormGroupAM(0)
+  //if town_threatened and most_threatened_town >= 0 then
+    // We want to intercept the army
+  //   set enemy_army = town_threat_army[most_threatened_town]
+  //   call CaptainAttack(GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))// Not attack move to get here fast
+  // else
+  //   call CaptainAttack(GetLocationX(captain_home), GetLocationY(captain_home)) // Unknown where the threat is return home
+  // endif
   loop
     //call DisplayToAll("Town Threatened:" + B2S(town_threatened) + " HardTown Threatened:" + B2S(TownThreatened()) + " CaptainInCombat:" + B2S(CaptainInCombat(false)) + " i:" )
     call CreateDebugTagLoc("Sleep until town defended", 10, GetLocationX(captain_home), GetLocationY(captain_home), 1.00, 0.80)
@@ -13712,25 +13712,28 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
     set defense_length_counter = defense_length_counter + 1
     if defense_length_counter > attack_reform_length then
       set defense_length_counter = 0
-      call FormGroupAM(0)
+      //call FormGroupAM(0)
     endif
-    if CaptainAtGoal() or CaptainInCombat(true) or CaptainInCombat(false) then
+    if not CaptainIsHome() and not CaptainRetreating() and not CaptainInCombat(false) then
+      call CaptainGoHome()
+    endif
+    //if CaptainAtGoal() or CaptainInCombat(true) or CaptainInCombat(false) then
       // Attack move to actually defend
-      if town_threatened and most_threatened_town >= 0 then
-      set enemy_army = town_threat_army[most_threatened_town]
-        call AttackMoveXY(R2I(GetLocationX(army_loc[enemy_army])), R2I(GetLocationY(army_loc[enemy_army]))) // Only attack move when at target
-      else
-        call AttackMoveXY(R2I(GetLocationX(captain_home)), R2I(GetLocationY(captain_home)))
-      endif
-    else
+    //   if town_threatened and most_threatened_town >= 0 then
+    //   set enemy_army = town_threat_army[most_threatened_town]
+    //     call AttackMoveXY(R2I(GetLocationX(army_loc[enemy_army])), R2I(GetLocationY(army_loc[enemy_army]))) // Only attack move when at target
+    //   else
+    //     call AttackMoveXY(R2I(GetLocationX(captain_home)), R2I(GetLocationY(captain_home)))
+    //   endif
+    // else
       // This ensures units return to defend location and don't wonder
-      if town_threatened and most_threatened_town >= 0 then
-      set enemy_army = town_threat_army[most_threatened_town]
-        call CaptainAttack(GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))// Not attack move to get here fast
-      else
-        call CaptainAttack(GetLocationX(captain_home), GetLocationY(captain_home)) // Unknown where the threat is return home
-      endif
-    endif
+    //   if town_threatened and most_threatened_town >= 0 then
+    //   set enemy_army = town_threat_army[most_threatened_town]
+    //     call CaptainAttack(GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))// Not attack move to get here fast
+    //   else
+    //     call CaptainAttack(GetLocationX(captain_home), GetLocationY(captain_home)) // Unknown where the threat is return home
+    //   endif
+    // endif
     call StaggerSleep(2 * sleep_multiplier, (2 * sleep_multiplier) + 2)
   endloop
   call CaptainGoHome()
@@ -14198,10 +14201,9 @@ function GetArmyHealthState takes nothing returns real
   local real health_sum = 0.0
   local integer count = 0
   local real uhs = 0.0
-  local integer hid = 0
+  //local integer hid = 0
   local integer hFountainID = GetHealthFountainID()
   local integer id = 0
-  call GroupClear(healer_group)
   call GroupClear(urgent_healing_group)
   call GroupClear(medium_healing_group)
   call GroupClear(small_healing_group)
@@ -14229,10 +14231,6 @@ function GetArmyHealthState takes nothing returns real
           set health_sum = health_sum + uhs
         endif
         set count = count + 1
-        set hid = GetHealerId(id)
-        if hid != -1 and GetUnitState(u, UNIT_STATE_MANA) >= (healer_mana_cost[hid] * 2) / 3 and ((healer_upg_id[hid] == 0) or (GetUpgradeLevel(healer_upg_id[hid]) >= healer_upg_level[hid])) then
-          call GroupAddUnit(healer_group, u)
-        endif
         if uhs < 0.5 then
           call GroupAddUnit(urgent_healing_group, u)
           set urgent_healing_count = urgent_healing_count + 1
@@ -14447,6 +14445,7 @@ function universal_attack_sequence takes nothing returns nothing
   local integer ai_strength = 0
   //local integer ai_antiair_strength = 0
   local integer exp_strength = 0
+  local integer defense_length_counter = attack_reform_length
 
   if hero_unit[1] == null and ver_heroes and not desperation_assault then
     call Sleep(sleep_multiplier)
@@ -14483,6 +14482,20 @@ function universal_attack_sequence takes nothing returns nothing
   loop
     exitwhen not retreat_controlled
     call CreateDebugTagLoc("Sleep until retreated", 10, GetLocationX(home_location), GetLocationY(home_location), 1.00, 0.80)
+    if retreat_controlled and isfleeing then
+      set defense_length_counter = defense_length_counter + 1
+      if defense_length_counter > attack_reform_length then
+        set defense_length_counter = 0
+        //call FormGroupAM(0)
+        //call TraceAll("Retreat FIX")
+        //call InitAssault()
+      endif
+      //if main_army >= 0
+      //if not CaptainAtGoal() then
+        //call CaptainAttack(GetLocationX(captain_home), GetLocationY(captain_home)) // Prevent fight and flight behaviour
+        //call TeleportCaptain(GetLocationX(captain_home), GetLocationY(captain_home)) // Prevent fight and flight behaviour
+      //endif
+    endif
     call Sleep(1) // Retreat must have fully run its course, units are sent home via job
   endloop
 
@@ -14496,7 +14509,6 @@ function universal_attack_sequence takes nothing returns nothing
 
   if go_home then
     call Trace("UNIVERSAL ATTACK: Going home" )
-    call ClearCaptainTargets()
     call CaptainGoHome()
   endif
   set break_attack = false
