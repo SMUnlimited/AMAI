@@ -129,8 +129,6 @@ ECHO 若安装完成, 请关闭本窗口, 否则请点击任意键继续安装
 pause
 goto InputMap
 
-:EndScript
-pause
 
 :UnInstallComMenu
 if "%SETMAP%"=="1" (
@@ -154,7 +152,7 @@ for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
   call UninstallCommander "!%%~fF!"
 )
 endlocal
-goto EndUnScript
+goto EndScript
 
 :UnInstallComMap
 cls
@@ -171,8 +169,6 @@ ECHO 若移除完成, 请关闭本窗口, 否则请点击任意键继续移除
 pause
 goto UnInstallComMap
 
-:EndUnScript
-pause
 
 :UnInstallMenu
 if "%SETMAP%"=="1" (
@@ -196,7 +192,7 @@ for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
   call Uninstall "!%%~fF!"
 )
 endlocal
-goto EndUnScript
+goto EndScript
 
 :UnInstallMap
 cls
@@ -213,5 +209,5 @@ ECHO 若卸载完成, 请关闭本窗口, 否则请点击任意键继续卸载
 pause
 goto UnInstallMap
 
-:EndUnScript
+:EndScript
 pause
