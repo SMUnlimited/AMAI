@@ -1,4 +1,5 @@
 #IFDEF GLOBAL
+boolean retreat_home_n_n = false
 #ELSE
 function ResetBuyNeutralUnit takes integer nn returns nothing
   if neutral_sent[nn] != null then
@@ -10,6 +11,7 @@ function ResetBuyNeutralUnit takes integer nn returns nothing
   endif
   set neutral_sent[nn] = null
   set neutral_ordered[nn] = false
+  set retreat_home_n = false
   set buy_time_large[nn] = -1
   set buy_time_small[nn] = -1
 endfunction
@@ -24,7 +26,6 @@ function BuyNeutral takes integer id returns nothing
   local unit buy_place = nearest_neutral[nn]
   local boolean place_guarded = neutral_guarded[nn]
   local integer detectedenemies = 0
-  //local boolean retreat_home = false
 
   call DisplayToAllJobDebug("BUY_NEUTRAL JOB START")
   // moved this check here to prevent a job crash if placed lower down
@@ -38,8 +39,8 @@ function BuyNeutral takes integer id returns nothing
       call GroupRemoveUnit(unit_buying_merc, neutral_sent[nn])
       set neutral_sent[nn] = null
     endif
-    if retreat_home then
-      //set retreat_home = false
+    if retreat_home_n then
+      set retreat_home_n = false
       set neutral_ordered[nn] = false
       set buy_time_large[nn] = -1
       set buy_time_small[nn] = -1
@@ -54,35 +55,22 @@ function BuyNeutral takes integer id returns nothing
     endif
     call GroupAddUnit(unit_buying_merc, neutral_sent[nn])
   endif
-  // if retreat_home then  // buy item use retreat_home , avoid conflict
-  //   if DistanceBetweenPoints_dk(GetUnitLoc(neutral_sent[nn]), home_location) >= 1100 then
-  //     call CreateDebugTag("BUY_ITEM: Retreat to Home", 10, neutral_sent[nn], 3.00, 1.50)
-  //     call RemoveGuardPosition(neutral_sent[nn])
-  //     call IssuePointOrder(neutral_sent[nn], "move", GetLocationX(home_location), GetLocationY(home_location))
-  //     call TQAddUnitJob(GetTimeToReachLoc(neutral_sent[nn], home_location) + 1, RESET_GUARD_POSITION, 1, neutral_sent[nn])
-  //     call TQAddJob(5, BUY_NEUTRAL, id)
-  //   else
-  //     call ResetBuyNeutralUnit(nn)
-  //     set retreat_home = false
-  //   endif
-  //   set buy_place = null
-  //   return
-  // endif
-  set timetotravel = GetTimeToReachUnit(neutral_sent[nn], buy_place) + 1
-  set dist = DistanceBetweenUnits(neutral_sent[nn], buy_place)
-// Enemies are present so get home before they harm us
-  set detectedenemies = GetLocationNonCreepStrength(GetUnitX(neutral_sent[nn]), GetUnitY(neutral_sent[nn]), 1000)
-  if dist <= 800 and detectedenemies >= GetUnitStrength(neutral_sent[nn]) then
-    // call RemoveGuardPosition(neutral_sent[nn])
-    // call IssuePointOrder(neutral_sent[nn], "move", GetLocationX(home_location), GetLocationY(home_location))
-    // call TQAddUnitJob(GetTimeToReachLoc(neutral_sent[nn], home_location) + 1, RESET_GUARD_POSITION, 1, neutral_sent[nn])
-    call ResetBuyNeutralUnit(nn)
-    //set retreat_home = true
-    //call TQAddJob(1, BUY_NEUTRAL, id)
+  if retreat_home_n then  // buy item use retreat_home_n , avoid conflict
+    if DistanceBetweenPoints_dk(GetUnitLoc(neutral_sent[nn]), home_location) >= 1100 then
+      call CreateDebugTag("BUY_ITEM: Retreat to Home", 10, neutral_sent[nn], 3.00, 1.50)
+      call RemoveGuardPosition(neutral_sent[nn])
+      call IssuePointOrder(neutral_sent[nn], "move", GetLocationX(home_location), GetLocationY(home_location))
+      call TQAddUnitJob(GetTimeToReachLoc(neutral_sent[nn], home_location) + 1, RESET_GUARD_POSITION, 1, neutral_sent[nn])
+      call TQAddJob(5, BUY_NEUTRAL, id)
+    else
+      call ResetBuyNeutralUnit(nn)
+    endif
     set buy_place = null
     return
   endif
-//  call DisplayToAll("Buy Neutral Started")
+  set timetotravel = GetTimeToReachUnit(neutral_sent[nn], buy_place) + 1
+  set dist = DistanceBetweenUnits(neutral_sent[nn], buy_place)
+  //  call DisplayToAll("Buy Neutral Started")
   if (buy_time_large[nn] >= 0 and buy_time_large[nn] + buy_timeout_large < current_time) or (buy_time_small[nn] >= 0 and buy_time_small[nn] + buy_timeout_small < current_time) then
     set available_time[id] = ai_time + regenerate_time[id] / 2
     call ResetBuyNeutralUnit(nn)
@@ -99,7 +87,9 @@ function BuyNeutral takes integer id returns nothing
     endif
     if dist < buy_distance then
       call CreateDebugTag("buy unit", 10, neutral_sent[nn], 3.00, 1.50)
-      call IssueImmediateOrder(neutral_sent[nn], "holdposition")  // stop will let panda cancel element clone
+      if GetUnitCurrentOrder(neutral_sent[nn]) == OrderId("move") then
+        call IssueImmediateOrder(neutral_sent[nn], "holdposition")  // stop will let panda cancel element clone
+      endif
       call IssueNeutralImmediateOrderById(ai_player, buy_place, old_id[id])
       if buy_time_small[nn] < 0 then
         set buy_time_small[nn] = current_time
@@ -110,6 +100,16 @@ function BuyNeutral takes integer id returns nothing
       call IssuePointOrder(neutral_sent[nn], "move", GetUnitX(buy_place), GetUnitY(buy_place))
       set time_next_try = RMin(4, RMax(timetotravel,1))
     endif
+  endif
+  // Enemies are present so get home before they harm us
+  if detectedenemies >= GetUnitStrength(neutral_sent[nn]) then
+    call RemoveGuardPosition(neutral_sent[nn])
+    call IssuePointOrder(neutral_sent[nn], "move", GetLocationX(home_location), GetLocationY(home_location))
+    //call TQAddUnitJob(GetTimeToReachLoc(neutral_sent[nn], home_location), RESET_GUARD_POSITION, 1, neutral_sent[nn])
+    set retreat_home_n = true
+    call TQAddJob(1, BUY_NEUTRAL, id)
+    set buy_place = null
+    return
   endif
   call TQAddJob(time_next_try, BUY_NEUTRAL, id)
   set buy_place = null
