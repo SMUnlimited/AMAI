@@ -188,6 +188,7 @@ set /p searchPath=Input and Enter:
 setlocal enabledelayedexpansion
 for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
   call Uninstall "!%%~fF!"
+  call UninstallCommander "!%%~fF!"
 )
 endlocal
 goto EndScript
@@ -203,6 +204,7 @@ ECHO.
 set /p filePath=Input and Enter:
 
 call Uninstall "%filePath%"
+call UninstallCommander "%filePath%"
 ECHO If the Remove is complete, please close this window, else please click any key to continue Remove.
 pause
 goto UnInstallMap
