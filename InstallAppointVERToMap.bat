@@ -190,6 +190,7 @@ set /p searchPath=请输入并回车:
 setlocal enabledelayedexpansion
 for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
   call Uninstall "!%%~fF!"
+  call UninstallCommander "!%%~fF!"
 )
 endlocal
 goto EndScript
@@ -205,6 +206,7 @@ ECHO.
 set /p filePath=请输入并回车:
 
 call Uninstall "%filePath%"
+call UninstallCommander "%filePath%"
 ECHO 若卸载完成, 请关闭本窗口, 否则请点击任意键继续卸载
 pause
 goto UnInstallMap
