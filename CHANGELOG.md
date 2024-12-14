@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [Unreleased]
+
+### Fixed
+- Fixed edge cases where retreat location could not be the home town as expected.
+- (DevTools) Removed use of hardcoded ids in expansion tracking for custom mod support.
+
 ## [3.4.1] - 2024-12-07
 
 ### Added
