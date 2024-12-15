@@ -112,26 +112,31 @@ endfunction
 
 function SeedNewTownsForPlayer takes integer p returns nothing
   local group g = CreateGroup()
+  local group tg = CreateGroup()
   local unit u = null
   call GroupEnumUnitsOfPlayer(g, Player(p), null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if (IsUnitType(u, UNIT_TYPE_TOWNHALL) or IsUnitGoldMine(u)) and UnitAlive(u) and not IsUnitInGroup(u, in_town_group) then
-      call SeedNewTownAtLoc(GetUnitLoc(u), p)
+    if UnitAlive(u) and not IsUnitInGroup(u, in_town_group) then
+      if IsUnitType(u, UNIT_TYPE_TOWNHALL) or IsUnitGoldMine(u) then
+        call SeedNewTownAtLoc(GetUnitLoc(u), p)
+      elseif IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+        call GroupAddUnit(tg, u)
+      endif
     endif
     call GroupRemoveUnit(g, u)
   endloop
-  call GroupClear(g)
-  call GroupEnumUnitsOfPlayer(g, Player(p), null)
   loop
-    set u = FirstOfGroup(g)
+    set u = FirstOfGroup(tg)
     exitwhen u == null
-    if IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitInGroup(u, in_town_group) then
+    if not IsUnitInGroup(u, in_town_group) then
       call SeedNewTownAtLoc(GetUnitLoc(u), p)
     endif
-    call GroupRemoveUnit(g, u)
+    call GroupRemoveUnit(tg, u)
   endloop
+  call DestroyGroup(tg)
+  set tg = null
   call DestroyGroup(g)
   set g = null
 endfunction
