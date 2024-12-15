@@ -4,12 +4,12 @@
     location array town_loc
     real array town_value
     real array town_threat
-    //group array town_group
     integer array town_count
     integer array town_threat_army
     boolean array town_can_tp
     integer most_threatened_town = -1
     integer most_threatened_enemy_town = -1
+    integer max_value_town = -1
     integer home_town = -1
     integer town_num = 0
     real town_radius = 2500
@@ -20,7 +20,6 @@ function CopyTown takes integer from, integer to returns nothing
   set town_loc[to] = town_loc[from]
   set town_value[to] = town_value[from]
   set town_threat[to] = town_threat[from]
-  //set town_group[to] = town_group[from]
   set town_count[to] = town_count[from]
   set town_can_tp[to] = town_can_tp[from]
   if town_num == from then
@@ -51,7 +50,6 @@ function TrackTown takes integer num returns boolean
     set u = FirstOfGroup(g)
     exitwhen u == null
     if GetOwningPlayer(u) == tp and IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and not IsUnitHidden(u) and not IsUnitInGroup(u, in_town_group) then
-      //call GroupAddUnit(town_group[num], u)
       call GroupAddUnit(in_town_group, u)
       set x = x + GetUnitX(u)  // Prevent loc exceeding map range
       set y = y + GetUnitY(u)
@@ -69,8 +67,6 @@ function TrackTown takes integer num returns boolean
   call RemoveLocation(town_loc[num])
   set tp = null
   if town_count[num] == 0 then
-    //call DestroyGroup(town_group[num])
-    //set town_group[num] = null
     set town_loc[num] = null
     return false
   endif
@@ -79,11 +75,12 @@ function TrackTown takes integer num returns boolean
   set town_loc[num] = Location(x, y)
   if Player(p) == ai_player then
     call CreateDebugTagLoc("Tracked Town: " + Int2Str(num) + " structures:" + Int2Str(town_count[num]), 16, x, y, 8.00, 3.00)
-  elseif not IsPlayerAlly(Player(p), ai_player) then
-    set town_can_tp[num] = false
-  endif
-  if DistanceBetweenPoints(town_loc[num], home_location) <= town_radius then
-    set home_town = num
+    if town_value[num] > max_value_town then
+      set max_value_town = num
+    endif
+    if DistanceBetweenPoints(town_loc[num], home_location) <= town_radius then
+      set home_town = num
+    endif
   endif
   return true
 endfunction
@@ -108,7 +105,6 @@ function SeedNewTownAtLoc takes location l, integer p returns nothing
   set town_owner[town_num] = p
   set town_loc[town_num] = l
   set town_threat[town_num] = 0
-  //set town_group[town_num] = CreateGroup()
   if TrackTown(town_num) then
     set town_num = town_num + 1
   endif
@@ -117,6 +113,16 @@ endfunction
 function SeedNewTownsForPlayer takes integer p returns nothing
   local group g = CreateGroup()
   local unit u = null
+  call GroupEnumUnitsOfPlayer(g, Player(p), null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if (IsUnitType(u, UNIT_TYPE_TOWNHALL) or IsUnitGoldMine(u)) and UnitAlive(u) and not IsUnitInGroup(u, in_town_group) then
+      call SeedNewTownAtLoc(GetUnitLoc(u), p)
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call GroupClear(g)
   call GroupEnumUnitsOfPlayer(g, Player(p), null)
   loop
     set u = FirstOfGroup(g)
@@ -141,6 +147,9 @@ function SeedNewTowns takes nothing returns nothing
     endif
     set p = p + 1
   endloop
+  if home_town == -1 then
+    set home_town = max_value_town // most valuable town is likely the home town
+  endif
   set sp = null
 endfunction
 
