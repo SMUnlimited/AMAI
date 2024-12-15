@@ -10395,6 +10395,7 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   local integer c = 0
   local group harasser = null
   local group g = null
+  local unit u = null
   local integer key = groupnum
   local real strength = 0
   local real getstrength = 0
@@ -10462,10 +10463,17 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     call AddUnitsToHashtable(additional_info, key, HARASS_UNITGROUP, harasser)
     call TQAddUnitJob(0, HARASS, key, null)
   else
+    set i = HARASS_UNITGROUP * 2 + c
     set getstrength = LoadReal(additional_info, key, START_STRENGTH)
     call SaveReal(additional_info, key, START_STRENGTH, strength + getstrength)
     call GroupAddGroup(unit_harassing, harasser)
-    call AddUnitsToHashtable(additional_info, key, HARASS_UNITGROUP + t - c, harasser)
+    loop
+      set u = FirstOfGroup(harasser)
+      exitwhen u == null
+      set i = i + 1
+      call SaveUnitHandle(additional_info, key, i, u)
+      call GroupRemoveUnit(harasser, u)
+    endloop
     call TraceAll("StartHarass : add new unit to harass group" )
   endif
   call DestroyGroup(harasser)
@@ -12517,7 +12525,7 @@ function SleepInCombatAM takes boolean ally_override returns nothing
     exitwhen isfleeing // Retreat control says to retreat
     if lastcaptainx != 0 and lastcaptainy != 0 then
       call CreateDebugTagLoc("Sleep at captainloc", 10, lastcaptainx, lastcaptainy, 1.00, 0.80)
-      if u == null or not UnitAlive(u) or IsUnitInvisible(u, ai_player) then
+      if u == null or not UnitAlive(u) or IsUnitInvisibleAM(u, ai_player) then
         call GroupEnumUnitsInRange(g, lastcaptainx, lastcaptainy, battle_radius,null)
         loop
           set u = FirstOfGroup(g)
