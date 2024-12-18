@@ -5,8 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Deprecated
+- (DevTools) 'race_ancient_expansion_strength' setting does not do anything anymore as it uses actual strength to determine feasability of attack.
+
 ### Fixed
 - Fixed edge cases where retreat location could not be the home town as expected.
+- Disabled special racial militia, ancient expand, tower rush in team games as hardcoded targets still break these special attacks.
+- Fixed a bug where all special racial expansions could not run on the first expansion.
+- Lots of fixes to ancient expansion logic improving overall reliability.
+- Fixed bug where ancient attacks didn't take account of ancient strength in retreat calculations.
 - (DevTools) Removed use of hardcoded ids in expansion tracking for custom mod support.
 
 ## [3.4.1] - 2024-12-07

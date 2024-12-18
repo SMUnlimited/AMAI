@@ -1036,6 +1036,7 @@ globals
     integer current_expansion_creeps = 0
     boolean current_expansion_iswater = false
     unit current_expansion = null
+    boolean specialexpand = false
     unit fixmine = null
     integer fixharvest = 0
     boolean first_expansion_chosen = false
@@ -5719,6 +5720,9 @@ function GetOwnStrength takes nothing returns integer
     if GetUnitTypeId(u) == old_id[racial_rushcreep] and br_rush_attacked and UnitAlive(u) and not IsUnitHidden(u) then
       set sum = sum + 5 // Include boost in strength calculations
     endif
+    if ancient_expanding and ancient_exp_state >= 2 and u == ancient_exp_unit and UnitAlive(u) and not IsUnitHidden(u) then
+      set sum = sum + 7
+    endif  
     if UnitAlive(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitInGroup(u, unit_healing) and not IsUnitHidden(u) then
       set strength = GetUnitStrength(u)
       if GetUnitTypeId(u) == old_id[racial_ghoul] then
@@ -10931,8 +10935,13 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   
   set take_exp = (GetExpFoe(u) != null)
   set u = null
+  
+  if ancient_expanding then
+    return BUILT_SOME
+  endif
+  
   if take_exp then
-    if GetOwnStrength() <= GetExpansionStrength() then
+    if GetOwnStrength() < GetExpansionStrength() then
       // Not strong enough to take mine so don't save gold and wood for expansion, use to build more troops instead
       set total_gold = total_gold + gold_cost
       set total_wood = total_wood + wood_cost
@@ -11291,7 +11300,6 @@ local boolean exp_prepared = false
 local boolean rebuild = false
 local unit u = null
 local boolean upkeepboost = false
-local boolean specialexpand = false
 local integer aggexpand = 0
 local boolean fastexpa = true
 local boolean minetimeready = false
@@ -11313,7 +11321,7 @@ if current_expansion == null or CheckExpansionTaken(current_expansion) then
     endif
     return
   endif
-  set specialexpand = true
+  set specialexpand = not IsWaterExpansion(current_expansion) // water expand can't use racial expansion techniques
   set aggexpand = 1
 endif
 if fastexpa then
@@ -11359,8 +11367,8 @@ endif
 //if (specialexpand) then
 //  call Trace("RACIAL EXPA POWER READY")
 //endif
-if take_exp and race_militia_expansion_available and not militia_expanding and specialexpand then
-  call Trace("ExpansionBuilder:Could militia expand?")
+if take_exp and race_militia_expansion_available and not militia_expanding and specialexpand and c_ally_total <= 0 then
+  call Trace("ExpansionBuilder:Militia Expand")
   set specialexpand = false
   if GetRandomInt(1, 100) <= 60 then
     call TQAddJob(0, MILITIA_EXPAND, 0)
@@ -11372,8 +11380,8 @@ endif
 //call Trace("ANCIENT: EXP STRENGTH" + Int2Str(GetExpansionStrength()))
 //call Trace("ANCIENT: RUSH HERO " + Int2Str(i) + " vs rush level " + Int2Str(race_ancient_expansion_hero_rush_level)) 
 //call Trace("ANCIENT: PROB " + Int2Str(GetRandomInt(1,100)) + " vs race prob " +Int2Str(race_ancient_expansion_probability))
-if take_exp and race_ancient_expansion_available and not ancient_expanding and specialexpand then
-  call Trace("ExpansionBuilder:Could ancient expand?")
+if take_exp and race_ancient_expansion_available and not ancient_expanding and specialexpand and c_ally_total <= 0 then
+  call TraceAll("ExpansionBuilder:Ancient Expand")
   set specialexpand = false
   set i = 0
   if hero_unit[1] != null then
@@ -11385,14 +11393,17 @@ if take_exp and race_ancient_expansion_available and not ancient_expanding and s
   if hero_unit[3] != null then
     set i = i + hero_rush_bonus[hero[3]]
   endif
-  if GetRandomInt(1, 100) <= race_ancient_expansion_probability and GetExpansionStrength() < race_ancient_expansion_strength and i >= race_ancient_expansion_hero_rush_level then
+  if GetRandomInt(1, 100) <= race_ancient_expansion_probability and i >= race_ancient_expansion_hero_rush_level then
     call TQAddJob(0, ANCIENT_EXPANSION_CHECK, 0)
     set u = null
     return
   else
-    call Trace("ExpansionBuilder:Won't ancient exp this time")
+    call TraceAll("ExpansionBuilder:Won't ancient exp this time")
   endif
+//elseif race_ancient_expansion_available and not ancient_expanding and specialexpand and c_ally_total <= 0 then
+//    call TraceAll("ExpansionBuilder:Could ancient expand")
 endif
+
 
 if not exp_prepared and u == null then
   set rebuild = CheckExpansionRebuild()
@@ -11404,9 +11415,9 @@ endif
 set u = null
 
 if exp_prepared and race_item_expansion_available and not item_expanding and specialexpand then
-  call Trace("ExpansionBuilder:Could item expand?")
+  call Trace("ExpansionBuilder:Item Expand")
   set specialexpand = false
-  if GetRandomInt(1, 100) <= race_item_expansion_probability and GetResourceAmount(current_expansion) > (gold_price[race_item_expansion_item_id] + 300) and not_taken_expansion == null and shop_unit != null and race_item_expansion_item_id != 0 and tier >= race_item_sale_level then
+  if GetRandomInt(1, 100) <= race_item_expansion_probability and shop_unit != null and race_item_expansion_item_id != 0 and tier >= race_item_sale_level then
       set item_expanding = true
       call TQAddJob(1, ITEM_EXPANSION, 0)
       return
@@ -12353,8 +12364,8 @@ function BRRush takes nothing returns boolean
   if i != 1 and utemp != null and GetUnitState(utemp, UNIT_STATE_LIFE) >= GetUnitState(utemp, UNIT_STATE_MAX_LIFE) * 0.65 then
     call Trace("Ancient Barracks Creep Rush Attack")
     set attack_running = true
-    call EnableRetreatControl()
     set br_rush_attacked = true
+    call EnableRetreatControl()
     set buildloc = GetUnitLoc(utemp)
     call RemoveGuardPosition(utemp)
     call IssueImmediateOrderById(utemp, OrderIdCancel) // Cancel building order
@@ -13065,6 +13076,40 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
   call Trace("==exit Sleep Defend Town==")
 endfunction
 
+function AncientExpaAttack takes nothing returns nothing
+  local location loc = null
+  local real attacktimer = 0
+  local integer i = 0
+  local real creepstrength = 0
+  call Trace("An Ancient Expansion Attack")
+  call RemoveGuardPosition(ancient_exp_unit)
+  call IssueImmediateOrderById(ancient_exp_unit, OrderIdCancel)
+  call IssueImmediateOrder(ancient_exp_unit, "unroot")
+  set ancient_attack_running = true
+  call FromGroupAndGhoulsAM(3)
+  call CaptainAttack(GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))
+  if (ancient_exp_creep != null and UnitAlive(ancient_exp_creep)) then
+    set loc = GetUnitLoc(ancient_exp_creep)
+  else
+    set loc = GetUnitLoc(ancient_exp_mine)
+  endif
+  loop
+    exitwhen CaptainAtGoal() or DistanceBetweenPoints(army_loc[main_army], loc) < 500 // Attack force at ancient
+    call Sleep(1)
+  endloop
+  call IssuePointOrderLoc(ancient_exp_unit, "attack", loc)
+  call RemoveLocation(loc)
+  set loc = null
+  set creepstrength = GetAncientCampStrength()
+  //if GetOwnStrength() >= creepstrength then
+    // Just creep normally as safer if tree not actually required in attack
+  call AttackMoveKillCreep(ancient_exp_creep, false)
+  //endif
+  call IssueTargetOrder(ancient_exp_unit, "entangle", ancient_exp_mine)
+  set ancient_attack_running = false
+  set ancient_exp_state = 7
+endfunction
+
 function SetLeadAlly takes nothing returns nothing
   local integer i = 0
   local boolean checkdone = false
@@ -13245,29 +13290,14 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
 
     // ancient expansion attack
     //
-    if ancient_expanding then
-      if ancient_exp_state == 2 or ancient_exp_state == 3 then
-        call Trace("An Ancient Expansion Attack")
-        //call FormGroupAM(3)
-        //call AddAssault(1, old_id[racial_hall[1]])
-        //call SetCaptainHome(BOTH_CAPTAINS,GetUnitX(ancient_exp_unit),GetUnitY(ancient_exp_unit))
-        //call AttackMoveKillXYAAM(R2I(GetUnitX(ancient_exp_unit)), R2I(GetUnitY(ancient_exp_unit)))
+    if ancient_expanding and GetOwnStrength() >= GetAncientCampStrength() then
+      if ancient_exp_state == 3 and ancient_exp_unit != null then
+        call AncientExpaAttack()
         return
-      elseif ancient_exp_state == 4 then
-        set ancient_attack_running = true
-        call Trace("An Ancient Expansion - Final stage")
-        //call AddAssault(1, old_id[racial_hall[1]])
-        //call SetCaptainHome(BOTH_CAPTAINS,GetUnitX(ancient_exp_unit),GetUnitY(ancient_exp_unit))
-        set creep = GetExpFoe(creep)
-        //if DistanceBetweenUnits(ancient_exp_unit, creep) <= 500 then
-          call AttackMoveKillCreep(creep, false)
-        //else
-          //call AttackMoveKillXYAAM(R2I(GetUnitX(ancient_exp_unit)), R2I(GetUnitY(ancient_exp_unit)))
-        //endif
-        set ancient_attack_running = false
-        set creep = null
-        return
-      endif
+      elseif ancient_exp_state == 2 then
+        call Trace("Prep for ancient expand2")
+        return // Don't do new attacks yet as nearly ready to help expansion  
+      endif  
     endif
 
     // item expansion attack
