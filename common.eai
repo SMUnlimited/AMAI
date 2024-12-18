@@ -5339,9 +5339,9 @@ function GetHeroStrength takes unit u returns integer
   local integer lvl = GetHeroLevel(u)
   if GetOwningPlayer(u) != ai_player or not IsUnitInGroup(u, unit_healing) then
     if lvl >= ver_hero_ultimate_level then
-      return R2I((ver_hero_base_value + lvl + ver_hero_ultimate_value)/2 + 0.5)
+      return R2I(ver_hero_base_value + lvl + ver_hero_ultimate_value + 0.5)
     else
-      return R2I((ver_hero_base_value + lvl)/2 + 0.5)
+      return R2I(ver_hero_base_value + lvl + 0.5)
     endif
   endif
   return 0
@@ -5370,19 +5370,14 @@ endfunction
 
 //============================================================================
 function GetUnitStrengthEx takes unit u returns integer
-  local integer f = GetUnitLevel(u)
   if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then
     if IsUnitType(u, UNIT_TYPE_HERO) then
       return GetHeroStrength(u)
     else
-      return R2I((GetUnitFoodUsed(u) + f) / 2 + 0.5)
+      return R2I((GetUnitFoodUsed(u) + GetUnitLevel(u)) / 2 + 0.5) // +0.5 for rounding , food used often matches the level but can be weaker or stronger forms of a lvl 2 unit so uses average
     endif
   else
-    if f >= ver_hero_ultimate_level then
-      return R2I((GetUnitFoodUsed(u)+ f + ver_hero_ultimate_value) / 2 + 0.5)
-    else
-      return R2I((GetUnitFoodUsed(u) + f) / 2 + 0.5)
-    endif
+      return R2I(GetUnitLevel(u) / 2 + 0.5) // Creeps entirely use the level in evaluating strength
   endif
   return 0
 endfunction
@@ -5684,9 +5679,9 @@ endfunction
 function GetCreepBonus takes unit u, real radius returns integer
   local integer i = GetLocationCreepStrength(GetUnitX(u), GetUnitY(u), radius)
   //call Trace("Got bonus")
-  if i >= 20 then
+  if i >= 20 then // lvl 20 or more
     return i + red_creep_camp_strength_bonus
-  elseif i >= 10 then
+  elseif i >= 10 then // lvl 10 - 19
     return i + orange_creep_camp_strength_bonus
   else
     return i + green_creep_camp_strength_bonus
@@ -5903,7 +5898,7 @@ function GetLocationInDistanceFromLoc takes location loc, real dist, boolean inj
       //return null
     endif
     if injob then
-      call TQSleep(0.2)
+      call Sleep(0.2)
     else  
       call Sleep(0.2)
     endif  

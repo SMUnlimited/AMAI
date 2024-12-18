@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Changed
+- Slight tweak to strength calculation to prevent creep levels being calculated incorrectly in some cases and don't average hero levels as unessecary.
+
 ### Deprecated
 - (DevTools) 'race_ancient_expansion_strength' setting does not do anything anymore as it uses actual strength to determine feasability of attack.
 
