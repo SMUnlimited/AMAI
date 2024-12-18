@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed a bug where all special racial expansions could not run on the first expansion.
 - Lots of fixes to ancient expansion logic improving overall reliability.
 - Fixed bug where ancient attacks didn't take account of ancient strength in retreat calculations.
+- Item expansion now only occurs when the AI naturally wants to expand instead of making the AI expand earlier.
 - (DevTools) Removed use of hardcoded ids in expansion tracking for custom mod support.
 
 ## [3.4.1] - 2024-12-07

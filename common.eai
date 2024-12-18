@@ -10929,6 +10929,13 @@ function StartExpansionAM takes integer qty, integer hall returns integer
  // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion choosen")
   set gold_cost = GetUnitGoldCost2(hall)
   set wood_cost = GetUnitWoodCost2(hall)
+  if item_expanding then
+    set gold_cost = gold_price[race_item_expansion_item_id]
+    set wood_cost = wood_price[race_item_expansion_item_id]
+  endif
+  if item_expanding and not item_job_running then
+    call TQAddJob(1, ITEM_EXPANSION, 0)
+  endif
 
   set total_gold = total_gold - gold_cost
   set total_wood = total_wood - wood_cost
@@ -10936,8 +10943,8 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   set take_exp = (GetExpFoe(u) != null)
   set u = null
   
-  if ancient_expanding then
-    return BUILT_SOME
+  if ancient_expanding or militia_expanding then
+    return BUILT_SOME // Just safety check to prevent normal expansion running while these are both running
   endif
   
   if take_exp then
@@ -10956,6 +10963,10 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   if total_wood < 0 and wood_cost > 0 then
     return NOT_ENOUGH_RES
   endif
+  
+  if item_expanding then  
+    return BUILT_SOME
+  endif  
 
  // call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion rescources sorted")
   if expansion_peon == null or not UnitAlive(expansion_peon) then
@@ -11419,8 +11430,6 @@ if exp_prepared and race_item_expansion_available and not item_expanding and spe
   set specialexpand = false
   if GetRandomInt(1, 100) <= race_item_expansion_probability and shop_unit != null and race_item_expansion_item_id != 0 and tier >= race_item_sale_level then
       set item_expanding = true
-      call TQAddJob(1, ITEM_EXPANSION, 0)
-      return
   endif
 endif
 
@@ -13299,25 +13308,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
         return // Don't do new attacks yet as nearly ready to help expansion  
       endif  
     endif
-
-    // item expansion attack
-    //
-    if item_expanding then
-      call Trace("An Item Expansion Attack or Guard")
-      set item_attack_running = true
-      
-      if item_exp_state == 1 then
-        call AttackMoveKillCreep(GetExpFoe(creep), false)
-        set item_attack_running = false
-        set creep = null
-      elseif item_exp_state > 0 then
-        call FromGroupAndGhoulsAM(3)
-        call AttackMoveKillXYAAM(R2I(GetLocationX(item_exp_guard_loc)),R2I(GetLocationY(item_exp_guard_loc)))  //Prevent the army from leaving before using the item , so no set item_attack_running
-      endif
-      return
-    endif
-
-
   
   if rushcreep_target != null and UnitAlive(rushcreep_target) and GetLocationCreepStrength(GetUnitX(rushcreep_target), GetUnitY(rushcreep_target), 510) < own_strength + 5 then // Matches getOwnStrength +5 addition for ancient
     set battle_radius = creep_battle_radius 
