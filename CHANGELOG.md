@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 - Slight tweak to strength calculation to prevent creep levels being calculated incorrectly in some cases and don't average hero levels as unessecary.
+- Harass attacks were occuring often for all AI's regardless of aggression level so they now occur less often for less aggressive profiles.
 
 ### Deprecated
 - (DevTools) 'race_ancient_expansion_strength' setting does not do anything anymore as it uses actual strength to determine feasability of attack.
