@@ -11915,6 +11915,8 @@ function FormGroupAM takes integer seconds returns nothing
   local integer count = 0
   local integer unitid = 0
   local integer desire = 0
+  local group g = null
+  local unit u = null
 
   call InitAssault()
  
@@ -11933,7 +11935,27 @@ function FormGroupAM takes integer seconds returns nothing
     set desire = attack_max[index]
     set count  = TownCountDone(unitid)
 
+    if wood > minimum_peon_wood then
+      set take_all_ghouls_along = true
+    elseif wood < minimum_peon_wood then
+      set take_all_ghouls_along = false
+    endif
+
     if unitid == racial_ghoul and not take_all_ghouls_along then
+      // Ghoul count needs to exclude units sent back to heal otherwise harvesting ghouls will be pulled off.
+      set count = 0
+      set g = CreateGroup()
+      call GroupEnumUnitsOfPlayer(g, ai_player, null)
+      loop
+        set u = FirstOfGroup(g)
+        exitwhen u == null
+        if GetUnitTypeId(u) == old_id[racial_ghoul] and UnitAlive(u) and IsStandardUnit(u) and not IsUnitBuying(u) then
+          set count = count + 1
+        endif
+        call GroupRemoveUnit(g, u)
+      endloop
+      call DestroyGroup(g)
+      set g = null
       set desire = (count - harvesting_ghouls) // all spare ghouls should attack and join attack as built
       if towerrush then
         set desire = Min(Max(count - 2 , 0),desire)  // reserve

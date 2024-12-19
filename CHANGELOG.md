@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Lots of fixes to ancient expansion logic improving overall reliability.
 - Fixed bug where ancient attacks didn't take account of ancient strength in retreat calculations.
 - Item expansion now only occurs when the AI naturally wants to expand instead of making the AI expand earlier.
+- Fixed an issue where as ghouls die in an attack, harvesting ghouls are being pulled off to fill dead/fleeing units.
 - (DevTools) Removed use of hardcoded ids in expansion tracking for custom mod support.
 
 ## [3.4.1] - 2024-12-07
