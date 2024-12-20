@@ -891,6 +891,8 @@ globals
 	constant integer PROFILE_SELECTION = 6
 	constant integer NEUTRAL_GUARDS = 7
   constant integer TYPECASTING = 8
+  hashtable attacktable = InitHashtable() // To build custom attack groups
+  constant integer CUSTOM_ATTACK = 1
 
   gamecache amaiCache = InitGameCache("AMAI_AI.w3v")
   constant integer PROFILE_USED = 0
@@ -11919,7 +11921,6 @@ function FormGroupAM takes integer seconds returns nothing
   local unit u = null
 
   call InitAssault()
- 
 
   loop
     exitwhen index >= attack_length
@@ -11974,11 +11975,6 @@ function FormGroupAM takes integer seconds returns nothing
     set index = index + 1
   endloop
   if seconds > 0 then
-    if not town_threatened then
-      call ClearCaptainTargets() // Causes the pause in movement to allow units to catch up
-                                 // disabled when town threatened as we want units to get back fast
-                                 // and disabled if no sleep delay specified
-    endif
     call Sleep(seconds)
   endif
 endfunction
@@ -12089,7 +12085,7 @@ function SleepInCombatAM takes boolean ally_override returns nothing
       endif
       if (u != null and not CaptainInCombat(true)) then
         set attack_length_counter = attack_length_counter + 1
-        if attack_length_counter > attack_reform_length then
+        if attack_length_counter > R2I(LinearInterpolation(30, 80, attack_reform_length, attack_reform_length * 10, FoodUsed())+0.5) then
             set attack_length_counter = 0
             call FormGroupAM(0)
         endif
@@ -12273,17 +12269,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
 
     call StaggerSleep(1 * sleep_multiplier, (1 * sleep_multiplier) + 2)
 
-    //set attack_length_counter = attack_length_counter + 1
-        //if reform and attack_length_counter > attack_reform_length then
-    //  if CaptainInCombat(true) then
-    //	set attack_length_counter = attack_length_counter - 2
-    //  else
-    //	set attack_length_counter = 0
-    //	call FormGroupAM(2)
-    //  endif
-        //endif
-
-    if desperation_assault and attack_length_counter > attack_reform_length * 5 then
+    if desperation_assault and attack_length_counter > attack_reform_length * 10 then
       call DesperationAssault()
       set attack_length_counter = 0
     else 
@@ -12298,10 +12284,11 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       endif
       if CaptainInCombat(true) and combat_length_counter > attack_reform_length then
         set combat_length_counter = 0
-        call FormGroupAM(0)
-      elseif not CaptainInCombat(true) and attack_length_counter > attack_reform_length then
+        call FormGroupAM(0) // Safe in combat as reinforces while fight is ongoing
+      elseif not CaptainInCombat(true) and attack_length_counter > R2I(LinearInterpolation(30, 80, attack_reform_length, attack_reform_length * 10, FoodUsed())+0.5) then // If a large army generally don't want to wait for reinforcements, so only reform occasionally
         set attack_length_counter = 0
-        set combat_length_counter = 0
+        set combat_length_counter = 0 
+        //call TraceAll("Reform army")
         call FormGroupAM(1)
       endif
     endif
@@ -12516,7 +12503,7 @@ function AttackMoveTowerRush takes nothing returns nothing
 		endif
 		call StaggerSleep(2*sleep_multiplier, 3*sleep_multiplier)
 		set attack_length_counter = attack_length_counter + 1
-		if attack_length_counter > attack_reform_length then
+		if attack_length_counter > attack_reform_length * 2 then
 			set attack_length_counter = 0
 			call FormGroupAM(2)
 		endif
@@ -13081,7 +13068,7 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
       set defense_length_counter = 0
       //call FormGroupAM(0)
     endif
-    if not CaptainIsHome() and not CaptainRetreating() and not CaptainInCombat(false) then
+    if not CaptainIsHome() then
       call CaptainGoHome()
     endif  
     //if CaptainAtGoal() or CaptainInCombat(true) or CaptainInCombat(false) then
