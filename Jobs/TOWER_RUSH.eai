@@ -249,7 +249,15 @@ function TowerRushJob takes nothing returns nothing
 	call CreateDebugTagLoc("build tower loc", 10, GetLocationX(t), GetLocationY(t), 60.00, 55.00)
 	//call Trace("Getting ready to tower rush")
 	if GetLocationX(t) != 0 and GetLocationY(t) != 0 and (hero_built[1] or hero_built[2] or hero_built[3]) then
-		set CloseJob = town_threatened and town_threat[most_threatened_town] >= teleport_low_threat * 1.5
+		if not tower_peon_inplace then
+			set i = 1
+			loop
+				exitwhen i > race_tower_peon or CloseJob
+				set CloseJob = IsUnitVisible(builder[i], rushedplayer)
+				set i = i + 1
+			endloop
+		endif
+		set CloseJob = CloseJob or (town_threatened and town_threat[most_threatened_town] >= teleport_low_threat * 1.5)
 		set CloseJob = CloseJob or (race_tower_item_must and not tower_used_item and hero_unit[2] != null and builder[0] == null)  //  too longer time not buy item , but item must
 		if not CloseJob then
 			set EnemyStrength = GetLocationNonCreepStrength(GetLocationX(t), GetLocationY(t), 1200)
@@ -401,7 +409,7 @@ function TowerRushJob takes nothing returns nothing
 		call GroupRemoveUnit(g,builder[i])
 		set i = i + 1
 	endloop
-	set tempg = CopyGroup(g)
+	set tempg = CopyGroup(g,tempg)
 	set g = GetNearestSubGroupOfGroup(g, tower_target_loc, 10)
 	set i = 1
 	loop
@@ -474,7 +482,7 @@ function TowerRushJob takes nothing returns nothing
 				exitwhen i > race_tower_peon
 				call RemoveGuardPosition(builder[i])
 				call DestroyGroup(tempg)
-				set tempg = CopyGroup(g)
+				set tempg = CopyGroup(g,tempg)
 				loop
 					set u = FirstOfGroup(tempg)
 					exitwhen u == null or s > 0
