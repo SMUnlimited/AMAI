@@ -9,10 +9,8 @@ boolean fixbuild = false
 function FixBuildJob takes nothing returns nothing
   local group g = CreateGroup()
   local unit u = null
-  local unit array peon
-  local integer i = 0
-  local integer c = 0
-  local integer array id
+  local unit build = null
+  local integer id = 0
   local real x = 0
   local real y = 0
   call DisplayToAllJobDebug("Fix Job Start")
@@ -21,37 +19,27 @@ function FixBuildJob takes nothing returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    set id[i] = 0
     if GetOwningPlayer(u) == ai_player and not IsUnitHidden(u) and IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitLoaded(u) and UnitAlive(u) and not IsUnitBuying(u) then
-      set peon[i] = u
       if DistanceBetweenPoints_kd(home_location,GetUnitLoc(u)) > 800 or GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) then
-        set id[i] = GetUnitCurrentOrder(u)
-        if id[i] <= 852678 then
-          set id[i] = 0
+        set id = GetUnitCurrentOrder(u)
+        if id <= 852678 then
+          call IssuePointOrderByIdLoc(u, 851987, home_location)
+          call CreateDebugTag("Fix Job : peon go home", 10, u, 4.00, 2.00)
+        elseif id != old_id[racial_rushcreep] and id != old_id[racial_expansion] then
+          set build = CreatePathingUnitFull(build, ai_player, id, GetLocationX(home_location) + ISign() * GetRandomReal(500, 1000), GetLocationY(home_location) + ISign() * GetRandomReal(-1000, -500))
+          set x = GetUnitX(build)
+          set y = GetUnitY(build)
+          call RemoveUnit(build)
+          call IssuePointOrderById(u, id, x, y)
+          call CreateDebugTag("Fix Job : peon build", 10, u, 4.00, 2.00)
         endif
-        call IssuePointOrderByIdLoc(u, 851987, home_location)
-        call CreateDebugTag("Fix Job : peon go home", 10, u, 4.00, 2.00)
       endif
-      set i = i + 1
     endif
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
   set g = null
-  loop
-    exitwhen c >= i
-    if id[i] != 0 and peon[i] != null and id[i] != old_id[racial_rushcreep] and id[i] != old_id[racial_expansion] then
-      set u = CreatePathingUnitFull(u, ai_player, id[i], GetLocationX(home_location) + ISign() * GetRandomReal(500, 1000), GetLocationY(home_location) + ISign() * GetRandomReal(-1000, -500))
-      set x = GetUnitX(u)
-      set y = GetUnitY(u)
-      call RemoveUnit(u)
-      call IssuePointOrderById(peon[i], id[i], x, y)
-      call CreateDebugTag("Fix Job : peon build", 10, u, 4.00, 2.00)
-    endif
-    set peon[i] = null
-    set c = c + 1
-  endloop
-  set u = null
+  set build = null
   if GetUnitCountDone(old_id[racial_farm]) < 2 then
     call TQAddJob(2, FIX_BUILD, 0)
   endif
