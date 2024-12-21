@@ -5706,7 +5706,7 @@ function GetOwnStrength takes nothing returns integer
   local real sum = 0
   local group g = CreateGroup()
   local unit u = null
-  local integer max_ghouls = attacking_ghouls
+  local integer max_ghouls = TownCountDone(racial_ghoul) - harvesting_ghouls
   local integer ghoul_num = 0
   local real airsum = 0
   local real strength = 0
@@ -11961,7 +11961,11 @@ function FormGroupAM takes integer seconds returns nothing
       if towerrush then
         set desire = Min(Max(count - 2 , 0),desire)  // reserve
       endif
+      set attacking_ghouls = Max(desire, 0)
+      call Trace("Attacking Ghouls Formed:" + Int2Str(attacking_ghouls))
+    elseif unitid == racial_ghoul and take_all_ghouls_along then
       set attacking_ghouls = desire
+      call Trace("Attacking Ghouls Formed:" + Int2Str(attacking_ghouls))
     endif
 
     call ConversionsAM(desire,unitid)
@@ -13771,8 +13775,9 @@ function universal_attack_sequence takes nothing returns nothing
   local boolean needs_exp = false
   local boolean has_siege = false
   local integer ai_strength = 0
-  //local integer ai_antiair_strength = 0
+  local integer ai_antiair_strength = 0
   local integer exp_strength = 0
+  local integer exp_air_strength = 0
   local integer defense_length_counter = attack_reform_length
 
   if hero_unit[1] == null and ver_heroes and not desperation_assault then
@@ -13781,15 +13786,16 @@ function universal_attack_sequence takes nothing returns nothing
   endif
   call SetTargetHeroes(difficulty != EASY)
   set ai_strength = GetOwnStrength()
-  //set ai_antiair_strength = air_strength
+  set ai_antiair_strength = air_strength
   if current_expansion != null then
     set exp_strength = GetExpansionStrength()
+    set exp_air_strength = air_strength
   endif
   if major_hero == null or not UnitAlive(major_hero) or not IsStandardUnit(major_hero) or (IsUnitType(major_hero, UNIT_TYPE_HERO) == false and ver_heroes) then
     set major_hero = GetMajorHero(major_hero)
   endif
 
-  set needs_exp        = take_exp and (ai_strength > exp_strength)
+  set needs_exp        = take_exp and (ai_strength > exp_strength and ai_antiair_strength >= exp_air_strength)
   set has_siege        = ai_strength > 60
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bsiege\b/
   set has_siege        = has_siege or TownCountDone(%1) > 0

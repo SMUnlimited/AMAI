@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Item expansion now only occurs when the AI naturally wants to expand instead of making the AI expand earlier.
 - Fixed an issue where as ghouls die in an attack, harvesting ghouls are being pulled off to fill dead/fleeing units.
 - Fixed an issue where harvesting ghouls were detected as the main army in some cases.
+- Fixed an issue where the AI would attempt to creep expansions but had no way to kill the air units.
 - (DevTools) Removed use of hardcoded ids in expansion tracking for custom mod support.
 
 ## [3.4.1] - 2024-12-07
