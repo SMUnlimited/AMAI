@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Slight tweak to strength calculation to prevent creep levels being calculated incorrectly in some cases and don't average hero levels as unessecary.
 - Harass attacks were occuring often for all AI's regardless of aggression level so they now occur less often for less aggressive profiles.
 - AI with high food use will now reform less often during travel to make faster progress to their desired targets.
+- Future army locations are now always calculated a fixed distance from the current location to avoid a town thinking its under threat but is no where near, the army just moved fast.
 
 ### Deprecated
 - (DevTools) 'race_ancient_expansion_strength' setting does not do anything anymore as it uses actual strength to determine feasability of attack.
@@ -21,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed bug where ancient attacks didn't take account of ancient strength in retreat calculations.
 - Item expansion now only occurs when the AI naturally wants to expand instead of making the AI expand earlier.
 - Fixed an issue where as ghouls die in an attack, harvesting ghouls are being pulled off to fill dead/fleeing units.
+- Fixed an issue where harvesting ghouls were detected as the main army in some cases.
 - (DevTools) Removed use of hardcoded ids in expansion tracking for custom mod support.
 
 ## [3.4.1] - 2024-12-07
