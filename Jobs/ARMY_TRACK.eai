@@ -18,6 +18,7 @@
     location captain_home = null
     boolean captain_tp = true
     integer tmpmainarmy = -1
+    integer town_threat_count = 0
 #ELSE
 // Army Tracker
 
@@ -277,7 +278,6 @@ function UpdateTownThreat takes nothing returns nothing
   if i >= town_num then
     set mode = 3
     set lastFreeNum = 0
-    set town_threatened = false
     
     if town_threat[most_threatened_town] > 0 then
       call Trace("ThreatenedTownThreat:" + Real2Str(town_threat[most_threatened_town]) + " AcceptedThreatLevel:" + Real2Str(accepted_threat_level))
@@ -287,6 +287,7 @@ function UpdateTownThreat takes nothing returns nothing
     endif
     if town_threat[most_threatened_player_town] > accepted_threat_level and town_threat[most_threatened_player_town] <= playerthreat then //and town_threat[most_threatened_town] > (I2R(c_ally_total + 1) / c_enemy_total) * town_threat[most_threatened_enemy_town] then
       set town_threatened = true
+      set town_threat_count = 0
       set most_threatened_town = most_threatened_player_town
       set enemy_army = town_threat_army[most_threatened_town]
       if enemy_army >= 0 then
@@ -298,6 +299,7 @@ function UpdateTownThreat takes nothing returns nothing
       set captain_tp = town_can_tp[most_threatened_player_town]
     elseif town_threat[most_threatened_town] > accepted_threat_level * 1.2 and town_threat[most_threatened_town] <= playerthreat then
       set town_threatened = true
+      set town_threat_count = 0
       set enemy_army = town_threat_army[most_threatened_town]
       if enemy_army >= 0 then
         call SetCaptainHome(BOTH_CAPTAINS,GetLocationX(army_loc[enemy_army]), GetLocationY(army_loc[enemy_army]))
@@ -306,20 +308,27 @@ function UpdateTownThreat takes nothing returns nothing
       endif  
       set captain_home = town_loc[most_threatened_town]
       set captain_tp = town_can_tp[most_threatened_town]
+    elseif town_threatened and town_threat_count < 3 and (most_threatened_town > 0 or most_threatened_player_town > 0) then
+      // persist town threat a bit longer around picked town before standing down
+      set town_threat_count = town_threat_count + 1
     elseif town_threat[most_threatened_player_town] > 0 and town_threat[most_threatened_player_town] <= playerthreat then
+      set town_threatened = false
       call SetCaptainHome(BOTH_CAPTAINS, GetLocationX(town_loc[most_threatened_player_town]), GetLocationY(town_loc[most_threatened_player_town]))
       set most_threatened_town = most_threatened_player_town
       set captain_home = town_loc[most_threatened_player_town]
       set captain_tp = town_can_tp[most_threatened_player_town]
     elseif town_threat[most_threatened_town] > 0 and town_threat[most_threatened_town] <= playerthreat then
+      set town_threatened = false
       call SetCaptainHome(BOTH_CAPTAINS, GetLocationX(town_loc[most_threatened_town]), GetLocationY(town_loc[most_threatened_town]))
       set captain_home = town_loc[most_threatened_town]
       set captain_tp = town_can_tp[most_threatened_town]
     elseif home_town >= 0 then
+      set town_threatened = false
       call SetCaptainHome(BOTH_CAPTAINS, GetLocationX(town_loc[home_town]), GetLocationY(town_loc[home_town])) // Return to known home town
       set captain_home = town_loc[home_town]
       set captain_tp = town_can_tp[home_town]
     else
+      set town_threatened = false
       call SetCaptainHome(BOTH_CAPTAINS, GetLocationX(home_location), GetLocationY(home_location)) // Final fallback, just use start location
       set captain_home = home_location
       set captain_tp = true
