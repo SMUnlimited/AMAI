@@ -3,29 +3,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [Unreleased]
+## [3.4.2] - 2024-12-22
 
 ### Changed
-- Slight tweak to strength calculation to prevent creep levels being calculated incorrectly in some cases and don't average hero levels as unessecary.
-- Harass attacks were occuring often for all AI's regardless of aggression level so they now occur less often for less aggressive profiles.
-- AI with high food use will now reform less often during travel to make faster progress to their desired targets.
-- Future army locations are now always calculated a fixed distance from the current location to avoid a town thinking its under threat but is no where near, the army just moved fast.
+- Tweaked strength calculation to prevent incorrect creep level calculations and removed unnecessary hero level averaging.
+- Adjusted harass attacks to occur less frequently for less aggressive AI profiles.
+- Modified AI with high food use to reform less often during travel, ensuring faster progress to target locations.
+- Fixed future army location calculations to always be a fixed distance from the current location, preventing unnecessary town threat alerts.
 
 ### Deprecated
-- (DevTools) 'race_ancient_expansion_strength' setting does not do anything anymore as it uses actual strength to determine feasability of attack.
+- (DevTools) The `race_ancient_expansion_strength` setting is now obsolete and no longer used, as actual strength determines the feasibility of attacks.
 
 ### Fixed
-- Fixed edge cases where retreat location could not be the home town as expected.
-- Disabled special racial militia, ancient expand, tower rush in team games as hardcoded targets still break these special attacks.
-- Fixed a bug where all special racial expansions could not run on the first expansion.
-- Lots of fixes to ancient expansion logic improving overall reliability.
-- Fixed bug where ancient attacks didn't take account of ancient strength in retreat calculations.
-- Item expansion now only occurs when the AI naturally wants to expand instead of making the AI expand earlier.
-- Fixed an issue where as ghouls die in an attack, harvesting ghouls are being pulled off to fill dead/fleeing units.
-- Fixed an issue where harvesting ghouls were detected as the main army in some cases.
-- Fixed an issue where the AI would attempt to creep expansions but had no way to kill the air units.
-- Fixed a bug where on defeat in team games AMAI could gives its units and buildings to defeated players.
-- (DevTools) Removed use of hardcoded ids in expansion tracking for custom mod support.
+- Resolved edge cases where the retreat location was not set to the home town as expected.
+- Disabled special racial militia, ancient expand, and tower rush in team games due to hardcoded target issues.
+- Fixed a bug preventing all special racial expansions from running on the first expansion.
+- Implemented various fixes to improve the reliability of ancient expansion logic.
+- Corrected a bug where ancient attacks didn’t consider ancient strength in retreat calculations.
+- Adjusted item expansion to occur only when the AI naturally wants to expand, instead of forcing earlier expansions.
+- Fixed an issue where ghouls dying in an attack caused harvesting ghouls to be pulled off to fill dead or fleeing units.
+- Fixed an issue where harvesting ghouls were incorrectly detected as the main army.
+- Fixed a bug where the AI attempted to creep expansions without the capability to kill air units.
+- Resolved a bug in team games where AMAI could give units and buildings to defeated players upon defeat.
+-(DevTools) Removed the use of hardcoded IDs in expansion tracking for custom mod support.
 
 ## [3.4.1] - 2024-12-07
 
