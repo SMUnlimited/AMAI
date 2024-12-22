@@ -55,7 +55,7 @@ function TrackArmy takes integer num returns boolean
     set u = FirstOfGroup(g)
     exitwhen u == null
     set up = GetOwningPlayer(u)
-    if up == ap and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitInGroup(u, in_army_group) and (up != ai_player or (IsStandardUnit(u) and not IsUnitBuying(u))) then
+    if up == ap and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitInGroup(u, in_army_group) and (up != ai_player or (IsStandardUnit(u) and not IsUnitBuying(u))) and GetUnitCurrentOrder(u) != OrderId("harvest") and GetUnitCurrentOrder(u) != OrderId("resumeharvesting") then // harvest check to ignore harvesting ghouls as they not an army
       call GroupAddUnit(army_group[num], u)
       call GroupAddUnit(in_army_group, u)
       set x = x + GetUnitX(u)  // Prevent loc exceeding map range
@@ -93,7 +93,8 @@ function TrackArmy takes integer num returns boolean
   //set l = GetDivisionLoc_d(l, Max(army_count[num], 1))
   set army_dir[num] = GetSubtractionLoc_dd(Location(x, y), army_loc[num])
   set army_loc[num] = Location(x, y)
-  set army_future[num] = GetSumLoc_kd(army_loc[num], GetMultipleLoc(army_dir[num], army_future_mult))
+  set l = GetSumLoc_kd(army_loc[num], GetMultipleLoc(army_dir[num], army_future_mult)) // This just sets a point in direction we want
+  set army_future[num] = GetProjectedLoc(army_loc[num], l, no_threat_distance) // Fixed location in direction army is going
   if Player(p) == ai_player then
     if major_hero != null and IsUnitInGroup(major_hero, army_group[num]) then
       set main_army = num
@@ -106,7 +107,8 @@ function TrackArmy takes integer num returns boolean
   // if army_strength[num] != 0 then
     // call PingMinimap(GetLocationX(l), GetLocationY(l), 4)
   // endif
-  //set l = null
+  call RemoveLocation(l)
+  set l = null
   return true
 endfunction
 
@@ -279,7 +281,9 @@ function UpdateTownThreat takes nothing returns nothing
   endif
   loop
     exitwhen i >= town_num
-    //exitwhen i != lastFreeNum and ModuloInteger(i, 10) == 0 this would cause most threatened town to be negative during this calculation which would break other processes
+    if i > 0 and ModuloInteger(i, 10) == 0 then 
+      call Sleep(0.01)  // This can take along time, but this could cause most threatened town to be wrong in other processes, so sleep so at least no other jobs can use this yet
+    endif
     call UpdateSpecificTownThreat(i)
     set i = i + 1
   endloop
