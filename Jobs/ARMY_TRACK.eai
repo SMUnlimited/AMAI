@@ -14,10 +14,10 @@
     integer lastArmyNum = 0
     integer lastFreeNum = 0
     integer mode = 0
-    integer most_threatened_player_town = 0
+    integer most_threatened_player_town = -1
     location captain_home = null
     boolean captain_tp = true
-      
+    integer tmpmainarmy = -1
 #ELSE
 // Army Tracker
 
@@ -29,14 +29,16 @@ function CopyArmy takes integer from, integer to returns nothing
   set army_strength[to] = army_strength[from]
   set army_group[to] = army_group[from]
   set army_count[to] = army_count[from]
-  set town_threat_army[to] = town_threat_army[from] 
+  set town_threat_army[to] = town_threat_army[from] //TODO Technically this is incorrect until job is processed as copy town does not handle this
+  if main_army == from then
+    set main_army = to
+  endif
 endfunction
 
 function TrackArmy takes integer num returns boolean
   local group g = CreateGroup()
   local unit u = null
   local location l = Location(0,0)
-  local integer tmpmainarmy = -1
   
   set u = FirstOfGroup(army_group[num])
   if u != null then
@@ -56,7 +58,6 @@ function TrackArmy takes integer num returns boolean
     if UnitAlive(u) and GetOwningPlayer(u) == Player(army_owner[num]) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitInGroup(u, in_army_group) and IsStandardUnit(u) and not IsUnitBuying(u) and GetUnitCurrentOrder(u) != OrderId("harvest") and GetUnitCurrentOrder(u) != OrderId("resumeharvesting") then // harvest check to ignore harvesting ghouls as they not an army
       if tmpmainarmy < 0 and u == major_hero then
         set tmpmainarmy = num // fallback main army
-        set main_army = num
       endif
       call GroupAddUnit(army_group[num], u)
       call GroupAddUnit(in_army_group, u)
@@ -98,7 +99,7 @@ function TrackArmy takes integer num returns boolean
   call RemoveLocation(army_future[num])
   call RemoveLocation(l)
   set l = GetSumLoc_kd(army_loc[num], GetMultipleLoc(army_dir[num], army_future_mult)) // This just sets a point in direction we want
-  set army_future[num] = GetProjectedLoc(army_loc[num], l, no_threat_distance) // Fixed location in direction army is going
+  set army_future[num] = GetProjectedLoc(army_loc[num], l, GetRandomReal(full_threat_distance, no_threat_distance)) // Fixed location in direction army is going
   
  // if army_strength[num] != 0 then
    // call PingMinimap(GetLocationX(l), GetLocationY(l), 4)
@@ -112,6 +113,7 @@ endfunction
 function TrackExistingArmies takes nothing returns nothing
   local integer i = lastArmyNum
   local integer first_free = lastFreeNum
+  set tmpmainarmy = -1
   loop
     exitwhen i >= army_num
     exitwhen i != lastArmyNum and ModuloInteger(i,30) == 0 // Sleep every 50 armies to avoid infinite loops
@@ -120,6 +122,8 @@ function TrackExistingArmies takes nothing returns nothing
         call CopyArmy(i, first_free)
       endif
       set first_free = first_free + 1
+    elseif main_army == i then
+      set main_army = -1
     endif
     set i = i + 1
   endloop
@@ -169,6 +173,9 @@ function SeedNewArmiesForPlayer takes integer p returns nothing
       endif
       set i = i + 1
     endloop
+  endif
+  if main_army == -1 and tmpmainarmy >= 0 then
+    set main_army = tmpmainarmy // backup incase cannot be calculated
   endif
   call DestroyGroup(g)
   set g = null
@@ -257,12 +264,6 @@ function UpdateTownThreat takes nothing returns nothing
   local real accepted_threat_level = LinearInterpolation(atl_time_start, atl_time_end, atl_time_start_val, atl_time_end_val, TimerGetElapsed(tq_timer)) * LinearInterpolation(atl_enemy_start, atl_enemy_end, atl_enemy_start_mult, atl_enemy_end_mult, c_enemy_total)
   local real playerthreat = 0
   local integer enemy_army = -1
-  if i == 0 then
-  //call Trace("ARMY_TRACK: Town threat update")
-    set most_threatened_town = -1
-    set most_threatened_player_town = -1
-    set most_threatened_enemy_town = -1
-  endif
   loop
     exitwhen i >= town_num
     if i > 0 and ModuloInteger(i, 10) == 0 then 
