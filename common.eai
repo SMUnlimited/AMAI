@@ -5892,6 +5892,25 @@ endfunction
 //============================================================================
 function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, group group_par, unit unit_par_2 returns nothing
   if tq_length >= JASS_MAX_ARRAY_SIZE then
+    if unit_par != null then
+      call CreateDebugTag("RECYCLE Full", 10, unit_par, 3.00, 1.50)
+      call RecycleGuardPosition(unit_par)
+      call GroupRemoveUnit(unit_healing, unit_par)
+      call GroupRemoveUnit(unit_rescueing, unit_par)
+      call GroupRemoveUnit(unit_harassing, unit_par)
+      call GroupRemoveUnit(unit_zepplin_move, unit_par)
+    endif
+    if unit_par_2 != null then
+      call CreateDebugTag("RECYCLE Full", 10, unit_par_2, 3.00, 1.50)
+      call RecycleGuardPosition(unit_par_2)
+      call GroupRemoveUnit(unit_healing, unit_par_2)
+      call GroupRemoveUnit(unit_rescueing, unit_par_2)
+      call GroupRemoveUnit(unit_harassing, unit_par_2)
+      call GroupRemoveUnit(unit_zepplin_move, unit_par_2)
+    endif
+    if group_par != null then
+      call GroupRecycleGuardPositionInstant(group_par)
+    endif
     // Do nothing too many jobs already
     return
   endif
@@ -5919,7 +5938,9 @@ endfunction
 
 //============================================================================
 function TQAddUnitJob takes real time, integer jid, integer par, unit unit_par returns nothing
-  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, unit_par, null, null)
+  if unit_par != null then
+    call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, unit_par, null, null)
+  endif
 endfunction
 
 function TQAddUnit2Job takes real time, integer jid, integer par, unit unit_par, unit unit_par2 returns nothing
@@ -11787,7 +11808,7 @@ if take_exp and race_militia_expansion_available and not militia_expanding and s
 endif
 
 //call Trace("ANCIENT: EXP STRENGTH" + Int2Str(GetExpansionStrength()))
-//call Trace("ANCIENT: RUSH HERO " + Int2Str(i) + " vs rush level " + Int2Str(race_ancient_expansion_hero_rush_level)) 
+//call Trace("ANCIENT: RUSH HERO " + Int2Str(i) + " vs rush level " + Int2Str(race_ancient_expansion_hero_rush_level))
 //call Trace("ANCIENT: PROB " + Int2Str(GetRandomInt(1,100)) + " vs race prob " +Int2Str(race_ancient_expansion_probability))
 if take_exp and race_ancient_expansion_available and not ancient_expanding and specialexpand then
   call TraceAll("ExpansionBuilder:Ancient Expand")
@@ -13704,7 +13725,7 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
 endfunction
 
 function AncientExpaAttack takes nothing returns nothing
-  local location loc = null
+  //local location loc = null
   //local real attacktimer = 0
   //local integer i = 0
   //local real creepstrength = 0
@@ -13713,23 +13734,23 @@ function AncientExpaAttack takes nothing returns nothing
   set attack_running = true
   set ancient_attack_running = true
   call FromGroupAndGhoulsAM(3)
-  if (ancient_exp_creep != null and UnitAlive(ancient_exp_creep)) then
-    set loc = GetUnitLoc(ancient_exp_creep)
-  else
-    set loc = GetUnitLoc(ancient_exp_mine)
-  endif
-  loop
-    exitwhen CaptainAtGoal() or DistanceBetweenPoints(army_loc[main_army], loc) < 500 // Attack force at ancient
-    exitwhen desperation_assault or break_attack
-    exitwhen town_threat_break and town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_high_threat
-    exitwhen ancient_exp_unit == null or not UnitAlive(ancient_exp_unit) or not ancient_exp_maintree or TownCount(racial_expansion) < 1
-    exitwhen isfleeing or CaptainRetreating() or CaptainIsEmpty()
-    call CaptainAttack(GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))
-    call Sleep(2)
-  endloop
-  call IssuePointOrderLoc(ancient_exp_unit, "attack", loc)
-  call RemoveLocation(loc)
-  set loc = null
+  // if (ancient_exp_creep != null and UnitAlive(ancient_exp_creep)) then
+  //   set loc = GetUnitLoc(ancient_exp_creep)
+  // else
+  //   set loc = GetUnitLoc(ancient_exp_mine)
+  // endif
+  // loop
+  //   exitwhen CaptainAtGoal() or DistanceBetweenPoints(army_loc[main_army], loc) < 500 // Attack force at ancient
+  //   exitwhen desperation_assault or break_attack
+  //   exitwhen town_threat_break and town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_high_threat
+  //   exitwhen ancient_exp_unit == null or not UnitAlive(ancient_exp_unit) or not ancient_exp_maintree or TownCount(racial_expansion) < 1
+  //   exitwhen isfleeing or CaptainRetreating() or CaptainIsEmpty()
+  //   call CaptainAttack(GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))
+  //   call Sleep(2)
+  // endloop
+  // call IssuePointOrderLoc(ancient_exp_unit, "attack", loc)
+  // call RemoveLocation(loc)
+  // set loc = null
   //set creepstrength = GetAncientCampStrength()
   //if GetOwnStrength() >= creepstrength then
     // Just creep normally as safer if tree not actually required in attack
@@ -13923,13 +13944,12 @@ if not creeping_only then	// Do the normal attack sequence
   // ancient expansion attack
   //
   if ancient_expanding and GetOwnStrength() >= GetAncientCampStrength() then
-    if ancient_exp_state == 3 and ancient_exp_unit != null and UnitAlive(ancient_exp_unit) then
+    if (ancient_exp_state == 2 or ancient_exp_state == 3) and ancient_exp_unit != null and UnitAlive(ancient_exp_unit) then
       call AncientExpaAttack()
-      return
-    elseif ancient_exp_state == 4 then
-      call Trace("Prep for ancient expand")
-      return // Don't do new attacks yet as nearly ready to help expansion  
+    else
+      call Trace("Prep for ancient expand")  // Don't do new attacks yet as nearly ready to help expansion
     endif
+    return
   endif
 
   if rushcreep_target != null and UnitAlive(rushcreep_target) and GetLocationCreepStrength(GetUnitX(rushcreep_target), GetUnitY(rushcreep_target), 510) < own_strength + 5 then // Matches getOwnStrength +5 addition for ancient
