@@ -5440,7 +5440,7 @@ function IsUnitTower takes unit u returns boolean
       return true
     endif
     set i = GetUnitTypeId(u)
-    if i == 'hwtw' or i == 'uzig' or i == 'oyrb' or i == 'ocbw' then
+    if i == 'hwtw' or i == 'uzig' or i == 'ocbw' then
       return true
     endif
   elseif GetUnitMoveSpeed(u) == 0 and not IsUnitType(u, UNIT_TYPE_SUMMONED) then
@@ -5806,9 +5806,9 @@ function GetOwnStrength takes nothing returns integer
     endif
     call GroupRemoveUnit(g, u)
   endloop
-  if ancient_expanding and ancient_exp_state == 3 and ancient_exp_unit != null and UnitAlive(ancient_exp_unit) then
-    set sum = sum + 7
-  endif
+  // if ancient_expanding and (ancient_exp_state == 2 or ancient_exp_state == 3) and ancient_exp_unit != null and UnitAlive(ancient_exp_unit) then
+  //   set sum = sum + 7
+  // endif
   call DestroyGroup(g)
   set g = null
   set air_strength = R2I(airsum + 0.5)
@@ -9612,10 +9612,7 @@ function GetGoldIncome takes nothing returns real
     endif
     set i = i + 1
   endloop
-  set inc = inc * upkeep
-  if inc > GetGoldOwned() then
-    set inc = GetGoldOwned()
-  endif
+  set inc = RMin(inc * upkeep, I2R(GetGoldOwned()))
   return inc + GetGold() * gold_unit_percentage
 endfunction
 
@@ -9635,19 +9632,21 @@ function GetFactoryQty takes integer qty, integer build_time, integer gold_cost,
   local real gIncomePerSecond = GetFactoryRate(qty) * gold_income
   local real gPerSecondToAffordUnit = I2R(gold_cost) / I2R(Max(build_time, 1))
   local real wIncomePerSecond = (GetFactoryRate(qty) * (GetWood()*gold_unit_percentage + 10)) // Assuming flat 10 wood per second
-  local integer woodFactories = R2I(wIncomePerSecond/ RMax(I2R(wood_cost) / I2R(Max(build_time, 1)), 1))
+  local integer woodFactories = R2I(wIncomePerSecond / RMax(I2R(wood_cost) / I2R(Max(build_time, 1)), 1))
+  local integer count = TownCount(buildingid)
   //call DisplayToAll("factory number returned: "+Int2Str(Max(Min(R2I(gip / gic), difficulty),1)))
   //call Trace("Income per second " + Real2Str(gIncomePerSecond) + " gold required per second " + gPerSecondToAffordUnit)
   // Smallest factories number based on gold per second and wood per second, if both are in a good state then factory output will be higher
   local integer requiredFactories = Max(Min(Min(R2I(gIncomePerSecond / RMax(gPerSecondToAffordUnit,1)),woodFactories), difficulty),1) // Difficulty no more than 3 on insane, 2 on normal
-  if buildingid != 0 and TownCount(buildingid) < requiredFactories and requiredFactories > 1 then
+  if buildingid != 0 and count < requiredFactories and requiredFactories > 1 then
+    set gIncomePerSecond = GetUnitGoldCost2(buildingid)*1.75
+    set wIncomePerSecond = GetUnitWoodCost2(buildingid)*1.75
     loop
-      exitwhen requiredFactories == 1
-      if GetGold() > ((requiredFactories - TownCount(buildingid)) * GetUnitGoldCost2(buildingid)*1.75) and GetWood() > ((requiredFactories - TownCount(buildingid)) * GetUnitWoodCost2(buildingid)*1.75) then
+      exitwhen requiredFactories <= 1
+      if GetGold() > ((requiredFactories - count) * gIncomePerSecond) and GetWood() > ((requiredFactories - count) * wIncomePerSecond) then
         return requiredFactories
-      else
-        set requiredFactories = requiredFactories - 1
       endif
+      set requiredFactories = requiredFactories - 1
     endloop
   endif
   return requiredFactories
@@ -9668,7 +9667,9 @@ function isTieringUp takes nothing returns boolean
   local integer i = tiernum
   loop
     exitwhen i <= 1
-    return GetUnitCountDone(racial_hall[i]) < GetUnitCount(racial_hall[i])
+    if GetUnitCountDone(racial_hall[i - 1]) > 0 then
+      return GetUnitCountDone(racial_hall[i]) < GetUnitCount(racial_hall[i])
+    endif
     set i = i - 1
   endloop
   return false
@@ -9983,7 +9984,7 @@ endfunction
 //============================================================================
 
 function BuildAdvUpgr2 takes integer qty, integer upgid, integer starttier, integer unitcount, real unitper, integer max, integer prio returns nothing
-//set num = (R2I((100 - FoodUsed())/GetFoodUsed(old_id[])) - 1) * prio_q_inc   // build upgrade priority at priority of unit
+//set num = (R2I((100 - FoodUsed()) / GetFoodUsed(old_id[])) - 1) * prio_q_inc   // build upgrade priority at priority of unit
   if tier >= starttier then
     if unitcount > unitper then
       if unitper == 0 then
@@ -11925,6 +11926,9 @@ function InitHeroInfo takes integer hn returns nothing
   set hero_enemy_loc[hn] = Location(0,0)
   set hero_ally_loc[hn] = Location(0,0)
   set hero_hp[hn] = 1
+  if major_hero == null or not IsUnitType(major_hero, UNIT_TYPE_HERO) or not UnitAlive(major_hero) then
+    set major_hero = hero_unit[hn]
+  endif
   call GetHeroSkin(hn)
 endfunction
 
@@ -11959,13 +11963,12 @@ function HeroReviver takes nothing returns nothing
 endfunction
 
 //============================================================================
-function CheckUnitNewTown takes unit u, integer num returns boolean
-  local integer id = GetUnitTypeId(u)
+function CheckUnitNewTown takes unit u returns boolean
   local integer i = 0
   local location l = GetUnitLoc(u)
   loop
-    exitwhen i >= num
-    if town_built[i] and own_town_loc[i] != null and DistanceBetweenPoints(l, own_town_loc[i]) < town_radius and GetTownUnitCount(id, num, true) > 0 then
+    exitwhen i >= max_towns
+    if town_built[i] and own_town_loc[i] != null and DistanceBetweenPoints(l, own_town_loc[i]) < town_radius then
       call RemoveLocation(l)
       set l = null
       return false
@@ -11981,7 +11984,7 @@ endfunction
 function LocalizeOldTown takes integer num returns boolean
   local group g = CreateGroup()
   local unit u = null
-  call GroupEnumUnitsInRangeOfLoc(g, own_town_loc[num], 1600, null)
+  call GroupEnumUnitsInRangeOfLoc(g, own_town_loc[num], 1400, null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
@@ -12009,7 +12012,7 @@ function LocalizeNewTown takes integer num returns boolean
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    exitwhen GetUnitTypeId(u) == e and UnitAlive(u) and not IsUnitHidden(u) and CheckUnitNewTown(u, num)
+    exitwhen GetUnitTypeId(u) == e and UnitAlive(u) and not IsUnitHidden(u) and CheckUnitNewTown(u)
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
@@ -14196,13 +14199,13 @@ function GetArmyHealthState takes nothing returns real
   //local integer hid = 0
   local integer hFountainID = GetHealthFountainID()
   local integer id = 0
+  local boolean prev_ward = false
   call GroupClear(urgent_healing_group)
   call GroupClear(medium_healing_group)
   call GroupClear(small_healing_group)
   set urgent_healing_count = 0
   set medium_healing_count = 0
   set small_healing_count = 0
-  set ward_cast = false
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   loop
     set u = FirstOfGroup(g)
@@ -14210,9 +14213,9 @@ function GetArmyHealthState takes nothing returns real
     if UnitAlive(u) and not (IsUnitHidden(u) or IsUnitType(u, UNIT_TYPE_PEON) or IsUnitType(u, UNIT_TYPE_STRUCTURE) or IsUnitIllusion(u)) then
       set id = GetUnitTypeId(u)
       if id == 'ohwd' then
-        set ward_cast = true
+        set prev_ward = true
       else
-        if not ward_cast and ward == null and (GetUnitAbilityLevel(u, 'Ahwd') > 0 or GetUnitAbilityLevel(u, 'AChw') > 0) then
+        if not prev_ward and ward == null and (GetUnitAbilityLevel(u, 'Ahwd') > 0 or GetUnitAbilityLevel(u, 'AChw') > 0) then
           set ward = u
         endif
         if IsUnitType(u, UNIT_TYPE_MECHANICAL) or IsUnitType(u, UNIT_TYPE_SUMMONED) then
@@ -14244,7 +14247,7 @@ function GetArmyHealthState takes nothing returns real
   else
     set fountain_available = (neutral_night_buy[hFountainID] and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6)) or not neutral_guarded[hFountainID]
   endif
-  if not ward_cast and CaptainIsHome() and ward != null and UnitAlive(ward) and not IsUnitBuying(ward) then
+  if not prev_ward and CaptainIsHome() and ward != null and UnitAlive(ward) and not IsUnitBuying(ward) then
     call IssuePointOrder(ward, "healingward", GetUnitX(ward), GetUnitY(ward))
   endif
   set ward = null
