@@ -65,20 +65,26 @@ endfunction
 function CheckRallyPoint takes nothing returns nothing
   local group g = CreateGroup()
   local unit u = null
+  local location l = home_location
   local integer i = 0
-  if rally_point == null and front_locs_computed then 
-    set i = Max(GetRandomInt(0, front_loc_num - 1),0)
+  if rally_point == null and front_locs_computed then
+    set i = Max(GetRandomInt(1, front_loc_num - 1),0)
     if front_loc[i] != null then
-      set rally_point = AIGetProjectedLoc(front_loc[0], home_location, -(front_base_distance*0.25), 0)
+      set rally_point = AIGetProjectedLoc(front_loc[i], home_location, -(front_base_distance*0.25), 0)
+    elseif front_loc[0] != null and GetLocationX(front_loc[0]) != 0 and GetLocationY(front_loc[0]) != 0 then
+      set rally_point = AIGetProjectedLoc(front_loc[0], home_location, -1200, 0)
     endif
   endif
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  if rally_point != null then
+    set l = rally_point
+  endif
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and not IsUnitHidden(u) then
-      if rally_point != null and DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) <= expansion_taken_radius then
-        call IssuePointOrderLoc(u, "setrally", rally_point)  //avoid being blocked by front_loc build
+    if GetUnitAbilityLevel(u, 'ARal') > 0 and UnitAlive(u) and not IsUnitHidden(u) then
+      if DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) <= expansion_taken_radius then
+        call IssuePointOrderLoc(u, "setrally", l)  //avoid being blocked by front_loc build
       else
         call IssuePointOrderLoc(u, "setrally", home_location)
       endif
@@ -87,14 +93,12 @@ function CheckRallyPoint takes nothing returns nothing
   endloop
   call DestroyGroup(g)
   set g = null
+  set l = null
 endfunction
 
 function StructureControlJob takes nothing returns nothing
   if not town_threatened then
     call DisplayToAllJobDebug("STRUCTURE_CONTROL JOB START")
-    if rally_point == null and front_loc[0] != null and GetLocationX(front_loc[0]) != 0 and GetLocationY(front_loc[0]) != 0 then
-      set rally_point = AIGetProjectedLoc(front_loc[0], home_location, -1200, 0)
-    endif
     call CheckRallyPoint()
     if racial_lumber == 0 or race_no_wood_harvest then  //help fix ELF build blocking , ture is build may be dismantled after being attacked
       set homebuild = CheckBuildLoc(home_location,800) < 5

@@ -98,15 +98,16 @@ function KillYourself takes boolean end_ai returns nothing
       call Sleep(3)
       set g = CreateGroup()
       call GroupEnumUnitsOfPlayer(g, ai_player, null)
-      set g = SelectByAlive(g, true)
       if no_ai_ally and not humanPlayerAllys then
         loop
           set u = FirstOfGroup(g)
           exitwhen u == null
-          if destroy_buildings_on_defeat or IsUnitHidden(u) then
-            call KillUnit(u)
-          else
-            call SetUnitOwner(u, Player(PLAYER_AMAI_NEUTRAL_VICTIM), true)
+          if UnitAlive(u) then
+            if destroy_buildings_on_defeat or IsUnitHidden(u) then
+              call KillUnit(u)
+            else
+              call SetUnitOwner(u, Player(PLAYER_AMAI_NEUTRAL_VICTIM), true)
+            endif
           endif
           call GroupRemoveUnit(g, u )
         endloop
@@ -141,16 +142,16 @@ function KillYourself takes boolean end_ai returns nothing
           loop
             set u = FirstOfGroup(g)
             exitwhen u == null
-            if IsUnitHidden(u) then
-              call RemoveUnit(u)
-            elseif IsUnitType(u, UNIT_TYPE_HERO) then
-              call KillUnit(u)
-            elseif sharedRacePlayer != null then
-              call SetUnitOwner(u, sharedRacePlayer, true)
-            elseif destroy_buildings_on_defeat then
-              call KillUnit(u)
-            else
-              call SetUnitOwner(u, Player(PLAYER_AMAI_NEUTRAL_VICTIM), true) 
+            if UnitAlive(u) then
+              if IsUnitHidden(u) then
+                call RemoveUnit(u)
+              elseif IsUnitType(u, UNIT_TYPE_HERO) or destroy_buildings_on_defeat then
+                call KillUnit(u)
+              elseif sharedRacePlayer != null then
+                call SetUnitOwner(u, sharedRacePlayer, true)
+              else
+                call SetUnitOwner(u, Player(PLAYER_AMAI_NEUTRAL_VICTIM), true)
+              endif
             endif
             call GroupRemoveUnit(g, u )
           endloop
@@ -340,6 +341,7 @@ function DetectDefeatJob takes nothing returns nothing
   local race r = GetPlayerRace(ai_player)
   call DisplayToAllJobDebug("DETECT_DEFEAT Job Start")
   set no_ai_ally = true
+  set humanPlayerAllys = false
   set sharedRacePlayer = null
   loop
     exitwhen i >= c_ally_total
