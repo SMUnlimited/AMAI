@@ -7543,13 +7543,14 @@ function HealUnit takes unit healer, unit to_heal, boolean hero_heal returns not
     if healer_type[id] == HEALER_TYPE_WARD then
       if not ward_cast then
         call IssuePointOrderById(healer, healer_spell[id], GetUnitX(healer), GetUnitY(healer))
+        call GroupRemoveUnit(unit_healing, healer)
       endif
     else
       if healer_type[id] != HEALER_TYPE_HERO or hero_heal then
         call IssueTargetOrderById(healer, healer_spell[id], to_heal)
+        call GroupRemoveUnit(unit_healing, healer)
       endif
     endif
-    call GroupRemoveUnit(unit_healing, healer)
   endif
 endfunction
 
@@ -14248,6 +14249,7 @@ function GetArmyHealthState takes nothing returns real
   endif
   if not prev_ward and CaptainIsHome() and ward != null and UnitAlive(ward) and not IsUnitBuying(ward) then
     call IssuePointOrder(ward, "healingward", GetUnitX(ward), GetUnitY(ward))
+    set ward_cast = true
   endif
   set ward = null
   if count == 0 then
@@ -14352,16 +14354,17 @@ function HealArmy takes nothing returns nothing
   local integer sleepLength = 2
   local real healthTrigger = 0.75
   local integer sleepFrequency = 0
+  set ward_cast = false
   loop
     set hs = GetArmyHealthState()
     if ward_cast then
       set global_heal = true
       loop
         exitwhen player_defeated or town_threatened or i >= 4
-        call Trace("function HealArmy: wait ward cast heal" + Int2Str(i))
-        call StaggerSleep(0.8 * sleep_multiplier, sleep_multiplier)
+        call StaggerSleep(sleep_multiplier, 1.2 * sleep_multiplier)
         set i = i + 1
       endloop
+      call Trace("function HealArmy: wait ward cast heal" + Int2Str(i))
       if i >= 4 then
         set hs = GetArmyHealthState()
       endif
@@ -14426,6 +14429,7 @@ function HealArmy takes nothing returns nothing
     set mass_healed = false
     set global_heal = false
   endloop
+  set ward_cast = false
   set mh_i = null
   set u = null
 endfunction
