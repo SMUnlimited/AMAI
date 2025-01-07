@@ -121,6 +121,7 @@ function HarassJob takes integer key, unit target returns nothing
   local player p = null
   local real strength_sum = 0
   local real player_sum = 0
+  local boolean b = false
   local integer harass_num = 0
   local boolean towersdetected = false
   local boolean hero_harass = false
@@ -200,13 +201,14 @@ function HarassJob takes integer key, unit target returns nothing
     set hu = FirstOfGroup(harasser)
   endif
   if state_retreat == 1 then
-    if hu != null and DistanceBetweenPoints_dk(GetUnitLoc(hu), home_location) > 1000 then
+    set b = DistanceBetweenPoints_dk(GetUnitLoc(hu), home_location) > 1000
+    if hu != null and b then
       set g = CreateGroup()
       call GroupEnumUnitsInRange(g,GetUnitX(hu),GetUnitY(hu),harass_radius_flee_ranged,null)
       loop
         set u = FirstOfGroup(g)
         exitwhen u == null
-        if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and UnitAlive(u) and not IsUnitHidden(u) and GetUnitStrength(u) > 0 then
+        if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitLoaded(u) then  // GetUnitStrength(u) > 0 then
           set enemycount = enemycount + 1
         endif
         call GroupRemoveUnit(g, u)
@@ -214,10 +216,11 @@ function HarassJob takes integer key, unit target returns nothing
       call DestroyGroup(g)
       set g = null
     endif
-    if hu != null and DistanceBetweenPoints_dk(GetUnitLoc(hu), home_location) > 1000 and enemycount > 0 then
+    if hu != null and b and enemycount > 0 then
       call GroupOrderWindWalkInstant_d(CopyGroup(harasser,g))
       call GroupPointOrder(harasser, "move", GetLocationX(home_location), GetLocationY(home_location))
       call TQAddUnitJob(3 * sleep_multiplier, HARASS, key, target)
+      call DestroyGroup(harasser)
       set g = null
     else
       call TraceAll("HARASS End and Recycle")
@@ -225,8 +228,8 @@ function HarassJob takes integer key, unit target returns nothing
       call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
       call SaveInteger(additional_info, key, INVISIBLE_COUNT, 0)
       call SaveReal(additional_info, key, START_STRENGTH, 0)
+      call GroupRecycleHarrassPositionInstant(harasser)
     endif
-    call GroupRecycleHarrassPositionInstant(harasser)
     set harasser = null
     set target = null
     set hu = null
