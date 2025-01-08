@@ -21,12 +21,13 @@ function ItemExpansionReset takes boolean exp returns nothing
   set item_job_running = false
   set item_exp_state = 0
   set item_exp_count = 0
+  set not_taken_expansion = null
   set itemhero = null
 endfunction
 
 function UseExpansionItem takes item t returns boolean
-  local unit u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
-  local location loc = GetUnitLoc(current_expansion)
+  local unit u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(not_taken_expansion), GetUnitY(not_taken_expansion), 270.0)
+  local location loc = GetUnitLoc(not_taken_expansion)
   local location l = GetUnitLoc(u)
   //local location rl = AIGetProjectedLoc(loc, l, 850, 0)  //Guarding position
   local boolean b = DistanceBetweenPoints_kd(l, loc) <= race_max_expa_mine_distance
@@ -49,7 +50,7 @@ function ItemExpansionJob takes nothing returns nothing
   local unit u = null
   local item exp_item = null
   call DisplayToAllJobDebug("ITEM_EXPANSION JOB STARTED")
-  if town_threatened or current_expansion == null then
+  if town_threatened or not_taken_expansion == null then
     call Trace("Item expansion : Cannot Expansion or no Expansion")  // no need ChooseExpansion() , this is passive expansion , avoidance buy repeat item
     call ItemExpansionReset(false)
     return
@@ -117,12 +118,12 @@ function ItemExpansionJob takes nothing returns nothing
     set u = GetExpFoe(u)
     if u == null and itemhero != null and UnitAlive(itemhero) then
       set exp_item = GetItemOfType(exp_item,race_item_expansion_item_id)
-      if exp_item != null and not CheckExpansionTaken(current_expansion) and GetLocationNonCreepStrength(GetUnitX(itemhero), GetUnitY(itemhero), 1200) <= 0 then
+      if exp_item != null and not CheckExpansionTaken(not_taken_expansion) and GetLocationNonCreepStrength(GetUnitX(itemhero), GetUnitY(itemhero), 1200) <= 0 then
         call RemoveGuardPosition(itemhero)
-        if DistanceBetweenUnits(itemhero, current_expansion) > 1200 then
+        if DistanceBetweenUnits(itemhero, not_taken_expansion) > 1200 then
           call CreateDebugTag("Item expansion state 1 - move to expansion", 10, itemhero, 3.00, 1.50)
-          call IssuePointOrder(itemhero, "move", GetUnitX(current_expansion), GetUnitY(current_expansion))
-          call TQAddJob(RMin(4, RMax(GetTimeToReachUnit(itemhero, current_expansion) + 1,1)), ITEM_EXPANSION, 0)
+          call IssuePointOrder(itemhero, "move", GetUnitX(not_taken_expansion), GetUnitY(not_taken_expansion))
+          call TQAddJob(RMin(4, RMax(GetTimeToReachUnit(itemhero, not_taken_expansion) + 1,1)), ITEM_EXPANSION, 0)
         else
           if item_exp_count < 4 then
             if UseExpansionItem(exp_item) then
@@ -132,7 +133,7 @@ function ItemExpansionJob takes nothing returns nothing
               return
             endif
             call CreateDebugTag("Item expansion state 1 - use item done", 10, itemhero, 3.00, 1.50)
-            call IssuePointOrder(itemhero, "move", GetUnitX(current_expansion), GetUnitY(current_expansion))  // Prevent the hero's position from getting stuck
+            call IssuePointOrder(itemhero, "move", GetUnitX(not_taken_expansion), GetUnitY(not_taken_expansion))  // Prevent the hero's position from getting stuck
             call TQAddJob(2, ITEM_EXPANSION, 0)
             set item_exp_count = item_exp_count + 1
           else

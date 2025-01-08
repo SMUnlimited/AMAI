@@ -15,13 +15,13 @@ unit militia_builder = null
 #ELSE
 
 function BuildMilitiaExpansion takes nothing returns boolean
-  local unit u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
+  local unit u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(not_taken_expansion), GetUnitY(not_taken_expansion), 270.0)
   local real x = GetUnitX(u)
   local real y = GetUnitY(u)
   local boolean b = false
   call RemoveUnit(u)
   set u = null
-  if DistanceBetweenPoints_dd(Location(x, y), GetUnitLoc(current_expansion)) <= race_max_expa_mine_distance then
+  if DistanceBetweenPoints_dd(Location(x, y), GetUnitLoc(not_taken_expansion)) <= race_max_expa_mine_distance then
     call CreateDebugTag("Militia Expansion - build", 10, militia_builder, 3.00, 1.50)
     call IssuePointOrderById(militia_builder, old_id[racial_expansion], x, y)
     call TQAddUnitJob(200, RESET_GUARD_POSITION_ONLY, 80, militia_builder)
@@ -56,12 +56,11 @@ local location l = null
 
 	call DisplayToAllJobDebug("MILITIA_EXPAND JOB START")
 
-	if current_expansion == null or towerrush or GetMinesOwned() >= 2 or (not militia_expanding and not_taken_expansion != null) then  // have mine , peon need harvest
+	if not_taken_expansion == null or towerrush or GetMinesOwned() >= 2 or (not militia_expanding and not_taken_expansion != null) then  // have mine , peon need harvest
 		call MilitiaExpansionReset()
 		call Trace("MILITIA_EXPAND : not take expansion")
 		return
 	endif
-	set not_taken_expansion = current_expansion
 	set ownstrength = GetOwnStrength()
 	if militia_state < 3 then
 		set gold_buffer = GetUnitGoldCost2(racial_expansion)
@@ -69,7 +68,7 @@ local location l = null
 	endif
 	if militia_state == 0 then
 		call Trace("Expansion Distance: " + Int2Str(R2I(GetExpansionDistance())))
-		set expansionstrength = GetExpansionStrength()
+		set expansionstrength = GetLocationCreepStrength(GetUnitX(not_taken_expansion), GetUnitY(not_taken_expansion), expansion_radius)
 		if GetExpansionDistance() <= 5800 and expansionstrength < 20 then
 			call Trace("Our Strength:" + Int2Str(ownstrength) + " Expansion Strength:" + Int2Str(expansionstrength))
 			if TownCountDone(hero[1]) + TownCountDone(hero[2]) + TownCountDone(hero[3]) > 0 and not town_threatened and ownstrength >= minimum_attack_strength and TownCountDone(racial_peon) > 6 and ownstrength + 6 >= expansionstrength then
@@ -92,7 +91,7 @@ local location l = null
 		call Trace("Militia state 0 Ended , expansion too far or own too weak")
 	elseif militia_state == 1 then
 		call Trace("Militia state 1 rush expansion")
-		set expansionstrength = GetExpansionStrength()
+		set expansionstrength = GetLocationCreepStrength(GetUnitX(not_taken_expansion), GetUnitY(not_taken_expansion), expansion_radius)
 		if ownstrength + 6 < expansionstrength then
 			call MilitiaExpansionReset()
 			call Trace("Militia state 1 creep too powerful or cannot rush , stop trying to expand")
@@ -120,7 +119,7 @@ local location l = null
 			set g = SelectByHidden(g, false)
 			set g = SelectByAlive(g, true)
 		endif
-		set l = GetUnitLoc(current_expansion)
+		set l = GetUnitLoc(not_taken_expansion)
 		set g = GetNearestSubGroupOfGroup(g, l, 4)
 		call RemoveLocation(l)
 		set l = null
@@ -148,13 +147,13 @@ local location l = null
 		call MilitiaExpansionReset()
 		call Trace("Militia state 2 Ended , not peon")
 	elseif militia_state == 3 then
-		if militia_builder == null or GetUnitState(militia_builder, UNIT_STATE_LIFE) <= 0 or CheckExpansionTaken(current_expansion) or GetGold() < GetUnitGoldCost2(racial_expansion) or GetWood() < GetUnitWoodCost2(racial_expansion) then
+		if militia_builder == null or GetUnitState(militia_builder, UNIT_STATE_LIFE) <= 0 or CheckExpansionTaken(not_taken_expansion) or GetGold() < GetUnitGoldCost2(racial_expansion) or GetWood() < GetUnitWoodCost2(racial_expansion) then
 			call Trace("Militia state 3 Ended , lost peon or expansion by other player take or no gold or no wood")
 		else
 			call RemoveGuardPosition(militia_builder)  // has to be here or peasant comes off construction
-			if DistanceBetweenUnits(militia_builder, current_expansion) < 800 then
-				//call IssueTargetOrder(militia_fastb1, "stop", current_expansion)
-				//call IssueTargetOrder(militia_fastb2, "stop", current_expansion)
+			if DistanceBetweenUnits(militia_builder, not_taken_expansion) < 800 then
+				//call IssueTargetOrder(militia_fastb1, "stop", not_taken_expansion)
+				//call IssueTargetOrder(militia_fastb2, "stop", not_taken_expansion)
 				if BuildMilitiaExpansion() then
 					call Trace("Militia state 3 , Build Success")
 				else
@@ -164,7 +163,7 @@ local location l = null
 			else
 				call Trace("Militia state 3 , Moving expansion")
 				call CreateDebugTag("Militia Expansion - peon move to loc", 10, militia_builder, 3.00, 1.50)
-				call IssueTargetOrder(militia_builder, "move", current_expansion)
+				call IssueTargetOrder(militia_builder, "move", not_taken_expansion)
 				call TQAddJob(2, MILITIA_EXPAND, 0)
 				return
 			endif
