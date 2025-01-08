@@ -11270,6 +11270,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     set wood_cost = wood_price[race_item_expansion_item_id]
   endif
   if item_expanding and not item_job_running then
+    set not_taken_expansion = current_expansion
     call TQAddJob(1, ITEM_EXPANSION, 0)
   endif
 
@@ -11744,9 +11745,9 @@ if current_expansion == null or CheckExpansionTaken(current_expansion) then
     endif
     return
   endif
-  set specialexpand = not IsWaterExpansion(current_expansion) // water expand can't use racial expansion techniques
   set aggexpand = 1
 endif
+set specialexpand = not IsWaterExpansion(current_expansion) // water expand can't use racial expansion techniques
 if fastexpa then
   set fastexpa = false
   call CheckFastExpansion()
@@ -11791,10 +11792,12 @@ endif
 //if (specialexpand) then
 //  call Trace("RACIAL EXPA POWER READY")
 //endif
-if take_exp and race_militia_expansion_available and not militia_expanding and specialexpand then
+if take_exp and not_taken_expansion == null and race_militia_expansion_available and not militia_expanding and specialexpand then
   call Trace("ExpansionBuilder:Militia Expand")
   set specialexpand = false
   if GetRandomInt(1, 100) <= 60 then
+    set not_taken_expansion = current_expansion
+    set current_expansion = null
     call TQAddJob(0, MILITIA_EXPAND, 0)
     set u = null
     return
@@ -11804,7 +11807,7 @@ endif
 //call Trace("ANCIENT: EXP STRENGTH" + Int2Str(GetExpansionStrength()))
 //call Trace("ANCIENT: RUSH HERO " + Int2Str(i) + " vs rush level " + Int2Str(race_ancient_expansion_hero_rush_level))
 //call Trace("ANCIENT: PROB " + Int2Str(GetRandomInt(1,100)) + " vs race prob " +Int2Str(race_ancient_expansion_probability))
-if take_exp and race_ancient_expansion_available and not ancient_expanding and specialexpand then
+if take_exp and not_taken_expansion == null and race_ancient_expansion_available and not ancient_expanding and specialexpand then
   call TraceAll("ExpansionBuilder:Ancient Expand")
   set specialexpand = false
   if hero_unit[1] != null then
@@ -11817,6 +11820,7 @@ if take_exp and race_ancient_expansion_available and not ancient_expanding and s
     set i = i + hero_rush_bonus[hero[3]]
   endif
   if GetRandomInt(1, 100) <= race_ancient_expansion_probability and i >= race_ancient_expansion_hero_rush_level then
+    set not_taken_expansion = current_expansion
     call TQAddJob(0, ANCIENT_EXPANSION_CHECK, 0)
     set u = null
     return
@@ -11836,7 +11840,7 @@ if not exp_prepared and u == null then
 endif
 set u = null
 
-if exp_prepared and race_item_expansion_available and not item_expanding and specialexpand and tier >= race_item_sale_level and GetRandomInt(1, 100) <= race_item_expansion_probability then
+if exp_prepared and not_taken_expansion == null and race_item_expansion_available and not item_expanding and specialexpand and tier >= race_item_sale_level and GetRandomInt(1, 100) <= race_item_expansion_probability then
   call Trace("ExpansionBuilder:Item Expand")
   set specialexpand = false
   if race_item_expansion_item_id != 0 and (GetResourceAmount(current_expansion) > (gold_price[race_item_expansion_item_id] + 300) or GetItemNumber(race_item_expansion_item_id) > 0) then
@@ -11871,6 +11875,7 @@ elseif minetimeready and attacking_aggression > 0 and mines > 1 and mines < 4 an
     set u = GetExpansionPeon()
     if u != null and UnitAlive(u) and u != expansion_peon and not chaos_expansion_run then
       set chaos_expansion_run = true
+      set not_taken_expansion = chaos_expansion
       call TQAddUnit2Job(2 * sleep_multiplier, BUILD_EXPANSION, 0, u, chaos_expansion)
       call IssueTargetOrderById(u, old_id[racial_expansion], chaos_expansion)
       call CreateDebugTag("chaos expansion", 10, u, 3.00, 1.50)
@@ -12322,7 +12327,9 @@ endfunction
 
 //============================================================================
 function SetMeleeGroupAM takes integer unitid returns nothing
-  call SetAssaultGroupAM(0,60,unitid)
+  if TownCountDone(unitid) > 0 then
+    call SetAssaultGroupAM(0,60,unitid)
+  endif
 endfunction
 
 //============================================================================
@@ -14744,8 +14751,10 @@ function BuildDefendersAM takes integer prio returns nothing
     set qty = defense_qty[index]
 
     call BuildUnit(qty, unitid, prio)
-    call ConversionsAM(qty,unitid)
-    call AddDefenders(qty,old_id[unitid])
+    if qty > 0 and TownCountDone(unitid) > 0 then
+      call ConversionsAM(qty,unitid)
+      call AddDefenders(qty,old_id[unitid])
+    endif
     set campaign_defenders[unitid] = qty
 
     set index = index + 1
