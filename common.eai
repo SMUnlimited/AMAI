@@ -871,6 +871,7 @@ globals
     string array chat_queue
     boolean array chat_queue_importance
     player array chat_queue_player
+    boolean chat_queue_locked = true
     string chat_strategy = null
     integer chat_queue_size = -1
     constant integer C_STRATEGY = 0
@@ -3323,14 +3324,13 @@ endfunction
 //============================================================================
 //  (AMAI)    Chat function
 //============================================================================
-function QueueChat takes string text, player p, boolean important returns nothing
-  local integer i = 0
-  set chat_queue_size = chat_queue_size + 1
-  set chat_queue[chat_queue_size] = text
-  set chat_queue_player[chat_queue_size] = p
-  set chat_queue_importance[chat_queue_size] = important
-  if chat_queue_size > (5 * c_ai_total) then
-    // Remove oldest message
+function RemoveOldMessage takes integer i returns nothing
+  if i > 0 then
+    loop
+      exitwhen chat_queue_locked
+      call Sleep(0.02)
+    endloop
+    set chat_queue_locked = false
     loop
       exitwhen i >= chat_queue_size
       set chat_queue[i] = chat_queue[i+1]
@@ -3338,7 +3338,21 @@ function QueueChat takes string text, player p, boolean important returns nothin
       set chat_queue_importance[i] = chat_queue_importance[i+1]
       set i = i + 1
     endloop
+    set chat_queue[i] = null
+    set chat_queue_player[i] = null
+    set chat_queue_importance[i] = false
     set chat_queue_size = chat_queue_size - 1
+    set chat_queue_locked = true
+  endif
+endfunction
+
+function QueueChat takes string text, player p, boolean important returns nothing
+  set chat_queue_size = chat_queue_size + 1
+  set chat_queue[chat_queue_size] = text
+  set chat_queue_player[chat_queue_size] = p
+  set chat_queue_importance[chat_queue_size] = important
+  if chat_queue_size > (5 * c_ai_total) then
+    call RemoveOldMessage(0)
   endif
 endfunction
 
@@ -3357,7 +3371,7 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
   loop
     exitwhen i >= GetBJMaxPlayers()
     set p = Player(i)
-    if (GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) != MAP_CONTROL_COMPUTER and ((ally and IsPlayerAlly(p, ai_player)) or (enemy and IsPlayerEnemy(p, ai_player)) and not IsPlayerObserver(p))) or (obs and IsPlayerObserver(p)) then
+    if (GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) != MAP_CONTROL_COMPUTER and not IsPlayerObserver(p) and ((ally and IsPlayerAlly(p, ai_player)) or (enemy and IsPlayerEnemy(p, ai_player)))) or (obs and IsPlayerObserver(p)) then
       set rand = std_rand
       call SetChatVarsPlayer(p)
       // Only send a limited number of greetings to a single player
@@ -6129,13 +6143,10 @@ function BuildBRAtCreep takes nothing returns boolean
   local boolean success = false
   call Trace("Build Ancient Barracks for creeping")
   call GroupEnumUnitsInRange(g,GetLocationX(home_location), GetLocationY(home_location),distance,null)
-  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_AGGRESSIVE), true)
-  set g = SelectUnittype(g, UNIT_TYPE_FLYING, false)
-  set g = SelectByAlive(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or i >= 7  //7 shoul have 2 creepcamp
-    if GetUnitLevel(u) < 5 and GetCreepCampStrength(u) < 10 then
+    if GetOwningPlayer(u) == Player(PLAYER_NEUTRAL_AGGRESSIVE) and not IsUnitType(u, UNIT_TYPE_FLYING) and UnitAlive(u) and GetUnitLevel(u) < 5 and GetCreepCampStrength(u) < 10 then
       set ua[i] = CreatePathingUnit(ua[i])
       call IssuePointOrder(ua[i], "move", GetUnitX(u), GetUnitY(u))
       set ub[i] = CreatePathingUnitFull(ub[i],ai_player,groundid,GetUnitX(u), GetUnitY(u))
@@ -6225,7 +6236,7 @@ function MultipleMinefix takes nothing returns boolean
   local group g = null
   local unit u = null
   local boolean b = false
-  if town_threatened or not hero_built[1] or (not race_manual_loading and not race_uses_mine_expansion and ((not_taken_expansion != null and DistanceBetweenPoints_kd(home_location,GetUnitLoc(not_taken_expansion)) < expansion_taken_radius) or (fixmine != null and GetResourceAmount(fixmine) > 200))) or (race_manual_loading and GetUnitCount(old_id[race_manual_loading_mine]) > 1) or (race_uses_mine_expansion and TownCount(racial_expansion) > 1) then
+  if town_threatened or not hero_built[1] or (not race_manual_loading and not race_uses_mine_expansion and ((not_taken_expansion != null and DistanceBetweenPoints_kd(home_location,GetUnitLoc(not_taken_expansion)) < expansion_taken_radius and GetResourceAmount(not_taken_expansion) > 200) or (fixmine != null and GetResourceAmount(fixmine) > 200))) or (race_manual_loading and GetUnitCount(old_id[race_manual_loading_mine]) > 1) or (race_uses_mine_expansion and TownCount(racial_expansion) > 1) then
     return b  //no first hero priority build army , human and orc just harvest
   endif
   call Trace("Check Multiple Mine")
@@ -8549,6 +8560,7 @@ function InitCheckHarvest takes nothing returns nothing
     elseif c + s > p then
       set first_town_mine = 2  // mode two , more mines than players, one player have more mine , fix UD and ELF harvest and all race expensive - prior take closest home_location mine
     endif
+    set br_rush_built = true  // maybe will build at other player home , so not build
   elseif (i == GOLD_MINE and c + s > p) or (i != GOLD_MINE and c > 0) then
     set first_town_mine = 3  // mode three , one player have this mine , fix all race harvest and expensive - prior take closest home_location mine
   endif
@@ -9480,6 +9492,7 @@ function GetExistingHero takes nothing returns integer
   local unit u = null
   local integer oid = 0
   local integer i = 0
+  local integer c = 1
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectUnittype(g, UNIT_TYPE_HERO, true)
   set u = FirstOfGroup(g)
@@ -9490,16 +9503,21 @@ function GetExistingHero takes nothing returns integer
     return 0
   endif
   set oid = GetUnitTypeId(u)
-  set u = null
   loop
     exitwhen i >= hero_number
     if old_id[all_heroes[i]] == oid then
       set chosen = i
+      if major_hero == null then
+        set major_hero = u
+      endif
+      call SelectHeroSkill(u, allskills[GetRandomInt(0, 2)*HERO_LEVEL_NUMBER + i*9*HERO_LEVEL_NUMBER + 1])
+      set u = null
       return all_heroes[i]
     endif
     set i = i + 1
   endloop
   call DisplayToAll("Unknown hero")
+  set u = null
   return 0
 endfunction
 
