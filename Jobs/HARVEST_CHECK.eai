@@ -85,7 +85,7 @@ function PeonMineCheck takes unit mine returns boolean
     call DestroyGroup(tempg)
     set tempg = null
   else  //human and orc
-    if not hero_built[1] or GetGold() < 300 then
+    if not hero_built[1] or GetGold() < 300 or first_town_mine > 2 then
       set peon = 3
     else
       set peon = 2
@@ -93,21 +93,20 @@ function PeonMineCheck takes unit mine returns boolean
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
     call GroupRemoveUnit(g, expansion_peon)
     set g = SelectById(g, old_id[racial_peon], true)
-    set g = SelectByHidden(g, false)
     if TownCount(racial_hall[1]) > 1 then
       set g = GetNearestSubGroupOfGroup(g, unitloc, 5)
     endif
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null or i >= peon
-      if UnitAlive(u) and (GetUnitCurrentOrder(u) == 0 or GetUnitCurrentOrder(u) == OrderId("harvest")) and not IsUnitBuying(u) then  // no get other order peon , maybe the peon go buy unit or build some
+      if UnitAlive(u) and (GetUnitCurrentOrder(u) == 0 or GetUnitCurrentOrder(u) == OrderId("harvest")) and not IsUnitHidden(u) and not IsUnitBuying(u) then  // no get other order peon , maybe the peon go buy unit or build some
         call IssueTargetOrder(u, "harvest", mine)
         call CreateDebugTag("PeonMineCheck - harvest", 10, u, 10.00, 8.00)
         set i = i + 1
       endif
       call GroupRemoveUnit(g, u)
     endloop
-    if not hero_built[1] or GetGold() < 300 then
+    if peon == 3 then
       set i = -1  // At the beginning of the game, pay more attention
     else
       set i = delaywisps  //no need full
@@ -147,7 +146,7 @@ function HarvestCheckJob takes nothing returns nothing
       call GroupEnumUnitsInRangeOfLoc(g, home_location, expansion_taken_radius, null)
       set g = SelectByPlayer(g, ai_player, true)
       set g = SelectById(g, old_id[racial_expansion], true)
-    elseif fixmine != null and GetResourceAmount(fixmine) > 0 and (TownCountDone(racial_peon) > 8 or (GetUnitCount(old_id[hero[1]]) < 0 and not hero_built[1]) or GetGold() < 300) then  //human and orc
+    elseif fixmine != null and GetResourceAmount(fixmine) > 0 and (TownCountDone(racial_peon) > 8 or GetUnitCount(old_id[hero[1]]) < 0 or GetGold() < 800) then  //human and orc
       call GroupAddUnit(g, fixmine)  // get fixmine on MultipleMinefix , prevention all peon harvest so only one mine
       if GetResourceAmount(fixmine) < 300 then
         set timeifx = 36
