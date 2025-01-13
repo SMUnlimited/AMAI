@@ -349,6 +349,21 @@ If your custom map has custom units you will need to make custom changes to AMAI
 
 AMAI has built in support to be able to write new strategies and profiles using the **Strategy Manager UI Client** . The `Manual` folder contains more details.
 
+## Community API
+
+The official version will not use the shutdown function, but permissions will be open to community map authors, especially those who use AMAI but are not clear about its internal operating logic, don't need you study AMAI code. These APIs will quickly help you modify AMAI's system and this is real time intervention in the game.
+
+You can use `AI - Send Command` in trigger. But it can only be sent after the action of running the AI script is completed.
+
+Most functions only determine cmd, but a small portion of functions can be precisely controlled using data.
+For example, when data is -1, it refers to all AI players, while other values correspond to specific players.
+
+This API is still under improvement.If the function you want to implement is not here, please provide feedback.
+
+| **AMAI API** | **cmd value** | **data value** | **Submit during initialization** | **Describe** |
+| ----------------- | ------------------- | ------------------ | ------------------ | ------------------ |
+| **No Use Neutral Heros** | 8000 | 0 | should be | all AI No Use Neutral Heros |
+
 # Credits
 
 ### Helpers
@@ -363,7 +378,7 @@ AMAI has built in support to be able to write new strategies and profiles using 
 - French - JUJU, WILL THE ALMIGHTY
 - Spanish - Vexorian, Moyack, Slayer95
 - Romanian - Andas_007
-- Chinese - Dr Fan, Sheeryiro KeamSpring, Pixyy
+- Chinese - Dr Fan, Sheeryiro, KeamSpring, Pixyy
 - Russian - RaZ and Darkloke, Lolasik011
 - Portuguese - imba curisco ghouleh
 - Norwegian - Aray
