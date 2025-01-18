@@ -1096,48 +1096,45 @@ endfunction
 // Zoom
 //===========================================================================
 function ZoomSet takes nothing returns nothing
-  local real Zoom = 0
-  local integer i = GetPlayerId(GetTriggerPlayer())
+  local string s = GetEventPlayerChatString()
+  local player p = GetTriggerPlayer()
+  local real Zoom = S2R(SubStringBJ(s, 6, 10))
+  local integer i = GetPlayerId(p)  // Fix desync, variables must be same across players
   call TraceToAll("ZOOM SET Triggered")
-  if SubStringBJ(GetEventPlayerChatString(), 6, 6) != "k" then
-    if SubStringBJ(GetEventPlayerChatString(), 6, 6) != " " then
-      set Zoom = S2R(SubStringBJ(GetEventPlayerChatString(), 6, 10))
-    else
-      set Zoom = S2R(SubStringBJ(GetEventPlayerChatString(), 7, 11))
+  if SubStringBJ(s, 6, 6) != "k" then
+    if SubStringBJ(s, 6, 6) == " " then
+      set Zoom = S2R(SubStringBJ(s, 7, 11))
     endif
     if Zoom < 1650 then
-      call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, 1650, 0 )
-      call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "zoom min: |cff00ff001650|r" )
-    elseif Zoom > 3000 then
-      call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, 3000, 0 )
-      call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "zoom max: |cff00ff003000|r" )
-    else
-      call SetCameraFieldForPlayer( GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, Zoom, 0 )
-    endif
-    // Fix desync, variables must be same across players
-    if Zoom < 1650 then
+      call SetCameraFieldForPlayer(p, CAMERA_FIELD_TARGET_DISTANCE, 1650, 0)
+      call DisplayTimedTextToPlayer(p, 0, 0, 7, "zoom min: |cff00ff001650|r")
       set current_zoom[i] = 1650
     elseif Zoom > 3000 then
+      call SetCameraFieldForPlayer(p, CAMERA_FIELD_TARGET_DISTANCE, 3000, 0)
+      call DisplayTimedTextToPlayer(p, 0, 0, 7, "zoom max: |cff00ff003000|r")
       set current_zoom[i] = 3000
     else
+      call SetCameraFieldForPlayer(p, CAMERA_FIELD_TARGET_DISTANCE, Zoom, 0)
       set current_zoom[i] = Zoom
     endif
   elseif legacyCamera then
     if ZoomKey[i] == true then
       set ZoomKey[i] = false
-      call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "Zoom Hot Key: |cfffd0000[off]|r" )
+      call DisplayTimedTextToPlayer(p, 0, 0, 7, "Zoom Hot Key: |cfffd0000[off]|r")
     else
       set ZoomKey[i] = true
-      call DisplayTimedTextToPlayer(GetTriggerPlayer(), 0, 0, 7, "Zoom Hot Key: |cff00ff00[on]|r" )
+      call DisplayTimedTextToPlayer(p, 0, 0, 7, "Zoom Hot Key: |cff00ff00[on]|r")
     endif
   endif
+  set s = null
+  set p = null
 endfunction
 
 function ZoomDown takes nothing returns nothing
   local integer i = GetPlayerId(GetTriggerPlayer())
   if ZoomKey[i] and current_zoom[i] > 1650 then
     if GetTriggerPlayer() == GetLocalPlayer() then
-      call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( current_zoom[i] - 50 ), 0 )
+      call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( current_zoom[i] - 50 ), 0)
       set current_zoom[i] = current_zoom[i] - 50
     endif
   endif
@@ -1147,7 +1144,7 @@ function ZoomUp takes nothing returns nothing
   local integer i = GetPlayerId(GetTriggerPlayer())
   if ZoomKey[i] and current_zoom[i] < 3000 then
     if GetTriggerPlayer() == GetLocalPlayer() then
-      call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( current_zoom[i] + 50 ), 0 )
+      call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( current_zoom[i] + 50 ), 0)
       set current_zoom[i] = current_zoom[i] + 50
     endif
   endif
@@ -1158,28 +1155,28 @@ function InitZoom takes nothing returns nothing
   set ZoomSetx = CreateTrigger()
   set AdjustZoomUp = CreateTrigger()
   set AdjustZoomDown = CreateTrigger()
-  call TriggerAddAction(ZoomSetx, function ZoomSet)
-  call TriggerAddAction(AdjustZoomUp , function ZoomUp)
-  call TriggerAddAction(AdjustZoomDown , function ZoomDown)
   loop
     exitwhen i >= GetBJMaxPlayers()
     if GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER then
       call DisplayTimedTextToPlayer(Player(i),0,0,7,"Set Zoom type: |c00d5f038-zoom1850|r")
       call TriggerRegisterPlayerChatEvent( ZoomSetx, Player(i), "-zoom", false )
+      set current_zoom[i] = 1650
       if legacyCamera then // Only required for legacy versions as no camera support built into the game
         call TriggerRegisterPlayerKeyEventBJ( AdjustZoomUp, Player(i), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_UP )
         call TriggerRegisterPlayerKeyEventBJ( AdjustZoomDown, Player(i), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_DOWN )
-        set current_zoom[i] = 1650 // Default expected in legacy systems
-        set ZoomKey[i] = true
+        set ZoomKey[i] = true  // Default expected in legacy systems
         call DisplayTimedTextToPlayer(Player(i),0,0,7,"Enable/Disable Zoom Hot Keys: |c00d5f038-zoomkey|r")
         if IsPlayerObserver(Player(i)) then
           call SetCameraFieldForPlayer(Player(i), CAMERA_FIELD_TARGET_DISTANCE, 2350, 0)
-          set current_zoom[i] = 1950
+          set current_zoom[i] = 2350
         endif
       endif
     endif
     set i = i + 1
   endloop
+  call TriggerAddAction(ZoomSetx, function ZoomSet)
+  call TriggerAddAction(AdjustZoomUp , function ZoomUp)
+  call TriggerAddAction(AdjustZoomDown , function ZoomDown)
 endfunction
 
 #INCLUDESCRIPT <Blizzard_UIFrame.eai>
