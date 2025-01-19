@@ -3324,26 +3324,27 @@ endfunction
 //============================================================================
 //  (AMAI)    Chat function
 //============================================================================
-function RemoveOldMessage takes integer i returns nothing
+function RemoveOldMessage takes nothing returns nothing
+  local integer i = 0
+  loop
+    exitwhen chat_queue_locked
+    call Sleep(0.02)
+  endloop
+  set chat_queue_locked = false
+  loop
+    exitwhen i >= chat_queue_size
+    set chat_queue[i] = chat_queue[i+1]
+    set chat_queue_player[i] = chat_queue_player[i+1]
+    set chat_queue_importance[i] = chat_queue_importance[i+1]
+    set i = i + 1
+  endloop
   if i > 0 then
-    loop
-      exitwhen chat_queue_locked
-      call Sleep(0.02)
-    endloop
-    set chat_queue_locked = false
-    loop
-      exitwhen i >= chat_queue_size
-      set chat_queue[i] = chat_queue[i+1]
-      set chat_queue_player[i] = chat_queue_player[i+1]
-      set chat_queue_importance[i] = chat_queue_importance[i+1]
-      set i = i + 1
-    endloop
     set chat_queue[i] = null
     set chat_queue_player[i] = null
     set chat_queue_importance[i] = false
-    set chat_queue_size = chat_queue_size - 1
-    set chat_queue_locked = true
   endif
+  set chat_queue_size = chat_queue_size - 1
+  set chat_queue_locked = true
 endfunction
 
 function QueueChat takes string text, player p, boolean important returns nothing
@@ -3352,43 +3353,51 @@ function QueueChat takes string text, player p, boolean important returns nothin
   set chat_queue_player[chat_queue_size] = p
   set chat_queue_importance[chat_queue_size] = important
   if chat_queue_size > (5 * c_ai_total) then
-    call RemoveOldMessage(0)
+    call RemoveOldMessage()
   endif
 endfunction
 
 function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean obs, boolean important, boolean immediate returns nothing
   local integer i = 0
-  local integer std_rand = 0
-  local integer rand = 0
   local player p = null
   local integer chat_greet_count = 0
   local string parsed_chat = null
+  local string cgold = null
+  local string gold = null
+  local string target = null
+  local string color = null
+  local string num = null
+  local string pi = null
   //call ApplyChatConditions() Not supported in lua
   if chat_list_length == 0 then
     return
   endif
-  set std_rand = GetRandomInt(0, chat_list_length - 1)
+  set parsed_chat = ApplyChatVars(chat_list[GetRandomInt(0, chat_list_length - 1)])
+  set cgold = ApplyTrans("CurrentGold")
+  set gold = Int2Str(GetGold())
+  set target = ApplyTrans("Target")
+  set color = ApplyTrans(GetChatVar("TargetColor"))
+  set num = Int2Str(GREETINGS_NUM)
   loop
     exitwhen i >= GetBJMaxPlayers()
     set p = Player(i)
     if (GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) != MAP_CONTROL_COMPUTER and not IsPlayerObserver(p) and ((ally and IsPlayerAlly(p, ai_player)) or (enemy and IsPlayerEnemy(p, ai_player)))) or (obs and IsPlayerObserver(p)) then
-      set rand = std_rand
+      set pi = Int2Str(i)
       call SetChatVarsPlayer(p)
       // Only send a limited number of greetings to a single player
-      set parsed_chat = ApplyChatVars(chat_list[rand])
       if chat == C_Goldproblem then
-        set parsed_chat = parsed_chat + " " + ApplyTrans("CurrentGold") + ": " + Int2Str(GetGold())
+        set parsed_chat = parsed_chat + " " + cgold + ": " + gold
       elseif chat == C_Ally or chat == C_Attack or chat == C_Megatarget then
-        set parsed_chat = parsed_chat + " " + ApplyTrans("Target") + " (" + ApplyTrans(GetChatVar("TargetColor")) + ")"
+        set parsed_chat = parsed_chat + " " + target + " (" + color + ")"
       endif
       if chat == C_Greet then
-        if (HaveStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i))) then
-          set chat_greet_count = GetStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i))
+        if (HaveStoredInteger(amaiCache, num, pi)) then
+          set chat_greet_count = GetStoredInteger(amaiCache, num, pi)
         endif
-        if chat_greet_count < 6 then
+        if chat_greet_count < Max(R2I(c_ai_total / 3) + 2, 6) then
           //call DisplayToAllFromPlayer("GREET" + Int2Str(chat_greet_count), GetAiPlayer(), false)
-          call StoreInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i), chat_greet_count + 1 )
-          //call SyncStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(GREETINGS_NUM))
+          call StoreInteger(amaiCache, num, pi, chat_greet_count + 1 )
+          //call SyncStoredInteger(amaiCache, num, num)
           call DisplayToPlayer(parsed_chat, p, important)
         endif
       elseif immediate then
@@ -3401,6 +3410,12 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
   endloop
   set p = null
   set parsed_chat = null
+  set cgold = null
+  set gold = null
+  set target = null
+  set color = null
+  set num = null
+  set pi = null
 endfunction
 
 function QueueStrategy takes string text returns nothing
@@ -9270,15 +9285,15 @@ endfunction
 //============================================================================
 function display_rp_strat takes nothing returns nothing
   local integer i = 0
-  local integer sum = 0
+  local real sum = 0
   if balancing then
-    set sum = sum_rp_strat(rp_strat_length)
+    set sum = I2R(sum_rp_strat(rp_strat_length))
     if sum == 0 then
       set sum = 1
     endif
     loop
       exitwhen i >= rp_strat_length
-      call DisplayToAll(GetStrategyName(i)+": "+Int2Str(R2I(I2R(100 * rp_strat[i]) / I2R(sum)))+" %")
+      call DisplayToAll(GetStrategyName(i)+": "+Int2Str(R2I(I2R(100 * rp_strat[i]) / sum))+" %")
       set i = i + 1
     endloop
   endif
@@ -9304,15 +9319,15 @@ endfunction
 //============================================================================
 function display_rp_strat_sort takes nothing returns nothing
   local integer i = 0
-  local integer sum = 0
+  local real sum = 0
   if balancing then
-    set sum = sum_rp_strat_sort(relevant_strat_change_number)
+    set sum = I2R(sum_rp_strat_sort(relevant_strat_change_number))
     if sum == 0 then
       set sum = 1
     endif
     loop
       exitwhen i >= relevant_strat_change_number
-      call DisplayToAll(GetStrategyName(rp_strat_sort[i])+": "+Int2Str(R2I(I2R(100 * rp_strat[rp_strat_sort[i]]) / I2R(sum)))+" %")
+      call DisplayToAll(GetStrategyName(rp_strat_sort[i])+": "+Int2Str(R2I(I2R(100 * rp_strat[rp_strat_sort[i]]) / sum))+" %")
       set i = i + 1
     endloop
   endif
@@ -9534,7 +9549,7 @@ function ChooseFirstHero takes nothing returns integer
       set i = i + 1
     endloop
   endif
-  if IsMapFlagSet(MAP_RANDOM_HERO) and hero[1] == null then
+  if IsMapFlagSet(MAP_RANDOM_HERO) then
 //    call DisplayToAll("Map flag set")
     set hero[1] = GetExistingHero()
   else
@@ -9772,12 +9787,13 @@ function RBlockListCheck takes integer qty, integer t returns integer
   local integer i = 0
   local integer max_qty = qty
   local integer f = FoodUsed()
+  local string q = Int2Str(qty)
   loop
     exitwhen i >= rbl_length
     if ai_time < rbl_expire_time[i] and rbl_allow_type[i] == t then
       if total_gold < rbl_req_gold[i] or total_wood < rbl_req_wood[i] or f < rbl_req_food[i] then
         set max_qty = Min(max_qty, rbl_allow_qty[i])
-        call Trace("RBlockList Id " + unitNames[t] + " original qty:" + Int2Str(qty) + " new qty:" + Int2Str(max_qty))
+        call Trace("RBlockList Id " + unitNames[t] + " original qty:" + q + " new qty:" + Int2Str(max_qty))
         set blocked_gold = Max(blocked_gold, rbl_req_gold[i])
         set blocked_wood = Max(blocked_wood, rbl_req_wood[i])
         set blocked_food = Max(blocked_food, rbl_req_food[i])
@@ -9785,6 +9801,7 @@ function RBlockListCheck takes integer qty, integer t returns integer
     endif
     set i = i + 1
   endloop
+  set q = null
   return max_qty
 endfunction
 
@@ -12089,13 +12106,14 @@ endfunction
 
 //============================================================================
 function TimeKeeper takes nothing returns nothing
+  local integer t = ai_time
   //local real new_time_of_day = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
   //if new_time_of_day < time_of_day then
   //  call Chat(C_NewYear)
   //endif
   //set time_of_day = new_time_of_day
   set ai_time = R2I(TimerGetElapsed(tq_timer) / 5)
-  if ai_time >= taunt_start_time then
+  if ai_time - t >= taunt_start_time then
     call Chat(C_Taunt)
   endif
 endfunction

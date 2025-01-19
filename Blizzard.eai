@@ -138,9 +138,12 @@
     timer array KK_TPTimer
 
     trigger Random_Hero = null
+    triggeraction Random_Hero_Action = null
     integer array RandomHeroNum
+    integer array RandomHero_Max
     sound array RandomHeroSound
     boolean RandomHero = true  // if do not want random hero, set this to false
+    boolean RandomHeroRun = false  // do not change this
 
     string chat_no_ally = ""
     string you_no_gold = ""
@@ -969,8 +972,6 @@ function SetStartHero_d takes player p, race r, location l returns nothing
       set u = CreateUnit(p, RandomHeroNum[GetRandomInt(16, 19)], GetLocationX(l), GetLocationY(l) - GetRandomInt(350, 450), bj_UNIT_FACING)
     elseif r == RACE_HUMAN then
       set u = CreateUnit(p, RandomHeroNum[GetRandomInt(20, 23)], GetLocationX(l), GetLocationY(l) - GetRandomInt(350, 450), bj_UNIT_FACING)
-    else
-      set u = CreateUnit(p, RandomHeroNum[GetRandomInt(0, 23)], GetLocationX(l), GetLocationY(l) - GetRandomInt(350, 450), bj_UNIT_FACING)
     endif
   else
     set u = CreateUnit(p, RandomHeroNum[GetRandomInt(0, 23)], GetLocationX(l), GetLocationY(l) - GetRandomInt(350, 450), bj_UNIT_FACING)
@@ -986,12 +987,14 @@ function SetOtherHero takes nothing returns nothing
   local unit x = null
   local location l = null
   local player p = null
-  local integer i = GetRandomInt(0, 23)
+  local integer c = GetRandomInt(0, 23)
+  local integer i = 0
   if u == null then
     set u = t
   endif
   set p = GetOwningPlayer(u)
-  if GetPlayerController(p) == MAP_CONTROL_COMPUTER then
+  set i = GetPlayerId(p)
+  if GetPlayerController(p) == MAP_CONTROL_COMPUTER or RandomHero_Max[i] > 2 then
     set u = null
     set t = null
     set p = null
@@ -1000,11 +1003,14 @@ function SetOtherHero takes nothing returns nothing
   call ShowUnit(u, false)
   call SetUnitOwner(u, Player(PLAYER_NEUTRAL_PASSIVE), false)
   set x = u
-  set u = CreateUnit(p, RandomHeroNum[i], GetUnitX(x), GetUnitY(x), bj_UNIT_STATE_METHOD_MAXIMUM)
+  set u = CreateUnit(p, RandomHeroNum[c], GetUnitX(x), GetUnitY(x), bj_UNIT_STATE_METHOD_MAXIMUM)
   call RemoveUnit(x)
   if GetLocalPlayer() == p then
-    call PlaySoundOnUnitBJ(RandomHeroSound[i], 100, u)
+    call PlaySoundOnUnitBJ(RandomHeroSound[c], 100, u)
   endif
+  set c = GetBJMaxPlayers()
+  set RandomHero_Max[i] = RandomHero_Max[i] + 1
+  set RandomHero_Max[c] = RandomHero_Max[c] - 1
   if t == null then
     set l = GetUnitRallyPoint(GetTriggerUnit())
     if l != null then
@@ -1018,14 +1024,21 @@ function SetOtherHero takes nothing returns nothing
   set t = null
   set x = null
   set p = null
+  if RandomHero_Max[c] < 1 then
+    call TriggerRemoveAction(Random_Hero, Random_Hero_Action)
+    call DestroyTrigger(Random_Hero)
+    set Random_Hero = null
+  endif
 endfunction
 
 function InitRandomHero takes nothing returns nothing
   local integer i = 0
+  local integer c = GetBJMaxPlayers()
   local player p = null
   if RandomHero and IsMapFlagSet(MAP_RANDOM_HERO) and Random_Hero == null then
-    call SetMapFlag(MAP_RANDOM_HERO, false)
     set Random_Hero = CreateTrigger()
+    set RandomHeroRun = true
+    call SetMapFlag(MAP_RANDOM_HERO, false)
     set RandomHeroNum[0] = 'Nngs'
     set RandomHeroNum[1] = 'Nbst'
     set RandomHeroNum[2] = 'Nbrn'
@@ -1074,20 +1087,23 @@ function InitRandomHero takes nothing returns nothing
     set RandomHeroSound[21] = CreateSound("Units\\Human\\HeroPaladin\\HeroPaladinReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
     set RandomHeroSound[22] = CreateSound("Units\\Human\\HeroMountainKing\\HeroMountainKingReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
     set RandomHeroSound[23] = CreateSound("Units\\Human\\HeroBloodElf\\BloodElfMageReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+    set RandomHero_Max[c] = 0
     loop
-      exitwhen i >= GetBJMaxPlayers()
+      exitwhen i >= c
       set p = Player(i)
       if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
         if GetPlayerController(p) != MAP_CONTROL_COMPUTER then
-          call DisplayTimedTextToPlayer(p,0,0,7,"AMAI Real Player Random Hero: |cff00ff00[on]|r")
+          set RandomHero_Max[i] = 1
+          set RandomHero_Max[c] = RandomHero_Max[c] + 2
+          call DisplayTimedTextToPlayer(p, 0, 0, 7, "AMAI Real Player Random Hero: |cff00ff00[on]|r")
           call TriggerRegisterPlayerUnitEvent(Random_Hero, p, EVENT_PLAYER_UNIT_TRAIN_FINISH, filterMeleeTrainedUnitIsHeroBJ)
         endif
-        call SetStartHero_d(p, GetPlayerRace(p), GetStartLocationLoc(GetPlayerStartLocation(p)))  // include computer
+        call SetStartHero_d(p, GetPlayerRace(p), GetStartLocationLoc(GetPlayerStartLocation(p)))  // include AI
       endif
-      set i = i + 1
+      set i= i + 1
     endloop
     call TriggerRegisterPlayerUnitEvent(Random_Hero, Player(PLAYER_NEUTRAL_PASSIVE), EVENT_PLAYER_UNIT_SELL, filterMeleeTrainedUnitIsHeroBJ)
-    call TriggerAddAction(Random_Hero, function SetOtherHero)
+    set Random_Hero_Action = TriggerAddAction(Random_Hero, function SetOtherHero)
     set p = null
   endif
 endfunction
