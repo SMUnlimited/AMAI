@@ -10322,6 +10322,7 @@ endfunction
 function InitHarass takes nothing returns nothing
   local integer i = 1
   local group g = null
+  set resetharass = true
   loop
     exitwhen i > max_harass_groups
     set harass_size[i] = 0
@@ -10345,6 +10346,7 @@ function InitHarass takes nothing returns nothing
   endif
   //call Trace("InitHarassEnd")
   set distraction_group = 0
+  set resetharass = false
   set g = null
 endfunction
 
@@ -10397,7 +10399,7 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
   local real getstrength = 0
   local integer qty = 0
   local integer uid = 0
-  if LoadInteger(additional_info, key, STATE_RETREAT) == 1 then
+  if LoadInteger(additional_info, key, STATE_RETREAT) == 1 or resetharass then
     // This harass is still running
     return
   endif
@@ -10480,20 +10482,22 @@ function GetHarassGroupStrength takes integer groupnum returns real
   local integer i = 0
   local integer qty = 0
   local integer t = 0
-  loop
-    exitwhen i >= harass_size[groupnum] or t >= 12
-    set id = LoadInteger(harass_groups, groupnum, i)
-    set qty = LoadInteger(harass_groups, groupnum, i + 1)
-    set t = t + qty
-    if t + qty > 12 then
-      set qty = 12 - t
-      set t = 12
-    else
+  if not resetharass then
+    loop
+      exitwhen i >= harass_size[groupnum] or t >= 12
+      set id = LoadInteger(harass_groups, groupnum, i)
+      set qty = LoadInteger(harass_groups, groupnum, i + 1)
       set t = t + qty
-    endif
-    set sum = sum + Min(qty, TownCountDone(id)) * GetFoodUsed(old_id[id]) * p
-    set i = i + 2
-  endloop
+      if t + qty > 12 then
+        set qty = 12 - t
+        set t = 12
+      else
+        set t = t + qty
+      endif
+      set sum = sum + Min(qty, TownCountDone(id)) * GetFoodUsed(old_id[id]) * p
+      set i = i + 2
+    endloop
+  endif
   return sum
 endfunction
 
@@ -12553,7 +12557,7 @@ endfunction
 function DoDistractionAttack takes unit target returns nothing
   local unit d_target = null
   set d_target = GetDistractionTarget(d_target, target)
-  if d_target != null and distraction_group != 0 then
+  if d_target != null then
     call StartHarass(distraction_group, HARASS_TARGET_LOCATION, false, 15, 0.25, 1, GetUnitX(d_target), GetUnitY(d_target))
     call Sleep(3)
   endif
@@ -12965,6 +12969,7 @@ endfunction
 
 //============================================================================
 function AttackMoveKillAAM takes unit target, boolean ally_override returns nothing
+  local real s = 0
   if target == null or not UnitAlive(target) then
     call Trace("Bad target passed to AttackMoveKillAAM")
     call Sleep(3 * sleep_multiplier)
@@ -12973,7 +12978,8 @@ function AttackMoveKillAAM takes unit target, boolean ally_override returns noth
   set attack_running = true
   call DoAttackJobs()
   if distraction_group != 0 and GetOwningPlayer(target) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetRandomInt(1,10) < 5 then
-    if GetHarassGroupStrength(distraction_group) < GetOwnStrength() / 3 then
+    set s = GetHarassGroupStrength(distraction_group)
+    if s > 0 and s < GetOwnStrength() / 3 then
       call DoDistractionAttack(target)
     endif
   endif
