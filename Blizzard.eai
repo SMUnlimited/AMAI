@@ -1003,7 +1003,7 @@ function SetOtherHero takes nothing returns nothing
   call ShowUnit(u, false)
   call SetUnitOwner(u, Player(PLAYER_NEUTRAL_PASSIVE), false)
   set x = u
-  set u = CreateUnit(p, RandomHeroNum[c], GetUnitX(x), GetUnitY(x), bj_UNIT_STATE_METHOD_MAXIMUM)
+  set u = CreateUnit(p, RandomHeroNum[c], GetUnitX(x), GetUnitY(x), bj_UNIT_FACING)
   call RemoveUnit(x)
   if GetLocalPlayer() == p then
     call PlaySoundOnUnitBJ(RandomHeroSound[c], 100, u)
@@ -1147,43 +1147,45 @@ function ZoomSet takes nothing returns nothing
 endfunction
 
 function ZoomDown takes nothing returns nothing
-  local integer i = GetPlayerId(GetTriggerPlayer())
-  if ZoomKey[i] and current_zoom[i] > 1650 then
-    if GetTriggerPlayer() == GetLocalPlayer() then
-      call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( current_zoom[i] - 50 ), 0)
-      set current_zoom[i] = current_zoom[i] - 50
-    endif
+  local player p = GetTriggerPlayer()
+  local integer i = GetPlayerId(p)
+  if p == GetLocalPlayer() and ZoomKey[i] and current_zoom[i] > 1650 then
+    call SetCameraFieldForPlayer(p, CAMERA_FIELD_TARGET_DISTANCE, (current_zoom[i] - 50), 0)
+    set current_zoom[i] = current_zoom[i] - 50
   endif
+  set p = null
 endfunction
 
 function ZoomUp takes nothing returns nothing
-  local integer i = GetPlayerId(GetTriggerPlayer())
-  if ZoomKey[i] and current_zoom[i] < 3000 then
-    if GetTriggerPlayer() == GetLocalPlayer() then
-      call SetCameraFieldForPlayer(GetTriggerPlayer(), CAMERA_FIELD_TARGET_DISTANCE, ( current_zoom[i] + 50 ), 0)
-      set current_zoom[i] = current_zoom[i] + 50
-    endif
+  local player p = GetTriggerPlayer()
+  local integer i = GetPlayerId(p)
+  if p == GetLocalPlayer() and ZoomKey[i] and current_zoom[i] < 3000 then
+    call SetCameraFieldForPlayer(p, CAMERA_FIELD_TARGET_DISTANCE, (current_zoom[i] + 50), 0)
+    set current_zoom[i] = current_zoom[i] + 50
   endif
+  set p = null
 endfunction
 
 function InitZoom takes nothing returns nothing
   local integer i = 0
+  local player p = null
   set ZoomSetx = CreateTrigger()
   set AdjustZoomUp = CreateTrigger()
   set AdjustZoomDown = CreateTrigger()
   loop
     exitwhen i >= GetBJMaxPlayers()
-    if GetPlayerController(Player(i)) != MAP_CONTROL_COMPUTER then
-      call DisplayTimedTextToPlayer(Player(i),0,0,7,"Set Zoom type: |c00d5f038-zoom1850|r")
-      call TriggerRegisterPlayerChatEvent( ZoomSetx, Player(i), "-zoom", false )
-      set current_zoom[i] = 1650
+    set p = Player(i)
+    if GetPlayerController(p) != MAP_CONTROL_COMPUTER and p == GetLocalPlayer() then
+      call DisplayTimedTextToPlayer(p,0,0,7,"Set Zoom type: |c00d5f038-zoom1850|r")
+      call TriggerRegisterPlayerChatEvent( ZoomSetx, p, "-zoom", false )
+      set current_zoom[i] = GetCameraField(CAMERA_FIELD_TARGET_DISTANCE)
       if legacyCamera then // Only required for legacy versions as no camera support built into the game
-        call TriggerRegisterPlayerKeyEventBJ( AdjustZoomUp, Player(i), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_UP )
-        call TriggerRegisterPlayerKeyEventBJ( AdjustZoomDown, Player(i), bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_DOWN )
+        call TriggerRegisterPlayerKeyEventBJ( AdjustZoomUp, p, bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_UP )
+        call TriggerRegisterPlayerKeyEventBJ( AdjustZoomDown, p, bj_KEYEVENTTYPE_DEPRESS, bj_KEYEVENTKEY_DOWN )
         set ZoomKey[i] = true  // Default expected in legacy systems
-        call DisplayTimedTextToPlayer(Player(i),0,0,7,"Enable/Disable Zoom Hot Keys: |c00d5f038-zoomkey|r")
-        if IsPlayerObserver(Player(i)) then
-          call SetCameraFieldForPlayer(Player(i), CAMERA_FIELD_TARGET_DISTANCE, 2350, 0)
+        call DisplayTimedTextToPlayer(p,0,0,7,"Enable/Disable Zoom Hot Keys: |c00d5f038-zoomkey|r")
+        if IsPlayerObserver(p) then
+          call SetCameraFieldForPlayer(p, CAMERA_FIELD_TARGET_DISTANCE, 2350, 0)
           set current_zoom[i] = 2350
         endif
       endif
@@ -1193,6 +1195,7 @@ function InitZoom takes nothing returns nothing
   call TriggerAddAction(ZoomSetx, function ZoomSet)
   call TriggerAddAction(AdjustZoomUp , function ZoomUp)
   call TriggerAddAction(AdjustZoomDown , function ZoomDown)
+  set p = null
 endfunction
 
 #INCLUDESCRIPT <Blizzard_UIFrame.eai>
