@@ -1491,12 +1491,15 @@ function ApplyTrans takes string s returns string
   //local integer transnum = LoadInteger(translation_map, StringHash(language), StringHash(s))
   //if transnum != null then
   local string trans = null
-  if HaveSavedInteger(translation_map, StringHash(language), StringHash(s)) then
+  local integer l = StringHash(language)
+  local integer c = StringHash(s)
+  if HaveSavedInteger(translation_map, l, c) then
     //return translation[transnum]
-    set trans = translation[LoadInteger(translation_map, StringHash(language), StringHash(s))]
+    set trans = translation[LoadInteger(translation_map, l, c)]
   endif
-  if (trans == null or trans == "") and HaveSavedInteger(translation_map, StringHash(backlanguage), StringHash(s)) then // Backup translate to english
-    set trans = translation[LoadInteger(translation_map, StringHash(backlanguage), StringHash(s))]
+  set l = StringHash(backlanguage)
+  if (trans == null or trans == "") and HaveSavedInteger(translation_map, l, c) then // Backup translate to english
+    set trans = translation[LoadInteger(translation_map, l, c)]
   endif
   if (trans == null or trans == "") then
     //call DisplayTimedTextToPlayer(Player(0),0,0,15,message_add+s+":handle not saved")
@@ -1631,14 +1634,17 @@ endfunction
 function DisplayToAllFromPlayer takes string s, integer playernum, boolean important returns nothing
 	local integer i = 0
 	local string m = message_add+s
+	local player p = null
 	if GetAiPlayer() == playernum then
 		loop
-			if GetPlayerSlotState(Player(i)) == PLAYER_SLOT_STATE_PLAYING or IsPlayerObserver(Player(i)) then
-				call DisplayTimedTextToPlayer(Player(i),0,0,15,m)
+			set p = Player(i)
+			if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING or IsPlayerObserver(p) then
+				call DisplayTimedTextToPlayer(p,0,0,15,m)
 			endif
 			set i = i + 1
 			exitwhen i >= GetBJMaxPlayers()
 		endloop
+		set p = null
 		if important then
 			call StartSound(importantSound)
 		else
@@ -1650,34 +1656,36 @@ endfunction
 
 function UpdateDebugPlayer takes nothing returns nothing
   local integer i = GetBJMaxPlayers()
-  if IsPlayerObserver(Player(debug_player)) == true then
+  local player p = Player(debug_player)
+  if IsPlayerObserver(p) == true then
     if debug_player >= i then
       set debug_player = i // Do not go above MaxPlayers
     else
       set debug_player = debug_player + 1
     endif
   endif
-  if GetPlayerUnitCount(Player(debug_player), true) == 0 then
+  if GetPlayerUnitCount(p, true) == 0 then
     if debug_player >= i then
       set debug_player = i
     else
       set debug_player = debug_player + 1
     endif
   endif
-  //if GetChar(GetPlayerName(Player(debug_player)), 1) != "A" then
+  //if GetChar(GetPlayerName(p), 1) != "A" then
     //if debug_player >= i then
     //  set debug_player = i
     //else
     //  set debug_player = debug_player + 1   // If not containing AMAI in player name increment until it is
     //endif
   //endif
-  if GetPlayerSlotState(Player(debug_player)) != PLAYER_SLOT_STATE_PLAYING then
+  if GetPlayerSlotState(p) != PLAYER_SLOT_STATE_PLAYING then
     if debug_player >= i then
       set debug_player = i
     else
       set debug_player = debug_player + 1
     endif
   endif
+  set p = null
 endfunction
 
 function TracePlayer takes string s, integer playernum returns nothing
@@ -2145,14 +2153,15 @@ endfunction
 //============================================================================
 function SetChatVar takes string key, string value returns nothing
   local integer i = 0
+  local integer k = StringHash(key)
   //if i == 0 then
-  if (HaveSavedInteger(language_table, CHAT_VARS_TABLE, StringHash(key)) == false) then
+  if (HaveSavedInteger(language_table, CHAT_VARS_TABLE, k) == false) then
     set i = chat_vars_length
     set chat_vars_length = chat_vars_length + 1
     //call StoreInteger(chat_vars_map, ai_id, key, i)
-    call SaveInteger(language_table, CHAT_VARS_TABLE, StringHash(key), i)
+    call SaveInteger(language_table, CHAT_VARS_TABLE, k, i)
   else
-    set i = LoadInteger(language_table, CHAT_VARS_TABLE, StringHash(key))
+    set i = LoadInteger(language_table, CHAT_VARS_TABLE, k)
   endif
   set chat_vars[i] = value
 endfunction
@@ -3258,11 +3267,12 @@ endfunction
 
 //============================================================================
 function AddTranslation takes string lang, string strat_name, string trans_name, string trans_report returns nothing
+  local integer l = StringHash(lang)
   set translation[translation_length] = trans_name
-  call SaveInteger(translation_map, StringHash(lang), StringHash("Name"+strat_name), translation_length)
+  call SaveInteger(translation_map, l, StringHash("Name"+strat_name), translation_length)
   set translation_length = translation_length + 1
   set translation[translation_length] = trans_report
-  call SaveInteger(translation_map, StringHash(lang), StringHash("Report"+strat_name), translation_length)
+  call SaveInteger(translation_map, l, StringHash("Report"+strat_name), translation_length)
   set translation_length = translation_length + 1
 endfunction
 
@@ -3281,11 +3291,14 @@ endfunction
 //============================================================================
 function GetStrategyTxt takes integer stratnum, string txt returns string
   local string trans = null
-  if HaveSavedInteger(translation_map, StringHash(language), StringHash(txt+strategy_name[stratnum])) then
-    set trans = translation[LoadInteger(translation_map, StringHash(language), StringHash(txt+strategy_name[stratnum]))]
+  local integer l = StringHash(language)
+  local integer t = StringHash(txt+strategy_name[stratnum])
+  if HaveSavedInteger(translation_map, l, t) then
+    set trans = translation[LoadInteger(translation_map, l, t)]
   endif
-  if (trans == "" or trans == null) and HaveSavedInteger(translation_map, StringHash(backlanguage), StringHash(txt+strategy_name[stratnum])) then
-    set trans = translation[LoadInteger(translation_map, StringHash(backlanguage), StringHash(txt+strategy_name[stratnum]))]
+  set l = StringHash(backlanguage)
+  if (trans == "" or trans == null) and HaveSavedInteger(translation_map, l, t) then
+    set trans = translation[LoadInteger(translation_map, l, t)]
   endif
   if (trans == "" or trans == null) then
     set trans = null
@@ -3377,7 +3390,6 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
   set gold = Int2Str(GetGold())
   set target = ApplyTrans("Target")
   set color = ApplyTrans(GetChatVar("TargetColor"))
-  set num = Int2Str(GREETINGS_NUM)
   loop
     exitwhen i >= GetBJMaxPlayers()
     set p = Player(i)
@@ -3391,6 +3403,7 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
         set parsed_chat = parsed_chat + " " + target + " (" + color + ")"
       endif
       if chat == C_Greet then
+        set num = Int2Str(GREETINGS_NUM)
         if (HaveStoredInteger(amaiCache, num, pi)) then
           set chat_greet_count = GetStoredInteger(amaiCache, num, pi)
         endif
@@ -3400,6 +3413,7 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
           //call SyncStoredInteger(amaiCache, num, num)
           call DisplayToPlayer(parsed_chat, p, important)
         endif
+        set num = null
       elseif immediate then
         call DisplayToPlayer(parsed_chat, p, important)
       else
@@ -3414,7 +3428,6 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
   set gold = null
   set target = null
   set color = null
-  set num = null
   set pi = null
 endfunction
 
@@ -12339,6 +12352,10 @@ function BuildLoopAM takes nothing returns nothing
   endloop
 //    call DisplayToAll("Shutting down BuildLoopAM")
 //    call DebugSequenceEnd()
+  call InitBuildArrayAM()
+  loop
+    call Sleep(100)
+  endloop
 endfunction
 
 //============================================================================
@@ -12594,7 +12611,7 @@ function SleepInCombatAM takes boolean ally_override returns nothing
     exitwhen town_threat_break and town_threatened // under attack
     exitwhen break_attack // forced attack to end
     exitwhen CaptainIsEmpty()// no troops so stop attack
-    exitwhen R2I(count) >= 900 // Took longer than 15 mins to stop lingering something is wrong
+    exitwhen count >= 900 // Took longer than 15 mins to stop lingering something is wrong
     exitwhen isfleeing // Retreat control says to retreat
     if lastcaptainx != 0 and lastcaptainy != 0 then
       call CreateDebugTagLoc("Sleep at captainloc", 10, lastcaptainx, lastcaptainy, 1.00, 0.80)
@@ -12724,6 +12741,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
   set lastcaptainy = GetUnitY(target)
   loop
     //call Trace("SleepExitThreat:" + B2S(town_threat_break and town_threatened and not desperation_assault))
+    exitwhen player_defeated
     exitwhen town_threat_break and town_threatened and not desperation_assault
     //call Trace("SleepExitBreak:" + B2S(break_attack and not desperation_assault))
     exitwhen break_attack and not desperation_assault
@@ -12851,6 +12869,7 @@ function SleepUntilAtGoalAM takes nothing returns nothing
   call Trace("SleepUntilGoal")
   loop
     exitwhen town_threat_break and town_threatened
+    exitwhen player_defeated
     set lcount = lcount + 1
     exitwhen break_attack
     exitwhen isfleeing
@@ -12876,25 +12895,29 @@ function SetChatVarsAttack takes unit u returns nothing
 endfunction
 
 function SetAllianceTargetIfLead takes unit u returns nothing
-  if u != null and not HaveStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0") then // if leadally
-    call StoreInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0", GetHandleId(u))
+  local string t = Int2Str(ALLIANCE_TARGET)
+  if u != null and not HaveStoredInteger(amaiCache, t, "0") then // if leadally
+    call StoreInteger(amaiCache, t, "0", GetHandleId(u))
     //call SetAllianceTarget(u)
   endif
-  if u == null and HaveStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0") then
-    call FlushStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0")
+  if u == null and HaveStoredInteger(amaiCache, t, "0") then
+    call FlushStoredInteger(amaiCache, t, "0")
   endif
+  set t = null
 endfunction
 
 function SetAllianceTargetIfLeadAndChat takes unit u, integer chat returns nothing
-  if u != null and not HaveStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0") then // if leadally
-    call StoreInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0", GetHandleId(u))
+  local string t = Int2Str(ALLIANCE_TARGET)
+  if u != null and not HaveStoredInteger(amaiCache, t, "0") then // if leadally
+    call StoreInteger(amaiCache, t, "0", GetHandleId(u))
     call SetAllianceTarget(u) // Just sends alliance attack signal, doesn't actually control ally attack target as originally thought, thats hardcoded into attackmovekill
     call SetChatVarsAttack(u)
     call Chat(chat)
-  elseif u == null and HaveStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0") then
+  elseif u == null and HaveStoredInteger(amaiCache, t, "0") then
     call SetAllianceTarget(u)
-    call FlushStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0")
+    call FlushStoredInteger(amaiCache, t, "0")
   endif
+  set t = null
 endfunction
 
 function ClearAllianceTarget takes unit old returns nothing
@@ -12912,7 +12935,7 @@ function BRRush takes nothing returns boolean
   local group g = CreateGroup()
   local player p = null
   local integer i = 0
-  call GroupEnumUnitsInRange(g,GetUnitX(rushcreep_target), GetUnitY(rushcreep_target),800,null)
+  call GroupEnumUnitsInRange(g, GetUnitX(rushcreep_target), GetUnitY(rushcreep_target),800,null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null or i == 1
@@ -13294,7 +13317,7 @@ function QueueAttackMoveXY takes integer x, integer y returns nothing
   loop
     call Sleep(sleep_multiplier)
     call AttackMoveXY(x,y)
-    exitwhen break_attack
+    exitwhen break_attack or player_defeated
     exitwhen CaptainRetreating()
     exitwhen CaptainAtGoal()
     call Sleep(sleep_multiplier)
