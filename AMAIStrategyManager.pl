@@ -79,13 +79,13 @@ $notebook->configure(-font => ['Helvetica', 10]);
 my $stratframe = $notebook->add("strat", -label => get_translation('label_strategies'));
 my $profileframe = $notebook->add("profile", -label => get_translation('label_profiles'));
 my $stratlb = $stratframe->Listbox(-height => 0)->pack;
-my $stratlb = $stratframe->Scrolled('Listbox',
+$stratlb = $stratframe->Scrolled('Listbox',
     -scrollbars => 'se',
     -height => 0,
 )->pack(-fill => 'both', -expand => 1);
 tie $strat, "Tk::Listbox", $stratlb;
 my $profilelb = $profileframe->Listbox(-height => 0)->pack;
-my $profilelb = $profileframe->Scrolled('Listbox',
+$profilelb = $profileframe->Scrolled('Listbox',
     -scrollbars => 'se',
     -height => 0,
 )->pack(-fill => 'both', -expand => 1);
@@ -275,11 +275,12 @@ $lframe->Label(
                 -height => 1,
 )->pack;
 $langopt = $lframe->Optionmenu(
-                # -options => [map { [$_ => $_] } @sorted_languages],
                 -command => sub {
                   my ($choice) = @_;
-                  system("SetManagerLanguage.bat", "$choice");
-                  exit(0);
+                  open(SETLANG, ">Manager_language.txt") or die get_translation('err_file_not_writing', "<Manager_language.txt>");
+                  print SETLANG $choice;
+                  close(SETLANG);
+                  exec($^X, $0, @ARGV);
                 },
                 -variable => \$lang_code,
                 -width => 20
