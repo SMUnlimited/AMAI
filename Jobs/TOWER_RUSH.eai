@@ -114,7 +114,8 @@ function TowerRushTowerMoveControl_k takes unit u, location t returns nothing  /
 	local location unitloc = null
 	local location l = GetUnitLoc(u)
 	local integer id = GetUnitCurrentOrder(u)
-	if GetUnitState(u, UNIT_STATE_LIFE) >= GetUnitState(u, UNIT_STATE_MAX_LIFE) * 0.65 then  //exclude UNIT_STATE_LIFE too low , dangerous to stand up
+	local real s = GetUnitState(u, UNIT_STATE_LIFE)
+	if s >= GetUnitState(u, UNIT_STATE_MAX_LIFE) * 0.65 then  //exclude UNIT_STATE_LIFE too low , dangerous to stand up
 		if DistanceBetweenPoints(l, toweringplayerloc) > DistanceBetweenPoints(t, toweringplayerloc) + 220 and id == 0 then
 			set unitloc = GetProjectedLoc(t, l, 70)
 			if race_tower_id_replace == 0 then
@@ -134,7 +135,7 @@ function TowerRushTowerMoveControl_k takes unit u, location t returns nothing  /
 			set id = GetUnitCurrentOrder(u)  // update order
 		endif
 	endif
-	if DistanceBetweenPoints(l, toweringplayerloc) <= DistanceBetweenPoints(t, toweringplayerloc) or id != OrderId(race_tower_movestartstring) or GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) * 0.5 then
+	if s >= 1 and (DistanceBetweenPoints(l, toweringplayerloc) <= DistanceBetweenPoints(t, toweringplayerloc) or id != OrderId(race_tower_movestartstring) or s < GetUnitState(u, UNIT_STATE_MAX_LIFE) * 0.5) then
 		call RemoveGuardPosition(u)
 		call IssuePointOrderLoc( u, race_tower_movestartstring, l)
 	endif
@@ -167,6 +168,7 @@ function TowerRushJob takes nothing returns nothing
 	local integer towermove = 30
 	local integer buildtries = 10
 	local integer id = 0
+	local real bt = 0
 	local real time_next_try = 4
 	local real EnemyStrength = 0
 	local real OwnStrength = 0
@@ -186,9 +188,9 @@ function TowerRushJob takes nothing returns nothing
 	loop
 		set u = FirstOfGroup(g)
 		exitwhen u == null
-		if GetOwningPlayer(u) == ai_player and GetUnitState(u, UNIT_STATE_LIFE) > 0 and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+		if GetOwningPlayer(u) == ai_player and GetUnitState(u, UNIT_STATE_LIFE) >= 1 and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
 			set id = GetUnitTypeId(u)
-			if id == old_id[race_tower_id] or (race_tower_upgrade1 != 0 and id == old_id[race_tower_upgrade1]) or ( race_tower_upgrade2 != 0 and id == old_id[race_tower_upgrade2]) then
+			if id == old_id[race_tower_id] or id == old_id[race_tower_upgrade1] or id == old_id[race_tower_upgrade2] then
 				if id == old_id[race_tower_id] then
 					if (randomnum == 4 or GetUnitCountDone(old_id[race_towerrush_requirement]) == 0) and race_tower_upgrade2 != 0 and TownCount(race_tower_upgrade2) < 2 then
 						call IssueImmediateOrderById(u, old_id[race_tower_upgrade2])
@@ -202,6 +204,8 @@ function TowerRushJob takes nothing returns nothing
 				endif
 				if IsUnitType(u, UNIT_TYPE_ATTACKS_GROUND) or IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) then
 					set towers_attck = towers_attck + 1
+				else
+					set bt = bt + 0.3
 				endif
 				set i = i + 1
 			elseif id == old_id[racial_shop] then
@@ -252,9 +256,9 @@ function TowerRushJob takes nothing returns nothing
 		set CloseJob = town_threatened and town_threat[most_threatened_town] >= teleport_low_threat * 1.5
 		set CloseJob = CloseJob or (race_tower_item_must and not tower_used_item and hero_unit[2] != null and builder[0] == null)  //  too longer time not buy item , but item must
 		if not CloseJob then
-			set EnemyStrength = GetLocationNonCreepStrength(GetLocationX(t), GetLocationY(t), 1200)
-			set OwnStrength = GetOwnStrength() + towers_attck + towers_built * 0.3  //  tower have strength
-			set CloseJob = (EnemyStrength > OwnStrength * 4) or (EnemyStrength > OwnStrength * 2 and towers_built_count > 6 * race_tower_peon and towers_built < 2)  //  6 job cycles
+			set EnemyStrength = GetLocationNonCreepStrength(GetLocationX(t), GetLocationY(t), 1200) + GetLocationTowerStrength(GetLocationX(t), GetLocationY(t), 1200)
+			set OwnStrength = GetOwnStrength() + towers_attck + bt
+			set CloseJob = (EnemyStrength > OwnStrength * 4) or (EnemyStrength > OwnStrength * 2 and towers_built_count > 5 and towers_built < 2)
 			if not CloseJob and not Console_TR_Commands and not tower_peon_inplace and EnemyStrength > OwnStrength * 2 then
 				set i = 1
 				loop
@@ -467,7 +471,7 @@ function TowerRushJob takes nothing returns nothing
 	endif
 
 	if tower_attack_run == true then
-		if builder[0] != null and GetItemNumberOnUnit(race_tower_item, builder[0]) > 0 then
+		if builder[0] != null and GetItemNumberOnUnit(race_tower_item, builder[0]) > 0 and GetUnitState(builder[0], UNIT_STATE_LIFE) >= 1 then
 			call TowerRushHeroControl_k(builder[0], t)
 			if GetItemNumberOnUnit(race_tower_item, builder[0]) == 0 or GetUnitState(builder[0], UNIT_STATE_LIFE) < GetUnitState(builder[0], UNIT_STATE_MAX_LIFE) * 0.5 or teleporting or town_threatened then
 				call RecycleGuardPosition(builder[0])
@@ -502,7 +506,9 @@ function TowerRushJob takes nothing returns nothing
 				set y = GetUnitY(builder[i])
 				set i = i + 1
 			endloop
-			set towers_built_count = towers_built_count + 1
+			if tower_peon_inplace then
+				set towers_built_count = towers_built_count + 1
+			endif
 			set tower_peon_point_x = x / Max(1, i - 1)
 			set tower_peon_point_y = y / Max(1, i - 1)
 			set time_next_try = 1
