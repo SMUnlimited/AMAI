@@ -4470,7 +4470,6 @@ function GetMineNearLoc takes unit u, location l, real dist returns unit
       endif
       call GroupRemoveUnit(g,mine)
     endloop
-    set mine = null
     if u != null then
       call Trace("GetMineNearLOC: A Mine match found")
     endif
@@ -7021,11 +7020,13 @@ function ChooseExpansion takes nothing returns nothing
   local integer i = 0
   local integer exp_chosen = 0
   local integer gold = 2 * GetUnitGoldCost2(racial_expansion)
+  local unit u = null
   set exp_number = 0
   loop
     exitwhen i >= expansion_list_length
-    if GetResourceAmount(expansion_list[i]) > gold and expansion_list[i] != not_taken_expansion and not CheckExpansionTaken(expansion_list[i]) and DistanceBetweenPoints_kd(home_location,GetUnitLoc(expansion_list[i])) > expansion_taken_radius then
-      call add_exp(expansion_list[i], expansion_dist[i], expansion_ancient[i], i, false)
+    set u = expansion_list[i]
+    if u != null and GetResourceAmount(u) > gold and u != not_taken_expansion and not CheckExpansionTaken(u) and DistanceBetweenPoints_kd(home_location,GetUnitLoc(u)) > expansion_taken_radius then
+      call add_exp(u, expansion_dist[i], expansion_ancient[i], i, false)
     endif
     set i = i + 1
   endloop
@@ -7033,13 +7034,15 @@ function ChooseExpansion takes nothing returns nothing
     set i = 0
     loop
       exitwhen i >= water_expansion_list_length
-      if GetResourceAmount(water_expansion_list[i]) > gold and expansion_list[i] != not_taken_expansion and not CheckExpansionTaken(water_expansion_list[i]) then
-        call add_exp(water_expansion_list[i], water_expansion_dist[i] + 5120, null, i, true)
+      set u = water_expansion_list[i]
+      if u != null and GetResourceAmount(u) > gold and u != not_taken_expansion and not CheckExpansionTaken(u) then
+        call add_exp(u, water_expansion_dist[i] + 5120, null, i, true)
       endif
       set i = i + 1
     endloop
   endif
   call add_exp_rp()
+  set u = null
 //  call make_exp_rp_positive()
   if exp_number == 0 then
     set current_expansion = null
@@ -9829,7 +9832,7 @@ endfunction
 function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns nothing
   local integer i = 0
   local integer j = 0
-  if unitid < 1 or qty == 0 then
+  if unitid < 1 or qty < 1 then
     return
   endif
   if t == BUILD_UPGRADE then
@@ -9880,7 +9883,7 @@ function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer
 endfunction
 
 function RefreshNeeded takes integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns nothing
-  if unitid < 1 then
+  if unitid < 1 or qty < 1 then
     return
   endif
   if buy_type[unitid] == BT_ML_UPGRADE then
@@ -9941,10 +9944,8 @@ endfunction
 
 function SetBuildAllAM takes integer t, integer mqty, integer unitid, integer town, integer bloc, integer prio returns nothing
   set mqty = BlockListCheck(mqty, unitid)
-  if unitid != 0 and mqty > 0 then
-    call SetBuildAllAMCore(t, mqty, unitid, town, bloc, prio)
-    call RefreshNeeded(t, mqty, unitid, town, bloc, prio)
-  endif
+  call SetBuildAllAMCore(t, mqty, unitid, town, bloc, prio)
+  call RefreshNeeded(t, mqty, unitid, town, bloc, prio)
 endfunction
 
 //============================================================================
@@ -10012,7 +10013,7 @@ endfunction
 function BuildAdvUpgr takes integer qty, integer unitid, integer starttier, integer unitcount, integer maxunits, integer tierprio, integer prio returns nothing
   if tier >= starttier then
     if unitcount > 0 then
-      if qty >= tier-starttier+1 then
+      if qty >= tier - starttier + 1 then
         call BuildUpgr(tier-starttier + 1, unitid, R2I(LinearInterpolation(0, maxunits, 1, prio + ((tier-starttier)* tierprio) , unitcount)))
       else
         // If tier greater than the start tier and qty is less than the difference between the two
@@ -10125,8 +10126,8 @@ function DetermineCounterForce takes nothing returns integer
   local integer strength = 0
   local integer total_strength = 0
   local integer array tstrength
-  local integer num_strengths
-  local integer j
+  local integer num_strengths = 0
+  local integer j = 0
   local integer random
   local integer maxstr = 0
   local integer secondstr = -1
@@ -10135,8 +10136,6 @@ function DetermineCounterForce takes nothing returns integer
   local real ally_null = 0    // Blank point
   local string strdebug = " Counter Strengths: "
 
-  set num_strengths = 0
-  set j = 0
 #INCLUDETABLE <$VER$\Strengths.txt>
   set tstrength[num_strengths] = R2I(RMax(enemy_%1 - (ally_%2 / 20) - (ally_%3 / 20),0)*10)
   //set strength = strength + tstrength[num_strengths]
@@ -10963,7 +10962,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     local integer n1 = needed1[unitid]
     local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
     local integer nn = GetNeutralNumber(unitid)
-    local integer i = 1
+    //local integer i = 1
 
     // If specified town not built ignore town specific requests
     if town != -1 and (not town_built[town] or (unitid != racial_expansion and TownCountTown(racial_expansion, town) <= 0)) then
@@ -11877,6 +11876,8 @@ if take_exp and not_taken_expansion == null and race_ancient_expansion_available
   endif
   if GetRandomInt(1, 100) <= race_ancient_expansion_probability and i >= race_ancient_expansion_hero_rush_level then
     set not_taken_expansion = current_expansion
+    set ancient_exp_creep = u
+    set current_expansion = null
     call TQAddJob(0, ANCIENT_EXPANSION_CHECK, 0)
     set u = null
     return
@@ -12281,7 +12282,7 @@ function OneBuildLoopAM takes nothing returns nothing
           call Trace("NO RESOURCES " + logtype + unitNames[id] + " " + Int2Str(id))
           set tracednoresources = id
         endif
-        if tp == BUILD_UNIT and not IsUnitIdType(old_id[id], UNIT_TYPE_STRUCTURE) and TownCountTown(id,build_town[index]) < build_qty[index] * bl_tier_unitlock[tier-1] and FoodUsed() < bl_tier_foodlock[tier-1] then
+        if tp == BUILD_UNIT and not IsUnitIdType(old_id[id], UNIT_TYPE_STRUCTURE) and TownCountTown(id,build_town[index]) < build_qty[index] * bl_tier_unitlock[tier - 1] and FoodUsed() < bl_tier_foodlock[tier - 1] then
           set blocktierup = true // Strictly Block tier up if a large proportion of requested units of strategy not built so we follow strategy definition, otherwise will tier up early if spare resources and can't build higher priority tasks first
         endif
         exitwhen ret == NOT_ENOUGH_RES and tp != BUILD_ITEM and tp != BUILD_UPGRADE // Don't try and build anything else as thing we trying to buy is too expensive
@@ -12637,7 +12638,7 @@ function SleepInCombatAM takes boolean ally_override returns nothing
     else
       call CreateDebugTagLoc("Sleep in combat", 10, GetLocationX(home_location),GetLocationY(home_location), 1.00, 0.80)
     endif
-    if (u != null and not CaptainInCombat(true)) then
+    if u != null and UnitAlive(u) and not CaptainInCombat(true) then
       set attack_length_counter = attack_length_counter + 1
       if attack_length_counter > R2I(LinearInterpolation(30, 80, attack_reform_length, attack_reform_length * 10, FoodUsed())+0.5) then
         set attack_length_counter = 0
@@ -13222,28 +13223,28 @@ function GetIntervalCreep takes unit u, integer lower, integer upper, integer st
   if u == null and alt == null then
     return GetIntervalCreep(u, middle, upper, str, anti_air_strength, allow_air, sd - 1)
   endif
-  if u != null then
+  if u != null and UnitAlive(u) then
     set creepstrength = GetCreepCampStrength(u) + 1
     set creepstrength_air = air_strength
   endif
-  if alt != null then
+  if alt != null and UnitAlive(alt) then
     set creepstrengthalt = GetCreepCampStrength(alt) + 1
     set creepstrength_air = air_strength
   endif
-  if balancing then
+  if balancing and u != null and UnitAlive(u) then
     //call Trace("Creep strength: " + Int2Str(creepstrength))
     call PingMinimap(GetUnitX(u), GetUnitY(u), 1)
   endif
-  if u != null and creepstrength < str then
+  if u != null and UnitAlive(u) and creepstrength < str then
     if creepstrength_air <= anti_air_strength then
       set alt = null
       return u
-    elseif alt != null and creepstrengthalt < str then
+    elseif alt != null and UnitAlive(alt) and creepstrengthalt < str then
       set u = alt
       set alt = null
       return u
     endif
-  elseif alt != null and creepstrengthalt < str then
+  elseif alt != null and UnitAlive(alt) and creepstrengthalt < str then
     set u = alt
     set alt = null
     return u
@@ -13261,7 +13262,7 @@ function GetFittingCreep takes unit u, integer str returns unit
   local integer lvl = str
 
   set u = GetCreepCamp(1, lvl, true)
-  if u != null then
+  if u != null and UnitAlive(u) then
     set creep_air_strength = GetLocationCreepAirStrength(GetUnitX(u), GetUnitY(u), creep_camp_radius)
     //set air_strength = creep_air_strength
   endif
@@ -13272,10 +13273,10 @@ function GetFittingCreep takes unit u, integer str returns unit
   endif
 
   //call Trace("Our strength: " + Int2Str(str))
-  if u != null then
+  if u != null and UnitAlive(u) then
     set creepstrength = GetCreepCampStrength(u)
   endif
-  if u != null and creepstrength < str and creep_air_strength <= anti_air_strength then
+  if u != null and UnitAlive(u) and creepstrength < str and creep_air_strength <= anti_air_strength then
     //call Trace("Creep match")
     call Trace("Creeping strength: " + Int2Str(creepstrength))
     //set air_strength = creepstrength
@@ -13567,7 +13568,7 @@ endfunction
 
 //============================================================================
 function IsTargetGood takes unit target, integer attacker_bonus returns boolean
-  if target != null then
+  if target != null and UnitAlive(target) then
     set added_target_aggression = attacker_bonus
     set added_racial_aggression = GetRaceAggression(target)
     return GetTargetStrength(target) + GetTowerFactor(target) <= own_strength + attacking_aggression + added_aggression + added_racial_aggression + attacker_bonus
@@ -13579,14 +13580,10 @@ endfunction
 //============================================================================
 function ChooseEnemyExpansionTarget takes unit u returns unit
   set u = GetEnemyExpansion()
-  if u != null then
-    if IsTargetGood(u, expansion_target_bonus) then
-      call Trace("Hardcoded enemy expansion target chosen")
-    else
-      set u = null
-    endif
+  if u != null and IsTargetGood(u, expansion_target_bonus) then
+    call Trace("Hardcoded enemy expansion target chosen")
   endif
-  return u
+  return null
 endfunction
 
 //============================================================================
@@ -13651,7 +13648,7 @@ endfunction
 function ChooseAnyEnemyTarget takes unit u returns unit
   local player p = null
   set u = ChooseAnEnemyTarget(u)
-  if IsTargetGood(u,0) then
+  if u != null and IsTargetGood(u,0) then
     call Trace("Enemy Advanced Target Chosen")
     set alli_target = u
     if attacking_strategy == 3 then
