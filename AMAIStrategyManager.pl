@@ -65,7 +65,11 @@ sub get_translation {
   if (exists $lang_ref->{$key} && $lang_ref->{$key} !~ /^\s*$/) {
     return sprintf($lang_ref->{$key}, @args);
   }
-  return join(@args) . " $key" ;
+  if (@args) {
+      return join(@args) . " $key";
+  } else {
+      return "$key";
+  }
 }
 
 my $main = MainWindow->new(-title => get_translation('title_strategy_manager'));
@@ -840,7 +844,14 @@ sub FillTable {
   my $l;
   my $i = 0;
   foreach my $v (@opt) {
-    $l = $strattable->Label(-text => get_translation($v), -anchor => 'e');
+    my $translated_desc = get_translation($i);
+    if ($translated_desc eq $i) {
+      $translated_desc = get_translation($v);
+      if ($translated_desc eq $i) {
+        $translated_desc = $v;
+      }
+    }
+    $l = $strattable->Label(-text => $translated_desc, -anchor => 'e');
     $strattable->put($i, 0, $l);
     $i++;
   }
@@ -1138,7 +1149,10 @@ sub LoadSettings {
     my $entry_val = $table->Entry(-width => 25);
     $entry_val->insert('end', $value);
     $table->put($i, 1, $entry_val);
-    my $translated_desc = get_translation($description);
+    my $translated_desc = get_translation($option);
+    if ($translated_desc eq $option) {
+      $translated_desc = $description;
+    }
     my $label_desc = $table->Label(-text => $translated_desc, -anchor => 'w');
     $table->put($i, 2, $label_desc);
     $i++;
