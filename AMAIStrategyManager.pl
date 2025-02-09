@@ -36,7 +36,7 @@ my %languages;
 sub load_language {
   my ($lang_file) = @_;
   return $lang_data_cache{$lang_file} if exists $lang_data_cache{$lang_file};
-  open (LANG, $lang_file)  or die "Cannot open file <$lang_file>";
+  open (LANG, $lang_file) or die "Cannot open file <$lang_file>";
   my %keylang;
   while (<LANG>) {
     chomp;
