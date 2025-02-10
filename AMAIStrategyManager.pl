@@ -21,7 +21,7 @@ if($] >= 5.008004) {
   $fdialogbug = 1;
 }
 
-my $language = "Chinese";
+my $language = "English";
 my $lang_path = 'AMAIStrategyManager.pl';
 
 sub set_language {
