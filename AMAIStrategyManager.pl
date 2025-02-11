@@ -5,6 +5,7 @@ use Tk;
 use Tk::TextUndo;
 use Tk::Table;
 use Tk::NoteBook;
+use Tk::Font;
 use open ':std', ':encoding(UTF-8)';
 
 
@@ -21,7 +22,7 @@ if($] >= 5.008004) {
   $fdialogbug = 1;
 }
 
-my $language = "English";
+my $language = "Chinese";
 my $lang_path = 'AMAIStrategyManager.pl';
 
 sub set_language {
@@ -63,6 +64,7 @@ sub load_language {
     my ($key, $value) = split '=', $_, 2;
     unless (defined $key && defined $value) {
       warn "Invalid line format in language file at line $.: $_";
+        print 11;
       next;
     }
     # $key =~ s/^\s+|\s+$//g;
@@ -70,6 +72,7 @@ sub load_language {
     $keylang{$key} = $value;
   }
   close LANG;
+          print \%keylang;
   $lang_data_cache{$lang_file} = \%keylang;
   return \%keylang;
 }
@@ -87,31 +90,30 @@ sub get_translation {
   if (@args) {
       return join(@args) . " $key";
   } else {
-      return "$key";
+      return $key;
   }
 }
 
 my $main = MainWindow->new(-title => get_translation('title_strategy_manager'));
 my ($screen_width, $screen_height) = ($main->screenwidth, $main->screenheight);
-$main->maxsize(400, 1280);
+$main->maxsize(520, 1280);
 my $lframe = $main->Frame->pack(-side => 'left', -padx => 4);
 my $race;
 my $ver;
 my $strat;
 my $profile;
 my $rframe = $main->Frame->pack(-side => 'right');
+my $font = $main->Font(-family => "Segoe UI", -size => 10, -weight => 'normal');
 my $notebook = $rframe->NoteBook()->pack(-side => 'left');
-$notebook->configure(-font => ['Helvetica', 10]);
+$notebook->configure(-font => ['Segoe UI', 12]);
 my $stratframe = $notebook->add("strat", -label => get_translation('label_strategies'));
 my $profileframe = $notebook->add("profile", -label => get_translation('label_profiles'));
-my $stratlb = $stratframe->Listbox(-height => 0)->pack;
-$stratlb = $stratframe->Scrolled('Listbox',
+my $stratlb = $stratframe->Scrolled('Listbox',
     -scrollbars => 'se',
     -height => 0,
 )->pack(-fill => 'both', -expand => 1);
 tie $strat, "Tk::Listbox", $stratlb;
-my $profilelb = $profileframe->Listbox(-height => 0)->pack;
-$profilelb = $profileframe->Scrolled('Listbox',
+my $profilelb = $profileframe->Scrolled('Listbox',
     -scrollbars => 'se',
     -height => 0,
 )->pack(-fill => 'both', -expand => 1);
@@ -130,11 +132,13 @@ sub confirm_box {
 my $bframe = $rframe->Frame->pack(-side => 'right');
 $bframe->Label(
                 -text => get_translation('placeholder_operate'),
-                -width => 16,
+                -font => $font,
+                -width => 18,
                 -height => 1,
 )->pack;
 $bframe->Button(
                 -text => get_translation('button_new'),
+                -font => $font,
                 -command => sub {
                     if ($notebook->raised eq 'strat') {
                       InsertStratSub("$ver\\$race\\New.ais", $ver, $race);
@@ -145,10 +149,11 @@ $bframe->Button(
                       UpdateProfileList($profilelb, $ver)
                     }
                 },
-                -width => 16,
+                -width => 18,
 )->pack;
 $bframe->Button(
                 -text => get_translation('button_copy'),
+                -font => $font,
                 -command => sub {
                     if ($notebook->raised eq 'strat') {
                       CopyStrat($ver, $race, $strat);
@@ -159,10 +164,11 @@ $bframe->Button(
                       UpdateProfileList($profilelb, $ver)
                     }
                 },
-                -width => 16,
+                -width => 18,
 )->pack;
 $bframe->Button(
                 -text => get_translation('button_edit'),
+                -font => $font,
                 -command => sub {
                     if ($notebook->raised eq 'strat') {
                       EditStrat($main, $ver, $race, $strat)
@@ -171,10 +177,11 @@ $bframe->Button(
                       EditProfile($main, $ver, $profile)
                     }
                 },
-                -width => 16,
+                -width => 18,
 )->pack;
 $bframe->Button(
                 -text => get_translation('button_lock'),
+                -font => $font,
                 -command => sub {
                     if ($notebook->raised eq 'strat') {
                       SetRaceOption($ver, $race, 'debug_strategy', "STRAT_$strat->[0]")
@@ -183,10 +190,11 @@ $bframe->Button(
                       SetVerOption($ver, 'debug_profile', GetArrayIndex($profile, $profilelb->get(0, 'end')))
                     }
                 },
-                -width => 16,
+                -width => 18,
 )->pack;
 $bframe->Button(
                 -text => get_translation('button_unlock'),
+                -font => $font,
                 -command => sub {
                     if ($notebook->raised eq 'strat') {
                       SetRaceOption($ver, $race, 'debug_strategy', -1)
@@ -195,10 +203,11 @@ $bframe->Button(
                       SetVerOption($ver, 'debug_profile', -1)
                     }
                 },
-                -width => 16,
+                -width => 18,
 )->pack;
 $bframe->Button(
                 -text => get_translation('button_extract'),
+                -font => $font,
                 -command => sub {
                     if ($notebook->raised eq 'strat') {
                       ExtractStrat($main, $ver, $race, $strat)
@@ -207,10 +216,11 @@ $bframe->Button(
                       ExtractProfile($main, $ver, $profile)
                     }
                 },
-                -width => 16,
+                -width => 18,
 )->pack;
 $bframe->Button(
                 -text => get_translation('button_insert'),
+                -font => $font,
                 -command => sub {
                     if ($notebook->raised eq 'strat') {
                       InsertStrat($main, $ver, $race);
@@ -221,10 +231,11 @@ $bframe->Button(
                       UpdateProfileList($profilelb, $ver)
                     }
                 },
-                -width => 16,
+                -width => 18,
 )->pack;
 $bframe->Button(
                 -text => get_translation('button_remove'),
+                -font => $font,
                 -command => sub {
                     if ($notebook->raised eq 'strat') {
                       RemoveStrat($main, $ver, $race, $strat);
@@ -235,7 +246,7 @@ $bframe->Button(
                       UpdateProfileList($profilelb, $ver)
                     }
                 },
-                -width => 16,
+                -width => 18,
 )->pack;
 
 open(VERFILE, "Versions.txt") or do { confirm_box(get_translation('err_file_not_writing', "<Versions.txt>")) };
@@ -247,6 +258,7 @@ my $veropt;
 my $langopt;
 $lframe->Label(
                 -text => get_translation('placeholder_ver'),
+                -font => $font,
                 -width => 24,
                 -height => 1,
 )->pack;
@@ -255,11 +267,13 @@ $veropt = $lframe->Optionmenu(
                 $raceopt = $lframe->Optionmenu(
                             -command => sub { UpdateStratList($stratlb, $ver, $race) },
                             -variable => \$race,
+                            -font => $font,
                             -width => 20)->pack(-after => $veropt);
                 $raceopt -> addOptions(GetRaces($ver));
                 UpdateStratList($stratlb, $ver, $race);
                 UpdateProfileList($profilelb, $ver) },
                 -variable => \$ver,
+                -font => $font,
                 -width => 20
 )->pack;
 $veropt->addOptions(@vers);
@@ -268,11 +282,13 @@ $lframe->Label(
 )->pack;  # Placeholder
 $lframe->Label(
                 -text => get_translation('placeholder_set'),
+                -font => $font,
                 -width => 24,
                 -height => 1,
 )->pack;
 $lframe->Button(
                 -text => get_translation('button_edit_global'),
+                -font => $font,
                 -command => sub { EditSettings($main, "$ver\\GlobalSettings.txt") },
                 -width => 24)->pack;
 $lframe->Label(
@@ -280,16 +296,19 @@ $lframe->Label(
 )->pack;  # Placeholder
 $lframe->Label(
                 -text => get_translation('placeholder_raceset'),
+                -font => $font,
                 -width => 24,
                 -height => 1,
 )->pack;
 $lframe->Button(
                 -text => get_translation('button_edit_racial_builds'),
+                -font => $font,
                 -command => sub { EditRacialBuilds($main, $ver, $race) },
                 -width => 24
 )->pack;
 $lframe->Button(
                 -text => get_translation('button_edit_racial_settings'),
+                -font => $font,
                 -command => sub { EditSettings($main, "$ver\\$race\\Settings.txt") },
                 -width => 24)->pack;
 $lframe->Label(
@@ -297,33 +316,39 @@ $lframe->Label(
 )->pack;  # Placeholder
 $lframe->Label(
                 -text => get_translation('placeholder_compile'),
+                -font => $font,
                 -width => 24,
                 -height => 1,
 )->pack;
 $lframe->Button(
                 -text => get_translation('button_compile'),
+                -font => $font,
                 -command => sub { system "Make$ver.bat" },
                 -width => 24,
 )->pack(-anchor => 'nw');
 my $row1 = $lframe->Frame->pack(-fill => 'x', -anchor => 'nw');
 $row1->Button(
                 -text => get_translation('button_compile_opt'),
+                -font => $font,
                 -command => sub { system "MakeOpt$ver.bat" },
                 -width => 18,
 )->pack(-side => 'left', -padx => 0, -pady => 0);
 $row1->Button(
                 -text => '?',
+                -font => $font,
                 -command => sub { do { confirm_box(get_translation('confirm_compile_opt')) } },
                 -width => 4,
 )->pack(-side => 'left', -padx => 2, -pady => 0);
 my $row2 = $lframe->Frame->pack(-fill => 'x', -anchor => 'nw');
 $row2->Button(
                 -text => get_translation('button_compile_vsai'),
+                -font => $font,
                 -command => sub { system "MakeVAI$ver.bat" },
                 -width => 18,
 )->pack(-side => 'left', -padx => 0, -pady => 0);
 $row2->Button(
                 -text => '?',
+                -font => $font,
                 -command => sub { do { confirm_box(get_translation('confirm_compile_vsai')) } },
                 -width => 4,
 )->pack(-side => 'left', -padx => 2, -pady => 0);
@@ -332,12 +357,14 @@ $lframe->Label(
 )->pack;  # Placeholder
 $lframe->Label(
                 -text => get_translation('placeholder_setlang'),
+                -font => $font,
                 -width => 24,
                 -height => 1,
 )->pack;
 $langopt = $lframe->Optionmenu(
-                -command => sub { set_language(@_); },
+                -command => sub { set_language("@_"); },
                 -variable => \$language,
+                -font => $font,
                 -width => 20,
 )->pack;
 $langopt -> addOptions(GetLanguages());
@@ -346,12 +373,14 @@ $lframe->Label(
 )->pack;  # Placeholder
 $lframe->Label(
                 -text => get_translation('placeholder_about'),
+                -font => $font,
                 -width => 24,
                 -height => 1,
  )->pack;
  $lframe->Button(
                 -text => get_translation('button_about'),
-                -command => sub { 
+                -font => $font,
+                -command => sub {
                   my $url = "https://github.com/SMUnlimited/AMAI";
                   my $open_cmd = qq{start "" "$url"};
                   system($open_cmd);
@@ -363,6 +392,7 @@ $lframe->Label(
 # )->pack;  # Placeholder
 # $lframe->Button(
 #                 -text => get_translation('button_quit'),  # no need
+#                 -font => $font,
 #                 -command => [$main => 'destroy'],
 #                 -width => 24,
 # )->pack;
@@ -711,10 +741,10 @@ sub EditStrat {
   close(TIERFILE);
   my $textheight = 44 / ($tiernum + 1);
   my @buildtexttier = ();
-  $lframe->Label(-text => get_translation('label_Init_code'))->pack;
+  $lframe->Label(-text => get_translation('label_Init_code'), -font => $font)->pack;
   my $inittext = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
   for(my $i=1;$i<=$tiernum;$i++) {
-    $lframe->Label(-text => get_translation('label_tier_code', "$i"))->pack;
+    $lframe->Label(-text => get_translation('label_tier_code', "$i"), -font => $font)->pack;
     $buildtexttier[$i] = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
   }
   my $optarrayref = FillTable($strattable, $version, $race, @$strat[0]);
@@ -906,7 +936,7 @@ sub FillTable {
         $translated_desc = $v;
       }
     }
-    $l = $strattable->Label(-text => $translated_desc, -anchor => 'e');
+    $l = $strattable->Label(-text => $translated_desc, -font => $font, -anchor => 'e');
     $strattable->put($i, 0, $l);
     $i++;
   }
@@ -962,7 +992,7 @@ sub FillProfileTable {
   my $l;
   my $i = 0;
   foreach my $v (@opt) {
-    $l = $profiletable->Label(-text => get_translation($v), -anchor => 'e');
+    $l = $profiletable->Label(-text => get_translation($v), -font => $font, -anchor => 'e');
     $profiletable->put($i, 0, $l);
     $i++;
   }
@@ -1120,9 +1150,9 @@ sub EditRacialBuilds {
   my $lframe = $edit->Frame->pack(-side => 'left');
   my $rframe = $edit->Frame->pack(-side => 'right');
   my $textheight = 22;
-  $lframe->Label(-text => get_translation('label_racial_Init_code'))->pack;
+  $lframe->Label(-text => get_translation('label_racial_Init_code'), -font => $font)->pack;
   my $inittext = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
-  $lframe->Label(-text => get_translation('label_racial_build'))->pack;
+  $lframe->Label(-text => get_translation('label_racial_build'), -font => $font)->pack;
   my $buildtext = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
   LoadRacialBuild($inittext, $buildtext, $ver, $race);
   $rframe->Button(
@@ -1199,7 +1229,7 @@ sub LoadSettings {
   while(<SETTINGS>) {
     chomp;
     my ($option, $value, $description) = split /\t/;
-    my $label_opt = $table->Label(-text => $option);
+    my $label_opt = $table->Label(-text => $option, -font => $font);
     $table->put($i, 0, $label_opt);
     my $entry_val = $table->Entry(-width => 25);
     $entry_val->insert('end', $value);
@@ -1208,7 +1238,7 @@ sub LoadSettings {
     if ($translated_desc eq $option) {
       $translated_desc = $description;
     }
-    my $label_desc = $table->Label(-text => $translated_desc, -anchor => 'w');
+    my $label_desc = $table->Label(-text => $translated_desc, -anchor => 'w', -font => $font);
     $table->put($i, 2, $label_desc);
     $i++;
   }
