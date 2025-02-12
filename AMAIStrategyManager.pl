@@ -11,8 +11,8 @@ use open ':std', ':encoding(UTF-8)';
 
 BEGIN{
   if($^O eq 'MSWin32'){
-      require Win32::Console;
-      #Win32::Console::Free();
+    require Win32::Console;
+    #Win32::Console::Free();
   }
 }
 
@@ -64,7 +64,6 @@ sub load_language {
     my ($key, $value) = split '=', $_, 2;
     unless (defined $key && defined $value) {
       warn "Invalid line format in language file at line $.: $_";
-        print 11;
       next;
     }
     # $key =~ s/^\s+|\s+$//g;
@@ -72,7 +71,7 @@ sub load_language {
     $keylang{$key} = $value;
   }
   close LANG;
-          print \%keylang;
+  print \%keylang;
   $lang_data_cache{$lang_file} = \%keylang;
   return \%keylang;
 }
@@ -88,9 +87,9 @@ sub get_translation {
     return sprintf($lang_ref->{$key}, @args);
   }
   if (@args) {
-      return join(@args) . " $key";
+    return join(@args) . " $key";
   } else {
-      return $key;
+    return $key;
   }
 }
 
@@ -104,6 +103,7 @@ my $strat;
 my $profile;
 my $rframe = $main->Frame->pack(-side => 'right');
 my $font = $main->Font(-family => "Segoe UI", -size => 10, -weight => 'normal');
+
 my $notebook = $rframe->NoteBook()->pack(-side => 'left');
 $notebook->configure(-font => ['Segoe UI', 12]);
 my $stratframe = $notebook->add("strat", -label => get_translation('label_strategies'));
@@ -112,7 +112,7 @@ my $stratlb = $stratframe->Scrolled('Listbox',
     -scrollbars => 'se',
     -height => 0,
 )->pack(-fill => 'both', -expand => 1);
-tie $strat, "Tk::Listbox", $stratlb;
+
 my $profilelb = $profileframe->Scrolled('Listbox',
     -scrollbars => 'se',
     -height => 0,
