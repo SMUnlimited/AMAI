@@ -51,35 +51,39 @@ function MilitiaCheckJob takes nothing returns nothing
     set militia_allowed = IsMilitiaAllowed()
     set g = CreateGroup()
     call GroupEnumUnitsOfType(g, race_militia_unitstring, null)
-    set g = SelectByPlayer(g, ai_player, true)
-    set g = SelectByAlive(g, true)
-    set g = SelectByHidden(g, false)
+    // set g = SelectByPlayer(g, ai_player, true)
+    // set g = SelectByAlive(g, true)
+    // set g = SelectByHidden(g, false)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      if not militia_allowed or DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) > race_militia_max_distance then
-        call IssueImmediateOrder(u, "militiaoff")
+      if GetOwningPlayer(u) == ai_player and UnitAlive(u) and not IsUnitHidden(u) then
+        if not militia_allowed or DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) > race_militia_max_distance then
+          call IssueImmediateOrder(u, "militiaoff")
+        endif
       endif
       call GroupRemoveUnit(g,u)
     endloop
-    set militiarequired = Max(1,GetLocationNonCreepStrength(GetUnitX(militia_hall), GetUnitY(militia_hall), 1500)/2) // Militia are 2 strength so divide total enemy strength by 2
+    set militiarequired = Max(1,GetLocationNonCreepStrength(GetUnitX(militia_hall), GetUnitY(militia_hall), 1500) / 2) // Militia are 2 strength so divide total enemy strength by 2
     call GroupEnumUnitsOfType(g, race_militiaworker_unitstring, null)
-    set g = SelectByPlayer(g, ai_player, true)
-    set g = SelectByAlive(g, true)
-    set g = SelectByHidden(g, false)
+    // set g = SelectByPlayer(g, ai_player, true)
+    // set g = SelectByAlive(g, true)
+    // set g = SelectByHidden(g, false)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
-      set big_dist = DistanceBetweenUnits(u, militia_hall) > 1500
-      if militia_allowed and i>= 2 and i < militiarequired + 2 and not big_dist then
-        if GetUnitAbilityLevel(u, race_militia_ability) <= 0 then
-          call UnitAddAbility(u, race_militia_ability)
+      if GetOwningPlayer(u) == ai_player and UnitAlive(u) and not IsUnitHidden(u) then
+        set big_dist = DistanceBetweenUnits(u, militia_hall) > 1500
+        if militia_allowed and i >= 2 and i < militiarequired + 2 and not big_dist then
+          if GetUnitAbilityLevel(u, race_militia_ability) <= 0 then
+            call UnitAddAbility(u, race_militia_ability)
+          endif
+        elseif GetUnitAbilityLevel(u, race_militia_ability) > 0 then
+          call UnitRemoveAbility(u, race_militia_ability)
         endif
-      elseif GetUnitAbilityLevel(u, race_militia_ability) > 0 then
-        call UnitRemoveAbility(u, race_militia_ability)
-      endif
-      if not big_dist then
-        set i = i + 1
+        if not big_dist then
+          set i = i + 1
+        endif
       endif
       call GroupRemoveUnit(g,u)
     endloop

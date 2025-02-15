@@ -55,19 +55,33 @@ function SelectByZiggurat takes group rg returns group
   return rg
 endfunction
 
-function CheckSellZiggurat takes unit u returns nothing
+function CheckSellZiggurat takes unit u, group cg, integer c returns nothing
   local group g = CreateGroup()
+  local unit z = null
+  local integer i = 0
   call GroupEnumUnitsInRange(g, GetUnitX(u), GetUnitY(u), race_ziggurat_keep_distance, null)
   call GroupRemoveUnit(g, u)
-  set g = SelectByPlayer(g, ai_player, true)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  set g = SelectByAlive(g, true)
-  set g = SelectByHidden(g, false)
-  if FirstOfGroup(g) == null then
+  loop
+    set z = FirstOfGroup(g)
+    exitwhen z == null
+    if GetOwningPlayer(z) == ai_player and IsUnitType(z, UNIT_TYPE_STRUCTURE) and UnitAlive(z) and not IsUnitHidden(z) and not IsUnitInGroup(z, cg) then
+      if IsUnitType(z, UNIT_TYPE_TOWNHALL) then
+        if c < 2 then
+          set i = i + 1
+          set c = c - 1
+        endif
+      else
+        set i = i + 1
+      endif
+    endif
+    call GroupRemoveUnit(g, z)
+  endloop
+  if i < 1 then
     call Unsummon(u)
   endif
   call DestroyGroup(g)
   set g = null
+  return c
 endfunction
 
 function CheckSellStructure takes group g returns nothing
@@ -82,8 +96,9 @@ endfunction
 
 function SellZigguratJob takes nothing returns nothing
   local group g = CreateGroup()
+  local group cg = null
   local unit u = null
-
+  local integer c = TownCount(racial_hall[1])
   call DisplayToAllJobDebug("SELL_ZIGGURATS JOB START")
   if not towerrush then
     if TRrecovery == null then
@@ -93,11 +108,12 @@ function SellZigguratJob takes nothing returns nothing
       elseif FoodCap() > ver_food_limit then
         call GroupEnumUnitsOfPlayer(g, ai_player, null)
         set g = SelectByZiggurat(g)
+        set cg = CopyGroup(g, cg)
         loop
           set u = FirstOfGroup(g)
           exitwhen u == null
-          call CheckSellZiggurat(u)
-          call GroupRemoveUnit(g,u)
+          set c = CheckSellZiggurat(u, cg, c)
+          call GroupRemoveUnit(g, u)
         endloop
       endif
     else
