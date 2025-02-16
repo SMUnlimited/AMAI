@@ -924,8 +924,8 @@ globals
     constant integer PROFILE_SELECTION = 6
     constant integer NEUTRAL_GUARDS = 7
     constant integer TYPECASTING = 8
-    hashtable attacktable = InitHashtable() // To build custom attack groups
-    constant integer CUSTOM_ATTACK = 1
+    // hashtable attacktable = InitHashtable() // To build custom attack groups
+    // constant integer CUSTOM_ATTACK = 1
 
     gamecache amaiCache = InitGameCache("AMAI_AI.w3v")
     constant integer PROFILE_USED = 0
@@ -1137,7 +1137,10 @@ endglobals
 
 function I2U takes integer i returns unit
   call SaveFogStateHandle(com, TYPECASTING, 0, ConvertFogState(i))
-  return LoadUnitHandle(com, TYPECASTING, 0)
+  if UnitAlive(LoadUnitHandle(com, TYPECASTING, 0)) then
+    return LoadUnitHandle(com, TYPECASTING, 0)
+  endif
+  return null
 endfunction
 
 //function SetHandleHandle takes handle subject, string name, handle value returns nothing
@@ -1324,7 +1327,7 @@ endfunction
 function CreateDebugTag takes string s, real fontsize, unit u, real lifespan, real fadespan returns nothing
 	local texttag tt = null
 
-	if debugging then
+	if debugging and u != null then
 		set tt = CreateTextTag()
 		call SetTextTagText(tt, s, ( fontsize * 0.023 / 10))  // *0.023/10 creates the correct font size from given real
 		call SetTextTagPosUnit(tt, u, 0)
@@ -3172,7 +3175,18 @@ function InitAiUnits takes nothing returns nothing
 endfunction
 
 function InitArrays takes nothing returns nothing
-
+  set old_id[0] = 0
+  set buy_type[0] = 0
+  set needed1[0] = 0
+  set needed2[0] = 0
+  set needed3[0] = 0
+  set tc_add1[0] = 0
+  set tc_add2[0] = 0
+  set available_time[0] = 0
+  set regenerate_time[0] = 0
+  set gold_price[0] = 0
+  set wood_price[0] = 0
+  set hero_rush_bonus[0] = 0
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR
   set old_id[%1] = o%1
   set buy_type[%1] = BT_%5
@@ -4309,7 +4323,7 @@ function GroupAddTypeAndRemoveGuard takes group g, integer id, player p returns 
   loop
     set u = FirstOfGroup(ag)
     exitwhen u == null
-    if GetUnitTypeId(u) == id then
+    if GetUnitTypeId(u) == id and UnitAlive(u) then
       call RemoveGuardPosition(u)
       call CreateDebugTag("Remove Guard Position Group Add Type", 10, u, 3.00, 1.50)
       call GroupAddUnit(g,u)
@@ -4347,7 +4361,9 @@ function GroupRecycleGuardPositionInstant takes group g returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    call RecycleGuardPosition(u)
+    if UnitAlive(u) then
+      call RecycleGuardPosition(u)
+    endif
     call GroupRemoveUnit(g,u)
   endloop
   call DestroyGroup(g)
@@ -4358,8 +4374,10 @@ function GroupRecycleHarrassPositionInstant takes group g returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    call RecycleGuardPosition(u)
-    call AddAssault(1, GetUnitTypeId(u))
+    if UnitAlive(u) then
+      call RecycleGuardPosition(u)
+      call AddAssault(1, GetUnitTypeId(u))
+    endif
     call GroupRemoveUnit(unit_harassing, u)
     call GroupRemoveUnit(g,u)
   endloop
@@ -4371,7 +4389,7 @@ function GroupRecycleGuardPositionByStandard takes group g returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if IsStandardUnit(u) then
+    if UnitAlive(u) and IsStandardUnit(u) then
       call RecycleGuardPosition( u )
     endif
     call GroupRemoveUnit(g, u )
@@ -4991,33 +5009,37 @@ function GetNearestSubGroupOfGroup takes group rg, location l, integer n returns
   local integer ru = 0
   local unit u = null
   local real d = 0
-  loop
-    set u = FirstOfGroup(rg)
-    exitwhen u == null
-    set d = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
-    set i = size - 1
+  if n > 0 then
     loop
-      exitwhen i < 0 or da[i] >= d
-      set ua[i+1] = ua[i]
-      set da[i+1] = da[i]
-      set i = i - 1
-    endloop
-    set i = i + 1
-    set ua[i] = u
-    set da[i] = d
-    set size = size + 1
-    call GroupRemoveUnit(rg,u)
-  endloop
-  set i = size - Min(n, size)
-  loop
-    exitwhen ru > size
-    if ru == i and i < size then
-      call GroupAddUnit(rg, ua[i])
+      set u = FirstOfGroup(rg)
+      exitwhen u == null
+      set d = DistanceBetweenPoints_dk(GetUnitLoc(u), l)
+      set i = size - 1
+      loop
+        exitwhen i < 0 or da[i] >= d
+        set ua[i+1] = ua[i]
+        set da[i+1] = da[i]
+        set i = i - 1
+      endloop
       set i = i + 1
-    endif
-    set ua[ru] = null
-    set ru = ru + 1
-  endloop
+      set ua[i] = u
+      set da[i] = d
+      set size = size + 1
+      call GroupRemoveUnit(rg,u)
+    endloop
+    set i = size - Min(n, size)
+    loop
+      exitwhen ru > size
+      if ru == i and i < size then
+        call GroupAddUnit(rg, ua[i])
+        set i = i + 1
+      endif
+      set ua[ru] = null
+      set ru = ru + 1
+    endloop
+  else
+    call GroupClear(rg)
+  endif
   return rg
 endfunction
 
@@ -5075,7 +5097,7 @@ function GetLeastHPUnitOfGroup takes unit ru, group g returns unit
     set u = FirstOfGroup(g)
     exitwhen u == null
     set hp = GetUnitState(u, UNIT_STATE_LIFE)
-    if hp < lhp then
+    if hp > 0 and hp < lhp then
       set lhp = hp
       set ru = u
     endif
@@ -5929,7 +5951,9 @@ function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, gr
   if tq_length >= JASS_MAX_ARRAY_SIZE then
     if unit_par != null then
       call CreateDebugTag("RECYCLE Full", 10, unit_par, 3.00, 1.50)
-      call RecycleGuardPosition(unit_par)
+      if UnitAlive(unit_par) then
+        call RecycleGuardPosition(unit_par)
+      endif
       call GroupRemoveUnit(unit_healing, unit_par)
       call GroupRemoveUnit(unit_rescueing, unit_par)
       call GroupRemoveUnit(unit_harassing, unit_par)
@@ -5937,7 +5961,9 @@ function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, gr
     endif
     if unit_par_2 != null then
       call CreateDebugTag("RECYCLE Full", 10, unit_par_2, 3.00, 1.50)
-      call RecycleGuardPosition(unit_par_2)
+      if UnitAlive(unit_par_2) then
+        call RecycleGuardPosition(unit_par_2)
+      endif
       call GroupRemoveUnit(unit_healing, unit_par_2)
       call GroupRemoveUnit(unit_rescueing, unit_par_2)
       call GroupRemoveUnit(unit_harassing, unit_par_2)
@@ -6135,17 +6161,19 @@ function BuildLumberMillAtBase takes nothing returns boolean
   local unit peon = GetExpansionPeon()
   local boolean b = false
   if buildloc != null then
-    if peon == null then
+    if peon == null or not UnitAlive(peon) then
       set peon = GetExpansionPeon2(peon)
     endif
-    set u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_lumber], buildloc, 270.0)
-    call RemoveLocation(buildloc)
-    set buildloc = GetUnitLoc(u)
-    call RemoveUnit(u)
-    set u = null
-    call IssuePointOrderByIdLoc(peon, old_id[racial_lumber], buildloc)
-    call CreateDebugTag("Build Lumber", 10, peon, 4.00, 2.00)
-    set b = true
+    if peon != null then
+      set u = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_lumber], buildloc, 270.0)
+      call RemoveLocation(buildloc)
+      set buildloc = GetUnitLoc(u)
+      call RemoveUnit(u)
+      set u = null
+      call IssuePointOrderByIdLoc(peon, old_id[racial_lumber], buildloc)
+      call CreateDebugTag("Build Lumber", 10, peon, 4.00, 2.00)
+      set b = true
+    endif
     call RemoveLocation(buildloc)
     set buildloc = null
   endif
@@ -8102,13 +8130,13 @@ function RemovePJ takes integer jid, integer par, integer t returns nothing
 endfunction
 
 function PathingJobEx takes real frequency, integer jid, integer par, boolean remove returns nothing
+  call Sleep(GetRandomReal(1, 2))
   set pj_length = pj_length + 1
   set pj_time[pj_length] = TimerGetElapsed(tq_timer) + frequency
   set pj_frequency[pj_length] = frequency
   set pj_jid[pj_length] = jid
   set pj_par[pj_length] = par
   set pj_remove[pj_length] = remove
-  call Sleep(GetRandomReal(0.8, 1.2))
 endfunction
 
 function PJInitJobs takes nothing returns nothing
@@ -8983,6 +9011,7 @@ function InitAMAI takes nothing returns nothing
     call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_SHARED_CONTROL, true)
     call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_SHARED_ADVANCED_CONTROL, true)
   endif
+  set unitNames[0] = "null unit"
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR
   set unitNames[%row] = "%1"
 #ENDINCLUDE
@@ -9847,7 +9876,6 @@ function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer
     return
   endif
   call GetBuildLock()
-  set j = Max(build_length - 1,0)
   loop
     exitwhen i >= build_length
     exitwhen build_prio[i] < prio
@@ -9857,16 +9885,19 @@ function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer
     endif
     set i = i + 1
   endloop
-  loop
-    exitwhen j < i
-    set build_qty[j+1] = build_qty[j]
-    set build_type[j+1] = build_type[j]
-    set build_item[j+1] = build_item[j]
-    set build_town[j+1] = build_town[j]
-    set build_loc[j+1] = build_loc[j]
-    set build_prio[j+1] = build_prio[j]
-    set j = j - 1
-  endloop
+  if build_length > 0 and i > 0 then   //Bottom line fault tolerance
+    set j = build_length - 1
+    loop
+      exitwhen j < i
+      set build_qty[j+1] = build_qty[j]
+      set build_type[j+1] = build_type[j]
+      set build_item[j+1] = build_item[j]
+      set build_town[j+1] = build_town[j]
+      set build_loc[j+1] = build_loc[j]
+      set build_prio[j+1] = build_prio[j]
+      set j = j - 1
+    endloop
+  endif
   set build_qty[i] = qty
   set build_type[i] = t
   set build_item[i] = unitid
@@ -10636,7 +10667,7 @@ function DefendTownsCond takes integer qty, integer unitid, integer min_dist, in
   local integer i = twm
   loop
     exitwhen i > twm + 2
-    if TownHasMine(i) and town_built[i] and own_town_dist[i] >= min_dist and own_town_dist[i] <= max_dist and GetResourceAmount(own_town_mine[i]) >= min_gold then
+    if TownHasMine(i) and town_built[i] and own_town_dist[i] >= min_dist and own_town_dist[i] <= max_dist and own_town_mine[i] != null and GetResourceAmount(own_town_mine[i]) >= min_gold then
       call SecondaryTownAM(i, qty, unitid, prio)
     endif
     set i = i + 1
@@ -12516,7 +12547,7 @@ endfunction
 
 function FromGroupAndGhoulsAM takes integer seconds returns nothing
   call FormGroupAM(0)
-  if not race_has_ghouls or not race_ghouls_attack then
+  if (not race_has_ghouls or not race_ghouls_attack) and seconds > 0 then
    call Sleep(seconds)
   endif
 endfunction
@@ -12740,6 +12771,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
   local integer combat_length_counter = 0
   local unit ally_target = null
   //local group g = null
+  local string a = Int2Str(ALLIANCE_TARGET)
   set lastcaptainx = GetUnitX(target)
   set lastcaptainy = GetUnitY(target)
   loop
@@ -12797,7 +12829,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     else
       set lastcaptainx = GetUnitX(target)
       set lastcaptainy = GetUnitY(target)
-      set ally_target = I2U(GetStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0"))
+      set ally_target = I2U(GetStoredInteger(amaiCache, a, "0"))
       // We now control ally, only certain attack operations will let AMAI join around a shared ally target
       if (ally_override and c_ally_total > 0 and ally_target != null and ally_target != target) then
         set target = ally_target
@@ -12854,6 +12886,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     endif
   endloop
   //set g = null
+  set a = null
 endfunction
 
 //============================================================================
@@ -12899,11 +12932,11 @@ endfunction
 
 function SetAllianceTargetIfLead takes unit u returns nothing
   local string t = Int2Str(ALLIANCE_TARGET)
-  if u != null and not HaveStoredInteger(amaiCache, t, "0") then // if leadally
+  if u != null and UnitAlive(u) and not HaveStoredInteger(amaiCache, t, "0") then // if leadally
     call StoreInteger(amaiCache, t, "0", GetHandleId(u))
     //call SetAllianceTarget(u)
   endif
-  if u == null and HaveStoredInteger(amaiCache, t, "0") then
+  if (u == null or not UnitAlive(u)) and HaveStoredInteger(amaiCache, t, "0") then
     call FlushStoredInteger(amaiCache, t, "0")
   endif
   set t = null
@@ -12911,12 +12944,12 @@ endfunction
 
 function SetAllianceTargetIfLeadAndChat takes unit u, integer chat returns nothing
   local string t = Int2Str(ALLIANCE_TARGET)
-  if u != null and not HaveStoredInteger(amaiCache, t, "0") then // if leadally
+  if u != null and UnitAlive(u) and not HaveStoredInteger(amaiCache, t, "0") then // if leadally
     call StoreInteger(amaiCache, t, "0", GetHandleId(u))
     call SetAllianceTarget(u) // Just sends alliance attack signal, doesn't actually control ally attack target as originally thought, thats hardcoded into attackmovekill
     call SetChatVarsAttack(u)
     call Chat(chat)
-  elseif u == null and HaveStoredInteger(amaiCache, t, "0") then
+  elseif (u == null or not UnitAlive(u)) and HaveStoredInteger(amaiCache, t, "0") then
     call SetAllianceTarget(u)
     call FlushStoredInteger(amaiCache, t, "0")
   endif
@@ -12924,7 +12957,7 @@ function SetAllianceTargetIfLeadAndChat takes unit u, integer chat returns nothi
 endfunction
 
 function ClearAllianceTarget takes unit old returns nothing
-  if old == null or GetHandleId(old) == GetStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0") then
+  if old == null or not UnitAlive(old) or GetHandleId(old) == GetStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0") then
     call SetAllianceTargetIfLead(null)
   endif
 endfunction
@@ -12961,7 +12994,7 @@ function BRRush takes nothing returns boolean
     set br_rush_attacked = true
     call EnableRetreatControl()
     set l = GetUnitLoc(utemp)
-    call IssueImmediateOrderById(utemp, OrderIdCancel) // Cancel building order
+    call IssueImmediateOrderById(utemp, order_cancel) // Cancel building order
     call IssueImmediateOrder(utemp, "unroot")  //try unroot
     call FromGroupAndGhoulsAM(3) // unroot time
     call IssuePointOrder(utemp, "attack", GetUnitX(rushcreep_target), GetUnitY(rushcreep_target))
@@ -13300,7 +13333,7 @@ function CreepAttack takes integer str returns nothing
 // Creep camp medium is level 10 - 19
 // Creep camp strong is level 20 - 100
 
-  if target == null then
+  if target == null or not UnitAlive(target) then
     call Trace("No creep target found")
     call Sleep(3 * sleep_multiplier)
     return
@@ -14639,13 +14672,13 @@ function ForcedHarvest takes nothing returns boolean
       endif
       set i = i + 1
     endloop
+    // call Trace("Forced Harvest mine total : " + Int2Str(T))
   endif
   if (Forced_Harvest_total > 3 and c > 1) or Forced_Harvest_total > 6 then
     set Forced_Harvest_total = 0  //Prevent peon excessive harvest
   else
     set Forced_Harvest_total = Forced_Harvest_total + 1
   endif
-  call Trace("Forced Harvest mine total : " + Int2Str(T))
   return T > 0
 endfunction
 
