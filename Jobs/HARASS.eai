@@ -107,6 +107,14 @@ function GroupOrderWindWalkInstant_d takes group g returns nothing
 	call DestroyGroup(g)
 endfunction
 
+function NotHarassUint takes integer key, group g returns nothing
+  call SaveInteger(additional_info, key, STATE_RETREAT, 0)
+  call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
+  call SaveInteger(additional_info, key, INVISIBLE_COUNT, 0)
+  call SaveReal(additional_info, key, START_STRENGTH, 0)
+  call DestroyGroup(g)
+endfunction
+
 function HarassJob takes integer key, unit target returns nothing
   local integer ht = LoadInteger(additional_info, key, HARASS_TARGET)
   local real strength_limit = LoadReal(additional_info, key, STRENGTH_LIMIT)
@@ -136,11 +144,7 @@ function HarassJob takes integer key, unit target returns nothing
   set harass_num = BlzGroupGetSize(harasser)
   if harass_num == 0 then
     call TraceAll("HARASS ended as no units")
-    call SaveInteger(additional_info, key, STATE_RETREAT, 0)
-    call SaveBoolean(additional_info, key, STATE_ATTACKING, false)
-    call SaveInteger(additional_info, key, INVISIBLE_COUNT, 0)
-    call SaveReal(additional_info, key, START_STRENGTH, 0)
-    call DestroyGroup(harasser)
+    call NotHarassUint(key, harasser)
     set harasser = null
     set target = null
     return
@@ -179,6 +183,11 @@ function HarassJob takes integer key, unit target returns nothing
   endloop
   call DestroyGroup(g)
   set g = null
+  if harass_num == 0 then
+    call NotHarassUint(key, harasser)
+    set harasser = null
+    set target = null
+  endif
   if hero_unit[1] != null and IsUnitInGroup(hero_unit[1], harasser) then
     set hu = hero_unit[1]
     set hero_harass = true
