@@ -9889,6 +9889,9 @@ function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer
     set j = build_length - 1
     loop
       exitwhen j < i
+      if j > 0 and ModuloInteger(j, 300) == 0 then
+        call Sleep(0.05)
+      endif
       set build_qty[j+1] = build_qty[j]
       set build_type[j+1] = build_type[j]
       set build_item[j+1] = build_item[j]
@@ -10419,7 +10422,7 @@ function AddHarassUnittype takes group g, group harasser, integer qty, integer u
   loop
     set u = FirstOfGroup(cg)
     exitwhen u == null or i >= qty
-    if GetUnitTypeId(u) == old_id[uid] and not IsUnitBuying(u) and IsStandardUnit(u) then  // Will ensure units are not already harassing somewhere else
+    if GetUnitTypeId(u) == old_id[uid] and not IsUnitInGroup(u, unit_harassing) and not IsUnitBuying(u) and IsStandardUnit(u) then  // Will ensure units are not already harassing somewhere else
       call GroupAddUnit(harasser,u)
       set player_sum = player_sum + GetUnitStrength(u)
       call GroupRemoveUnit(g,u)
@@ -11417,25 +11420,31 @@ function StartExpansionAM takes integer qty, integer hall returns integer
           call TQAddUnitJob(GetTimeToReachUnit(build_zeppelin, current_expansion) + GetTimeToReachUnit(build_zeppelin, expansion_peon) + 30, RESET_GUARD_POSITION, 50, build_zeppelin)  // Prevent failure and failure to recover midway
         endif
       endif
-      if (w and build_zeppelin == null) then
+      if w and (build_zeppelin == null or not UnitAlive(build_zeppelin)) then
         call Trace("AMAIStartexpa: Water expansion required waiting to create a zeppelin")
         return CANNOT_BUILD
       endif
-      if build_zeppelin != null then
+      if build_zeppelin != null and UnitAlive(build_zeppelin) then
         if not BuildMovePeonZeppelin(expansion_peon, current_expansion, w) then
           call Trace("AMAIStartexpa: Expanding via a zeppelin")
           return BUILT_SOME
         endif
         call RemoveGuardPosition(expansion_peon)  //Prevent being controll away from mine
-        call TQAddUnitJob(2, RESET_GUARD_POSITION, 50, expansion_peon)
-        call IssuePointOrder(expansion_peon, "move", GetUnitX(current_expansion), GetUnitY(current_expansion))
+        call TQAddUnitJob(2, RESET_GUARD_POSITION, 50, expansion_peon)  //  Get TQLock have sleep , maybe this time unit will die
+        if UnitAlive(expansion_peon) then  // can not send order to dead unit
+          call IssuePointOrder(expansion_peon, "move", GetUnitX(current_expansion), GetUnitY(current_expansion))
+        endif
       endif
     endif
     if race_uses_mine_expansion then
       call TQAddUnit2Job(2 * sleep_multiplier, BUILD_EXPANSION, 0, expansion_peon, current_expansion)
-      call IssueTargetOrderById(expansion_peon, old_id[hall], current_expansion)
+      if UnitAlive(expansion_peon) then
+        call IssueTargetOrderById(expansion_peon, old_id[hall], current_expansion)
+      endif
     else
-      call ConstructExpansion(expansion_peon,old_id[hall])
+      if UnitAlive(expansion_peon) then
+        call ConstructExpansion(expansion_peon, old_id[hall])
+      endif
     endif
   endif
   //  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Finished")
@@ -11962,11 +11971,14 @@ elseif minetimeready and attacking_aggression > 0 and mines > 1 and mines < 4 an
   if chaos_expansion != null and chaos_expansion != current_expansion and GetResourceAmount(chaos_expansion) >= GetUnitGoldCost(old_id[racial_expansion]) and GetLocationCreepStrength(GetUnitX(chaos_expansion), GetUnitY(chaos_expansion), expansion_radius) <= 0 and not CheckExpansionTaken(chaos_expansion) then
     set u = GetExpansionPeon()
     if u != null and UnitAlive(u) and u != expansion_peon and not chaos_expansion_run then
-      set chaos_expansion_run = true
-      set not_taken_expansion = chaos_expansion
       call TQAddUnit2Job(2 * sleep_multiplier, BUILD_EXPANSION, 0, u, chaos_expansion)
-      call IssueTargetOrderById(u, old_id[racial_expansion], chaos_expansion)
-      call CreateDebugTag("chaos expansion", 10, u, 3.00, 1.50)
+      if UnitAlive(u) then
+        set chaos_expansion_run = true
+        set not_taken_expansion = chaos_expansion
+        call IssueTargetOrderById(u, old_id[racial_expansion], chaos_expansion)
+        call CreateDebugTag("chaos expansion", 10, u, 3.00, 1.50)
+        call Trace("ExpansionBuilder: chaos expansion")
+      endif
       call Trace("ExpansionBuilder: chaos expansion")
       set u = null
       return
@@ -12831,7 +12843,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       set lastcaptainy = GetUnitY(target)
       set ally_target = I2U(GetStoredInteger(amaiCache, a, "0"))
       // We now control ally, only certain attack operations will let AMAI join around a shared ally target
-      if (ally_override and c_ally_total > 0 and ally_target != null and ally_target != target) then
+      if (ally_override and c_ally_total > 0 and ally_target != null and UnitAlive(ally_target) and ally_target != target) then
         set target = ally_target
       endif
       if true or CaptainAtGoal() or (attack_length_counter == 0 and not CaptainInCombat(true)) or CaptainInCombat(true) or ally_override or c_ally_total == 0 then
@@ -13753,6 +13765,7 @@ function Militia_Expansion takes integer m returns nothing
   endloop
   //call AddAssault(m, old_id[racial_militia])   // Lil problem with adding assaults. For some reasons
   //call AttackMoveKill(efoe)
+  set g = SelectByAlive(g, true)
   call GroupPointOrder(g, "attack", GetUnitX(current_expansion), GetUnitY(current_expansion))
   set town_threat_break = false
   //set captain_flee = false
@@ -14397,7 +14410,9 @@ function ApplyMassHealingItem takes unit u, item mh_i returns nothing
       endif
     endif
   endif
-
+  set urgent_healing_group = SelectByAlive(urgent_healing_group, true)
+  set medium_healing_group = SelectByAlive(medium_healing_group, true)
+  set small_healing_group = SelectByAlive(small_healing_group, true)
   call RemoveGuardPosition(u)
   call GroupPointOrder(urgent_healing_group, "move", x, y)
   call GroupPointOrder(medium_healing_group, "move", x, y)
@@ -14442,9 +14457,9 @@ function ApplyHealingItem takes unit u, item heal_item returns nothing
   if b then
     loop
       set target = FirstOfGroup(urgent)
-      exitwhen target == null
+      exitwhen target == null or u == null or not UnitAlive(u)
       exitwhen not UnitHasItem(u, heal_item)
-      if target != null and IsUnitInGroup(target, g) then
+      if target != null and UnitAlive(target) and IsUnitInGroup(target, g) then
         call UnitUseItemTarget(u, heal_item, target)
         call Sleep(3)
       endif
@@ -14452,14 +14467,14 @@ function ApplyHealingItem takes unit u, item heal_item returns nothing
     endloop
   else
     loop
-      exitwhen not UnitHasItem(u, heal_item)
+      exitwhen u == null or not UnitAlive(u) or not UnitHasItem(u, heal_item)
       set target = FirstOfGroup(urgent)
-      if target != null and IsUnitInGroup(target, g) then
+      if target != null and UnitAlive(target) and IsUnitInGroup(target, g) then
         call UnitUseItemTarget(u, heal_item, target)
         call GroupRemoveUnit(urgent, target)
       else
         set target = FirstOfGroup(medium)
-        if target != null and IsUnitInGroup(target, g) then
+        if target != null and UnitAlive(target) and IsUnitInGroup(target, g) then
           call UnitUseItemTarget(u, heal_item, target)
           call GroupRemoveUnit(medium, target)
         endif
