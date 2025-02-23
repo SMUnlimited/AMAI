@@ -6,6 +6,45 @@
 // #  Created by Strategy Master 13/07/05. Controls all part of the
 // #  tower rush when tower rush check comes true.
 // ##################################################################
+function TowerRushRecoveryBuild takes nothing returns nothing
+	local group g = CreateGroup()
+	local unit u = null
+	local integer i = 1
+	local integer s = 0
+	local integer c = 0
+	call GroupEnumUnitsInRange(g, GetLocationX(towerrecoveryloc), GetLocationY(towerrecoveryloc), 2000, null)
+	loop
+		set u = FirstOfGroup(g)
+		exitwhen u == null or i > race_tower_peon
+		if GetOwningPlayer(u) == ai_player and IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) then
+			if builder[i] != null and UnitAlive(builder[i]) then
+				call IssueTargetOrder(builder[i], "unsummon", u)
+				set s = 1
+			endif
+			set i = i + 1
+			set c = c + 1
+		endif
+		call GroupRemoveUnit(g,u)
+	endloop
+	call DestroyGroup(g)
+	set g = null
+	set u = null
+	if c > 0 and s > 0 then
+		call TQAddJob(4, TOWER_RUSH, 0)
+		return
+	endif
+	set i = 1
+	loop
+		exitwhen i > race_tower_peon
+		call IssuePointOrderLoc(builder[i], "move", home_location)
+		call RecycleGuardPosition(builder[i])
+		set builder[i] = null
+		set i = i + 1
+	endloop
+	call RemoveLocation(towerrecoveryloc)
+	set towerrecoveryloc = null
+endfunction
+
 function TowerRushHeroControl_k takes unit u, location t returns nothing
 	local location l = GetUnitLoc(u)
 	call RemoveGuardPosition(u)
@@ -176,6 +215,10 @@ function TowerRushJob takes nothing returns nothing
 	local real y = 0
 	local boolean CloseJob = false
 	call DisplayToAllJobDebug("TOWER_RUSH Job START")
+	if towerrecoveryloc != null then
+		call TowerRushRecoveryBuild()
+		return
+	endif
 	if not hero_built[1] and race_tower_item_must == true then
 		call TQAddJob(5, TOWER_RUSH, 0)
 		return
@@ -268,15 +311,10 @@ function TowerRushJob takes nothing returns nothing
 				endloop
 			endif
 		endif
-		if CloseJob and TRrecovery != null then
-			call RemoveLocation(TRrecovery)
-			set TRrecovery = null
-		endif
 		call CreateDebugTagLoc("TR Close state : " + B2S(CloseJob), 10, GetLocationX(t), GetLocationY(t), 60.00, 55.00)
 	endif
 	if GetPlayerSlotState(rushedplayer) != PLAYER_SLOT_STATE_PLAYING or GetLocationEnemyStrength(enemy_point_x, enemy_point_y, 1600, false) == 0 or CloseJob == true then  //or (builder[1] != null and (GetUnitState(builder[1], UNIT_STATE_LIFE) <= 0  and GetUnitState(builder[3], UNIT_STATE_LIFE) <= 0 and GetUnitState(builder[2], UNIT_STATE_LIFE) <= 0)) then
-		//maybe enemy give up the Location,so temporary no need built
-		call Trace("I have finished the tower rush")
+		call Trace("I have finished the tower rush")  //maybe enemy give up the Location,so temporary no need built
 		set gold_buffer = 0
 		set wood_buffer = 0
 		if tower_attack_run == true then
@@ -288,7 +326,7 @@ function TowerRushJob takes nothing returns nothing
 				loop
 					set u = FirstOfGroup(g)
 					exitwhen u == null
-					if IsUnitType(u, UNIT_TYPE_PEON) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitBuying(u) then
+					if IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitBuying(u) and UnitAlive(u) and not IsUnitHidden(u) then
 						call TQAddUnitJob(3, RESET_GUARD_POSITION, 0, u)  //Prevent peon immediately go tower point repair tower
 					endif
 					if builder[i] != null then
@@ -299,25 +337,38 @@ function TowerRushJob takes nothing returns nothing
 				endloop
 				call GroupClear(g)
 			endif
-			set i = 0
-			loop
-				exitwhen i > race_tower_peon
-				if UnitAlive(builder[i]) then
-					call IssuePointOrderLoc(builder[i], "move", home_location)
-					call RecycleGuardPosition(builder[i])
-				endif
-				set builder[i] = null
-				set i = i + 1
-			endloop
+			set i = 1
 			call GroupEnumUnitsInRange(g, GetLocationX(towerrushsubloc), GetLocationY(towerrushsubloc), 2000, null)
 			loop
 				set u = FirstOfGroup(g)
 				exitwhen u == null
-				if GetOwningPlayer(u) == ai_player and UnitAlive(u) and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+				if GetOwningPlayer(u) == ai_player and IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u)  then
 					call IssueImmediateOrderById( u, order_cancel)  //Cancel can recycling resources and prevent AI run FAST BUILD
+					if race_sell_ziggurats then
+						call Unsummon(u)  // if build done, sell
+						if builder[i] != null and UnitAlive(builder[i]) then
+							call IssueTargetOrder(builder[i], "unsummon", u)
+							set i = i + 1
+						endif
+					endif
 				endif
 				call GroupRemoveUnit(g,u)
 			endloop
+			if race_sell_ziggurats and not CloseJob then  // if enemy fail, sell
+				set towerrecoveryloc = Location(GetLocationX(towerrushsubloc), GetLocationY(towerrushsubloc))
+				call TQAddJob(2, TOWER_RUSH, 0)
+			else
+				set i = 1
+				loop
+					exitwhen i > race_tower_peon
+					if builder[i] != null and UnitAlive(builder[i]) then
+						call IssuePointOrderLoc(builder[i], "move", home_location)
+						call RecycleGuardPosition(builder[i])
+					endif
+					set builder[i] = null
+					set i = i + 1
+				endloop
+			endif
 		endif
 		set race_tower_alliancetarget = false
 		set tower_used_item = false

@@ -1,33 +1,5 @@
 #IFDEF GLOBAL
-  location TRrecovery = null
-  unit sellbuild = null
-  unit sellpeon = null
 #ELSE
-
-function RecoveryTRBuild takes group g returns nothing
-  if sellbuild == null or not UnitAlive(sellbuild) then
-    call GroupEnumUnitsInRange(g, GetLocationX(TRrecovery), GetLocationY(TRrecovery), 2000, null)
-    set g = SelectByPlayer(g, ai_player, true)
-    set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-    set g = SelectByAlive(g, true)
-    set g = SelectByHidden(g, false)
-    set sellbuild = FirstOfGroup(g)
-  endif
-  if sellbuild == null then
-    call RemoveLocation(TRrecovery)
-    set TRrecovery = null
-    set sellbuild = null
-    set sellpeon = null
-  else
-    if sellpeon == null or not UnitAlive(sellpeon) then
-      set sellpeon = GetExpansionPeon2(sellpeon)
-    endif
-    if sellpeon != null then
-      call IssueTargetOrder(sellpeon, "unsummon", sellbuild)
-    endif
-  endif
-endfunction
-
 function SelectByZiggurat takes group rg returns group
   local unit u = null
   local integer i = 0
@@ -102,29 +74,21 @@ function SellZigguratJob takes nothing returns nothing
   local integer c = GetUnitCount(old_id[racial_hall[tier]])
   call DisplayToAllJobDebug("SELL_ZIGGURATS JOB START")
   if not towerrush then
-    if TRrecovery == null then
-      if GetGoldOwned() + GetGold() < 800 then  // if insufficient resources, buy more buildings , else ensure there is sufficient food available
-        call GroupEnumUnitsOfPlayer(g, ai_player, null)
-        call CheckSellStructure(g)
-      elseif TownCountDone(racial_farm) * GetFoodMade(old_id[racial_farm]) > Min(FoodUsed() + 10, ver_food_limit) then
-        call GroupEnumUnitsOfPlayer(g, ai_player, null)
-        set g = SelectByZiggurat(g)
-        set cg = CopyGroup(g, cg)
-        loop
-          set u = FirstOfGroup(g)
-          exitwhen u == null
-          set c = CheckSellZiggurat(u, cg, c)
-          call GroupRemoveUnit(g, u)
-        endloop
-        call DestroyGroup(cg)
-        set cg = null
-      endif
-    else
-      call RecoveryTRBuild(g)
-      call DestroyGroup(g)
-      set g = null
-      call TQAddJob(6, SELL_ZIGGURATS, 0)
-      return
+    if GetGoldOwned() + GetGold() < 800 then  // if insufficient resources, buy more buildings , else ensure there is sufficient food available
+      call GroupEnumUnitsOfPlayer(g, ai_player, null)
+      call CheckSellStructure(g)
+    elseif TownCountDone(racial_farm) * GetFoodMade(old_id[racial_farm]) > Min(FoodUsed() + 10, ver_food_limit) then
+      call GroupEnumUnitsOfPlayer(g, ai_player, null)
+      set g = SelectByZiggurat(g)
+      set cg = CopyGroup(g, cg)
+      loop
+        set u = FirstOfGroup(g)
+        exitwhen u == null
+        set c = CheckSellZiggurat(u, cg, c)
+        call GroupRemoveUnit(g, u)
+      endloop
+      call DestroyGroup(cg)
+      set cg = null
     endif
   endif
   call DestroyGroup(g)
