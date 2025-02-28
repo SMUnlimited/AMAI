@@ -11371,8 +11371,32 @@ function FormGroupAM takes integer seconds returns nothing
   local integer count = 0
   local integer unitid = 0
   local integer desire = 0
+  local integer ghoul = 0
+  local group g = null
+  local unit u = null
 
   call InitAssault()
+
+  if count > minimum_peon_wood then
+    set take_all_ghouls_along = true
+  elseif count < minimum_peon_wood then
+    set take_all_ghouls_along = false
+  endif
+
+  if TownCountDone(racial_ghoul) > 0 then  // Ghoul count needs to exclude units sent back to heal otherwise harvesting ghouls will be pulled off.
+    set g = CreateGroup()
+    call GroupEnumUnitsOfPlayer(g, ai_player, null)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      if GetUnitTypeId(u) == old_id[racial_ghoul] and UnitAlive(u) and not IsUnitHidden(u) and IsStandardUnit(u) and not IsUnitBuying(u) then
+        set ghoul = ghoul + 1
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+    call DestroyGroup(g)
+    set g = null
+  endif
 
   loop
     exitwhen index == attack_length
@@ -11388,11 +11412,21 @@ function FormGroupAM takes integer seconds returns nothing
     set desire = attack_max[index]
     set count  = TownCountDone(unitid)
 
-    if unitid == racial_ghoul and not take_all_ghouls_along then
-      set desire = attacking_ghouls
-      if towerrush then
-        set desire = Min(Max(count - 2 , 0),desire)  // reserve
+    if unitid == racial_ghoul then
+      if take_all_ghouls_along then
+        if towerrush then
+          set desire = Max(Min(count - 2 ,desire), 0)  // reserve
+        endif
+        set attacking_ghouls = desire
+      else
+        set count = count + ghoul
+        set desire = (count - harvesting_ghouls) // all spare ghouls should attack and join attack as built
+        if towerrush then
+          set desire = Max(Min(count - 2 ,desire), 0)  // reserve
+        endif
+        set attacking_ghouls = Max(desire, 0)
       endif
+      call Trace("Attacking Ghouls Formed:" + Int2Str(attacking_ghouls))
     endif
 
     call ConversionsAM(desire,unitid)
@@ -11405,7 +11439,9 @@ function FormGroupAM takes integer seconds returns nothing
 
     set index = index + 1
   endloop
-  call Sleep(seconds)
+  if seconds > 0 then
+    call Sleep(seconds)
+  endif
 endfunction
 
 //============================================================================
