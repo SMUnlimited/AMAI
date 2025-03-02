@@ -111,7 +111,7 @@ my $stratlb = $stratframe->Scrolled('Listbox',
     -scrollbars => 'se',
     -height => 0,
 )->pack(-fill => 'both', -expand => 1);
-
+tie $strat, "Tk::Listbox", $stratlb;
 my $profilelb = $profileframe->Scrolled('Listbox',
     -scrollbars => 'se',
     -height => 0,
@@ -749,11 +749,11 @@ sub EditStrat {
   my $optarrayref = FillTable($strattable, $version, $race, @$strat[0]);
   FillTexts($inittext, \@buildtexttier, $version, $race, @$strat[0]);
   $bframe->Button(
-      -text => get_translation('button_ok'),
+      (-text => get_translation('button_ok'), -font => $font),
       -command => sub {SaveStrat($edit, $inittext, \@buildtexttier, $strattable, $version, $race, @$strat[0], $optarrayref)},
       -width => 14)->pack;
   $bframe->Button(
-      -text => get_translation('button_cancel'),
+      (-text => get_translation('button_cancel'), -font => $font),
       -command => [$edit => 'destroy'],
       -width => 14)->pack;
   $edit->focusForce;
@@ -767,11 +767,11 @@ sub EditProfile {
   my $profiletable = $edit->Table(-rows => 37)->pack(-side => 'left');
   my $optarrayref = FillProfileTable($profiletable, $version, @$profile[0]);
   $bframe->Button(
-                -text => get_translation('button_ok'),
+                (-text => get_translation('button_ok'), -font => $font),
                 -command => sub {SaveProfile($edit, $profiletable, $version, @$profile[0], $optarrayref)},
                 -width => 14)->pack;
   $bframe->Button(
-                -text => get_translation('button_cancel'),
+                (-text => get_translation('button_cancel'), -font => $font),
                 -command => [$edit => 'destroy'],
                 -width => 14)->pack;
   $edit->focusForce;
@@ -1155,11 +1155,11 @@ sub EditRacialBuilds {
   my $buildtext = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
   LoadRacialBuild($inittext, $buildtext, $ver, $race);
   $rframe->Button(
-                -text => get_translation('button_ok'),
+                (-text => get_translation('button_ok'), -font => $font),
                 -command => sub {SaveRacialBuild($edit, $inittext, $buildtext, $ver, $race)},
                 -width => 14)->pack;
   $rframe->Button(
-                -text => get_translation('button_cancel'),
+                (-text => get_translation('button_cancel'), -font => $font),
                 -command => [$edit => 'destroy'],
                 -width => 14)->pack;
   $edit->focusForce;
@@ -1210,11 +1210,11 @@ sub EditSettings {
   my $table = $lframe->Table(-rows => 37)->pack(-side => 'left');
   my $rownumber = LoadSettings($table, $file);
   $rframe->Button(
-                -text => get_translation('button_ok'),
+                (-text => get_translation('button_ok'), -font => $font),
                 -command => sub {SaveSettings($edit, $table, $file, $rownumber)},
                 -width => 14)->pack;
   $rframe->Button(
-                -text => get_translation('button_cancel'),
+                (-text => get_translation('button_cancel'), -font => $font),
                 -command => [$edit => 'destroy'],
                 -width => 14)->pack;
   $edit->focusForce;
