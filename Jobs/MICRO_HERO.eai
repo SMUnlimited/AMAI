@@ -98,7 +98,7 @@ function GetDensities takes location l, player p, real r returns nothing
 endfunction
 
 function GoHomeIfMainHero takes unit u, real x, real y returns nothing
-  if main_army >= 0 and IsUnitInGroup(u, army_group[main_army]) then
+  if main_army >= 0 and army_group[main_army] != null and IsUnitInGroup(u, army_group[main_army]) then
     call CaptainGoHome() // Retreat attack captain.
     call TeleportCaptain(x, y)
     set break_attack = attack_running
@@ -417,15 +417,13 @@ function MicroHeroJob takes integer hn returns nothing
         endif
         set teleporting = true
         call TQAddUnitJob(0.5, TELEPORT, 0, hero_unit[hn])
-        if not UnitAlive(hero_unit[hn]) then
-          call TQAddJob(3, MICRO_HERO, hn)
-          return
-        endif
+        call TQAddJob(4, MICRO_HERO, hn)
+        return
       endif
     endif
     if not healing and not attack_running and not retreat_controlled and not town_threatened and not TownThreatened() and not teleporting and major_hero != null and UnitAlive(major_hero) and DistanceBetweenUnits(major_hero,hero_unit[hn]) > 2000 then
       call ItemSingetp(hn,false)
-      call TQAddJob(3, MICRO_HERO, hn)
+      call TQAddJob(2, MICRO_HERO, hn)
       return
     endif
     //  call DisplayToAll("Hero Order: "+Int2Str(GetUnitCurrentOrder(hero_unit[hn])))
@@ -435,10 +433,8 @@ function MicroHeroJob takes integer hn returns nothing
 
     if not healing and not teleporting and GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) < RMax(flee_health_percentage * GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE), flee_minimum_health) then
       call SaveHero(hn,armyOfHero)
-      if UnitAlive(hero_unit[hn]) then
-        set healing = IsUnitInGroup(hero_unit[hn], unit_healing)
-      else
-        call TQAddJob(3, MICRO_HERO, hn)
+      if teleporting or not UnitAlive(hero_unit[hn]) then
+        call TQAddJob(2, MICRO_HERO, hn)
         return
       endif
     endif
@@ -455,13 +451,13 @@ function MicroHeroJob takes integer hn returns nothing
       if town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= teleport_min_threat and teleportdistance > LinearInterpolation(teleport_low_threat, teleport_high_threat, teleport_low_threat_distance, teleport_high_threat_distance, town_threat[most_threatened_town]) and town_can_tp[most_threatened_town] and army_strength[armyOfHero] >= teleport_army_min_strength then
         call CreateDebugTag("HERO: Teleporting to threatened town", 10, hero_unit[hn], 4.00, 2.00)
         call TeleportToLoc(hero_unit[hn], town_loc[most_threatened_town])
-        call TQAddJob(1, MICRO_HERO, hn)
+        call TQAddJob(2, MICRO_HERO, hn)
         return
       // Next statement detects when the main army is outmatched and so teleports back to home base
       elseif attack_running and army_loc[armyOfHero] != null and army_strength[armyOfHero] >= teleport_army_min_strength and isfleeing and DistanceBetweenPoints(hero_loc[hn], home_location) > teleport_low_threat_distance then
         call CreateDebugTag("HERO: Army outmatched-teleporting home", 10, hero_unit[hn], 4.00, 2.00)
         call TeleportHome(hn)
-        call TQAddJob(1, MICRO_HERO, hn)
+        call TQAddJob(2, MICRO_HERO, hn)
         return
       endif
     endif

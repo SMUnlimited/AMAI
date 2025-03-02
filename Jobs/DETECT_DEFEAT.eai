@@ -9,6 +9,7 @@
     integer SaveYourselfMode = -1
     player sharedRacePlayer = null
     boolean humanPlayerAllys = false
+    boolean array over_control_state
 #ELSE
 //============================================================================
 // Self destruction
@@ -335,8 +336,41 @@ function CheckDefeatedForce takes nothing returns nothing
   endif
 endfunction
 
+function TakeOverOfflineAlly takes player p returns nothing
+  local group g = CreateGroup()
+  local unit u = null
+  local integer i = 0
+  call GroupEnumUnitsOfPlayer(g, p, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if UnitAlive(u) then
+      if IsUnitType(u, UNIT_TYPE_HERO) or IsUnitHidden(u) then
+        call KillUnit(u)
+      else
+        call SetUnitOwner(u, ai_player, true)
+        set i = 1
+      endif
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  if i > 0 then
+    call StoreBoolean(amaiCache, Int2Str(OVER_CONTROL), Int2Str(GetPlayerId(p)), true)
+    call SetPlayerState(ai_player,PLAYER_STATE_RESOURCE_GOLD,GetPlayerState(ai_player,PLAYER_STATE_RESOURCE_GOLD) + GetPlayerState(p,PLAYER_STATE_RESOURCE_GOLD))
+    call SetPlayerState(ai_player,PLAYER_STATE_RESOURCE_LUMBER,GetPlayerState(ai_player,PLAYER_STATE_RESOURCE_LUMBER) + GetPlayerState(p,PLAYER_STATE_RESOURCE_LUMBER))
+    call SetPlayerState(p,PLAYER_STATE_RESOURCE_GOLD,0)
+    call SetPlayerState(p,PLAYER_STATE_RESOURCE_LUMBER,0)
+    call DisplayToAlliesChat(cs2s(GetPlayerName(p), GetPlayerColor(p)) + " " + chat_over_control_ally)
+  else
+    set over_control_state[GetPlayerId(p)] = true
+  endif
+endfunction
+
 function DetectDefeatJob takes nothing returns nothing
   local integer i = 0
+  local integer t = -1
   local player p = null
   local race r = GetPlayerRace(ai_player)
   call DisplayToAllJobDebug("DETECT_DEFEAT Job Start")
@@ -355,6 +389,12 @@ function DetectDefeatJob takes nothing returns nothing
           set sharedRacePlayer = p
         endif
       endif
+    elseif t < 0 and GetPlayerController(p) == MAP_CONTROL_USER and r == GetPlayerRace(p) and not over_control_state[GetPlayerId(p)] then  // one time check one ally
+      set t = GetPlayerId(p)
+      if GetStoredBoolean(amaiCache, Int2Str(OVER_CONTROL), Int2Str(t)) then
+        set over_control_state[t] = true  // other ally take control
+        set t = -1
+      endif
     endif
     set i = i + 1
   endloop
@@ -362,6 +402,10 @@ function DetectDefeatJob takes nothing returns nothing
   call CheckDefeatedForce()
   if desperation_assault == true and (TownCount(race_manual_loading_mine) > 0 or not HallsCompleted(racial_expansion) or GetMinesOwned() > 0) then
     set desperation_assault = false
+  endif
+  if not player_defeated and not desperation_assault and t >= 0 then
+    set over_control_state[t] = true  // own take control
+    call TakeOverOfflineAlly(Player(t))
   endif
   if not player_defeated and not pathing_done then
     call TQAddJob(13 * sleep_multiplier, DETECT_DEFEAT, 0)
