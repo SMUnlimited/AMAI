@@ -71,7 +71,6 @@ sub load_language {
     $keylang{$key} = $value;
   }
   close LANG;
-  print \%keylang;
   $lang_data_cache{$lang_file} = \%keylang;
   return \%keylang;
 }
