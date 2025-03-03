@@ -668,7 +668,11 @@ sub InsertStratSub {
     $x++;
     $stratname = "$oldstratname$x";
   }
-
+  my $needs_newline = 0;
+  seek(STRATFILE, -1, 2);
+  my $last_char;
+  read(STRATFILE, $last_char, 1);
+  $needs_newline = 1 if $last_char ne "\n";
   $line =~ s/^$oldstratname/$stratname/;
   print STRATFILE $line;
   print AIFILE "\n";
@@ -697,8 +701,14 @@ sub InsertProfileSub {
   my $profilelist = join ',', GetProfileList($version);
   open(SOURCE, $filename) or do { confirm_box(get_translation('err_file_not_writing', "<$filename>")) };
   open(PROFILEFILE, ">>$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
+  my $needs_newline = 0;
+  seek(PROFILEFILE, -1, 2);
+  my $last_char;
+  read(PROFILEFILE, $last_char, 1);
+  $needs_newline = 1 if $last_char ne "\n";
+  print PROFILEFILE "\n" if $needs_newline;
   my $line = <SOURCE>;
-  if ($line !~ /#AMAI 2.0 Profile/) {die get_translation('err_not_file_profiles') };
+  if ($line !~ /#AMAI 2.0 Profile/) {die get_translation('err_not_file_profiles');}
   $line = <SOURCE>;
   $line =~ /^([^\t]*)\t/;
   my $oldprofilename = $1;
@@ -710,7 +720,7 @@ sub InsertProfileSub {
   }
 
   $line =~ s/^$oldprofilename/$profilename/;
-  print PROFILEFILE $line;
+  print PROFILEFILE $line ;
   close(PROFILEFILE);
   close(SOURCE);
 }
