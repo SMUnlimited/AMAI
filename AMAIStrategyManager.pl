@@ -601,7 +601,7 @@ sub ExtractStratSub {
   print TARGETFILE "#AMAI 2.0 Strategy\n";
   my $line = <STRATFILE>;
   while (($line = (<STRATFILE> or do { confirm_box(get_translation('err_strategy_not_found_strategy')) })) !~ /^$stratname\t/) {}
-  print TARGETFILE $line;
+  print TARGETFILE $line . "\n";
   while (($line = (<AIFILE> or do { confirm_box(get_translation('err_strategy_not_found_buildsequence')) })) !~ /\bfunction\s*init_strategy_$stratname\b/) {}
   print TARGETFILE $line;
   while (($line = (<AIFILE> or do { confirm_box(get_translation('err_strategy_not_complete')) })) !~ /endfunction/) {print TARGETFILE $line;}
@@ -668,11 +668,10 @@ sub InsertStratSub {
     $x++;
     $stratname = "$oldstratname$x";
   }
-  my $needs_newline = 0;
   seek(STRATFILE, -1, 2);
   my $last_char;
   read(STRATFILE, $last_char, 1);
-  $needs_newline = 1 if $last_char ne "\n";
+  print STRATFILE "\n" if $last_char ne "\n";
   $line =~ s/^$oldstratname/$stratname/;
   print STRATFILE $line;
   print AIFILE "\n";
@@ -683,6 +682,11 @@ sub InsertStratSub {
   close(AIFILE);
   close(STRATFILE);
   close(SOURCE);
+  open(STRATFILE, "$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
+  my @lnewline = grep { /\S/ } <STRATFILE>;
+  open(STRATFILE, ">$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
+  print STRATFILE @lnewline;  # Remove blank lines
+  close(STRATFILE);
 }
 
 sub InsertStrat {
@@ -701,27 +705,30 @@ sub InsertProfileSub {
   my $profilelist = join ',', GetProfileList($version);
   open(SOURCE, $filename) or do { confirm_box(get_translation('err_file_not_writing', "<$filename>")) };
   open(PROFILEFILE, ">>$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
-  my $needs_newline = 0;
   seek(PROFILEFILE, -1, 2);
   my $last_char;
   read(PROFILEFILE, $last_char, 1);
-  $needs_newline = 1 if $last_char ne "\n";
-  print PROFILEFILE "\n" if $needs_newline;
+  print PROFILEFILE "\n" if $last_char ne "\n";
   my $line = <SOURCE>;
   if ($line !~ /#AMAI 2.0 Profile/) {die get_translation('err_not_file_profiles');}
   $line = <SOURCE>;
   $line =~ /^([^\t]*)\t/;
   my $oldprofilename = $1;
-  my $profilename = $oldprofilename;
+  my $profilename = "$oldprofilename";
   my $x = 0;
   while ($profilelist =~ /\b$profilename\b/) {
     $x++;
     $profilename = "$oldprofilename$x";
   }
   $line =~ s/^$oldprofilename/$profilename/;
-  print PROFILEFILE $line ;
+  print PROFILEFILE $line;
   close(PROFILEFILE);
   close(SOURCE);
+  open(PROFILEFILE, "$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
+  my @lnewline = grep { /\S/ } <PROFILEFILE>;
+  open(PROFILEFILE, ">$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
+  print PROFILEFILE @lnewline;  # Remove blank lines
+  close(PROFILEFILE);
 }
 
 sub InsertProfile {
