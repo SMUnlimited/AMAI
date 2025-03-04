@@ -718,7 +718,6 @@ sub InsertProfileSub {
     $x++;
     $profilename = "$oldprofilename$x";
   }
-
   $line =~ s/^$oldprofilename/$profilename/;
   print PROFILEFILE $line ;
   close(PROFILEFILE);
@@ -743,15 +742,18 @@ sub EditStrat {
   my $lframe = $edit->Frame->pack(-side => 'left');
   my $rframe = $edit->Frame->pack(-side => 'right');
   my $bframe = $rframe->Frame->pack(-side => 'right');
-  my $strattable = $rframe->Table(-rows => 37)->pack(-side => 'left');
+  my $strattable = $rframe->Table(-rows => 40)->pack(-side => 'left');
   open(TIERFILE, "$ver\\$race\\Tiers.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$ver\\$race\\Tiers.txt>")) };
   my @tiers = <TIERFILE>;
   my $tiernum = @tiers;
   close(TIERFILE);
-  my $textheight = 44 / ($tiernum + 1);
+  my $textheight = 48 / ($tiernum + 1);
   my @buildtexttier = ();
+  $lframe->Label(-text => get_translation('label_strategies') . "  @$strat[0]", -font => $font)->pack;
+  $lframe->Label(-height => 2,)->pack;  # Placeholder
   $lframe->Label(-text => get_translation('label_Init_code'), -font => $font)->pack;
   my $inittext = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
+  $lframe->Label(-height => 2,)->pack;  # Placeholder
   for(my $i=1;$i<=$tiernum;$i++) {
     $lframe->Label(-text => get_translation('label_tier_code', "$i"), -font => $font)->pack;
     $buildtexttier[$i] = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
@@ -774,7 +776,7 @@ sub EditProfile {
   return unless @$profile[0];
   my $edit = $main->Toplevel(-title => get_translation('title_profile_editor'));
   my $bframe = $edit->Frame->pack(-side => 'right');
-  my $profiletable = $edit->Table(-rows => 37)->pack(-side => 'left');
+  my $profiletable = $edit->Table(-rows => 40)->pack(-side => 'left');
   my $optarrayref = FillProfileTable($profiletable, $version, @$profile[0]);
   $bframe->Button(
                 (-text => get_translation('button_ok'), -font => $font),
