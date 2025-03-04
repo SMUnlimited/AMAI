@@ -601,7 +601,8 @@ sub ExtractStratSub {
   print TARGETFILE "#AMAI 2.0 Strategy\n";
   my $line = <STRATFILE>;
   while (($line = (<STRATFILE> or do { confirm_box(get_translation('err_strategy_not_found_strategy')) })) !~ /^$stratname\t/) {}
-  print TARGETFILE $line."\n";
+  print TARGETFILE $line;
+  print TARGETFILE "\n";
   while (($line = (<AIFILE> or do { confirm_box(get_translation('err_strategy_not_found_buildsequence')) })) !~ /\bfunction\s*init_strategy_$stratname\b/) {}
   print TARGETFILE $line;
   while (($line = (<AIFILE> or do { confirm_box(get_translation('err_strategy_not_complete')) })) !~ /endfunction/) {print TARGETFILE $line;}
