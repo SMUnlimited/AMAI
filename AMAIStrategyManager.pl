@@ -382,7 +382,7 @@ $lframe->Label(
                 -height => 1,
 )->pack;  # Placeholder
 $lframe->Label(
-                -text => get_translation('placeholder_about'),
+                -text => (get_translation('placeholder_about')),
                 -font => $font,
                 -width => 24,
                 -height => 1,
@@ -397,6 +397,13 @@ $lframe->Label(
                 },
                 -width => 24,
 )->pack;
+$lframe->Label(
+                -height => 4,
+)->pack;  # Placeholder
+$lframe->Label(
+                -text => ("v 1.1"),
+                -font => $font,
+ )->pack;
 # $lframe->Label(
 #                 -height => 4,
 # )->pack;  # Placeholder
