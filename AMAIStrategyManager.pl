@@ -111,11 +111,13 @@ my $stratlb = $stratframe->Scrolled('Listbox',
     -scrollbars => 'se',
     -height => 0,
 )->pack(-fill => 'both', -expand => 1);
+mouse_wheel($stratlb);
 tie $strat, "Tk::Listbox", $stratlb;
 my $profilelb = $profileframe->Scrolled('Listbox',
     -scrollbars => 'se',
     -height => 0,
 )->pack(-fill => 'both', -expand => 1);
+mouse_wheel($profilelb);
 tie $profile, "Tk::Listbox", $profilelb;
 sub confirm_box {
   my ($message) = @_;
@@ -126,6 +128,15 @@ sub confirm_box {
     -default => 'OK',
   );
   return;
+}
+
+sub mouse_wheel {
+  my ($widget) = @_;
+  $widget->focus;
+  $widget->bind('<MouseWheel>', sub {
+    my $delta = $Tk::event->D;
+    $widget->yview('scroll', -($delta <=> 0), 'units');
+  });
 }
 
 my $bframe = $rframe->Frame->pack(-side => 'right');
@@ -750,7 +761,8 @@ sub EditStrat {
   my $lframe = $edit->Frame->pack(-side => 'left');
   my $rframe = $edit->Frame->pack(-side => 'right');
   my $bframe = $rframe->Frame->pack(-side => 'right');
-  my $strattable = $rframe->Table(-rows => 40)->pack(-side => 'left');
+  my $strattable = $rframe->Table(-rows => 44)->pack(-side => 'left');
+  $strattable->configure(-takefocus => 1);
   open(TIERFILE, "$ver\\$race\\Tiers.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$ver\\$race\\Tiers.txt>")) };
   my @tiers = <TIERFILE>;
   my $tiernum = @tiers;
@@ -761,13 +773,43 @@ sub EditStrat {
   $lframe->Label(-height => 2,)->pack;  # Placeholder
   $lframe->Label(-text => get_translation('label_Init_code'), -font => $font)->pack;
   my $inittext = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
-  $lframe->Label(-height => 2,)->pack;  # Placeholder
+  $lframe->Label(-height => 1,)->pack;  # Placeholder
   for(my $i=1;$i<=$tiernum;$i++) {
     $lframe->Label(-text => get_translation('label_tier_code', "$i"), -font => $font)->pack;
     $buildtexttier[$i] = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
   }
+  $lframe->Label(-height => 2,)->pack;  # Placeholder
+  $lframe->Label(-text => get_translation('label_strategy_report'), -font => $font)->pack;
+  my $button_frame = $lframe->Frame->pack(-side => 'top', -fill => 'x');
+  my @languages = GetLanguages();
+  my $buttons_per_row = 5;
+  my $button_count = 0;
+  foreach my $lang (@languages) {
+      my $file_path = "Languages/$lang/Strategy.txt";
+      $button_frame->Button(
+          -text => $lang,
+          -font => $font,
+          -command => sub {
+            if (-e $file_path) {
+              system("start $file_path");
+            } else {
+              confirm_box(get_translation('err_file_not_writing', "<$file_path>"));
+            }
+          },
+          -width => int(80 / $buttons_per_row),
+      )->pack(-side => 'left', -padx => 2, -pady => 2);
+      $button_count++;
+      if ($button_count % $buttons_per_row == 0) {
+          $button_frame = $lframe->Frame->pack(-side => 'top', -fill => 'x');
+      }
+  }
+
   my $optarrayref = FillTable($strattable, $version, $race, @$strat[0]);
   FillTexts($inittext, \@buildtexttier, $version, $race, @$strat[0]);
+  mouse_wheel($strattable);
+  $strattable->bind("<FocusIn>", sub {
+    $strattable->focus;
+  });
   $bframe->Button(
       (-text => get_translation('button_ok'), -font => $font),
       -command => sub {SaveStrat($edit, $inittext, \@buildtexttier, $strattable, $version, $race, @$strat[0], $optarrayref)},
@@ -786,6 +828,7 @@ sub EditProfile {
   my $bframe = $edit->Frame->pack(-side => 'right');
   my $profiletable = $edit->Table(-rows => 40)->pack(-side => 'left');
   my $optarrayref = FillProfileTable($profiletable, $version, @$profile[0]);
+  mouse_wheel($profiletable);
   $bframe->Button(
                 (-text => get_translation('button_ok'), -font => $font),
                 -command => sub {SaveProfile($edit, $profiletable, $version, @$profile[0], $optarrayref)},
@@ -1227,8 +1270,9 @@ sub EditSettings {
   my $edit = $main->Toplevel(-title => get_translation('title_settings_editor'));
   my $lframe = $edit->Frame->pack(-side => 'left');
   my $rframe = $edit->Frame->pack(-side => 'right');
-  my $table = $lframe->Table(-rows => 37)->pack(-side => 'left');
+  my $table = $lframe->Table(-rows => 40)->pack(-side => 'left');
   my $rownumber = LoadSettings($table, $file);
+  mouse_wheel($table);
   $rframe->Button(
                 (-text => get_translation('button_ok'), -font => $font),
                 -command => sub {SaveSettings($edit, $table, $file, $rownumber)},
