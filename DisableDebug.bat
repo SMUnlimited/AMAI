@@ -1,3 +1,4 @@
+@ECHO OFF
 ECHO Disable Debug
 
 perl -i -pe"s#(call Trace)#//$1#g" Scripts/ROC/common.ai
