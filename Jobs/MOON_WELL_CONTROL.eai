@@ -39,7 +39,7 @@ endfunction
 
 function MoonWellJob takes unit u, integer p returns nothing
   local real dist = 0
-  local real enemystrength = 0
+  //local real enemystrength = 0
 
   call DisplayToAllJobDebug("MOON_WELL_CONTROL JOB START")
   call RemoveGuardPosition(u)
@@ -55,22 +55,23 @@ function MoonWellJob takes unit u, integer p returns nothing
   elseif nearest_moon_well == null or not UnitAlive(nearest_moon_well) or GetUnitState(nearest_moon_well, UNIT_STATE_MANA) < 30 then
     set nearest_moon_well = GetMoonWell(nearest_moon_well, ai_player, old_id[racial_farm])
     if nearest_moon_well == null then
-      set dist = DistanceBetweenPoints_dk(GetUnitLoc(u), home_location)
-      set enemystrength = GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 800)
-      if dist >= 1000 and enemystrength > 0 and CheckBlinkAbility(u) then
-        call IssuePointOrder(u, "blink", GetLocationX(home_location), GetLocationY(home_location))
-        call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
-        call TQAddUnitJob(2, SEND_HOME, 0, u)  // 0 is home_location
-      elseif dist >= 1000 and enemystrength > 0 and GetUnitAbilityLevel(u, 'Ashm') > 0 and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6) and not IsUnitType(u, UNIT_TYPE_HERO) then
-        call IssueImmediateOrder(u, "ambush")
-        call TQAddUnitJob(4, MOON_WELL_CONTROL, p, u)
-      elseif dist >= 1000 then
-        call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
-        call TQAddUnitJob(4, MOON_WELL_CONTROL, p, u)
-      elseif IsUnitType(u,UNIT_TYPE_HERO) then
+      if GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 800) > 0 then
+        set dist = DistanceBetweenPoints_dk(GetUnitLoc(u), home_location)
+        if dist >= 1000 then
+          if GetUnitAbilityLevel(u, 'Ashm') > 0 and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6) and not IsUnitType(u, UNIT_TYPE_HERO) then
+            call IssueImmediateOrder(u, "ambush")
+          elseif CheckBlinkAbility(u) then
+            call IssuePointOrder(u, "blink", GetLocationX(home_location), GetLocationY(home_location))
+            call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
+          endif
+        elseif dist < 1000 then
+          call RecycleGuardPosition(u)  //  get some free
+          call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
+        endif
         call TQAddUnitJob(2, SEND_HOME, 0, u)  // 0 is home_location
       else
-        call TQAddUnitJob(2, RESET_GUARD_POSITION, p, u)
+        call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
+        call TQAddUnitJob(2, SEND_HOME, 0, u)  // 0 is home_location
       endif
     else
       call HeadtoMoonWell(u, p)
