@@ -20,22 +20,22 @@
 //  local location unitloc = null
 //  local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
 
-// set healer = GetHealer(healer)
+//  set healer = GetHealer(healer)
 //  if healer != null and not IsUnitType(u, UNIT_TYPE_MECHANICAL) then
 //    set unitloc = GetUnitLoc(healer)
 //    call RemoveGuardPosition(u)
 //    call GroupAddUnit(unit_healing, u)
-//    call TQAddUnitJob(GetTimeToReachLoc(u, unitloc) + 1, RESET_GUARD_POSITION, 0, u)
 //    call IssuePointOrder(u, "move", GetUnitX(healer), GetUnitY(healer))
 //    call HealUnit(healer, u, true)
-//	call RemoveLocation(unitloc)
-//	set unitloc = null
+//    call TQAddUnitJob(GetTimeToReachLoc(u, unitloc) + 1, RESET_GUARD_POSITION, 0, u)
+//    call RemoveLocation(unitloc)
+//    set unitloc = null
 //  elseif race_use_fountain and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_MECHANICAL) and neutral_enemy[NEUTRAL_HEALING_FOUNTAIN] <= 0 and not (id == old_id[racial_ghoul]) and not (id == old_id[racial_militia]) and neutral_available[NEUTRAL_HEALING_FOUNTAIN] and nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null and (not neutral_guarded[NEUTRAL_HEALING_FOUNTAIN] or (neutral_night_buy[NEUTRAL_HEALING_FOUNTAIN] and daytime >= 18 and nearest_neutral[NEUTRAL_HEALING_FOUNTAIN] != null)) then
-//      call RemoveGuardPosition(u)
-//    	call GroupAddUnit(unit_healing, u)
-//  //  call TQAddUnitJob(8, RESET_HEALTH, 80, u)
-//  //  call IssuePointOrder(u, "move", GetUnitX(nearest_neutral[NEUTRAL_HEALING_FOUNTAIN]), GetUnitY(nearest_neutral[NEUTRAL_HEALING_FOUNTAIN]))
-//      call TQAddUnitJob(0.5, HEALTH_FOUNTAIN, 80, u)
+//    call RemoveGuardPosition(u)
+//    call GroupAddUnit(unit_healing, u)
+//  //call IssuePointOrder(u, "move", GetUnitX(nearest_neutral[NEUTRAL_HEALING_FOUNTAIN]), GetUnitY(nearest_neutral[NEUTRAL_HEALING_FOUNTAIN]))
+//  //call TQAddUnitJob(8, RESET_HEALTH, 80, u)
+//    call TQAddUnitJob(0.5, HEALTH_FOUNTAIN, 80, u)
 //  endif
 //endfunction
 
@@ -142,21 +142,19 @@ function SaveUnit takes unit u , integer id returns nothing
         if GetLocationX(last_enemy_loc) != 0 and GetLocationY(last_enemy_loc) != 0 then
           set temploc = GetSubtractionLoc(unitloc, last_enemy_loc)
           set l = GetProjectedLoc(unitloc, temploc, 350)
-          call TQAddUnitJob(GetTimeToReachLoc(u, l) + 1, RESET_GUARD_POSITION, 0, u)
-          call IssuePointOrderLoc(u, "move", l)
+          call RemoveLocation(unitloc)
+          set unitloc = l
           call RemoveLocation(temploc)
           set temploc = null
-          call RemoveLocation(l)
           set l = null
-        else
-          call TQAddUnitJob(GetTimeToReachLoc(u, unitloc) + 1, RESET_GUARD_POSITION, 0, u)
-          call IssuePointOrderLoc(u, "move", unitloc)
         endif
         call GroupAddUnit(unit_healing, u)
         call GroupAddUnit(unit_healing, healer)
+        call HealUnit(healer, u, false)
+        call IssuePointOrderLoc(u, "move", unitloc)
+        call TQAddUnitJob(GetTimeToReachLoc(u, unitloc) + 1, RESET_GUARD_POSITION, 0, u)
         call RemoveLocation(unitloc)
         set unitloc = null
-        call HealUnit(healer, u, false)
         set healer = null
         return
       endif
@@ -175,8 +173,8 @@ function SaveUnit takes unit u , integer id returns nothing
     else
       call GroupAddUnit(unit_healing, u)
       call CreateDebugTag("Going to Fountain", 10, u, 3.00, 1.50)
-      call TQAddUnitJob(0, HEALTH_FOUNTAIN, 80, u)
       call SpecialControls(u)
+      call TQAddUnitJob(0, HEALTH_FOUNTAIN, 80, u)
       //call IssuePointOrder(u, "move", GetUnitX(nearest_neutral[hFountainID]), GetUnitY(nearest_neutral[hFountainID]))
     endif
   elseif race_has_moonwells and TownCountDone(racial_farm) > 0 then  //and not IsUnitType(u, UNIT_TYPE_SUMMONED) then  //Repetitive judgment
@@ -191,8 +189,8 @@ function SaveUnit takes unit u , integer id returns nothing
     else
       call CreateDebugTag("Going to Moonwells", 10, u, 3.00, 1.50)
       call GroupAddUnit(unit_healing, u)
-      call TQAddUnitJob(0, MOON_WELL_CONTROL, 80, u)
       call SpecialControls(u)
+      call TQAddUnitJob(0, MOON_WELL_CONTROL, 80, u)
     endif
   //elseif GetUnitCurrentOrder(u) != OrderId("move") then
   elseif follow_zeppelin != null and UnitAlive(follow_zeppelin) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitInGroup(follow_zeppelin, unit_rescueing) then
@@ -207,8 +205,8 @@ function SaveUnit takes unit u , integer id returns nothing
   else
     call CreateDebugTag("Going Home", 10, u, 3.00, 1.50)
     call GroupAddUnit(unit_healing, u)
-    call TQAddUnitJob(0, SEND_HOME, 0, u)
     call SpecialControls(u)
+    call TQAddUnitJob(0, SEND_HOME, 0, u)
     //call TQAddUnitJob(GetTimeToReachLoc(u, home_location) + 1, RESET_GUARD_POSITION, 0, u)
     //call IssuePointOrderLoc(u, "move", home_location)
   endif
@@ -223,8 +221,8 @@ function GetMana takes unit u returns nothing
   if race_use_fountain and nearest_neutral[mFountainID] != null and neutral_available[mFountainID] and (not neutral_guarded[mFountainID] or (neutral_night_buy[mFountainID] and (daytime >= 18 or daytime <= 6))) then
     call CreateDebugTag("Going to mana fountain", 10, u, 3.00, 1.50)
     call GroupAddUnit(unit_healing, u)
-    call TQAddUnitJob(2, MANA_FOUNTAIN, 80, u)
     call SpecialControls(u)
+    call TQAddUnitJob(2, MANA_FOUNTAIN, 80, u)
     //call IssuePointOrder(u, "move", GetUnitX(nearest_neutral[mFountainID]), GetUnitY(nearest_neutral[mFountainID]))
   endif
 endfunction
@@ -263,7 +261,7 @@ function MicroUnitsJob takes nothing returns nothing
     //   call TQSleep(0.1)
     // endif
     set unit_life = GetUnitState(u, UNIT_STATE_LIFE)
-    if not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitIllusion(u) and unit_life >= 1 and not IsUnitHidden(u) and IsStandardUnit(u) and not IsUnitBuying(u) then
+    if not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitIllusion(u) and UnitAlive(u) and not IsUnitHidden(u) and IsStandardUnit(u) and not IsUnitBuying(u) then
       set id = GetUnitTypeId(u)
       if id == 'ohwd' then
         set ward_check = true

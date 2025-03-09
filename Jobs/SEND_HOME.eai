@@ -57,7 +57,7 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
 
   if u == null then
     return
-  elseif GetUnitState(u, UNIT_STATE_LIFE) < 1 then
+  elseif not UnitAlive(u) then
     call CreateDebugTag("SEND_HOME unit dead", 10, u, 3.00, 1.50)
     call GroupRemoveUnit(unit_healing, u)
     call GroupRemoveUnit(unit_rescueing, u)
@@ -97,9 +97,9 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
     endif
   elseif racial_healing_item != 0 and GetItemNumberOnUnit(racial_healing_item, u) > 0 then
     if GetItemInstantType(racial_healing_item) == ITEMTYPE_CONTINUOUS and DistanceBetweenPoints_dk(GetUnitLoc(u), exist_town[p]) >= 1200 then
+      call CreateDebugTag("Hero: Use healing item", 10, u, 3.00, 2.00)
       call SendHomeMoveUnitToLoc(u,exist_town[p])  // This should be required for all regenerative type healing items
       call TQAddUnitJob(4, SEND_HOME, p, u)
-      call CreateDebugTag("Hero: Use healing item", 10, u, 3.00, 2.00)
     else
       call CreateDebugTag("Hero: Use healing item", 10, u, 3.00, 1.50)
       set it = GetItemOfTypeOnUnit(racial_healing_item, u)
@@ -113,17 +113,17 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
       set it = null
     endif
   elseif otherhero != null and IsUnitType(u, UNIT_TYPE_HERO) and GetSlotsFreeOnUnit(u) > 0 then  // prevent create on the ground
+    call CreateDebugTag("Hero: add healing item", 10, u, 3.00, 2.00)
     call UnitAddItem(u, GetItemOfTypeOnUnit(racial_healing_item, otherhero))
     call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
-    call CreateDebugTag("Hero: add healing item", 10, u, 3.00, 2.00)
   elseif nearshopunit != null and IsUnitType(u, UNIT_TYPE_HERO) and GetSlotsFreeOnUnit(u) > 0 and GetItemNumberOnUnit(racial_healing_item, u) <= 0 then
     if DistanceBetweenUnits(u, nearshopunit) >= buy_distance then
       set l = GetUnitLoc(nearshopunit)
+      call CreateDebugTag("Hero: move to shop", 10, u, 3.00, 2.00)
       call SendHomeMoveUnitToLoc(u,l)
       call TQAddUnitJob(4, SEND_HOME, p, u)
       call RemoveLocation(l)
       set l = null
-      call CreateDebugTag("Hero: move to shop", 10, u, 3.00, 2.00)
     else
       call CreateDebugTag("SEND_HOME Stop at Shop", 10, u, 3.00, 2.00)
       call IssueImmediateOrder(u, "holdposition")  // use hold position as stop will cancel panda clones for the hero (and possibly other special abilities)

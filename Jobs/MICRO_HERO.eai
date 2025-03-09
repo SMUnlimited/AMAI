@@ -287,19 +287,17 @@ function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothin
     if GetLocationX(last_enemy_loc) != 0 and GetLocationY(last_enemy_loc) != 0 then
       set loc = GetSubtractionLoc(unitloc, last_enemy_loc)
       set l = GetProjectedLoc(unitloc, loc, 350)
-      call TQAddUnitJob(GetTimeToReachLoc(hero_unit[hn], l) + 1, RESET_GUARD_POSITION, 0, hero_unit[hn])
-      call IssuePointOrderLoc(hero_unit[hn], "move", l)
-      call RemoveLocation(l)
+      call RemoveLocation(unitloc)
+      set unitloc = l
       set l = null
       call RemoveLocation(loc)
       set loc = null
-    else
-      call TQAddUnitJob(GetTimeToReachLoc(hero_unit[hn], unitloc) + 1, RESET_GUARD_POSITION, 0, hero_unit[hn])
-      call IssuePointOrderLoc(hero_unit[hn], "move", unitloc)
     endif
+    call IssuePointOrderLoc(hero_unit[hn], "move", unitloc)
+    call HealUnit(healer, hero_unit[hn], true)
+    call TQAddUnitJob(GetTimeToReachLoc(hero_unit[hn], unitloc) + 1, RESET_GUARD_POSITION, 0, hero_unit[hn])
     call RemoveLocation(unitloc)
     set unitloc = null
-    call HealUnit(healer, hero_unit[hn], true)
     return
   endif
   // if a != ACTION_TP and not teleporting and not town_threatened and not UnitInvis(hero_unit[hn]) and ItemSaveHero(hn) then  //No mandatory control required
@@ -316,13 +314,13 @@ function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothin
   if a == ACTION_FOUNTAIN then
     call CreateDebugTag("HERO: Going to Fountain", 10, hero_unit[hn], 4.00, 2.00)
     call GroupAddUnit(unit_healing, hero_unit[hn])
-    call TQAddUnitJob(0, HEALTH_FOUNTAIN, 80, hero_unit[hn])
     call IssuePointOrder(hero_unit[hn], "move", GetUnitX(nearest_neutral[hFountainID]), GetUnitY(nearest_neutral[hFountainID]))
+    call TQAddUnitJob(0, HEALTH_FOUNTAIN, 80, hero_unit[hn])
   elseif a == ACTION_MANA_FOUNTAIN then
     call CreateDebugTag("HERO: Going to Mana Fountain", 10, hero_unit[hn], 4.00, 2.00)
     call GroupAddUnit(unit_healing, hero_unit[hn])
-    call TQAddUnitJob(0, MANA_FOUNTAIN, 80, hero_unit[hn])
     call IssuePointOrder(hero_unit[hn], "move", GetUnitX(nearest_neutral[mFountainID]), GetUnitY(nearest_neutral[mFountainID]))
+    call TQAddUnitJob(0, MANA_FOUNTAIN, 80, hero_unit[hn])
   elseif a == ACTION_GO_HOME then
     //call UnitGoHome(hero_unit[hn])
     call CreateDebugTag("HERO: Going Home", 10, hero_unit[hn], 4.00, 2.00)
@@ -376,14 +374,13 @@ endfunction
 function MicroHeroJob takes integer hn returns nothing
   local real new_hp = 0.0
   local real teleportdistance = 0.0
-  local integer current_order = GetUnitCurrentOrder(hero_unit[hn])
+  local integer current_order = 0
   local integer armyOfHero = 0
   local boolean healing = false
   call DisplayToAllJobDebug("MICRO_HERO Job start")
   if UnitAlive(hero_unit[hn]) then
     set armyOfHero = GetArmyOfUnit(hero_unit[hn])
-    // A Temporary Bug fix
-    if HeroBugFixHealthCheck(hn) then
+    if HeroBugFixHealthCheck(hn) then    // A Temporary Bug fix
       call CreateDebugTag("HERO: Healing Bug Fix Job", 10, hero_unit[hn], 4.00, 2.00)
       call RecycleGuardPosition(hero_unit[hn])
       call GroupRemoveUnit(unit_healing, hero_unit[hn])
@@ -407,10 +404,13 @@ function MicroHeroJob takes integer hn returns nothing
     call MoveLocation(hero_enemy_loc[hn], GetLocationX(enemy_density_loc), GetLocationY(enemy_density_loc))
     set hero_ally_density[hn] = ally_density
     call MoveLocation(hero_ally_loc[hn], GetLocationX(ally_density_loc), GetLocationY(ally_density_loc))
+    set current_order = GetUnitCurrentOrder(hero_unit[hn])
     if (not teleporting and (current_order >= 852008 and current_order <= 852013)) or current_order == OrderId("massteleport") then
       if (current_order != OrderId("massteleport") and GetItemTypeId(UnitItemInSlot(hero_unit[hn], current_order - 852008)) == old_id[tp_item]) or (current_order == OrderId("massteleport") and GetUnitAbilityLevel(hero_unit[hn], 'AHmt') > 0) then
         call CreateDebugTag("HERO: Already teleporting", 10, hero_unit[hn], 4.00, 2.00)
-        call GoHomeIfMainHero(hero_unit[hn], GetLocationX(home_location), GetLocationY(home_location))
+        if current_order != OrderId("massteleport") then  // can not konw teleport to where
+          call GoHomeIfMainHero(hero_unit[hn], GetLocationX(home_location), GetLocationY(home_location))
+        endif
         if not teleporting and teleportloc != null then // unknown destination as was triggered by hardcoded logic
           call RemoveLocation(teleportloc)
           set teleportloc = null
@@ -444,7 +444,7 @@ function MicroHeroJob takes integer hn returns nothing
     //   return
     // endif
 
-    if armyOfHero >= 0 and not teleporting and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 then
+    if not teleporting and armyOfHero >= 0 and GetItemNumberOnUnit(tp_item, hero_unit[hn]) > 0 then
       if most_threatened_town >= 0 and town_loc[most_threatened_town] != null then
         set teleportdistance = DistanceBetweenPoints(hero_loc[hn], town_loc[most_threatened_town])
       endif
