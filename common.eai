@@ -1139,10 +1139,7 @@ endglobals
 
 function I2U takes integer i returns unit
   call SaveFogStateHandle(com, TYPECASTING, 0, ConvertFogState(i))
-  if LoadUnitHandle(com, TYPECASTING, 0) != null and UnitAlive(LoadUnitHandle(com, TYPECASTING, 0)) then
-    return LoadUnitHandle(com, TYPECASTING, 0)
-  endif
-  return null
+  return LoadUnitHandle(com, TYPECASTING, 0)
 endfunction
 
 //function SetHandleHandle takes handle subject, string name, handle value returns nothing
@@ -5765,7 +5762,7 @@ function GetLocationEnemyStrength takes real x, real y, real radius, boolean onl
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and ((only_structures and IsUnitType(u, UNIT_TYPE_STRUCTURE)) or (not only_structures and not IsUnitType(u, UNIT_TYPE_PEON))) and GetUnitState(u, UNIT_STATE_LIFE) >= 1 and not IsUnitHidden(u) and not IsUnitInvisibleAM(u, ai_player) then
+    if IsPlayerEnemy(ai_player, GetOwningPlayer(u)) and ((only_structures and IsUnitType(u, UNIT_TYPE_STRUCTURE)) or (not only_structures and not IsUnitType(u, UNIT_TYPE_PEON))) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitInvisibleAM(u, ai_player) then
       if IsUnitType(u, UNIT_TYPE_STRUCTURE) then
         set sum = sum + 1
       else
@@ -6438,7 +6435,7 @@ function CheckExpansionTaken takes unit expa returns boolean
     exitwhen u == null
     // Enemy holds the area
     set p = GetOwningPlayer(u)
-    if p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetUnitState(u, UNIT_STATE_LIFE) >= 1 then  // Creeps dosn't mean expansion is taken
+    if p != Player(PLAYER_NEUTRAL_AGGRESSIVE) and IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) then  // Creeps dosn't mean expansion is taken
       if IsPlayerEnemy(p, ai_player) then
         call DestroyGroup(g)
         set g = null
@@ -7623,19 +7620,18 @@ endfunction
 //============================================================================
 function HealUnit takes unit healer, unit to_heal, boolean hero_heal returns nothing
   local integer id = GetHealerId(GetUnitTypeId(healer))
-  if id != -1 and healer_type[id] != HEALER_TYPE_NO_TARGET then
+  if id != -1 and healer_type[id] != HEALER_TYPE_NO_TARGET and UnitAlive(healer) and UnitAlive(to_heal) then
     if healer_type[id] == HEALER_TYPE_WARD then
       if not ward_cast then
         call IssuePointOrderById(healer, healer_spell[id], GetUnitX(healer), GetUnitY(healer))
-        call GroupRemoveUnit(unit_healing, healer)
       endif
     else
       if healer_type[id] != HEALER_TYPE_HERO or hero_heal then
         call IssueTargetOrderById(healer, healer_spell[id], to_heal)
-        call GroupRemoveUnit(unit_healing, healer)
       endif
     endif
   endif
+  call GroupRemoveUnit(unit_healing, healer)
 endfunction
 
 //============================================================================
@@ -12994,7 +12990,7 @@ function SetAllianceTargetIfLeadAndChat takes unit u, integer chat returns nothi
     call SetChatVarsAttack(u)
     call Chat(chat)
   elseif (u == null or not UnitAlive(u)) and HaveStoredInteger(amaiCache, t, "0") then
-    call SetAllianceTarget(u)
+    call SetAllianceTarget(null)
     call FlushStoredInteger(amaiCache, t, "0")
   endif
   set t = null
@@ -13972,7 +13968,7 @@ if desperation_assault and not no_attack then
     call SetLeadAlly()
     if difficulty != EASY then
       set common = I2U(GetStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0")) //GetAllianceTarget()
-      if common != null then
+      if common != null and UnitAlive(common) then
         call Trace("===Desperation Attack Alliance Target===")
         //call Chat(C_Ally)
         call FromGroupAndGhoulsAM(3)
@@ -14181,7 +14177,7 @@ if not creeping_only then	// Do the normal attack sequence
     call SetLeadAlly()
     if difficulty != EASY then
       set common = I2U(GetStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0")) //GetAllianceTarget()
-      if common != null then
+      if common != null and UnitAlive(common) then
         call Trace("Attack Alliance Target")
         //call Chat(C_Ally)
         call FromGroupAndGhoulsAM(3)
