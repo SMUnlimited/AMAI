@@ -27,7 +27,7 @@ function BuyNeutral takes integer id returns nothing
   local integer nn = GetNeutralNumber(id)
   local unit buy_place = nearest_neutral[nn]
   local boolean place_guarded = neutral_guarded[nn]
-  local integer detectedenemies = 0
+  //local integer detectedenemies = 0
 
   call DisplayToAllJobDebug("BUY_NEUTRAL JOB START")
   // moved this check here to prevent a job crash if placed lower down
@@ -98,20 +98,21 @@ function BuyNeutral takes integer id returns nothing
       endif
       set time_next_try = 0.5
     else
+      // Enemies are present so get home before they harm us
+      if GetLocationNonCreepStrength(GetUnitX(buy_place), GetUnitY(buy_place), 1000) >= GetUnitStrength(neutral_sent[nn]) then
+        call RemoveGuardPosition(neutral_sent[nn])
+        call IssuePointOrder(neutral_sent[nn], "move", GetLocationX(home_location), GetLocationY(home_location))
+        //call TQAddUnitJob(GetTimeToReachLoc(neutral_sent[nn], home_location), RESET_GUARD_POSITION, 1, neutral_sent[nn])
+        set retreat_home_n = true
+        call TQAddJob(1, BUY_NEUTRAL, id)
+        set buy_place = null
+        return
+      endif
+      //call CreateDebugTag("move to merc camp", 10, neutral_sent[nn], 3.00, 1.50)
       call CreateDebugTag("move to merc camp", 10, neutral_sent[nn], 3.00, 1.50)
       call IssuePointOrder(neutral_sent[nn], "move", GetUnitX(buy_place), GetUnitY(buy_place))
       set time_next_try = RMin(4, RMax(timetotravel,1))
     endif
-  endif
-  // Enemies are present so get home before they harm us
-  if detectedenemies >= GetUnitStrength(neutral_sent[nn]) then
-    call RemoveGuardPosition(neutral_sent[nn])
-    call IssuePointOrder(neutral_sent[nn], "move", GetLocationX(home_location), GetLocationY(home_location))
-    //call TQAddUnitJob(GetTimeToReachLoc(neutral_sent[nn], home_location), RESET_GUARD_POSITION, 1, neutral_sent[nn])
-    set retreat_home_n = true
-    call TQAddJob(1, BUY_NEUTRAL, id)
-    set buy_place = null
-    return
   endif
   call TQAddJob(time_next_try, BUY_NEUTRAL, id)
   set buy_place = null

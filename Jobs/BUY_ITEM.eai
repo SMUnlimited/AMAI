@@ -116,10 +116,11 @@ function BuyItemJob takes integer id returns nothing
   local real time_next_try = 0
   local real dist = 0
   local real dist2 = 0
-  local integer detectedenemies = 0
+  //local integer detectedenemies = 0
   local boolean healing = IsHealingItem(old_id[id])
   local boolean itemstacking = healing == true or CanRepeatItem(id) == true  // heal item can repeat
   local boolean moreshop = false
+  local item t = null
   call DisplayToAllJobDebug("BUY_ITEM JOB START")
 
   if shop_ordered == false or shop_unit == null or not UnitAlive(shop_unit) then
@@ -181,7 +182,6 @@ function BuyItemJob takes integer id returns nothing
     endif
     call GroupAddUnit(unit_buying_item, shop_sent)
   endif
-
   set dist = DistanceBetweenUnits(shop_sent, shop_unit)
   //call CreateDebugTag("In BUT ITEM JOB, 10, shop_sent, 3.00, 1.50)
   if moreshop then
@@ -202,12 +202,16 @@ function BuyItemJob takes integer id returns nothing
   if GetOwningPlayer(shop_unit) == ai_player and dist < 1000 then
   else
     if town_threatened or attack_running then
-      call CreateDebugTag("BUY_ITEM:in attack so dont get item", 10, shop_sent, 3.00, 1.50)
+      call CreateDebugTag("BUY_ITEM: in attack so dont get item", 10, shop_sent, 3.00, 1.50)
       call ResetBuyItem()
       return
     endif
   endif
-
+  if GetOwningPlayer(shop_unit) == Player(PLAYER_NEUTRAL_PASSIVE) and GetLocationCreepStrength(GetUnitX(shop_unit), GetUnitY(shop_unit), 1000) > 0 and daytime >= 5 and daytime < 18 then
+    call CreateDebugTag("BUY_ITEM: have creep", 10, shop_sent, 3.00, 1.50)
+    call ResetBuyItem()
+    return
+  endif
   //  call DisplayToAll("Item Buy Start")
   if (shop_buy_time_large >= 0 and shop_buy_time_large + buy_timeout_large < current_time) or (shop_buy_time_small >= 0 and shop_buy_time_small + buy_timeout_small < current_time) then
     set available_time[id] = ai_time + regenerate_time[id] / 2
@@ -246,23 +250,32 @@ function BuyItemJob takes integer id returns nothing
     endif
     set time_next_try = 0.5
   else
-    call CreateDebugTag("move to item shop", 10, shop_sent, 3.00, 1.50)
+    // Enemies are present so get home before they harm us
+    if GetOwningPlayer(shop_unit) != ai_player and GetLocationNonCreepStrength(GetUnitX(shop_unit), GetUnitY(shop_unit), 1000) >= GetUnitStrength(shop_sent) then
+      call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
+      //call TQAddUnitJob(GetTimeToReachLoc(shop_sent, home_location), RESET_GUARD_POSITION, 1, shop_sent)
+      set retreat_home = true
+      call CreateDebugTag("BUY_ITEM: Enemies present so dont get item this time", 10, shop_sent, 3.00, 1.50) 
+      call TQAddJob(0, BUY_ITEM, id)
+      return
+    endif
+    if GetOwningPlayer(shop_unit) != Player(PLAYER_NEUTRAL_PASSIVE) and GetUnitAbilityLevel(shop_sent, 'AImt') > 0 then
+      set t = GetItemOfTypeOnUnit(singe_tp_item, shop_sent)
+      if t != null then
+        call CreateDebugTag("try teleport to shop", 10, shop_sent, 3.00, 1.50)
+        call IssuePointOrder(shop_sent, "move", GetUnitX(shop_unit) + ISign() * GetRandomInt(200, 320), GetUnitY(shop_unit) + ISign() * GetRandomInt(200, 320))  // if completely close shop, the item with the lowest priority will be sold, such as scepter
+        call UnitUseItemPoint(shop_sent, t, GetUnitX(shop_unit) + ISign() * GetRandomReal(300,450), GetUnitY(shop_unit) + ISign() * GetRandomReal(300,450))
+        set t = null
+        call TQAddJob(3, BUY_ITEM, id)
+        return
+      endif
+    endif
+    call CreateDebugTag("move to shop", 10, shop_sent, 3.00, 1.50)
     if GetUnitCurrentOrder(shop_sent) != OrderId("move") or GetUnitCurrentOrder(shop_sent) == OrderId("stop") then
       call IssuePointOrder(shop_sent, "move", GetUnitX(shop_unit) + ISign() * GetRandomInt(200, 320), GetUnitY(shop_unit) + ISign() * GetRandomInt(200, 320))  // if completely close shop, the item with the lowest priority will be sold, such as scepter
     endif
     set time_next_try = RMin(4, RMax(GetTimeToReachUnit(shop_sent, shop_unit) + 1,1))
   endif
-
-  // Enemies are present so get home before they harm us
-  if detectedenemies >= GetUnitStrength(shop_sent) and GetUnitTypeId(shop_unit) != old_id[racial_shop] then
-    call IssuePointOrder(shop_sent, "move", GetLocationX(home_location), GetLocationY(home_location))
-    //call TQAddUnitJob(GetTimeToReachLoc(shop_sent, home_location), RESET_GUARD_POSITION, 1, shop_sent)
-    set retreat_home = true
-    call CreateDebugTag("BUY_ITEM: Enemies present so dont get item this time", 10, shop_sent, 3.00, 1.50) 
-    call TQAddJob(0, BUY_ITEM, id)
-    return
-  endif
-
   call TQAddJob(time_next_try, BUY_ITEM, id)
 endfunction
   #ENDIF
