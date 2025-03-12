@@ -186,39 +186,29 @@ function TeleportToLoc takes unit u, location l returns nothing
   set loc = null
 endfunction
 
-function ItemSingetp takes integer hn, boolean retreat returns boolean
+function ItemSingetp takes integer hn, integer loc, integer FountainID returns boolean
   local boolean b = false
-  local unit u = null
   local location l = null
-  local group g = null
   local item t = null
   if GetUnitAbilityLevel(hero_unit[hn], 'AImt') > 0 then
     set t = GetItemOfTypeOnUnit(singe_tp_item, hero_unit[hn])
     if t != null then
-      if retreat == false then  // teleport to battle , hope don't interrupt casting
+      if loc == 0 then  // teleport to battle , hope don't interrupt casting
         set l = GetUnitLoc(major_hero)
-      elseif GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) > GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE) * 0.4 then  // life too low cannot use singetp
-        set l = Location(GetLocationX(home_location), GetLocationY(home_location))
+      elseif GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) > GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE) * 0.4 or enemy_density < 1 then  // life too low cannot use singetp
+        if loc == 1 then
+          set l = Location(GetLocationX(home_location), GetLocationY(home_location))
+        elseif loc == 2 then
+          set l = Location(GetUnitX(nearest_neutral[FountainID]), GetUnitY(nearest_neutral[FountainID]))
+        endif
       endif
       if l != null then
-        set g = CreateGroup()
-        call GroupEnumUnitsInRangeOfLoc(g, l, 300, null)
-        loop
-          set u = FirstOfGroup(g)
-          exitwhen u == null or (GetOwningPlayer(u) == ai_player and not IsUnitLoaded(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_FLYING) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) and GetUnitState(u, UNIT_STATE_LIFE) > GetUnitState(u, UNIT_STATE_MAX_LIFE) * 0.5 and not IsUnitHidden(u))
-          call GroupRemoveUnit(g, u)
-        endloop
-        call DestroyGroup(g)
-        set g = null
-        if u != null then
-          call CreateDebugTag("use singe tp item", 10, hero_unit[hn], 3.00, 1.50)
-          call RemoveGuardPosition(hero_unit[hn])
-          call UnitUseItemTarget(hero_unit[hn], t, u)
-          set b = true
-          call TQAddUnitJob(2.8, RESET_GUARD_POSITION, 0, hero_unit[hn])
-          set u = null
-          //set hero_singetping[hn] = true
-        endif
+        call CreateDebugTag("use singe tp item", 10, hero_unit[hn], 3.00, 1.50)
+        call RemoveGuardPosition(hero_unit[hn])
+        call IssuePointOrderLoc(hero_unit[hn], "move", l)  // prevent can not use item
+        call UnitUseItemPoint(hero_unit[hn], t, GetLocationX(l) + ISign() * 220, GetLocationY(l) + ISign() * 220)
+        set b = true
+        //set hero_singetping[hn] = true
         call RemoveLocation(l)
         set l = null
       endif
@@ -257,7 +247,7 @@ endfunction
 //     set i = i + 1
 //   endloop
 //   set t = null
-//   return ItemSingetp(hn,true)
+//   return ItemSingetp(hn,0,0)
 // endfunction
 
 function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothing
@@ -314,25 +304,27 @@ function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothin
   if a == ACTION_FOUNTAIN then
     call CreateDebugTag("HERO: Going to Fountain", 10, hero_unit[hn], 4.00, 2.00)
     call GroupAddUnit(unit_healing, hero_unit[hn])
-    call IssuePointOrder(hero_unit[hn], "move", GetUnitX(nearest_neutral[hFountainID]), GetUnitY(nearest_neutral[hFountainID]))
-    call TQAddUnitJob(0, HEALTH_FOUNTAIN, 80, hero_unit[hn])
+    call ItemSingetp(hn,2,hFountainID)
+    call TQAddUnitJob(2, HEALTH_FOUNTAIN, 80, hero_unit[hn])
   elseif a == ACTION_MANA_FOUNTAIN then
     call CreateDebugTag("HERO: Going to Mana Fountain", 10, hero_unit[hn], 4.00, 2.00)
     call GroupAddUnit(unit_healing, hero_unit[hn])
-    call IssuePointOrder(hero_unit[hn], "move", GetUnitX(nearest_neutral[mFountainID]), GetUnitY(nearest_neutral[mFountainID]))
-    call TQAddUnitJob(0, MANA_FOUNTAIN, 80, hero_unit[hn])
+    call ItemSingetp(hn,2,mFountainID)
+    call TQAddUnitJob(2, MANA_FOUNTAIN, 80, hero_unit[hn])
   elseif a == ACTION_GO_HOME then
     //call UnitGoHome(hero_unit[hn])
     call CreateDebugTag("HERO: Going Home", 10, hero_unit[hn], 4.00, 2.00)
     call GroupAddUnit(unit_healing, hero_unit[hn])
-    call TQAddUnitJob(0, SEND_HOME, 0, hero_unit[hn])
+    call ItemSingetp(hn,1,0)
+    call TQAddUnitJob(2, SEND_HOME, 0, hero_unit[hn])
   elseif a == ACTION_ZEPPELIN_HOME then
     call CreateDebugTag("HERO: Zeppelin Home", 10, hero_unit[hn], 4.00, 2.00)
     call GroupAddUnit(unit_rescueing, follow_zeppelin)
     set g = CreateGroup()
     call GroupAddUnit(g, follow_zeppelin)
     call GroupAddUnit(unit_healing, hero_unit[hn])
-    call TQAddGroupJob(0, ZEPPELIN_MOVE, ZTARGET_HOME, hero_unit[hn], g)
+    call ItemSingetp(hn,1,0)
+    call TQAddGroupJob(2, ZEPPELIN_MOVE, ZTARGET_HOME, hero_unit[hn], g)
     set g = null
   elseif a == ACTION_ZEPPELIN_FOUNTAIN then
     call CreateDebugTag("HERO: Zepplin to fountain", 10, hero_unit[hn], 4.00, 2.00)
@@ -340,7 +332,8 @@ function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothin
     set g = CreateGroup()
     call GroupAddUnit(g, follow_zeppelin)
     call GroupAddUnit(unit_healing, hero_unit[hn])
-    call TQAddGroupJob(0, ZEPPELIN_MOVE, ZTARGET_FOUNTAIN, hero_unit[hn], g)
+    call ItemSingetp(hn,1,0)
+    call TQAddGroupJob(2, ZEPPELIN_MOVE, ZTARGET_FOUNTAIN, hero_unit[hn], g)
     set g = null
   elseif a == ACTION_TP and not teleporting then
     call CreateDebugTag("Hero: Town Portalling", 10, hero_unit[hn], 4.00, 2.00)
@@ -348,7 +341,8 @@ function ExecuteSaveHero takes integer hn, integer a, unit healer returns nothin
   elseif a == ACTION_MOONWELLS then
     call CreateDebugTag("HERO: Going to Moonwells", 10, hero_unit[hn], 4.00, 2.00)
     call GroupAddUnit(unit_healing,hero_unit[hn])
-    call TQAddUnitJob(0, MOON_WELL_CONTROL, 80, hero_unit[hn])
+    call ItemSingetp(hn,1,0)
+    call TQAddUnitJob(2, MOON_WELL_CONTROL, 80, hero_unit[hn])
   endif
 endfunction
 
@@ -422,8 +416,8 @@ function MicroHeroJob takes integer hn returns nothing
       endif
     endif
     if not healing and not attack_running and not retreat_controlled and not town_threatened and not TownThreatened() and not teleporting and major_hero != null and UnitAlive(major_hero) and DistanceBetweenUnits(major_hero,hero_unit[hn]) > 2000 then
-      call ItemSingetp(hn,false)
-      call TQAddJob(2, MICRO_HERO, hn)
+      call ItemSingetp(hn,0,0)
+      call TQAddJob(4, MICRO_HERO, hn)
       return
     endif
     //  call DisplayToAll("Hero Order: "+Int2Str(GetUnitCurrentOrder(hero_unit[hn])))
