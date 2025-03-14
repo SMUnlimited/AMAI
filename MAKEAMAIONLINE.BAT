@@ -5,7 +5,6 @@ ECHO =============================
 ECHO 编译重制版
 SET RESULTMAKEREF=0
 mkdir AMAI\REFORGED\
-mkdir Scripts\REFORGED\vsai
 ECHO _____________________________
 ECHO 创建公共库
 perl ejass.pl common.eai REFORGED VER:REFORGED > AMAI\REFORGED\common.ai
@@ -58,42 +57,36 @@ perl -i -pe"s#(debug call Trace)#//$1#g" AMAI\REFORGED\elf.ai
 perl -i -pe"s#(debug call Trace)#//$1#g" AMAI\REFORGED\human.ai
 perl -i -pe"s#(debug call Trace)#//$1#g" AMAI\REFORGED\orc.ai
 perl -i -pe"s#(debug call Trace)#//$1#g" AMAI\REFORGED\undead.ai
-perl -i -pe"s#(debug call Trace)#//$1#g" AMAI\REFORGED\vsai\Blizzard.j
 perl -i -pe"s#(call TracePlayer)#//$1#g" AMAI\REFORGED\common.ai
 perl -i -pe"s#(call TracePlayer)#//$1#g" AMAI\REFORGED\Blizzard.j
 perl -i -pe"s#(call TracePlayer)#//$1#g" AMAI\REFORGED\elf.ai
 perl -i -pe"s#(call TracePlayer)#//$1#g" AMAI\REFORGED\human.ai
 perl -i -pe"s#(call TracePlayer)#//$1#g" AMAI\REFORGED\orc.ai
 perl -i -pe"s#(call TracePlayer)#//$1#g" AMAI\REFORGED\undead.ai
-perl -i -pe"s#(call TracePlayer)#//$1#g" AMAI\REFORGED\vsai\Blizzard.j
 perl -i -pe"s#(call Trace)#//$1#g" AMAI\REFORGED\common.ai
 perl -i -pe"s#(call Trace)#//$1#g" AMAI\REFORGED\Blizzard.j
 perl -i -pe"s#(call Trace)#//$1#g" AMAI\REFORGED\elf.ai
 perl -i -pe"s#(call Trace)#//$1#g" AMAI\REFORGED\human.ai
 perl -i -pe"s#(call Trace)#//$1#g" AMAI\REFORGED\orc.ai
 perl -i -pe"s#(call Trace)#//$1#g" AMAI\REFORGED\undead.ai
-perl -i -pe"s#(call Trace)#//$1#g" AMAI\REFORGED\vsai\Blizzard.j
 perl -i -pe"s#(call UpdateDebugTextTag)#//$1#g" AMAI\REFORGED\common.ai
 perl -i -pe"s#(call UpdateDebugTextTag)#//$1#g" AMAI\REFORGED\Blizzard.j
 perl -i -pe"s#(call UpdateDebugTextTag)#//$1#g" AMAI\REFORGED\elf.ai
 perl -i -pe"s#(call UpdateDebugTextTag)#//$1#g" AMAI\REFORGED\human.ai
 perl -i -pe"s#(call UpdateDebugTextTag)#//$1#g" AMAI\REFORGED\orc.ai
 perl -i -pe"s#(call UpdateDebugTextTag)#//$1#g" AMAI\REFORGED\undead.ai
-perl -i -pe"s#(call UpdateDebugTextTag)#//$1#g" AMAI\REFORGED\vsai\Blizzard.j
 perl -i -pe"s#(call CreateDebug)#//$1#g" AMAI\REFORGED\common.ai
 perl -i -pe"s#(call CreateDebug)#//$1#g" AMAI\REFORGED\Blizzard.j
 perl -i -pe"s#(call CreateDebug)#//$1#g" AMAI\REFORGED\elf.ai
 perl -i -pe"s#(call CreateDebug)#//$1#g" AMAI\REFORGED\human.ai
 perl -i -pe"s#(call CreateDebug)#//$1#g" AMAI\REFORGED\orc.ai
 perl -i -pe"s#(call CreateDebug)#//$1#g" AMAI\REFORGED\undead.ai
-perl -i -pe"s#(call CreateDebug)#//$1#g" AMAI\REFORGED\vsai\Blizzard.j
 perl -i -pe"s#(call DisplayToAllJobDebug)#//$1#g" AMAI\REFORGED\common.ai
 perl -i -pe"s#(call DisplayToAllJobDebug)#//$1#g" AMAI\REFORGED\Blizzard.j
 perl -i -pe"s#(call DisplayToAllJobDebug)#//$1#g" AMAI\REFORGED\elf.ai
 perl -i -pe"s#(call DisplayToAllJobDebug)#//$1#g" AMAI\REFORGED\human.ai
 perl -i -pe"s#(call DisplayToAllJobDebug)#//$1#g" AMAI\REFORGED\orc.ai
 perl -i -pe"s#(call DisplayToAllJobDebug)#//$1#g" AMAI\REFORGED\undead.ai
-perl -i -pe"s#(call DisplayToAllJobDebug)#//$1#g" AMAI\REFORGED\vsai\Blizzard.j
 if "%errorlevel%"=="1" SET RESULTMAKEREF=1
 ECHO _____________________________
 ECHO 优化代码以减小压缩包体积
@@ -116,7 +109,6 @@ ECHO =============================
 ECHO 编译经典版
 SET RESULTMAKETFT=0
 mkdir AMAI\TFT\
-mkdir Scripts\TFT\vsai
 ECHO _____________________________
 ECHO 创建公共库
 perl ejass.pl common.eai TFT VER:TFT > AMAI\TFT\common.ai
@@ -169,42 +161,36 @@ perl -i -pe"s#(debug call Trace)#//$1#g" AMAI\TFT\elf.ai
 perl -i -pe"s#(debug call Trace)#//$1#g" AMAI\TFT\human.ai
 perl -i -pe"s#(debug call Trace)#//$1#g" AMAI\TFT\orc.ai
 perl -i -pe"s#(debug call Trace)#//$1#g" AMAI\TFT\undead.ai
-perl -i -pe"s#(debug call Trace)#//$1#g" AMAI\TFT\vsai\Blizzard.j
 perl -i -pe"s#(call TracePlayer)#//$1#g" AMAI\TFT\common.ai
 perl -i -pe"s#(call TracePlayer)#//$1#g" AMAI\TFT\Blizzard.j
 perl -i -pe"s#(call TracePlayer)#//$1#g" AMAI\TFT\elf.ai
 perl -i -pe"s#(call TracePlayer)#//$1#g" AMAI\TFT\human.ai
 perl -i -pe"s#(call TracePlayer)#//$1#g" AMAI\TFT\orc.ai
 perl -i -pe"s#(call TracePlayer)#//$1#g" AMAI\TFT\undead.ai
-perl -i -pe"s#(call TracePlayer)#//$1#g" AMAI\TFT\vsai\Blizzard.j
 perl -i -pe"s#(call Trace)#//$1#g" AMAI\TFT\common.ai
 perl -i -pe"s#(call Trace)#//$1#g" AMAI\TFT\Blizzard.j
 perl -i -pe"s#(call Trace)#//$1#g" AMAI\TFT\elf.ai
 perl -i -pe"s#(call Trace)#//$1#g" AMAI\TFT\human.ai
 perl -i -pe"s#(call Trace)#//$1#g" AMAI\TFT\orc.ai
 perl -i -pe"s#(call Trace)#//$1#g" AMAI\TFT\undead.ai
-perl -i -pe"s#(call Trace)#//$1#g" AMAI\TFT\vsai\Blizzard.j
 perl -i -pe"s#(call UpdateDebugTextTag)#//$1#g" AMAI\TFT\common.ai
 perl -i -pe"s#(call UpdateDebugTextTag)#//$1#g" AMAI\TFT\Blizzard.j
 perl -i -pe"s#(call UpdateDebugTextTag)#//$1#g" AMAI\TFT\elf.ai
 perl -i -pe"s#(call UpdateDebugTextTag)#//$1#g" AMAI\TFT\human.ai
 perl -i -pe"s#(call UpdateDebugTextTag)#//$1#g" AMAI\TFT\orc.ai
 perl -i -pe"s#(call UpdateDebugTextTag)#//$1#g" AMAI\TFT\undead.ai
-perl -i -pe"s#(call UpdateDebugTextTag)#//$1#g" AMAI\TFT\vsai\Blizzard.j
 perl -i -pe"s#(call CreateDebug)#//$1#g" AMAI\TFT\common.ai
 perl -i -pe"s#(call CreateDebug)#//$1#g" AMAI\TFT\Blizzard.j
 perl -i -pe"s#(call CreateDebug)#//$1#g" AMAI\TFT\elf.ai
 perl -i -pe"s#(call CreateDebug)#//$1#g" AMAI\TFT\human.ai
 perl -i -pe"s#(call CreateDebug)#//$1#g" AMAI\TFT\orc.ai
 perl -i -pe"s#(call CreateDebug)#//$1#g" AMAI\TFT\undead.ai
-perl -i -pe"s#(call CreateDebug)#//$1#g" AMAI\TFT\vsai\Blizzard.j
 perl -i -pe"s#(call DisplayToAllJobDebug)#//$1#g" AMAI\TFT\common.ai
 perl -i -pe"s#(call DisplayToAllJobDebug)#//$1#g" AMAI\TFT\Blizzard.j
 perl -i -pe"s#(call DisplayToAllJobDebug)#//$1#g" AMAI\TFT\elf.ai
 perl -i -pe"s#(call DisplayToAllJobDebug)#//$1#g" AMAI\TFT\human.ai
 perl -i -pe"s#(call DisplayToAllJobDebug)#//$1#g" AMAI\TFT\orc.ai
 perl -i -pe"s#(call DisplayToAllJobDebug)#//$1#g" AMAI\TFT\undead.ai
-perl -i -pe"s#(call DisplayToAllJobDebug)#//$1#g" AMAI\TFT\vsai\Blizzard.j
 if "%errorlevel%"=="1" SET RESULTMAKETFT=1
 ECHO _____________________________
 ECHO 优化代码以减小压缩包体积
