@@ -1,40 +1,40 @@
 @ECHO off
 SET VER=REFORGED
 SET COMMAND=1
-SET COMMAND_STATE=Convention Commander
+SET COMMAND_STATE=常规控制台
 SET SETMAP=1
 
 :FunctionMenu
 cls
-ECHO. Please select Mode:
+ECHO. 请选择模式:
 ECHO.
-ECHO 1. Install AMAI (Convention Commander) (default)
-ECHO 2. Install AMAI (VS VanillaAI Commander)
-ECHO 3. Install AMAI (No Commander)
-ECHO 4. Remove AMAI Commander
-ECHO 5. Remove AMAI Script and Commander
+ECHO 1. 安装 AMAI (常规控制台) (默认)
+ECHO 2. 安装 AMAI (VS暴雪AI控制台)
+ECHO 3. 安装 AMAI (不安装控制台)
+ECHO 4. 移除 AMAI 控制台
+ECHO 5. 卸载 AMAI 及控制台
 ECHO.
-set /p choice=Input and Enter(1 ~ 5):
+set /p choice=请输入并回车(1 ~ 5):
 
 if "%choice%"=="1" (
   SET COMMAND=1
-  SET COMMAND_STATE=Convention Commander
+  SET COMMAND_STATE=常规控制台
 )
 if "%choice%"=="2" (
   SET COMMAND=2
-  SET COMMAND_STATE=VS VanillaAI Commander
+  SET COMMAND_STATE=VS 暴雪AI 控制台
 )
 if "%choice%"=="3" (
   SET COMMAND=0
-  SET COMMAND_STATE=No Commander
+  SET COMMAND_STATE=不安装控制台
 )
 if "%choice%"=="4" (
   SET COMMAND=-1
-  SET COMMAND_STATE=Remove AMAI AMAI Commander
+  SET COMMAND_STATE=移除 AMAI 控制台
 )
 if "%choice%"=="5" (
   SET COMMAND=-2
-  SET COMMAND_STATE=Remove AMAI AMAI Script and Commander
+  SET COMMAND_STATE=卸载 AMAI 及控制台
 )
 
 goto InstallMenu
@@ -42,13 +42,13 @@ goto InstallMenu
 :InstallMenu
 cls
 ECHO.
-ECHO Mode: %COMMAND_STATE%
+ECHO 模式: %COMMAND_STATE%
 ECHO.
-ECHO Please choose Map process Method:
-ECHO 1. Batch process by Folder (default)
-ECHO 2. Each process by Map
+ECHO 请选择地图处理方式:
+ECHO 1. 按文件夹批量处理 (默认)
+ECHO 2. 逐张地图处理
 ECHO.
-set /p choice=Input and Enter(1 ~ 2):
+set /p choice=请输入并回车(1 ~ 2):
 
 if "%choice%"=="1" (
   if "%COMMAND%"=="-1" (
@@ -74,13 +74,13 @@ if not "%choice%"=="1" (
 :VERMenu
 cls
 ECHO.
-ECHO Please select War3 version:
+ECHO 请选择魔兽3版本:
 ECHO.
-ECHO 1. REFORGED (1.33+) (default)
-ECHO 2. TFT      (1.24e+)
-ECHO 3. ROC      (1.24e ~ 1.31)
+ECHO 1. 重制版 REFORGED (1.33+) (默认)
+ECHO 2. 经典版-冰封王座  (1.24e+)
+ECHO 3. 经典版-混乱之治  (1.24e ~ 1.31)
 ECHO.
-set /p choice=Input and Enter(1 ~ 3):
+set /p choice=请输入并回车(1 ~ 3):
 
 if "%choice%"=="1" (
   set VER=REFORGED
@@ -100,12 +100,12 @@ if "%SETMAP%"=="1" (
 :InputPath
 cls
 ECHO.
-ECHO War3 version: %VER% , Commander: %COMMAND_STATE% , Map process Method: Batch process by Folder
+ECHO 魔兽3版本: %VER% , 控制台: %COMMAND_STATE% , 地图处理方式: 批量处理
 ECHO.
-ECHO Please enter the complete path of the map folder.
-ECHO e.g. C:\Documents\Warcraft III\Maps
+ECHO 请输入地图文件夹路径
+ECHO 例: C:\Documents\Warcraft III\Maps
 ECHO.
-set /p searchPath=Input and Enter:
+set /p searchPath=请输入并回车:
 
 setlocal enabledelayedexpansion
 for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
@@ -117,17 +117,18 @@ goto EndScript
 :InputMap
 cls
 ECHO.
-ECHO War3 version: %VER% , Commander: %COMMAND_STATE% , Map process Method: Each process by Map
+ECHO 魔兽3版本: %VER% , 控制台: %COMMAND_STATE% , 地图处理方式: 逐张地图处理
 ECHO.
-ECHO Please enter the complete path of the map folder. and map File Name (with Format).
-ECHO e.g. C:\Documents\Warcraft III\Maps\Friends_v1.2.w3x
+ECHO 请输入地图文件夹路径及地图名(包括格式)
+ECHO 例: C:\Documents\Warcraft III\Maps\Friends_v1.2.w3x
 ECHO.
-set /p filePath=Input and Enter:
+set /p filePath=请输入并回车:
 
 call InstallVERToMap %VER% "%filePath%" "%COMMAND%"
-ECHO If the installation is complete, please close this window, else please click any key to continue installation.
+ECHO 若安装完成, 请关闭本窗口, 否则请点击任意键继续安装
 pause
 goto InputMap
+
 
 :UnInstallComMenu
 if "%SETMAP%"=="1" (
@@ -139,16 +140,16 @@ if "%SETMAP%"=="1" (
 :UnInstallComPath
 cls
 ECHO.
-ECHO RemoveAMAICommander, Map process Method: Batch process by Folder
+ECHO 移除AMAI控制台, 地图处理方式: 批量处理
 ECHO.
-ECHO Please enter the complete path of the map folder.
-ECHO e.g. C:\Documents\Warcraft III\Maps
+ECHO 请输入地图文件夹路径
+ECHO 例: C:\Documents\Warcraft III\Maps
 ECHO.
-set /p searchPath=Input and Enter:
+set /p searchPath=请输入并回车:
 
 setlocal enabledelayedexpansion
 for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
-  call UninstallCommander "!%%~fF!"
+  call UninstallCommander "%%~fF"
 )
 endlocal
 goto EndScript
@@ -156,17 +157,18 @@ goto EndScript
 :UnInstallComMap
 cls
 ECHO.
-ECHO RemoveAMAICommander, Map process Method: Each process by Map
+ECHO 移除AMAI控制台, 地图处理方式: 逐张地图处理
 ECHO.
-ECHO Please enter the complete path of the map folder. and map File Name (with Format).
-ECHO e.g. C:\Documents\Warcraft III\Maps\Friends_v1.2.w3x
+ECHO 请输入地图文件夹路径及地图名(包括格式)
+ECHO 例: C:\Documents\Warcraft III\Maps\Friends_v1.2.w3x
 ECHO.
-set /p filePath=Input and Enter:
+set /p filePath=请输入并回车:
 
 call UninstallCommander "%filePath%"
-ECHO If the Remove is complete, please close this window, else please click any key to continue Remove.
+ECHO 若移除完成, 请关闭本窗口, 否则请点击任意键继续移除
 pause
 goto UnInstallComMap
+
 
 :UnInstallMenu
 if "%SETMAP%"=="1" (
@@ -178,17 +180,17 @@ if "%SETMAP%"=="1" (
 :UnInstallPath
 cls
 ECHO.
-ECHO Remove AMAI Script and Commander, Map process Method: Batch process by Folder
+ECHO 卸载AMAI及控制台, 地图处理方式: 批量处理
 ECHO.
-ECHO Please enter the complete path of the map folder.
-ECHO e.g. C:\Documents\Warcraft III\Maps
+ECHO 请输入地图文件夹路径
+ECHO 例: C:\Documents\Warcraft III\Maps
 ECHO.
-set /p searchPath=Input and Enter:
+set /p searchPath=请输入并回车:
 
 setlocal enabledelayedexpansion
 for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
-  call Uninstall "!%%~fF!"
-  call UninstallCommander "!%%~fF!"
+  call Uninstall "%%~fF"
+  call UninstallCommander "%%~fF"
 )
 endlocal
 goto EndScript
@@ -196,16 +198,16 @@ goto EndScript
 :UnInstallMap
 cls
 ECHO.
-ECHO Remove AMAI Script and Commander, Map process Method: Each process by Map
+ECHO 卸载AMAI及控制台, 地图处理方式: 逐张地图处理
 ECHO.
-ECHO Please enter the complete path of the map folder. and map File Name (with Format).
-ECHO e.g. C:\Documents\Warcraft III\Maps\Friends_v1.2.w3x
+ECHO 请输入地图文件夹路径及地图名(包括格式)
+ECHO 例: C:\Documents\Warcraft III\Maps\Friends_v1.2.w3x
 ECHO.
-set /p filePath=Input and Enter:
+set /p filePath=请输入并回车:
 
 call Uninstall "%filePath%"
 call UninstallCommander "%filePath%"
-ECHO If the Remove is complete, please close this window, else please click any key to continue Remove.
+ECHO 若卸载完成, 请关闭本窗口, 否则请点击任意键继续卸载
 pause
 goto UnInstallMap
 
