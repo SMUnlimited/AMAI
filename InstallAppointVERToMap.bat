@@ -149,7 +149,7 @@ set /p searchPath=请输入并回车:
 
 setlocal enabledelayedexpansion
 for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
-  call UninstallCommander "!%%~fF!"
+  call UninstallCommander "%%~fF"
 )
 endlocal
 goto EndScript
@@ -189,8 +189,8 @@ set /p searchPath=请输入并回车:
 
 setlocal enabledelayedexpansion
 for %%F in ("%searchPath%\*.w3x" "%searchPath%\*.w3m") do (
-  call Uninstall "!%%~fF!"
-  call UninstallCommander "!%%~fF!"
+  call Uninstall "%%~fF"
+  call UninstallCommander "%%~fF"
 )
 endlocal
 goto EndScript
