@@ -1198,7 +1198,9 @@ endfunction
 //endfunction
 
 function RemoveUnitAM takes unit u returns nothing
-  call KillUnit(u)  // Prevent the unit from continuing to exist
+  if UnitAlive(u) then
+    call KillUnit(u)  // Prevent the unit from continuing to exist
+  endif
   call RemoveUnit(u)
 endfunction
 
@@ -13424,8 +13426,13 @@ endfunction
 //============================================================================
 // (AMAI)  ChooseAttackTarget
 //============================================================================
-function GetRangePenalty takes unit target returns real
-  if major_hero == null or not UnitAlive(major_hero) or target == null or not UnitAlive(target) then
+function GetRangePenalty takes unit target, player p returns real
+  if target == null then
+    if p == null then
+      return 0.0
+    endif
+    return DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(p))
+  elseif major_hero == null or not UnitAlive(major_hero) or not UnitAlive(target) then
     return DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(GetOwningPlayer(target)))
   endif
   return DistanceBetweenUnits(major_hero, target) / 1400
@@ -13444,7 +13451,7 @@ function GetWeakestEnemy takes nothing returns player
       set cstr = GetUnexactPlayerStrength(enemy_force[i])
       if cstr < minstr then
         set u = GetBuilding(enemy_force[i])
-        if u != null and UnitAlive(u) then
+        if u != null and UnitAlive(u) and not IsUnitHidden(u) then
           set pmin = i
           set minstr = cstr
         endif
@@ -13493,7 +13500,7 @@ function GetWeakAndNearEnemy takes nothing returns player
     exitwhen i >= c_enemy_total
     if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set cbuilding = GetBuilding(enemy_force[i])
-      set cstr = GetUnexactPlayerStrength(enemy_force[i]) + GetRangePenalty(cbuilding)
+      set cstr = GetUnexactPlayerStrength(enemy_force[i]) + GetRangePenalty(cbuilding, enemy_force[i])
       if cstr < minstr then
         set pmin = i
         set minstr = cstr
@@ -13546,7 +13553,7 @@ function GetSecondNearestEnemy takes nothing returns player
     exitwhen i >= c_enemy_total
     if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set cbuilding = GetBuilding(enemy_force[i])
-      set cstr = GetRangePenalty(cbuilding)
+      set cstr = GetRangePenalty(cbuilding, enemy_force[i])
       if cstr < minstr then
         set spmin = pmin
         set pmin = i
@@ -13620,7 +13627,7 @@ endfunction
 function GetTargetStrength takes unit target returns integer
   local integer str = GetUnexactPlayerStrength(GetOwningPlayer(target))
   if str < 100 then
-    set str = Min(str + R2I(GetRangePenalty(target)), 100)
+    set str = Min(str + R2I(GetRangePenalty(target, null)), 100)
   endif
   return str
 endfunction
@@ -13682,7 +13689,7 @@ function ChooseEnemyBaseTarget takes unit u returns unit
     set c = c + 1
   endloop
   set u = GetEnemyBase()
-  if IsTargetGood(u, comp_chosen_target_bonus) then
+  if IsTargetGood(u, comp_chosen_target_bonus) and not IsUnitHidden(u) then
     call Trace("Hardcoded Enemy Base Target chosen")
     return u
   endif
@@ -13718,6 +13725,9 @@ function ChooseAnEnemyTarget takes unit u returns unit
     set u = FirstOfGroup(g)
     if u == null then
       set u = GetBuilding(target_enemy)
+      if u != null and (not UnitAlive(u) or IsUnitHidden(u)) then
+        set u = null
+      endif
     endif
     call RemoveLocation(enemy_base)
     set enemy_base = null
@@ -13739,7 +13749,7 @@ function ChooseAnyEnemyTarget takes unit u returns unit
       set p = GetStrongestEnemy()
       if p != null then
         set tu = GetBuilding(p)
-        if tu != null and UnitAlive(tu) then
+        if tu != null and UnitAlive(tu) and not IsUnitHidden(tu) then
           set alli_target = tu
         endif
         set tu = null
@@ -13874,12 +13884,12 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
       set defense_length_counter = 0
       //call FormGroupAM(0)
     endif
-    if not b then
-      set b = CaptainIsHome()
-      if not b then
-        call CaptainGoHome()
-      endif
-    endif
+    // if not b then
+    //   set b = CaptainIsHome()
+    //   if not b then
+    //     call CaptainGoHome()
+    //   endif
+    // endif
     //if CaptainAtGoal() or CaptainInCombat(true) or CaptainInCombat(false) then
       // Attack move to actually defend
     //   if town_threatened and most_threatened_town >= 0 then
@@ -14060,7 +14070,7 @@ endif
 if attack_player then
   call Trace("Attacking player" )
   set hall = GetBuilding(Player(attack_target_p))
-  if hall == null or not UnitAlive(hall) then
+  if hall == null or not UnitAlive(hall) or IsUnitHidden(hall) then
     call Trace("No target found" )
     set attack_player = false
     return
@@ -14223,7 +14233,7 @@ if not creeping_only then	// Do the normal attack sequence
     //
     if difficulty != EASY then
       set mega = GetMegaTarget()
-      if mega != null and UnitAlive(mega) then
+      if mega != null and UnitAlive(mega) and not IsUnitHidden(mega) then
         call Trace("Mega Attack Target")
         call SetAllianceTargetIfLeadAndChat(mega, C_Megatarget)
         //call SetChatVarsAttack(mega)
@@ -14433,7 +14443,7 @@ function GetArmyHealthState takes nothing returns real
     set ward_cast = prev_ward
   endif
   set ward = null
-  if count == 0 then
+  if count == 0 or (urgent_healing_count + medium_healing_count + small_healing_count == 0) then
     return 1.0
   endif
   return ((health_sum / count) + (1-(urgent_healing_count + medium_healing_count) / count)) / 2
@@ -14562,7 +14572,7 @@ function HealArmy takes nothing returns nothing
       call CaptainGoHome()
     endif
     set hs = GetArmyHealthState()
-    exitwhen sleepFrequency >= 3 and hs > healthTrigger // Tried to heal but overall still strong so exit loop
+    exitwhen hs >= 1 or (sleepFrequency >= 3 and hs > healthTrigger) // Tried to heal but overall still strong so exit loop
     exitwhen urgent_healing_count + medium_healing_count <= 3 and hs > healthTrigger
     exitwhen player_defeated or town_threatened or ver_heroes == false
     call Trace("function HealArmy: Army is badly damaged and needs healing " + Real2Str(hs))
