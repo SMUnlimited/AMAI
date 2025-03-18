@@ -102,8 +102,9 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean acti
     endloop
     if blockancient == null and utemp != null then
       call CreateDebugTag("fix block : kill build", 10, utemp, 3.00, 1.50)
-      call SetPlayerGold(ai_player, GetPlayerState(ai_player,PLAYER_STATE_RESOURCE_GOLD) + GetUnitGoldCost(GetUnitTypeId(utemp)) * 2)  // Prevent training unit or research technology
-      call SetPlayerWood(ai_player, GetPlayerState(ai_player,PLAYER_STATE_RESOURCE_LUMBER) + GetUnitWoodCost(GetUnitTypeId(utemp)) * 2)
+      set i = GetUnitTypeId(utemp)
+      call SetPlayerGold(ai_player, GetPlayerState(ai_player,PLAYER_STATE_RESOURCE_GOLD) + GetUnitGoldCost(i) * 2)  // Prevent training unit or research technology
+      call SetPlayerWood(ai_player, GetPlayerState(ai_player,PLAYER_STATE_RESOURCE_LUMBER) + GetUnitWoodCost(i) * 2)
       call KillUnit(utemp)
     endif
     set utemp = null
@@ -139,7 +140,7 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean acti
         set p = GetOwningPlayer(u)
         if blockunit == null and p == ai_player and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_HERO) and not IsUnitType(u, UNIT_TYPE_FLYING) and GetUnitTypeId(u) != 'ngir' and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitBuying(u) and IsStandardUnit(u) and not IsUnitLoaded(u) then
           call CreateDebugTagLoc("fix block : other unit block", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
-          call AddAssault(1,GetUnitTypeId(u))
+          call AddAssault(10,GetUnitTypeId(u))
           set blockunit = u
         elseif p != ai_player and IsPlayerAlly(ai_player, p) and not allyhero[GetPlayerId(p)] and GetPlayerController(p) == MAP_CONTROL_COMPUTER and IsUnitType(u, UNIT_TYPE_HERO) and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitLoaded(u) and not IsUnitType(u, UNIT_TYPE_FLYING) then
           call CreateDebugTagLoc("fix block : ally hero block", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
@@ -153,14 +154,9 @@ function TryFixBlock takes integer fixmode, location l, real range, boolean acti
       loop
         set u = FirstOfGroup(g)
         exitwhen u == null
-        if GetOwningPlayer(u) == ai_player and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_FLYING) and GetUnitTypeId(u) != 'ngir' and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitBuying(u) and not IsUnitLoaded(u) and not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
-          if IsStandardUnit(u) then
-            call AddAssault(10,GetUnitTypeId(u))
-            call CreateDebugTagLoc("fix block : add assault", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
-          elseif GetUnitCurrentOrder(u) != OrderId("cannibalize") then
-            call IssuePointOrderLoc(u, "move", front_loc[0])  // no need send to home_location
-            call CreateDebugTagLoc("fix block : move aside", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
-          endif
+        if GetOwningPlayer(u) == ai_player and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_FLYING) and GetUnitTypeId(u) != 'ngir' and UnitAlive(u) and not IsUnitHidden(u) and GetUnitCurrentOrder(u) != OrderId("cannibalize") and not IsUnitBuying(u) and not IsUnitLoaded(u) and not IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) then
+          call IssuePointOrderLoc(u, "move", front_loc[0])
+          call CreateDebugTagLoc("fix block : move aside", 10, GetUnitX(u), GetUnitY(u), 3.00, 1.50)
         endif
         call GroupRemoveUnit(g,u)
       endloop
@@ -191,7 +187,7 @@ function FixBlockJob takes nothing returns nothing
   local location l = null
   local unit u = null
   local integer i = 1
-  if TownThreatened() or town_threatened or not attack_running or towerrush or teleporting or not pathing_done or water_map or GetPlayerStructureCount(ai_player, true) < 8 then  // town_threatened include ally so not check
+  if TownThreatened() or town_threatened or towerrush or teleporting or not pathing_done or water_map or GetPlayerStructureCount(ai_player, true) < 8 then  // town_threatened include ally so not check
     if blockancient != null and UnitAlive(blockancient) then
       call RootAncient()  // case townthreatened
     endif
@@ -209,7 +205,7 @@ function FixBlockJob takes nothing returns nothing
       return
     endif
   elseif blockunit != null and DistanceBetweenPoints_kd(home_location, GetUnitLoc(blockunit)) < front_base_distance then
-    call CreateDebugTag("fix block : hero block at here", 10, blockunit, 3.00, 1.50)
+    call CreateDebugTag("fix block : unit block at here", 10, blockunit, 3.00, 1.50)
     call FindTree(GetUnitX(blockunit), GetUnitY(blockunit))
     set blockunit = null
     call TQAddJob(1, FIX_BLOCK, 0)  // tree must close
