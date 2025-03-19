@@ -188,32 +188,38 @@ endfunction
 
 function ItemSingetp takes integer hn, integer loc, integer FountainID returns boolean
   local boolean b = false
-  local location l = null
+  local boolean g = false
+  local real x = 0
+  local real y = 0
   local item t = null
-  if loc == 0 then  // teleport to battle
-    set l = GetUnitLoc(major_hero)
-  elseif enemy_density < 1 or GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) > GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE) * 0.4 then  // life too low cannot use singetp
-    if loc == 1 then
-      set l = Location(GetLocationX(home_location), GetLocationY(home_location))
-    elseif loc == 2 then
-      set l = GetUnitLoc(nearest_neutral[FountainID])
-    endif
-  endif
-  if l != null then
-    if GetUnitAbilityLevel(hero_unit[hn], 'AImt') > 0 and DistanceBetweenPoints_kd(l,GetUnitLoc(hero_unit[hn])) > 2000 then
-      set t = GetItemOfTypeOnUnit(singe_tp_item, hero_unit[hn])
-      if t != null then
+  if GetUnitAbilityLevel(hero_unit[hn], 'AImt') > 0 then
+    set t = GetItemOfTypeOnUnit(singe_tp_item, hero_unit[hn])
+    if t != null then
+      if loc == 0 then  // teleport to battle
+        set x = GetUnitX(major_hero)
+        set y = GetUnitY(major_hero)
+        set g = true
+      elseif enemy_density < 1 or GetUnitState(hero_unit[hn], UNIT_STATE_LIFE) > GetUnitState(hero_unit[hn], UNIT_STATE_MAX_LIFE) * 0.4 then  // life too low cannot use singetp
+        if loc == 1 then
+          set x = GetLocationX(home_location)
+          set y = GetLocationY(home_location)
+          set g = true
+        elseif loc == 2 then
+          set x = GetUnitX(nearest_neutral[FountainID])
+          set y = GetUnitY(nearest_neutral[FountainID])
+          set g = true
+        endif
+      endif
+      if g and DistanceBetweenPoints_dd(Location(x, y),GetUnitLoc(hero_unit[hn])) > 2000 then
         call CreateDebugTag("use singe tp item", 10, hero_unit[hn], 3.00, 1.50)
         call RemoveGuardPosition(hero_unit[hn])
-        call IssuePointOrderLoc(hero_unit[hn], "move", l)  // prevent can not use item
-        call UnitUseItemPoint(hero_unit[hn], t, GetLocationX(l) + ISign() * 220, GetLocationY(l) + ISign() * 220)
+        call IssuePointOrder(hero_unit[hn], "move", x, y)  // prevent can not use item
+        call UnitUseItemPoint(hero_unit[hn], t, x + ISign() * 220, y + ISign() * 220)
         set b = true
         //set hero_singetping[hn] = true
-        set t = null
       endif
+      set t = null
     endif
-    call RemoveLocation(l)
-    set l = null
   endif
   return b
 endfunction
