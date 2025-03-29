@@ -134,8 +134,17 @@ function TrackExistingArmies takes nothing returns nothing
     set lastArmyNum = 0
     set lastFreeNum = 0
   else
-    set lastArmyNum = army_num
     set lastFreeNum = first_free
+    // This ensures list of armies are still partly usuable even though army track isn't quite finished
+    // as the array is kept in sync with the army_num variable
+    loop
+      exitwhen i >= army_num
+      call CopyArmy(i, first_free)
+      set first_free = first_free + 1
+      set i = i + 1
+    endloop
+    set lastArmyNum = lastFreeNum
+    set army_num = first_free
     call TQAddJob(1, ARMY_TRACK, 0)
   endif
 endfunction
@@ -342,7 +351,6 @@ endfunction
 function ArmyTrackJob takes nothing returns nothing
   local unit alliance
   call DisplayToAllJobDebug("ARMY_TRACK JOB START")
-  call GroupClear(in_army_group)
   if (mode == 0) then
     call TrackExistingArmies()
   endif
@@ -354,6 +362,8 @@ function ArmyTrackJob takes nothing returns nothing
   endif
   if (mode == 3) then
     set mode = 0
+    set tmpmainarmy = -1
+    call GroupClear(in_army_group)
     call TQAddJob(4 + 1 * sleep_multiplier, TOWN_TRACK, 0)
   endif
 endfunction
