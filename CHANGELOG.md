@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
-### Fixes
+### Fixed
 - Russian language tweaks (Lolasik011)
 
 ## [3.4.2] - 2024-12-22
@@ -30,7 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed an issue where harvesting ghouls were incorrectly detected as the main army.
 - Fixed a bug where the AI attempted to creep expansions without the capability to kill air units.
 - Resolved a bug in team games where AMAI could give units and buildings to defeated players upon defeat.
--(DevTools) Removed the use of hardcoded IDs in expansion tracking for custom mod support.
+- (DevTools) Removed the use of hardcoded IDs in expansion tracking for custom mod support.
 
 ## [3.4.1] - 2024-12-07
 
