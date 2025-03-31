@@ -776,7 +776,7 @@ sub EditStrat {
   close(TIERFILE);
   my $textheight = 48 / ($tiernum + 1);
   my @buildtexttier = ();
-  $lframe->Label(-text => get_translation('label_strategies') . "  @$strat[0]", -font => $font)->pack;
+  $lframe->Label(-text => get_translation('label_strategies') . "  @$strat[0]" . " ($race)", -font => $font)->pack;
   $lframe->Label(-height => 2,)->pack;  # Placeholder
   $lframe->Label(-text => get_translation('label_Init_code'), -font => $font)->pack;
   my $inittext = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
