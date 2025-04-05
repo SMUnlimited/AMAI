@@ -3,14 +3,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [Unreleased]
+## [3.4.2b] - 2025-04-05
 
 ### Changed
 - Script optimizer will disable debug statements for a performance boost. (jzy-chitong56)
 
 ### Fixed
-- Fix for undead stealing allied mines.
-- Fix Army Track causing lag as it lost track of units in armies it had already counted. (jzy-chitong56)
+- Fix for undead AI stealing all allied mines.
+- Fix Army Track causing major source of lag in large maps as it lost track of units in armies it had already counted. (jzy-chitong56)
 - Russian language tweaks (Lolasik011)
 
 ## [3.4.2] - 2024-12-22
