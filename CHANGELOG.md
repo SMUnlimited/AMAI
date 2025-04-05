@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Script optimizer will disable debug statements for a performance boost. (jzy-chitong56)
 
 ### Fixed
+- Fix for undead stealing allied mines.
 - Fix Army Track causing lag as it lost track of units in armies it had already counted. (jzy-chitong56)
 - Russian language tweaks (Lolasik011)
 
