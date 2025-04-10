@@ -3301,6 +3301,10 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
   local player p = null
   local integer chat_greet_count = 0
   local string parsed_chat
+  local string current_gold_txt
+  local string gold_txt
+  local string target_txt
+  local string target_color_txt
   //call ApplyChatConditions() Not supported in lua
   if chat_list_length == 0 then
     return
@@ -9278,6 +9282,31 @@ function GetExistingHero takes nothing returns integer
 endfunction
 
 //============================================================================
+function InitHeroInfo takes integer hn returns nothing
+  if hero_loc[hn] != null then
+    call RemoveLocation(hero_loc[hn])
+  endif
+  set hero_loc[hn] = GetUnitLoc(hero_unit[hn])
+  if hero_enemy_loc[hn] != null then
+    call RemoveLocation(hero_enemy_loc[hn])
+  endif
+  if hero_ally_loc[hn] != null then
+    call RemoveLocation(hero_ally_loc[hn])
+  endif
+  set hero_enemy_loc[hn] = Location(0,0)
+  set hero_ally_loc[hn] = Location(0,0)
+  set hero_hp[hn] = 1
+endfunction
+
+function SetHeroUnit takes integer hn returns nothing
+  set hero_unit[hn] = GetOneOfId(hero_unit[hn], ai_player, old_id[hero[hn]])
+  if hero_unit[hn] != null then
+    set hero_built[hn] = true
+    call InitHeroInfo(hn)
+    call TQAddJob(1, MICRO_HERO, hn)
+  endif
+endfunction  
+
 function ChooseFirstHero takes nothing returns integer
   local integer i = 0
   if hero_built[1] and recalculate_heros then
@@ -9291,8 +9320,8 @@ function ChooseFirstHero takes nothing returns integer
     endloop
   endif
   if IsMapFlagSet(MAP_RANDOM_HERO) and hero[1] == null then
-//    call DisplayToAll("Map flag set")
     set hero[1] = GetExistingHero()
+    call SetHeroUnit(1)
   else
     call make_hero_rp_positive()
     set chosen = ChooseHero()
@@ -11464,21 +11493,7 @@ endif
 endfunction
 
 //============================================================================
-function InitHeroInfo takes integer hn returns nothing
-  if hero_loc[hn] != null then
-    call RemoveLocation(hero_loc[hn])
-  endif
-  set hero_loc[hn] = GetUnitLoc(hero_unit[hn])
-  if hero_enemy_loc[hn] != null then
-    call RemoveLocation(hero_enemy_loc[hn])
-  endif
-  if hero_ally_loc[hn] != null then
-    call RemoveLocation(hero_ally_loc[hn])
-  endif
-  set hero_enemy_loc[hn] = Location(0,0)
-  set hero_ally_loc[hn] = Location(0,0)
-  set hero_hp[hn] = 1
-endfunction
+
 
 function HeroReviver takes nothing returns nothing
   local integer i = 1
@@ -11486,12 +11501,7 @@ function HeroReviver takes nothing returns nothing
     exitwhen i > 3
     if GetUnitCountDone(old_id[hero[i]]) > 0 then
       if not hero_built[i] then
-        set hero_unit[i] = GetOneOfId(hero_unit[i], ai_player, old_id[hero[i]])
-        if hero_unit[i] != null then
-          set hero_built[i] = true
-          call InitHeroInfo(i)
-          call TQAddJob(1, MICRO_HERO, i)
-        endif
+        call SetHeroUnit(i)
       endif
     elseif hero_built[i] then
       call BuildUnit(1, hero[i], hero_revive_prio[i])
