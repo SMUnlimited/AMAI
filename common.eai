@@ -860,6 +860,10 @@ globals
     string chat_dynamic_counter = "and countering "
     string militia_expansion_chat = ""
 
+    string chat_CurrentGold = "CurrentGold"
+    string chat_Target = "Target"
+    string chat_TargetColor = "TargetColor"
+
     //gamecache translation_map = InitGameCache("AMAI_TM.w3v")
     hashtable translation_map = InitHashtable()
     string array translation
@@ -3298,39 +3302,48 @@ endfunction
 
 function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean obs, boolean important, boolean immediate returns nothing
   local integer i = 0
-  local integer std_rand = 0
-  local integer rand = 0
   local player p = null
   local integer chat_greet_count = 0
-  local string parsed_chat
+  local string parsed_chat = null
+  local string cgold = null
+  local string gold = null
+  local string target = null
+  local string color = null
+  local string num = null
+  local string pi = null
   //call ApplyChatConditions() Not supported in lua
   if chat_list_length == 0 then
     return
   endif
-  set std_rand = GetRandomInt(0, chat_list_length - 1)
+  set parsed_chat = ApplyChatVars(chat_list[GetRandomInt(0, chat_list_length - 1)])
+  set cgold = ApplyTrans(chat_CurrentGold)
+  set gold = Int2Str(GetGold())
+  set target = ApplyTrans(chat_Target)
+  set color = ApplyTrans(GetChatVar(chat_TargetColor))
   loop
     exitwhen i >= GetBJMaxPlayers()
     set p = Player(i)
-    if (GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) != MAP_CONTROL_COMPUTER and ((ally and IsPlayerAlly(p, ai_player)) or (enemy and IsPlayerEnemy(p, ai_player)) and not IsPlayerObserver(p))) or (obs and IsPlayerObserver(p)) then
-      set rand = std_rand
+    if p != null and ((GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING and GetPlayerController(p) != MAP_CONTROL_COMPUTER and not IsPlayerObserver(p) and ((ally and IsPlayerAlly(p, ai_player)) or (enemy and IsPlayerEnemy(p, ai_player)))) or (obs and IsPlayerObserver(p))) then
+      set pi = Int2Str(i)
       call SetChatVarsPlayer(p)
       // Only send a limited number of greetings to a single player
-      set parsed_chat = ApplyChatVars(chat_list[rand])
-      if chat ==  C_Goldproblem then
-        set parsed_chat = parsed_chat + " " + ApplyTrans("CurrentGold") + ":" + Int2Str(GetGold())
+      if chat == C_Goldproblem then
+        set parsed_chat = parsed_chat + " " + cgold + ": " + gold
       elseif chat == C_Ally or chat == C_Attack or chat == C_Megatarget then
-        set parsed_chat = parsed_chat + " " + ApplyTrans("Target") + " (" + ApplyTrans(GetChatVar("TargetColor")) + ")"
+        set parsed_chat = parsed_chat + " " + target + " (" + color + ")"
       endif
       if chat == C_Greet then
-        if (HaveStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i))) then
-          set chat_greet_count = GetStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i)) 
-        endif    
-        if chat_greet_count < 6 then
-            //call DisplayToAllFromPlayer("GREET" + Int2Str(chat_greet_count), GetAiPlayer(), false)
-            call StoreInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(i), chat_greet_count + 1 )
-            //call SyncStoredInteger(amaiCache, Int2Str(GREETINGS_NUM), Int2Str(GREETINGS_NUM))
-            call DisplayToPlayer(parsed_chat, p, important)          
+        set num = Int2Str(GREETINGS_NUM)
+        if (HaveStoredInteger(amaiCache, num, pi)) then
+          set chat_greet_count = GetStoredInteger(amaiCache, num, pi)
         endif
+        if chat_greet_count < Max(R2I(c_ai_total / 3) + 2, 6) then
+          //call DisplayToAllFromPlayer("GREET" + Int2Str(chat_greet_count), GetAiPlayer(), false)
+          call StoreInteger(amaiCache, num, pi, chat_greet_count + 1 )
+          //call SyncStoredInteger(amaiCache, num, num)
+          call DisplayToPlayer(parsed_chat, p, important)
+        endif
+        set num = null
       elseif immediate then
         call DisplayToPlayer(parsed_chat, p, important)
       else
@@ -3340,6 +3353,12 @@ function DisplayChat takes integer chat, boolean ally, boolean enemy, boolean ob
     set i = i + 1
   endloop
   set p = null
+  set parsed_chat = null
+  set cgold = null
+  set gold = null
+  set target = null
+  set color = null
+  set pi = null
 endfunction
 
 function QueueStrategy takes string text returns nothing
@@ -13456,8 +13475,13 @@ function SkillArraysAM takes nothing returns integer
   if level > max_hero_level then
     set max_hero_level = level
   endif
-  if skillfix == true and hero_unit[hn] != null and UnitAlive(hero_unit[hn]) then    //Assisted Hero Learning Skills , for war3 1.31 bug
-    call SelectHeroSkill(hero_unit[hn], skills[(hn - 1) * HERO_LEVEL_NUMBER + level])
+  if skillfix == true then
+    if hero_unit[hn] == null then
+      set hero_unit[hn] = GetOneOfId(hero_unit[hn], ai_player, hero_id)
+    endif
+    if hero_unit[hn] != null and UnitAlive(hero_unit[hn]) then    //Assisted Hero Learning Skills , for war3 1.31 bug
+      call SelectHeroSkill(hero_unit[hn], skills[(hn - 1) * HERO_LEVEL_NUMBER + level])
+    endif
   endif
   return skills[(hn - 1) * HERO_LEVEL_NUMBER + level]
 endfunction
