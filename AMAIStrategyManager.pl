@@ -5,11 +5,14 @@ use Tk;
 use Tk::TextUndo;
 use Tk::Table;
 use Tk::NoteBook;
+use Tk::Font;
+use open ':std', ':encoding(UTF-8)';
+
 
 BEGIN{
   if($^O eq 'MSWin32'){
-      require Win32::Console;
-      #Win32::Console::Free();
+    require Win32::Console;
+    #Win32::Console::Free();
   }
 }
 
@@ -19,165 +22,415 @@ if($] >= 5.008004) {
   $fdialogbug = 1;
 }
 
-my $main = MainWindow->new(-title => 'AMAI Strategy Manager');
-my $lframe = $main->Frame->pack(-side => 'left');
+my $language = "Chinese";
+my $lang_path = 'AMAIStrategyManager.pl';
+
+sub set_language {
+  my ($key) = @_;
+  open (LANGX, "<$lang_path");
+  my @lines = <LANGX>;
+  close LANGX;
+  if (defined $key && $key ne "") {
+    foreach my $line (@lines) {
+      if ($line =~ /^(\s*)my\s+\$language\s*=/) {
+        $line = "$1my \$language = \"$key\";\n";
+        last;
+      }
+    }
+  } else {
+    $language = "English";
+  }
+  open (LANGX, ">$lang_path");
+  print LANGX @lines;
+  close(LANGX);
+  exec $^X, $lang_path;
+};
+
+if (!$language) {
+  set_language("English");
+}
+
+my %lang_data_cache;
+my $lang_file = "Languages\\$language\\StrategyManager.txt";
+my $back_lang_file = "Languages\\English\\StrategyManager.txt";
+sub load_language {
+  my ($lang_file) = @_;
+  return $lang_data_cache{$lang_file} if exists $lang_data_cache{$lang_file};
+  open (LANG, $lang_file) or die "Cannot open file <$lang_file>";
+  my %keylang;
+  while (<LANG>) {
+    chomp;
+    next if /^\s*(?:#.*)?$/;
+    my ($key, $value) = split '=', $_, 2;
+    unless (defined $key && defined $value) {
+      warn "Invalid line format in language file at line $.: $_";
+      next;
+    }
+    # $key =~ s/^\s+|\s+$//g;
+    # $value =~ s/^\s+|\s+$//g;
+    $keylang{$key} = $value;
+  }
+  close LANG;
+  $lang_data_cache{$lang_file} = \%keylang;
+  return \%keylang;
+}
+
+sub get_translation {
+  my ($key, @args) = @_;
+  my $lang_ref = load_language($lang_file);
+  if (exists $lang_ref->{$key} && $lang_ref->{$key} !~ /^\s*$/) {
+    return sprintf($lang_ref->{$key}, @args);
+  }
+  $lang_ref = load_language($back_lang_file);
+  if (exists $lang_ref->{$key} && $lang_ref->{$key} !~ /^\s*$/) {
+    return sprintf($lang_ref->{$key}, @args);
+  }
+  if (@args) {
+    return join(@args) . " $key";
+  } else {
+    return $key;
+  }
+}
+
+my $main = MainWindow->new(-title => get_translation('title_strategy_manager'));
+my ($screen_width, $screen_height) = ($main->screenwidth, $main->screenheight);
+$main->maxsize(520, 1280);
+my $lframe = $main->Frame->pack(-side => 'left', -padx => 4);
 my $race;
 my $ver;
 my $strat;
 my $profile;
 my $rframe = $main->Frame->pack(-side => 'right');
-my $notebook = $rframe->NoteBook()->pack(-side => 'left');
-my $stratframe = $notebook->add("strat", -label => 'Strategies');
-my $profileframe = $notebook->add("profile", -label => 'Profiles');
-my $stratlb = $stratframe->Listbox(-height => 0)->pack;
-tie $strat, "Tk::Listbox", $stratlb;
-my $profilelb = $profileframe->Listbox(-height => 0)->pack;
-tie $profile, "Tk::Listbox", $profilelb;
-my $bframe = $rframe->Frame->pack(-side => 'right');
-$bframe->Button(
-                -text => 'New',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     InsertStratSub("$ver\\$race\\New.ais", $ver, $race);
-                     UpdateStratList($stratlb, $ver, $race)
-                   }
-                   else {
-                     InsertProfileSub("$ver\\New.aip", $ver);
-                     UpdateProfileList($profilelb, $ver)
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Extract',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     ExtractStrat($main, $ver, $race, $strat)
-                   }
-                   else {
-                     ExtractProfile($main, $ver, $profile)
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Insert',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     InsertStrat($main, $ver, $race);
-                     UpdateStratList($stratlb, $ver, $race)
-                   }
-                   else {
-                     InsertProfile($main, $ver);
-                     UpdateProfileList($profilelb, $ver)
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Copy',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     CopyStrat($ver, $race, $strat);
-                     UpdateStratList($stratlb, $ver, $race)
-                   }
-                   else {
-                     CopyProfile($ver, $profile);
-                     UpdateProfileList($profilelb, $ver)
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Remove',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     RemoveStrat($main, $ver, $race, $strat);
-                     UpdateStratList($stratlb, $ver, $race)
-                   }
-                   else {
-                     RemoveProfile($main, $ver, $profile);
-                     UpdateProfileList($profilelb, $ver)
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Edit',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     EditStrat($main, $ver, $race, $strat)
-                   }
-                   else {
-                     EditProfile($main, $ver, $profile)
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Lock',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     SetRaceOption($ver, $race, 'debug_strategy', "STRAT_$strat->[0]")
-                   }
-                   else {
-                     SetVerOption($ver, 'debug_profile', GetArrayIndex($profile, $profilelb->get(0, 'end')))
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Unlock',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     SetRaceOption($ver, $race, 'debug_strategy', -1)
-                   }
-                   else {
-                     SetVerOption($ver, 'debug_profile', -1)
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Quit',
-                -command => [$main => 'destroy'],
-                -width => 6)->pack;
+my $font = $main->Font(-family => "Segoe UI", -size => 10, -weight => 'normal');
 
-open(VERFILE, "Versions.txt") or die "File <Versions.txt> not found!";
+my $notebook = $rframe->NoteBook()->pack(-side => 'left');
+$notebook->configure(-font => ['Segoe UI', 12]);
+my $stratframe = $notebook->add("strat", -label => get_translation('label_strategies'));
+my $profileframe = $notebook->add("profile", -label => get_translation('label_profiles'));
+my $stratlb = $stratframe->Scrolled('Listbox',
+    -scrollbars => 'se',
+    -height => 0,
+)->pack(-fill => 'both', -expand => 1);
+mouse_wheel($stratlb);
+tie $strat, "Tk::Listbox", $stratlb;
+my $profilelb = $profileframe->Scrolled('Listbox',
+    -scrollbars => 'se',
+    -height => 0,
+)->pack(-fill => 'both', -expand => 1);
+mouse_wheel($profilelb);
+tie $profile, "Tk::Listbox", $profilelb;
+sub confirm_box {
+  my ($message) = @_;
+  $main->messageBox(
+    -message => $message,
+    -title   => get_translation('title_really'),
+    -type    => 'OK',
+    -default => 'OK',
+  );
+  return;
+}
+
+sub mouse_wheel {
+  my ($widget) = @_;
+  $widget->focus;
+  $widget->bind('<MouseWheel>', sub {
+    my $delta = $Tk::event->D;
+    $widget->yview('scroll', -($delta <=> 0), 'units');
+  });
+}
+
+my $bframe = $rframe->Frame->pack(-side => 'right');
+$bframe->Label(
+                -text => get_translation('placeholder_operate'),
+                -font => $font,
+                -width => 18,
+                -height => 1,
+)->pack;
+$bframe->Button(
+                -text => get_translation('button_new'),
+                -font => $font,
+                -command => sub {
+                    if ($notebook->raised eq 'strat') {
+                      InsertStratSub("$ver\\$race\\New.ais", $ver, $race);
+                      UpdateStratList($stratlb, $ver, $race)
+                    }
+                    else {
+                      InsertProfileSub("$ver\\New.aip", $ver);
+                      UpdateProfileList($profilelb, $ver)
+                    }
+                },
+                -width => 18,
+)->pack;
+$bframe->Button(
+                -text => get_translation('button_copy'),
+                -font => $font,
+                -command => sub {
+                    if ($notebook->raised eq 'strat') {
+                      CopyStrat($ver, $race, $strat);
+                      UpdateStratList($stratlb, $ver, $race)
+                    }
+                    else {
+                      CopyProfile($ver, $profile);
+                      UpdateProfileList($profilelb, $ver)
+                    }
+                },
+                -width => 18,
+)->pack;
+$bframe->Button(
+                -text => get_translation('button_edit'),
+                -font => $font,
+                -command => sub {
+                    if ($notebook->raised eq 'strat') {
+                      EditStrat($main, $ver, $race, $strat)
+                    }
+                    else {
+                      EditProfile($main, $ver, $profile)
+                    }
+                },
+                -width => 18,
+)->pack;
+$bframe->Button(
+                -text => get_translation('button_lock'),
+                -font => $font,
+                -command => sub {
+                    if ($notebook->raised eq 'strat') {
+                      SetRaceOption($ver, $race, 'debug_strategy', "STRAT_$strat->[0]")
+                    }
+                    else {
+                      SetVerOption($ver, 'debug_profile', GetArrayIndex($profile, $profilelb->get(0, 'end')))
+                    }
+                },
+                -width => 18,
+)->pack;
+$bframe->Button(
+                -text => get_translation('button_unlock'),
+                -font => $font,
+                -command => sub {
+                    if ($notebook->raised eq 'strat') {
+                      SetRaceOption($ver, $race, 'debug_strategy', -1)
+                    }
+                    else {
+                      SetVerOption($ver, 'debug_profile', -1)
+                    }
+                },
+                -width => 18,
+)->pack;
+$bframe->Button(
+                -text => get_translation('button_extract'),
+                -font => $font,
+                -command => sub {
+                    if ($notebook->raised eq 'strat') {
+                      ExtractStrat($main, $ver, $race, $strat)
+                    }
+                    else {
+                      ExtractProfile($main, $ver, $profile)
+                    }
+                },
+                -width => 18,
+)->pack;
+$bframe->Button(
+                -text => get_translation('button_insert'),
+                -font => $font,
+                -command => sub {
+                    if ($notebook->raised eq 'strat') {
+                      InsertStrat($main, $ver, $race);
+                      UpdateStratList($stratlb, $ver, $race)
+                    }
+                    else {
+                      InsertProfile($main, $ver);
+                      UpdateProfileList($profilelb, $ver)
+                    }
+                },
+                -width => 18,
+)->pack;
+$bframe->Button(
+                -text => get_translation('button_remove'),
+                -font => $font,
+                -command => sub {
+                    if ($notebook->raised eq 'strat') {
+                      RemoveStrat($main, $ver, $race, $strat);
+                      UpdateStratList($stratlb, $ver, $race)
+                    }
+                    else {
+                      RemoveProfile($main, $ver, $profile);
+                      UpdateProfileList($profilelb, $ver)
+                    }
+                },
+                -width => 18,
+)->pack;
+
+open(VERFILE, "Versions.txt") or do { confirm_box(get_translation('err_file_not_writing', "<Versions.txt>")) };
 my @vers = <VERFILE>;
 close(VERFILE);
 chomp foreach (@vers);
 my $raceopt;
 my $veropt;
+my $langopt;
+$lframe->Label(
+                -text => get_translation('placeholder_ver'),
+                -font => $font,
+                -width => 24,
+                -height => 1,
+)->pack;
 $veropt = $lframe->Optionmenu(
                 -command => sub {  $raceopt -> destroy if($raceopt); 
-                  $raceopt = $lframe->Optionmenu(
-                              -command => sub { UpdateStratList($stratlb, $ver, $race) },
-                              -variable => \$race,
-                              -width => 10)->pack(-after => $veropt);
-                  $raceopt -> addOptions(GetRaces($ver));
-                  UpdateStratList($stratlb, $ver, $race);
-                  UpdateProfileList($profilelb, $ver) },
+                $raceopt = $lframe->Optionmenu(
+                            -command => sub { UpdateStratList($stratlb, $ver, $race) },
+                            -variable => \$race,
+                            -font => $font,
+                            -width => 20)->pack(-after => $veropt);
+                $raceopt -> addOptions(GetRaces($ver));
+                UpdateStratList($stratlb, $ver, $race);
+                UpdateProfileList($profilelb, $ver) },
                 -variable => \$ver,
-                -width => 10)->pack;
+                -font => $font,
+                -width => 20
+)->pack;
 $veropt->addOptions(@vers);
+$lframe->Label(
+                -height => 1,
+)->pack;  # Placeholder
+$lframe->Label(
+                -text => get_translation('placeholder_set'),
+                -font => $font,
+                -width => 24,
+                -height => 1,
+)->pack;
 $lframe->Button(
-                -text => 'Edit Racial Builds',
-                -command => sub { EditRacialBuilds($main, $ver, $race) },
-                -width => 15)->pack;
-$lframe->Button(
-                -text => 'Edit Global Settings',
+                -text => get_translation('button_edit_global'),
+                -font => $font,
                 -command => sub { EditSettings($main, "$ver\\GlobalSettings.txt") },
-                -width => 15)->pack;
+                -width => 24)->pack;
+$lframe->Label(
+                -height => 1,
+)->pack;  # Placeholder
+$lframe->Label(
+                -text => get_translation('placeholder_raceset'),
+                -font => $font,
+                -width => 24,
+                -height => 1,
+)->pack;
 $lframe->Button(
-                -text => 'Edit Racial Settings',
+                -text => get_translation('button_edit_racial_builds'),
+                -font => $font,
+                -command => sub { EditRacialBuilds($main, $ver, $race) },
+                -width => 24
+)->pack;
+$lframe->Button(
+                -text => get_translation('button_edit_racial_settings'),
+                -font => $font,
                 -command => sub { EditSettings($main, "$ver\\$race\\Settings.txt") },
-                -width => 15)->pack;
+                -width => 24)->pack;
+$lframe->Label(
+                -height => 1,
+)->pack;  # Placeholder
+$lframe->Label(
+                -text => get_translation('placeholder_compile'),
+                -font => $font,
+                -width => 24,
+                -height => 1,
+)->pack;
 $lframe->Button(
-                -text => 'Compile',
-                -command => sub { system("Make$ver.bat", "1") },
-                -width => 15)->pack;
-$lframe->Button(
-                -text => 'Compile, Optimize',
-                -command => sub { system("MakeOpt$ver.bat", "1") },
-                -width => 15)->pack;
+                -text => get_translation('button_compile'),
+                -font => $font,
+                -command => sub { system "Make$ver.bat" },
+                -width => 24,
+)->pack(-anchor => 'nw');
+my $row1 = $lframe->Frame->pack(-fill => 'x', -anchor => 'nw');
+$row1->Button(
+                -text => get_translation('button_compile_opt'),
+                -font => $font,
+                -command => sub { system "MakeOpt$ver.bat" },
+                -width => 18,
+)->pack(-side => 'left', -padx => 0, -pady => 0);
+$row1->Button(
+                -text => '?',
+                -font => $font,
+                -command => sub { do { confirm_box(get_translation('confirm_compile_opt')) } },
+                -width => 4,
+)->pack(-side => 'left', -padx => 2, -pady => 0);
+my $row2 = $lframe->Frame->pack(-fill => 'x', -anchor => 'nw');
+$row2->Button(
+                -text => get_translation('button_compile_vsai'),
+                -font => $font,
+                -command => sub { system "MakeVAI$ver.bat" },
+                -width => 18,
+)->pack(-side => 'left', -padx => 0, -pady => 0);
+$row2->Button(
+                -text => '?',
+                -font => $font,
+                -command => sub { do { confirm_box(get_translation('confirm_compile_vsai')) } },
+                -width => 4,
+)->pack(-side => 'left', -padx => 2, -pady => 0);
+$lframe->Label(
+                -height => 1,
+)->pack;  # Placeholder
+$lframe->Label(
+                -text => get_translation('placeholder_setlang'),
+                -font => $font,
+                -width => 24,
+                -height => 1,
+)->pack;
+$langopt = $lframe->Optionmenu(
+                -command => sub { set_language("@_"); },
+                -variable => \$language,
+                -font => $font,
+                -width => 20,
+)->pack;
+$langopt -> addOptions(GetLanguages());
+$lframe->Label(
+                -height => 1,
+)->pack;  # Placeholder
+$lframe->Label(
+                -text => (get_translation('placeholder_about')),
+                -font => $font,
+                -width => 24,
+                -height => 1,
+ )->pack;
+ $lframe->Button(
+                -text => get_translation('button_about'),
+                -font => $font,
+                -command => sub {
+                  my $url = "https://github.com/SMUnlimited/AMAI";
+                  my $open_cmd = qq{start "" "$url"};
+                  system($open_cmd);
+                },
+                -width => 24,
+)->pack;
+$lframe->Label(
+                -height => 4,
+)->pack;  # Placeholder
+$lframe->Label(
+                -text => ("v 1.1"),
+                -font => $font,
+ )->pack;
+# $lframe->Label(
+#                 -height => 4,
+# )->pack;  # Placeholder
+# $lframe->Button(
+#                 -text => get_translation('button_quit'),  # no need
+#                 -font => $font,
+#                 -command => [$main => 'destroy'],
+#                 -width => 24,
+# )->pack;
 MainLoop;
+
+sub GetLanguages {
+  open(LANG, "Languages.txt") or do { confirm_box(get_translation('err_file_not_writing', "<Languages.txt>")) };
+  my @languages = <LANG>;
+  close(LANG);
+  shift @languages;
+  chomp foreach (@languages);
+  foreach (@languages) {
+    /^([^\t]*)\t/;
+    $_ = $1;
+  };
+  return @languages;
+};
 
 sub GetRaces {
   my $ver = shift;
-  open(RACEFILE, "$ver\\Races.txt") or die "File <$ver\\Races.txt> not found!";
+  open(RACEFILE, "$ver\\Races.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$ver\\Races.txt>")) };
   my @races = <RACEFILE>;
   close(RACEFILE);
   chomp foreach (@races);
@@ -201,7 +454,7 @@ sub GetArrayIndex {
 
 sub SetRaceOption {
   my ($ver, $race, $opt, $val) = @_;
-  open(SETFILE, "$ver\\$race\\Settings.txt") or die "File <$ver\\$race\\Settings.txt> not found!";
+  open(SETFILE, "$ver\\$race\\Settings.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$ver\\$race\\Settings.txt>")) };
   my @setfile = ();
   my $optionexists = 0;
   while(<SETFILE>) {
@@ -215,14 +468,14 @@ sub SetRaceOption {
   }
   push @setfile, "$opt\t$val\t\n" if ($optionexists == 0);
   close(SETFILE);
-  open(SETFILE, ">$ver\\$race\\Settings.txt") or die "File <$ver\\$race\\Settings.txt> not found!";
+  open(SETFILE, ">$ver\\$race\\Settings.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$ver\\$race\\Settings.txt>")) };
   print SETFILE @setfile;
   close(SETFILE);
 }
 
 sub SetVerOption {
   my ($ver, $opt, $val) = @_;
-  open(SETFILE, "$ver\\GlobalSettings.txt") or die "File <$ver\\GlobalSettings.txt> not found!";
+  open(SETFILE, "$ver\\GlobalSettings.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$ver\\GlobalSettings.txt>")) };
   my @setfile = ();
   my $optionexists = 0;
   while(<SETFILE>) {
@@ -236,7 +489,7 @@ sub SetVerOption {
   }
   push @setfile, "$opt\t$val\t\n" if ($optionexists == 0);
   close(SETFILE);
-  open(SETFILE, ">$ver\\GlobalSettings.txt") or die "File <$ver\\GlobalSettings.txt> not found!";
+  open(SETFILE, ">$ver\\GlobalSettings.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$ver\\GlobalSettings.txt>")) };
   print SETFILE @setfile;
   close(SETFILE);
 }
@@ -245,7 +498,7 @@ sub GetStratList {
   my $ver = shift;
   my $race = shift;
   return () unless ($ver and $race);
-  open(STRATFILE, "$ver\\$race\\Strategy.txt") or die "File <$ver\\$race\\Strategy.txt> not found!";
+  open(STRATFILE, "$ver\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$ver\\$race\\Strategy.txt>")) };
   my @stratlist = ();
   <STRATFILE>;
   while (<STRATFILE>) {
@@ -268,7 +521,7 @@ sub UpdateStratList {
 sub GetProfileList {
   my $ver = shift;
   return () unless ($ver);
-  open(PROFILEFILE, "$ver\\Profiles.txt") or die "File <$ver\\Profiles.txt> not found!";
+  open(PROFILEFILE, "$ver\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$ver\\Profiles.txt>")) };
   my @profilelist = ();
   <PROFILEFILE>;
   while (<PROFILEFILE>) {
@@ -289,10 +542,10 @@ sub UpdateProfileList {
 sub RemoveStrat {
   my ($main, $version, $race, $strat) = @_;
   return unless @$strat[0];
-  my $response = $main->messageBox(-message => 'Are you sure you want to remove that strategy?', -title => 'Really?', -type => 'YesNo', -default => 'no');
+  my $response = $main->messageBox(-message => get_translation('message_remove_strategy'), -title => get_translation('title_really'), -type => 'YesNo', -default => 'no');
   return if ($response eq 'no' or $response eq 'No');
   my $stratname = @$strat[0];
-  open(STRATFILE, "$version\\$race\\Strategy.txt") or die "File <$version\\$race\\Strategy.txt> not found!";
+  open(STRATFILE, "$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
   my @stratfile = ();
   while (<STRATFILE>) {
     unless (/^$stratname\t/) {
@@ -300,23 +553,23 @@ sub RemoveStrat {
     }
   }
   close(STRATFILE);
-  open(STRATFILE, ">$version\\$race\\Strategy.txt") or die "File <$version\\$race\\Strategy.txt> could not be opened for writing!";
+  open(STRATFILE, ">$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
   print STRATFILE @stratfile;
   close(STRATFILE);
   @stratfile = ();
-  open(AIFILE, "$version\\$race\\BuildSequence.ai") or die "File <$version\\$race\\BuildSequence.ai> not found!";
+  open(AIFILE, "$version\\$race\\BuildSequence.ai") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\BuildSequence.ai>")) };
   my @aifile = ();
   while (<AIFILE>) {
     if (/\bfunction\s*init_strategy_$stratname\b/) {
-      while ((<AIFILE> or die "Strategy not complete in Build Sequence") !~ /endfunction/) {}
-      while ((<AIFILE> or die "Strategy not complete in Build Sequence") !~ /endfunction/) {}
+      while ((<AIFILE> or do { confirm_box(get_translation('err_strategy_not_complete')) }) !~ /endfunction/) {}
+      while ((<AIFILE> or do { confirm_box(get_translation('err_strategy_not_complete')) }) !~ /endfunction/) {}
     }
     else {
       push(@aifile, $_);
     }
   }
   close(AIFILE);
-  open(AIFILE, ">$version\\$race\\BuildSequence.ai") or die "File <$version\\$race\\BuildSequence.ai> could not be opened for writing!";
+  open(AIFILE, ">$version\\$race\\BuildSequence.ai") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\BuildSequence.ai>")) };
   print AIFILE @aifile;
   close(AIFILE);
 }
@@ -324,10 +577,10 @@ sub RemoveStrat {
 sub RemoveProfile {
   my ($main, $version, $profile) = @_;
   return unless @$profile[0];
-  my $response = $main->messageBox(-message => 'Are you sure you want to remove that profile?', -title => 'Really?', -type => 'YesNo', -default => 'no');
+  my $response = $main->messageBox(-message => get_translation('message_remove_profile'), -title => get_translation('title_really'), -type => 'YesNo', -default => 'no');
   return if ($response eq 'no' or $response eq 'No');
   my $profilename = @$profile[0];
-  open(PROFILEFILE, "$version\\Profiles.txt") or die "File <$version\\Profiles.txt> not found!";
+  open(PROFILEFILE, "$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
   my @profilefile = ();
   while (<PROFILEFILE>) {
     unless (/^$profilename\t/) {
@@ -335,7 +588,7 @@ sub RemoveProfile {
     }
   }
   close(PROFILEFILE);
-  open(PROFILEFILE, ">$version\\Profiles.txt") or die "File <$version\\Profiles.txt> could not be opened for writing!";
+  open(PROFILEFILE, ">$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
   print PROFILEFILE @profilefile;
   close(PROFILEFILE);
 }
@@ -360,18 +613,19 @@ sub CopyProfile {
 
 sub ExtractStratSub {
   my ($filename, $version, $race, $stratname) = @_;
-  open(AIFILE, "$version\\$race\\BuildSequence.ai") or die "File <$version\\$race\\BuildSequence.ai> not found!";
-  open(STRATFILE, "$version\\$race\\Strategy.txt") or die "File <$version\\$race\\Strategy.txt> not found!";
-  open(TARGETFILE, ">$filename") or die "File <$filename> not found!";
+  open(AIFILE, "$version\\$race\\BuildSequence.ai") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\BuildSequence.ai>")) };
+  open(STRATFILE, "$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
+  open(TARGETFILE, ">$filename") or do { confirm_box(get_translation('err_file_not_writing', "<$filename>")) };
   print TARGETFILE "#AMAI 2.0 Strategy\n";
   my $line = <STRATFILE>;
-  while (($line = (<STRATFILE> or die "Strategy not found in Strategy Table")) !~ /^$stratname\t/) {}
+  while (($line = (<STRATFILE> or do { confirm_box(get_translation('err_strategy_not_found_strategy')) })) !~ /^$stratname\t/) {}
   print TARGETFILE $line;
-  while (($line = (<AIFILE> or die "Strategy not found in Build Sequence")) !~ /\bfunction\s*init_strategy_$stratname\b/) {}
+  print TARGETFILE "\n";
+  while (($line = (<AIFILE> or do { confirm_box(get_translation('err_strategy_not_found_buildsequence')) })) !~ /\bfunction\s*init_strategy_$stratname\b/) {}
   print TARGETFILE $line;
-  while (($line = (<AIFILE> or die "Strategy not complete in Build Sequence")) !~ /endfunction/) {print TARGETFILE $line;}
+  while (($line = (<AIFILE> or do { confirm_box(get_translation('err_strategy_not_complete')) })) !~ /endfunction/) {print TARGETFILE $line;}
   print TARGETFILE $line;
-  while (($line = (<AIFILE> or die "Strategy not complete in Build Sequence")) !~ /endfunction/) {print TARGETFILE $line;}
+  while (($line = (<AIFILE> or do { confirm_box(get_translation('err_strategy_not_complete')) })) !~ /endfunction/) {print TARGETFILE $line;}
   print TARGETFILE $line;
   close(TARGETFILE);
   close(AIFILE);
@@ -393,11 +647,11 @@ sub ExtractStrat {
 
 sub ExtractProfileSub {
   my ($filename, $version, $profilename) = @_;
-  open(PROFILEFILE, "$version\\Profiles.txt") or die "File <$version\\Profiles.txt> not found!";
-  open(TARGETFILE, ">$filename") or die "File <$filename> not found!";
+  open(PROFILEFILE, "$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
+  open(TARGETFILE, ">$filename") or do { confirm_box(get_translation('err_file_not_writing', "<$filename>")) };
   print TARGETFILE "#AMAI 2.0 Profile\n";
   my $line = <PROFILEFILE>;
-  while (($line = (<PROFILEFILE> or die "Profile not found in Profile Table")) !~ /^$profilename\t/) {}
+  while (($line = (<PROFILEFILE> or do { confirm_box(get_translation('err_profile_not_found_p')) })) !~ /^$profilename\t/) {}
   print TARGETFILE $line;
   close(TARGETFILE);
   close(PROFILEFILE);
@@ -419,11 +673,11 @@ sub ExtractProfile {
 sub InsertStratSub {
   my ($filename, $version, $race) = @_;
   my $stratlist = join ',', GetStratList($version, $race);
-  open(SOURCE, $filename) or die "File <$filename> not found!";
-  open(AIFILE, ">>$version\\$race\\BuildSequence.ai") or die "File <$version\\$race\\BuildSequence.ai> not found!";
-  open(STRATFILE, ">>$version\\$race\\Strategy.txt") or die "File <$version\\$race\\Strategy.txt> not found!";
+  open(SOURCE, $filename) or do { confirm_box(get_translation('err_file_not_writing', "<$filename>")) };
+  open(AIFILE, ">>$version\\$race\\BuildSequence.ai") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\BuildSequence.ai>")) };
+  open(STRATFILE, ">>$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
   my $line = <SOURCE>;
-  if ($line !~ /#AMAI 2.0 Strategy/) {die "No AMAI 2.0 Strategy File";}
+  if ($line !~ /#AMAI 2.0 Strategy/) {die get_translation('err_not_file_sequence');}
   $line = <SOURCE>;
   $line =~ /^([^\t]*)\t/;
   my $oldstratname = $1;
@@ -433,7 +687,10 @@ sub InsertStratSub {
     $x++;
     $stratname = "$oldstratname$x";
   }
-
+  seek(STRATFILE, -1, 2);
+  my $last_char;
+  read(STRATFILE, $last_char, 1);
+  print STRATFILE "\n" if $last_char ne "\n";
   $line =~ s/^$oldstratname/$stratname/;
   print STRATFILE $line;
   print AIFILE "\n";
@@ -444,6 +701,11 @@ sub InsertStratSub {
   close(AIFILE);
   close(STRATFILE);
   close(SOURCE);
+  open(STRATFILE, "$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
+  my @lnewline = grep { /\S/ } <STRATFILE>;
+  open(STRATFILE, ">$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
+  print STRATFILE @lnewline;  # Remove blank lines
+  close(STRATFILE);
 }
 
 sub InsertStrat {
@@ -460,24 +722,32 @@ sub InsertStrat {
 sub InsertProfileSub {
   my ($filename, $version) = @_;
   my $profilelist = join ',', GetProfileList($version);
-  open(SOURCE, $filename) or die "File <$filename> not found!";
-  open(PROFILEFILE, ">>$version\\Profiles.txt") or die "File <$version\\Profiles.txt> not found!";
+  open(SOURCE, $filename) or do { confirm_box(get_translation('err_file_not_writing', "<$filename>")) };
+  open(PROFILEFILE, ">>$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
+  seek(PROFILEFILE, -1, 2);
+  my $last_char;
+  read(PROFILEFILE, $last_char, 1);
+  print PROFILEFILE "\n" if $last_char ne "\n";
   my $line = <SOURCE>;
-  if ($line !~ /#AMAI 2.0 Profile/) {die "No AMAI 2.0 Profile File";}
+  if ($line !~ /#AMAI 2.0 Profile/) {die get_translation('err_not_file_profiles');}
   $line = <SOURCE>;
   $line =~ /^([^\t]*)\t/;
   my $oldprofilename = $1;
-  my $profilename = $oldprofilename;
+  my $profilename = "$oldprofilename";
   my $x = 0;
   while ($profilelist =~ /\b$profilename\b/) {
     $x++;
     $profilename = "$oldprofilename$x";
   }
-
   $line =~ s/^$oldprofilename/$profilename/;
   print PROFILEFILE $line;
   close(PROFILEFILE);
   close(SOURCE);
+  open(PROFILEFILE, "$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
+  my @lnewline = grep { /\S/ } <PROFILEFILE>;
+  open(PROFILEFILE, ">$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
+  print PROFILEFILE @lnewline;  # Remove blank lines
+  close(PROFILEFILE);
 }
 
 sub InsertProfile {
@@ -494,57 +764,92 @@ sub InsertProfile {
 sub EditStrat {
   my ($main, $version, $race, $strat) = @_;
   return unless @$strat[0];
-  my $edit = $main->Toplevel(-title => 'AMAI Strategy Editor');
+  my $edit = $main->Toplevel(-title => get_translation('title_strategy_editor'));
   my $lframe = $edit->Frame->pack(-side => 'left');
   my $rframe = $edit->Frame->pack(-side => 'right');
   my $bframe = $rframe->Frame->pack(-side => 'right');
-  my $strattable = $rframe->Table(-rows => 37)->pack(-side => 'left');
-  open(TIERFILE, "$ver\\$race\\Tiers.txt") or die "File <$ver\\$race\\Tiers.txt> not found!";
+  my $strattable = $rframe->Table(-rows => 44)->pack(-side => 'left');
+  $strattable->configure(-takefocus => 1);
+  open(TIERFILE, "$ver\\$race\\Tiers.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$ver\\$race\\Tiers.txt>")) };
   my @tiers = <TIERFILE>;
   my $tiernum = @tiers;
   close(TIERFILE);
-  my $textheight = 44 / ($tiernum + 1);
+  my $textheight = 48 / ($tiernum + 1);
   my @buildtexttier = ();
-  $lframe->Label(-text => 'Initalisation Code')->pack;
+  $lframe->Label(-text => get_translation('label_strategies') . "  @$strat[0]" . " ($race)", -font => $font)->pack;
+  $lframe->Label(-height => 2,)->pack;  # Placeholder
+  $lframe->Label(-text => get_translation('label_Init_code'), -font => $font)->pack;
   my $inittext = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
+  $lframe->Label(-height => 1,)->pack;  # Placeholder
   for(my $i=1;$i<=$tiernum;$i++) {
-    $lframe->Label(-text => "Code for Tier $i")->pack;
+    $lframe->Label(-text => get_translation('label_tier_code', "$i"), -font => $font)->pack;
     $buildtexttier[$i] = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
   }
+  $lframe->Label(-height => 2,)->pack;  # Placeholder
+  $lframe->Label(-text => get_translation('label_strategy_report'), -font => $font)->pack;
+  my $button_frame = $lframe->Frame->pack(-side => 'top', -fill => 'x');
+  my @languages = GetLanguages();
+  my $buttons_per_row = 5;
+  my $button_count = 0;
+  foreach my $lang (@languages) {
+      my $file_path = "Languages/$lang/Strategy.txt";
+      $button_frame->Button(
+          -text => $lang,
+          -font => $font,
+          -command => sub {
+            if (-e $file_path) {
+              system("start $file_path");
+            } else {
+              confirm_box(get_translation('err_file_not_writing', "<$file_path>"));
+            }
+          },
+          -width => int(80 / $buttons_per_row),
+      )->pack(-side => 'left', -padx => 2, -pady => 2);
+      $button_count++;
+      if ($button_count % $buttons_per_row == 0) {
+          $button_frame = $lframe->Frame->pack(-side => 'top', -fill => 'x');
+      }
+  }
+
   my $optarrayref = FillTable($strattable, $version, $race, @$strat[0]);
   FillTexts($inittext, \@buildtexttier, $version, $race, @$strat[0]);
+  mouse_wheel($strattable);
+  $strattable->bind("<FocusIn>", sub {
+    $strattable->focus;
+  });
   $bframe->Button(
-                -text => 'OK',
-                -command => sub {SaveStrat($edit, $inittext, \@buildtexttier, $strattable, $version, $race, @$strat[0], $optarrayref)},
-                -width => 6)->pack;
+      (-text => get_translation('button_ok'), -font => $font),
+      -command => sub {SaveStrat($edit, $inittext, \@buildtexttier, $strattable, $version, $race, @$strat[0], $optarrayref)},
+      -width => 14)->pack;
   $bframe->Button(
-                -text => 'Cancel',
-                -command => [$edit => 'destroy'],
-                -width => 6)->pack;
+      (-text => get_translation('button_cancel'), -font => $font),
+      -command => [$edit => 'destroy'],
+      -width => 14)->pack;
   $edit->focusForce;
 }
 
 sub EditProfile {
   my ($main, $version, $profile) = @_;
   return unless @$profile[0];
-  my $edit = $main->Toplevel(-title => 'AMAI Profile Editor');
+  my $edit = $main->Toplevel(-title => get_translation('title_profile_editor'));
   my $bframe = $edit->Frame->pack(-side => 'right');
-  my $profiletable = $edit->Table(-rows => 37)->pack(-side => 'left');
+  my $profiletable = $edit->Table(-rows => 40)->pack(-side => 'left');
   my $optarrayref = FillProfileTable($profiletable, $version, @$profile[0]);
+  mouse_wheel($profiletable);
   $bframe->Button(
-                -text => 'OK',
+                (-text => get_translation('button_ok'), -font => $font),
                 -command => sub {SaveProfile($edit, $profiletable, $version, @$profile[0], $optarrayref)},
-                -width => 6)->pack;
+                -width => 14)->pack;
   $bframe->Button(
-                -text => 'Cancel',
+                (-text => get_translation('button_cancel'), -font => $font),
                 -command => [$edit => 'destroy'],
-                -width => 6)->pack;
+                -width => 14)->pack;
   $edit->focusForce;
 }
 
 sub GetVarList {
   my ($ver, $var, $race) = @_;
-  open(VARFILE, "VarDefs.ini") or die "File <VarDefs.ini> not found!";
+  open(VARFILE, "VarDefs.ini") or do { confirm_box(get_translation('err_file_not_writing', "<VarDefs.ini>")) };
   <VARFILE>;
   while(<VARFILE>) {
     chomp;
@@ -552,7 +857,7 @@ sub GetVarList {
       my $fn = $1;
       $fn =~ s/\$RACE\$/$race/g;
       close(VARFILE);
-      open(VARTABLE, "$ver\\$fn") or die "File <$ver\\$fn> not found!";
+      open(VARTABLE, "$ver\\$fn") or do { confirm_box(get_translation('err_file_not_writing', "<$ver\\$fn>")) };
       my @vt = ();
       while (<VARTABLE>) {
         /([^\t\n]*)(\t|\n|$)/;
@@ -613,7 +918,7 @@ sub ExtendOptList {
 
 sub GetOptList {
   my $ver = shift;
-  open(OPTFILE, "Optionlist.ini") or die "File <Optionlist.ini> not found!";
+  open(OPTFILE, "Optionlist.ini") or do { confirm_box(get_translation('err_file_not_writing', "<Optionlist.ini>")) };
   my %optlist = ();
   my @optfile = <OPTFILE>;
   close(OPTFILE);
@@ -643,7 +948,7 @@ sub GetUnitLists {
   my @buildinglist = (0);
   my @upgradelist = (0);
   my @herolist = (0);
-  open(UNITFILE, "$version\\StandardUnits.txt") or die "File <$version\\StandardUnits.txt> not found!";
+  open(UNITFILE, "$version\\StandardUnits.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\StandardUnits.txt>")) };
   while(<UNITFILE>) {
     my @line = split("\t", $_);
     push @buildinglist, $line[0] if ($line[2] =~ /$race/ and $line[4] eq "BUILDING");
@@ -665,7 +970,7 @@ sub GetProfileUnitLists {
     $unitlists{$_} = \@unitlist;
     $herolists{$_} = \@herolist;
   }
-  open(UNITFILE, "$version\\StandardUnits.txt") or die "File <$version\\StandardUnits.txt> not found!";
+  open(UNITFILE, "$version\\StandardUnits.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\StandardUnits.txt>")) };
   while(<UNITFILE>) {
     my @line = split("\t", $_);
     foreach (@races) {
@@ -686,18 +991,25 @@ sub FillTable {
   my @buildinglist = @{$buildinglistref};
   my @upgradelist = @{$upgradelistref};
   my @herolist = @{$herolistref};
-  open(STRATFILE, "$version\\$race\\Strategy.txt") or die "File <$version\\$race\\Strategy.txt> not found!";
+  open(STRATFILE, "$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
   my $line = <STRATFILE>;
   chomp($line);
   my @opt = split("\t", $line);
   my $l;
   my $i = 0;
   foreach my $v (@opt) {
-    $l = $strattable->Label(-text => $v);
+    my $translated_desc = get_translation($i);
+    if ($translated_desc eq $i) {
+      $translated_desc = get_translation($v);
+      if ($translated_desc eq $i) {
+        $translated_desc = $v;
+      }
+    }
+    $l = $strattable->Label(-text => $translated_desc, -font => $font, -anchor => 'e');
     $strattable->put($i, 0, $l);
     $i++;
   }
-  while (($line = (<STRATFILE> or die "Strategy not found in Strategy table.")) !~ /^$strat\t/) {}
+  while (($line = (<STRATFILE> or do { confirm_box(get_translation('err_strategy_not_found_strategy')) })) !~ /^$strat\t/) {}
   chomp($line);
   my @optval = split("\t", $line);
   $i = 0;
@@ -719,7 +1031,7 @@ sub FillTable {
       }
       elsif ($optvalarray[0] eq 'hero') {
         OptionmenuAddOptions($l, $v, @herolist);
-      }  
+      }
       else {
         OptionmenuAddOptions($l, $v, @upgradelist);
       }
@@ -742,18 +1054,18 @@ sub FillProfileTable {
   my ($unitlistref, $herolistref) = GetProfileUnitLists($version, GetRaces($version), 'NEUTRAL');
   my %unitlists = %{$unitlistref};
   my %herolists = %{$herolistref};
-  open(PROFILEFILE, "$version\\Profiles.txt") or die "File <$version\\Profiles.txt> not found!";
+  open(PROFILEFILE, "$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
   my $line = <PROFILEFILE>;
   chomp($line);
   my @opt = split("\t", $line);
   my $l;
   my $i = 0;
   foreach my $v (@opt) {
-    $l = $profiletable->Label(-text => $v);
+    $l = $profiletable->Label(-text => get_translation($v), -font => $font, -anchor => 'e');
     $profiletable->put($i, 0, $l);
     $i++;
   }
-  while (($line = (<PROFILEFILE> or die "Profile not found in Profile table.")) !~ /^$profile\t/) {}
+  while (($line = (<PROFILEFILE> or do { confirm_box(get_translation('err_profile_not_found_profiles')) })) !~ /^$profile\t/) {}
   chomp($line);
   my @optval = split("\t", $line);
   $i = 0;
@@ -802,24 +1114,24 @@ sub AssembleTable {
 sub FillTexts {
   my ($inittext, $buildtexttierref, $version, $race, $stratname, @optarray) = @_;
   my @buildtexttier = @{$buildtexttierref};
-  open(AIFILE, "$version\\$race\\BuildSequence.ai") or die "File <$version\\$race\\BuildSequence.ai> not found!";
+  open(AIFILE, "$version\\$race\\BuildSequence.ai") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\BuildSequence.ai>")) };
   my $line;
-  while ((<AIFILE> or die "Strategy not found in AI File") !~ /\bfunction\s*init_strategy_$stratname\b/) {}
-  while (($line = (<AIFILE> or die "Strategy not complete in AI File")) !~ /endfunction/) {$inittext->insert('end', $line);}
-  while ((<AIFILE> or die "Strategy not complete in AI File") !~ /\bfunction\s*build_sequence_$stratname\b/) {}
-  while ((<AIFILE> or die "Strategy not complete in AI File") !~ /if.*tier.*==.*$#buildtexttier/) {}
+  while ((<AIFILE> or do { confirm_box(get_translation('err_strategy_not_found_ai')) }) !~ /\bfunction\s*init_strategy_$stratname\b/) {}
+  while (($line = (<AIFILE> or do { confirm_box(get_translation('err_strategy_not_found_ai')) })) !~ /endfunction/) {$inittext->insert('end', $line);}
+  while ((<AIFILE> or do { confirm_box(get_translation('err_strategy_not_found_ai')) }) !~ /\bfunction\s*build_sequence_$stratname\b/) {}
+  while ((<AIFILE> or do { confirm_box(get_translation('err_strategy_not_found_ai')) }) !~ /if.*tier.*==.*$#buildtexttier/) {}
   for(my $i=$#buildtexttier;$i>2;$i--) {
     my $j = $i-1;
-    while (($line = (<AIFILE> or die "Strategy not complete in AI File")) !~ /elseif.*tier.*==.*$j/) {$buildtexttier[$i]->insert('end', $line);}
+    while (($line = (<AIFILE> or do { confirm_box(get_translation('err_strategy_not_found_ai')) })) !~ /elseif.*tier.*==.*$j/) {$buildtexttier[$i]->insert('end', $line);}
   }
   my $iflevel = 0;
-  while ((($line = (<AIFILE> or die "Strategy not complete in AI File")) !~ /\belse\b/) or $iflevel != 0) {
+  while ((($line = (<AIFILE> or do { confirm_box(get_translation('err_strategy_not_found_ai')) })) !~ /\belse\b/) or $iflevel != 0) {
     $buildtexttier[2]->insert('end', $line);
     $iflevel++ if ($line =~ /\bif/);
     $iflevel-- if ($line =~ /endif/);
   }
   $iflevel = 0;
-  while ((($line = (<AIFILE> or die "Strategy not complete in AI File")) !~ /endif/) or $iflevel != 0) {
+  while ((($line = (<AIFILE> or do { confirm_box(get_translation('err_strategy_not_found_ai')) })) !~ /endif/) or $iflevel != 0) {
     $buildtexttier[1]->insert('end', $line);
     $iflevel++ if ($line =~ /\bif/);
     $iflevel-- if ($line =~ /endif/);
@@ -831,7 +1143,7 @@ sub SaveStrat {
   my ($edit, $inittext, $buildtexttierref, $strattable, $version, $race, $stratname, $optarrayref) = @_;
   my @buildtexttier = @{$buildtexttierref};
   my $newstratname = $strattable->get(0,1)->get;
-  open(STRATFILE, "$version\\$race\\Strategy.txt") or die "File <$version\\$race\\Strategy.txt> not found!";
+  open(STRATFILE, "$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
   my @stratfile = ();
   while (<STRATFILE>) {
     if (/^$stratname\t/) {
@@ -843,16 +1155,16 @@ sub SaveStrat {
     }
   }
   close(STRATFILE);
-  open(STRATFILE, ">$version\\$race\\Strategy.txt") or die "File <$version\\$race\\Strategy.txt> could not be opened for writing!";
+  open(STRATFILE, ">$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
   print STRATFILE @stratfile;
   close(STRATFILE);
   @stratfile = ();
-  open(AIFILE, "$version\\$race\\BuildSequence.ai") or die "File <$version\\$race\\BuildSequence.ai> not found!";
+  open(AIFILE, "$version\\$race\\BuildSequence.ai") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\BuildSequence.ai>")) };
   my @aifile = ();
   while (<AIFILE>) {
     if (/\bfunction\s*init_strategy_$stratname\b/) {
-      while ((<AIFILE> or die "Strategy not complete in Build Sequence") !~ /endfunction/) {}
-      while ((<AIFILE> or die "Strategy not complete in Build Sequence") !~ /endfunction/) {}
+      while ((<AIFILE> or do { confirm_box(get_translation('err_strategy_not_complete')) }) !~ /endfunction/) {}
+      while ((<AIFILE> or do { confirm_box(get_translation('err_strategy_not_complete')) }) !~ /endfunction/) {}
       push(@aifile, "function init_strategy_$newstratname takes nothing returns nothing\n");
       push(@aifile, $inittext->get('1.0', 'end'));
       push(@aifile, "endfunction\n");
@@ -874,7 +1186,7 @@ sub SaveStrat {
     }
   }
   close(AIFILE);
-  open(AIFILE, ">$version\\$race\\BuildSequence.ai") or die "File <$version\\$race\\BuildSequence.ai> could not be opened for writing!";
+  open(AIFILE, ">$version\\$race\\BuildSequence.ai") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\BuildSequence.ai>")) };
   print AIFILE @aifile;
   close(AIFILE);
   $edit->destroy;
@@ -883,7 +1195,7 @@ sub SaveStrat {
 sub SaveProfile {
   my ($edit, $profiletable, $version, $profilename, $optarrayref) = @_;
   my $newprofilename = $profiletable->get(0,1)->get;
-  open(PROFILEFILE, "$version\\Profiles.txt") or die "File <$version\\Profiles.txt> not found!";
+  open(PROFILEFILE, "$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
   my @profilefile = ();
   while (<PROFILEFILE>) {
     if (/^$profilename\t/) {
@@ -895,7 +1207,7 @@ sub SaveProfile {
     }
   }
   close(PROFILEFILE);
-  open(PROFILEFILE, ">$version\\Profiles.txt") or die "File <$version\\Profiles.txt> could not be opened for writing!";
+  open(PROFILEFILE, ">$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
   print PROFILEFILE @profilefile;
   close(PROFILEFILE);
   $edit->destroy;
@@ -903,45 +1215,45 @@ sub SaveProfile {
 
 sub EditRacialBuilds {
   my ($main, $ver, $race) = @_;
-  my $edit = $main->Toplevel(-title => 'AMAI Racial Builds Editor');
+  my $edit = $main->Toplevel(-title => get_translation('title_racial_builds_editor'));
   my $lframe = $edit->Frame->pack(-side => 'left');
   my $rframe = $edit->Frame->pack(-side => 'right');
   my $textheight = 22;
-  $lframe->Label(-text => 'Initalisation Code')->pack;
+  $lframe->Label(-text => get_translation('label_racial_Init_code'), -font => $font)->pack;
   my $inittext = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
-  $lframe->Label(-text => "Build Code")->pack;
+  $lframe->Label(-text => get_translation('label_racial_build'), -font => $font)->pack;
   my $buildtext = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
   LoadRacialBuild($inittext, $buildtext, $ver, $race);
   $rframe->Button(
-                -text => 'OK',
+                (-text => get_translation('button_ok'), -font => $font),
                 -command => sub {SaveRacialBuild($edit, $inittext, $buildtext, $ver, $race)},
-                -width => 6)->pack;
+                -width => 14)->pack;
   $rframe->Button(
-                -text => 'Cancel',
+                (-text => get_translation('button_cancel'), -font => $font),
                 -command => [$edit => 'destroy'],
-                -width => 6)->pack;
+                -width => 14)->pack;
   $edit->focusForce;
 }
 
 sub LoadRacialBuild {
   my ($inittext, $buildtext, $ver, $race) = @_;
-  open(AIFILE, "$ver\\$race\\BuildSequence.ai") or die "File <$ver\\$race\\BuildSequence.ai> not found!";
+  open(AIFILE, "$ver\\$race\\BuildSequence.ai") or do { confirm_box(get_translation('err_file_not_writing', "<$ver\\$race\\BuildSequence.ai>")) };
   my $line;
-  while ((<AIFILE> or die "global_init_strategy not in Build Sequence") !~ /function global_init_strategy/) {}
-  while (($line = (<AIFILE> or die "global_init_strategy not complete in Build Sequence")) !~ /endfunction/) {$inittext->insert('end', $line);}
-  while ((<AIFILE> or die "global_build_sequence not in Build Sequence") !~ /function global_build_sequence/) {}
-  while (($line = (<AIFILE> or die "global_build_sequence not complete in Build Sequence")) !~ /endfunction/) {$buildtext->insert('end', $line);}
+  while ((<AIFILE> or do { confirm_box(get_translation('err_strategy_init_not_set')) }) !~ /function global_init_strategy/) {}
+  while (($line = (<AIFILE> or do { confirm_box(get_translation('err_strategy_init_not_complete')) })) !~ /endfunction/) {$inittext->insert('end', $line);}
+  while ((<AIFILE> or do { confirm_box(get_translation('err_strategy_build_set')) }) !~ /function global_build_sequence/) {}
+  while (($line = (<AIFILE> or do { confirm_box(get_translation('err_strategy_build_complete')) })) !~ /endfunction/) {$buildtext->insert('end', $line);}
   close(AIFILE);
 }
 
 sub SaveRacialBuild {
   my ($edit, $inittext, $buildtext, $ver, $race) = @_;
-  open(AIFILE, "$ver\\$race\\BuildSequence.ai") or die "File <$ver\\$race\\BuildSequence.ai> not found!";
+  open(AIFILE, "$ver\\$race\\BuildSequence.ai") or do { confirm_box(get_translation('err_file_not_writing', "<$ver\\$race\\BuildSequence.ai>")) };
   my @aifile = ();
   while (<AIFILE>) {
     if (/\bfunction\s*global_init_strategy\b/) {
-      while ((<AIFILE> or die "Global Builds not complete in Build Sequence") !~ /endfunction/) {}
-      while ((<AIFILE> or die "Global Builds not complete in Build Sequence") !~ /endfunction/) {}
+      while ((<AIFILE> or do { confirm_box(get_translation('err_global_build_set')) }) !~ /endfunction/) {}
+      while ((<AIFILE> or do { confirm_box(get_translation('err_global_build_set')) }) !~ /endfunction/) {}
       push(@aifile, "function global_init_strategy takes nothing returns nothing\n");
       push(@aifile, $inittext->get('1.0', 'end'));
       push(@aifile, "endfunction\n");
@@ -954,7 +1266,7 @@ sub SaveRacialBuild {
     }
   }
   close(AIFILE);
-  open(AIFILE, ">$ver\\$race\\BuildSequence.ai") or die "File <$ver\\$race\\BuildSequence.ai> could not be opened for writing!";
+  open(AIFILE, ">$ver\\$race\\BuildSequence.ai") or do { confirm_box(get_translation('err_file_not_writing', "<$ver\\$race\\BuildSequence.ai>")) };
   print AIFILE @aifile;
   close(AIFILE);
   $edit->destroy;
@@ -962,37 +1274,42 @@ sub SaveRacialBuild {
 
 sub EditSettings {
   my ($main, $file) = @_;
-  my $edit = $main->Toplevel(-title => 'AMAI Settings Editor');
+  my $edit = $main->Toplevel(-title => get_translation('title_settings_editor'));
   my $lframe = $edit->Frame->pack(-side => 'left');
   my $rframe = $edit->Frame->pack(-side => 'right');
-  my $table = $lframe->Table(-rows => 37)->pack(-side => 'left');
+  my $table = $lframe->Table(-rows => 40)->pack(-side => 'left');
   my $rownumber = LoadSettings($table, $file);
+  mouse_wheel($table);
   $rframe->Button(
-                -text => 'OK',
+                (-text => get_translation('button_ok'), -font => $font),
                 -command => sub {SaveSettings($edit, $table, $file, $rownumber)},
-                -width => 6)->pack;
+                -width => 14)->pack;
   $rframe->Button(
-                -text => 'Cancel',
+                (-text => get_translation('button_cancel'), -font => $font),
                 -command => [$edit => 'destroy'],
-                -width => 6)->pack;
+                -width => 14)->pack;
   $edit->focusForce;
 }
 
 sub LoadSettings {
   my ($table, $file) = @_;
-  open(SETTINGS, $file) or die "File <$file> not found!";
+  open(SETTINGS, $file) or do { confirm_box(get_translation('err_file_not_writing', "<$file>")) };
   <SETTINGS>;
   my $i = 0;
   while(<SETTINGS>) {
     chomp;
-    my @setting = split "\t", $_;
-    my $l = $table->Label(-text => $setting[0]);
-    $table->put($i, 0, $l);
-    $l = $table->Entry(-width => 25);
-    $l->insert('end', $setting[1]);
-    $table->put($i, 1, $l);
-    $l = $table->Label(-text => $setting[2]);
-    $table->put($i, 2, $l);
+    my ($option, $value, $description) = split /\t/;
+    my $label_opt = $table->Label(-text => $option, -font => $font);
+    $table->put($i, 0, $label_opt);
+    my $entry_val = $table->Entry(-width => 25);
+    $entry_val->insert('end', $value);
+    $table->put($i, 1, $entry_val);
+    my $translated_desc = get_translation($option);
+    if ($translated_desc eq $option) {
+      $translated_desc = $description;
+    }
+    my $label_desc = $table->Label(-text => $translated_desc, -anchor => 'w', -font => $font);
+    $table->put($i, 2, $label_desc);
     $i++;
   }
   close(SETTINGS);
@@ -1001,7 +1318,7 @@ sub LoadSettings {
 
 sub SaveSettings {
   my ($edit, $table, $file, $rownumber) = @_;
-  open(SETTINGS, ">$file") or die "File <$file> could not be opened for writing!";
+  open(SETTINGS, ">$file") or do { confirm_box(get_translation('err_file_not_writing', "<$file>")) };
   print SETTINGS "Variable Setting\tValue\tComment\n";
   for(my $i=0;$i<$rownumber;$i++) {
     my $setting = $table->get($i, 0)->cget('-text');
