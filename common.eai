@@ -11464,20 +11464,38 @@ endif
 endfunction
 
 //============================================================================
+#DEFINE $SKINSTART$ 3
+#DEFINE $SKINEND$ 9
+function GetHeroSkin takes integer hn returns nothing
+  local integer i = 0
+  local integer array skin
+  if p_rare[profile] < 1 or GetRandomInt(0, 100) < 20 then  // not fully use new skin , random int use original skin - 0 : change skin will change proper name (AI Scripts cannot use GetHeroProperName and BlzSetHeroProperName)
+    return
+  #INCLUDETABLE <HeroSkin.txt> #EFR
+  elseif old_id[hero[hn]] == '%2' then
+    #FOR $X$ FROM $SKINSTART$ TO $SKINEND$
+    set skin[#EVAL{$X$-2}] = '%$X$'
+    #ENDFOR
+    set i = GetRandomInt(1, %1)
+    #AFTERINCLUDE
+  #ENDINCLUDE
+  else
+    return // unknow hero
+  endif
+  if skin[i] != '0' then
+    call BlzSetUnitSkinAMAI(hero_unit[hn], skin[i])  // set skin API at 1.33+ and some unit at 1.32+ , old WE make map cannot use - so just in case check max player num
+  endif
+endfunction
+#UNDEF $SKINSTART$
+#UNDEF $SKINEND$
+
 function InitHeroInfo takes integer hn returns nothing
-  if hero_loc[hn] != null then
-    call RemoveLocation(hero_loc[hn])
-  endif
   set hero_loc[hn] = GetUnitLoc(hero_unit[hn])
-  if hero_enemy_loc[hn] != null then
-    call RemoveLocation(hero_enemy_loc[hn])
-  endif
-  if hero_ally_loc[hn] != null then
-    call RemoveLocation(hero_ally_loc[hn])
-  endif
+  set hero_dir[hn] = Location(0,0)
   set hero_enemy_loc[hn] = Location(0,0)
   set hero_ally_loc[hn] = Location(0,0)
   set hero_hp[hn] = 1
+  call GetHeroSkin(hn)
 endfunction
 
 function HeroReviver takes nothing returns nothing
