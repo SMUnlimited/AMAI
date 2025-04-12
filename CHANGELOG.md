@@ -5,8 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+- (DevTools) Strategy Manager now has tooltips for various buttons. 
+- (DevTools) Strategy Manager can now compile all scripts.
+- (DevTools) Strategy Manager now finally has some mouse wheel support (jzy-chitong56)
+
 ### Fixed
 - Fixed some consistency and edge case issues when checking if expansions are claimed. (jzy-chitong56)
+- (DevTools) Strategy Manager will strip whitespace when extracting or importing new strategies and profiles correctly. (jzy-chitong56)
 
 ## [3.4.2b] - 2025-04-05
 

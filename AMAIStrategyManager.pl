@@ -5,6 +5,7 @@ use Tk;
 use Tk::TextUndo;
 use Tk::Table;
 use Tk::NoteBook;
+use Tk::Balloon; # Add for tooltips
 
 BEGIN{
   if($^O eq 'MSWin32'){
@@ -20,7 +21,10 @@ if($] >= 5.008004) {
 }
 
 my $main = MainWindow->new(-title => 'AMAI Strategy Manager');
-my $lframe = $main->Frame->pack(-side => 'left');
+my $lframe = $main->Frame->pack(-side => 'left', -padx => 4);
+my ($screen_width, $screen_height) = ($main->screenwidth, $main->screenheight);
+$main->maxsize(310, 99999);
+$main->minsize(300, 480);
 my $race;
 my $ver;
 my $strat;
@@ -29,150 +33,171 @@ my $rframe = $main->Frame->pack(-side => 'right');
 my $notebook = $rframe->NoteBook()->pack(-side => 'left');
 my $stratframe = $notebook->add("strat", -label => 'Strategies');
 my $profileframe = $notebook->add("profile", -label => 'Profiles');
-my $stratlb = $stratframe->Listbox(-height => 0)->pack;
+my $stratlb = $stratframe->Scrolled('Listbox',
+    -scrollbars => 'se',
+    -height => 0,
+)->pack(-fill => 'both', -expand => 1);
+mouse_wheel($stratlb);
 tie $strat, "Tk::Listbox", $stratlb;
-my $profilelb = $profileframe->Listbox(-height => 0)->pack;
+my $profilelb = $profileframe->Scrolled('Listbox',
+    -scrollbars => 'se',
+    -height => 0,
+)->pack(-fill => 'both', -expand => 1);
+mouse_wheel($profilelb);
 tie $profile, "Tk::Listbox", $profilelb;
 my $bframe = $rframe->Frame->pack(-side => 'right');
-$bframe->Button(
-                -text => 'New',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     InsertStratSub("$ver\\$race\\New.ais", $ver, $race);
-                     UpdateStratList($stratlb, $ver, $race)
-                   }
-                   else {
-                     InsertProfileSub("$ver\\New.aip", $ver);
-                     UpdateProfileList($profilelb, $ver)
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Extract',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     ExtractStrat($main, $ver, $race, $strat)
-                   }
-                   else {
-                     ExtractProfile($main, $ver, $profile)
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Insert',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     InsertStrat($main, $ver, $race);
-                     UpdateStratList($stratlb, $ver, $race)
-                   }
-                   else {
-                     InsertProfile($main, $ver);
-                     UpdateProfileList($profilelb, $ver)
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Copy',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     CopyStrat($ver, $race, $strat);
-                     UpdateStratList($stratlb, $ver, $race)
-                   }
-                   else {
-                     CopyProfile($ver, $profile);
-                     UpdateProfileList($profilelb, $ver)
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Remove',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     RemoveStrat($main, $ver, $race, $strat);
-                     UpdateStratList($stratlb, $ver, $race)
-                   }
-                   else {
-                     RemoveProfile($main, $ver, $profile);
-                     UpdateProfileList($profilelb, $ver)
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Edit',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     EditStrat($main, $ver, $race, $strat)
-                   }
-                   else {
-                     EditProfile($main, $ver, $profile)
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Lock',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     SetRaceOption($ver, $race, 'debug_strategy', "STRAT_$strat->[0]")
-                   }
-                   else {
-                     SetVerOption($ver, 'debug_profile', GetArrayIndex($profile, $profilelb->get(0, 'end')))
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Unlock',
-                -command => sub {
-                   if ($notebook->raised eq 'strat') {
-                     SetRaceOption($ver, $race, 'debug_strategy', -1)
-                   }
-                   else {
-                     SetVerOption($ver, 'debug_profile', -1)
-                   }
-                },
-                -width => 6)->pack;
-$bframe->Button(
-                -text => 'Quit',
-                -command => [$main => 'destroy'],
-                -width => 6)->pack;
 
-open(VERFILE, "Versions.txt") or die "File <Versions.txt> not found!";
-my @vers = <VERFILE>;
-close(VERFILE);
-chomp foreach (@vers);
-my $raceopt;
-my $veropt;
-$veropt = $lframe->Optionmenu(
-                -command => sub {  $raceopt -> destroy if($raceopt); 
-                  $raceopt = $lframe->Optionmenu(
-                              -command => sub { UpdateStratList($stratlb, $ver, $race) },
-                              -variable => \$race,
-                              -width => 10)->pack(-after => $veropt);
-                  $raceopt -> addOptions(GetRaces($ver));
-                  UpdateStratList($stratlb, $ver, $race);
-                  UpdateProfileList($profilelb, $ver) },
-                -variable => \$ver,
-                -width => 10)->pack;
-$veropt->addOptions(@vers);
-$lframe->Button(
-                -text => 'Edit Racial Builds',
-                -command => sub { EditRacialBuilds($main, $ver, $race) },
-                -width => 15)->pack;
-$lframe->Button(
-                -text => 'Edit Global Settings',
-                -command => sub { EditSettings($main, "$ver\\GlobalSettings.txt") },
-                -width => 15)->pack;
-$lframe->Button(
-                -text => 'Edit Racial Settings',
-                -command => sub { EditSettings($main, "$ver\\$race\\Settings.txt") },
-                -width => 15)->pack;
-$lframe->Button(
-                -text => 'Compile',
-                -command => sub { system("Make$ver.bat", "1") },
-                -width => 15)->pack;
-$lframe->Button(
-                -text => 'Compile, Optimize',
-                -command => sub { system("MakeOpt$ver.bat", "1") },
-                -width => 15)->pack;
+sub mouse_wheel {
+  my ($widget) = @_;
+  $widget->focus;
+  $widget->bind('<MouseWheel>', sub {
+    my $delta = $Tk::event->D;
+    $widget->yview('scroll', -($delta <=> 0), 'units');
+  });
+}
+
+# Add a Balloon widget for tooltips
+my $balloon = $main->Balloon(
+    -background  => '#f8f9fa',  # Soft, light-gray background
+    -foreground  => '#343a40', # Dark gray text for high contrast
+    -font        => 'Helvetica 11 bold', # Clean and modern font style
+    -borderwidth => 1,          # Thin border for a sleek appearance
+    -relief      => 'flat',     # Flat style for a minimalistic look
+);
+
+# Create a reusable subroutine for button creation
+sub create_button {
+    my ($parent, $text, $command, $width, $tooltip) = @_;
+    my $button = $parent->Button(
+        -text    => $text,
+        -command => $command,
+        -width   => $width
+    )->pack;
+    $balloon->attach($button, -msg => $tooltip) if $tooltip;
+    return $button;
+}
+
+# Replace button creation with the reusable subroutine
+create_button($bframe, 'New', sub {
+    if ($notebook->raised eq 'strat') {
+        InsertStratSub("$ver\\$race\\New.ais", $ver, $race);
+        UpdateStratList($stratlb, $ver, $race);
+    } else {
+        InsertProfileSub("$ver\\New.aip", $ver);
+        UpdateProfileList($profilelb, $ver);
+    }
+}, 6, 'Create a new strategy or profile');
+
+create_button($bframe, 'Extract', sub {
+    if ($notebook->raised eq 'strat') {
+        ExtractStrat($main, $ver, $race, $strat);
+    } else {
+        ExtractProfile($main, $ver, $profile);
+    }
+}, 6, 'Extract the selected strategy or profile to a file');
+
+create_button($bframe, 'Insert', sub {
+    if ($notebook->raised eq 'strat') {
+        InsertStrat($main, $ver, $race);
+        UpdateStratList($stratlb, $ver, $race);
+    } else {
+        InsertProfile($main, $ver);
+        UpdateProfileList($profilelb, $ver);
+    }
+}, 6, 'Insert a strategy or profile from a file');
+
+create_button($bframe, 'Copy', sub {
+    if ($notebook->raised eq 'strat') {
+        CopyStrat($ver, $race, $strat);
+        UpdateStratList($stratlb, $ver, $race);
+    } else {
+        CopyProfile($ver, $profile);
+        UpdateProfileList($profilelb, $ver);
+    }
+}, 6, 'Copy the selected strategy or profile');
+
+create_button($bframe, 'Remove', sub {
+    if ($notebook->raised eq 'strat') {
+        RemoveStrat($main, $ver, $race, $strat);
+        UpdateStratList($stratlb, $ver, $race);
+    } else {
+        RemoveProfile($main, $ver, $profile);
+        UpdateProfileList($profilelb, $ver);
+    }
+}, 6, 'Remove the selected strategy or profile');
+
+create_button($bframe, 'Edit', sub {
+    if ($notebook->raised eq 'strat') {
+        EditStrat($main, $ver, $race, $strat);
+    } else {
+        EditProfile($main, $ver, $profile);
+    }
+}, 6, 'Edit the selected strategy or profile');
+
+create_button($bframe, 'Lock', sub {
+    if ($notebook->raised eq 'strat') {
+        SetRaceOption($ver, $race, 'debug_strategy', "STRAT_$strat->[0]");
+    } else {
+        SetVerOption($ver, 'debug_profile', GetArrayIndex($profile, $profilelb->get(0, 'end')));
+    }
+}, 6, 'Lock to make the AI always use the selected strategy or profile');
+
+create_button($bframe, 'Unlock', sub {
+    if ($notebook->raised eq 'strat') {
+        SetRaceOption($ver, $race, 'debug_strategy', -1);
+    } else {
+        SetVerOption($ver, 'debug_profile', -1);
+    }
+}, 6, 'Unlock a locked strategy or profile');
+
+create_button($bframe, 'Quit', sub {
+    my $response = $main->messageBox(
+        -message => 'Are you sure you want to quit?',
+        -title   => 'Confirm Quit',
+        -type    => 'YesNo',
+        -default => 'no'
+    );
+    $main->destroy if $response eq 'Yes';
+}, 6, 'Exit the application');
+
+
+    open(VERFILE, "Versions.txt") or die "File <Versions.txt> not found!";
+    my @vers = <VERFILE>;
+    close(VERFILE);
+    chomp foreach (@vers);
+    my $raceopt;
+    my $veropt;
+    $veropt = $lframe->Optionmenu(
+                    -command => sub {  $raceopt -> destroy if($raceopt); 
+                      $raceopt = $lframe->Optionmenu(
+                                  -command => sub { UpdateStratList($stratlb, $ver, $race) },
+                                  -variable => \$race,
+                                  -width => 10)->pack(-after => $veropt);
+                      $raceopt -> addOptions(GetRaces($ver));
+                      UpdateStratList($stratlb, $ver, $race);
+                      UpdateProfileList($profilelb, $ver) },
+                    -variable => \$ver,
+                    -width => 10)->pack;
+    $veropt->addOptions(@vers);
+
+create_button($lframe, 'Edit Racial Builds', sub { EditRacialBuilds($main, $ver, $race) }, 15, 
+  'Edit races build orders run regardless of strategy');
+
+create_button($lframe, 'Edit Global Settings', sub { EditSettings($main, "$ver\\GlobalSettings.txt") }, 15, 
+  'Edit versions global settings allowing to tweak a variety of options in how the AI plays');
+
+create_button($lframe, 'Edit Racial Settings', sub { EditSettings($main, "$ver\\$race\\Settings.txt") }, 15, 
+  'Edit races settings allowing to tweak a variety of options in how the AI plays this race');
+
+create_button($lframe, 'Compile Version', sub { system("Make$ver.bat", "1") }, 15, 
+  'Compile this versions scripts');
+
+create_button($lframe, 'Optimize Version', sub { system("MakeOpt$ver.bat", "1")}, 15, 
+  'Compile this versions optimized scripts that improve script performance in game');
+
+create_button($lframe, 'Compile All', sub { system("MakeAll.bat", "1")  }, 15, 
+  'Compile all available versions and scripts');          
+
 MainLoop;
 
 sub GetRaces {
@@ -435,6 +460,8 @@ sub InsertStratSub {
   }
 
   $line =~ s/^$oldstratname/$stratname/;
+  $line = $line =~ /\S/ ? $line : ''; # Remove empty lines
+  $line =~ s/^\s+|\s+$//g; # Remove leading and trailing whitespace
   print STRATFILE $line;
   print AIFILE "\n";
   while (<SOURCE>) {
@@ -475,6 +502,8 @@ sub InsertProfileSub {
   }
 
   $line =~ s/^$oldprofilename/$profilename/;
+  $line = $line =~ /\S/ ? $line : '';
+  $line =~ s/^\s+|\s+$//g; # Remove leading and trailing whitespace
   print PROFILEFILE $line;
   close(PROFILEFILE);
   close(SOURCE);
@@ -513,6 +542,10 @@ sub EditStrat {
   }
   my $optarrayref = FillTable($strattable, $version, $race, @$strat[0]);
   FillTexts($inittext, \@buildtexttier, $version, $race, @$strat[0]);
+  mouse_wheel($strattable);
+    $strattable->bind("<FocusIn>", sub {
+    $strattable->focus;
+  });
   $bframe->Button(
                 -text => 'OK',
                 -command => sub {SaveStrat($edit, $inittext, \@buildtexttier, $strattable, $version, $race, @$strat[0], $optarrayref)},
@@ -530,6 +563,7 @@ sub EditProfile {
   my $edit = $main->Toplevel(-title => 'AMAI Profile Editor');
   my $bframe = $edit->Frame->pack(-side => 'right');
   my $profiletable = $edit->Table(-rows => 37)->pack(-side => 'left');
+  mouse_wheel($profiletable);
   my $optarrayref = FillProfileTable($profiletable, $version, @$profile[0]);
   $bframe->Button(
                 -text => 'OK',
@@ -967,6 +1001,7 @@ sub EditSettings {
   my $rframe = $edit->Frame->pack(-side => 'right');
   my $table = $lframe->Table(-rows => 37)->pack(-side => 'left');
   my $rownumber = LoadSettings($table, $file);
+  mouse_wheel($table);
   $rframe->Button(
                 -text => 'OK',
                 -command => sub {SaveSettings($edit, $table, $file, $rownumber)},
