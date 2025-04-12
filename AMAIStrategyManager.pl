@@ -189,11 +189,8 @@ create_button($lframe, 'Edit Global Settings', sub { EditSettings($main, "$ver\\
 create_button($lframe, 'Edit Racial Settings', sub { EditSettings($main, "$ver\\$race\\Settings.txt") }, 15, 
   'Edit races settings allowing to tweak a variety of options in how the AI plays this race');
 
-create_button($lframe, 'Compile Version', sub { system("Make$ver.bat", "1") }, 15, 
-  'Compile this versions scripts');
-
-create_button($lframe, 'Optimize Version', sub { system("MakeOpt$ver.bat", "1")}, 15, 
-  'Compile this versions optimized scripts that improve script performance in game');
+create_button($lframe, 'Compile Version', sub { system("Make$ver.bat", "1"), system("MakeOpt$ver.bat", "1") }, 15, 
+  'Compile this versions scripts both normal and optimised');
 
 create_button($lframe, 'Compile All', sub { system("MakeAll.bat", "1")  }, 15, 
   'Compile all available versions and scripts');          
