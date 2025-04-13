@@ -9280,6 +9280,57 @@ function GetExistingHero takes nothing returns integer
 endfunction
 
 //============================================================================
+#DEFINE $SKINSTART$ 3
+#DEFINE $SKINEND$ 9
+function GetHeroSkin takes integer hn returns nothing
+  local integer i = 0
+  local integer array skin
+  if p_rare[profile] < 1 or GetRandomInt(0, 100) < 20 then  // not fully use new skin , random int use original skin - 0 : change skin will change proper name (AI Scripts cannot use GetHeroProperName and BlzSetHeroProperName)
+    return
+  #INCLUDETABLE <HeroSkin.txt> #EFR
+  elseif old_id[hero[hn]] == '%2' then
+    #FOR $X$ FROM $SKINSTART$ TO $SKINEND$
+    set skin[#EVAL{$X$-2}] = '%$X$'
+    #ENDFOR
+    set i = GetRandomInt(1, %1)
+    #AFTERINCLUDE
+  #ENDINCLUDE
+  else
+    return // unknow hero
+  endif
+  if skin[i] != '0' then
+    call BlzSetUnitSkinAMAI(hero_unit[hn], skin[i])  // set skin API at 1.33+ and some unit at 1.32+ , old WE make map cannot use - so just in case check max player num
+  endif
+endfunction
+#UNDEF $SKINSTART$
+#UNDEF $SKINEND$
+
+function InitHeroInfo takes integer hn returns nothing
+  if hero_loc[hn] != null then
+    call RemoveLocation(hero_loc[hn])
+  endif
+  set hero_loc[hn] = GetUnitLoc(hero_unit[hn])
+  if hero_enemy_loc[hn] != null then
+    call RemoveLocation(hero_enemy_loc[hn])
+  endif
+  if hero_ally_loc[hn] != null then
+    call RemoveLocation(hero_ally_loc[hn])
+  endif
+  set hero_enemy_loc[hn] = Location(0,0)
+  set hero_ally_loc[hn] = Location(0,0)
+  set hero_hp[hn] = 1
+  call GetHeroSkin(hn)
+endfunction
+
+function SetHeroUnit takes integer hn returns nothing
+  set hero_unit[hn] = GetOneOfId(hero_unit[hn], ai_player, old_id[hero[hn]])
+  if hero_unit[hn] != null then
+    set hero_built[hn] = true
+    call InitHeroInfo(hn)
+    call TQAddJob(1, MICRO_HERO, hn)
+  endif
+endfunction
+
 function ChooseFirstHero takes nothing returns integer
   local integer i = 0
   if hero_built[1] and recalculate_heros then
@@ -9293,8 +9344,8 @@ function ChooseFirstHero takes nothing returns integer
     endloop
   endif
   if IsMapFlagSet(MAP_RANDOM_HERO) and hero[1] == null then
-//    call DisplayToAll("Map flag set")
     set hero[1] = GetExistingHero()
+    call SetHeroUnit(1)
   else
     call make_hero_rp_positive()
     set chosen = ChooseHero()
@@ -11444,52 +11495,13 @@ endif
 endfunction
 
 //============================================================================
-#DEFINE $SKINSTART$ 3
-#DEFINE $SKINEND$ 9
-function GetHeroSkin takes integer hn returns nothing
-  local integer i = 0
-  local integer array skin
-  if p_rare[profile] < 1 or GetRandomInt(0, 100) < 20 then  // not fully use new skin , random int use original skin - 0 : change skin will change proper name (AI Scripts cannot use GetHeroProperName and BlzSetHeroProperName)
-    return
-  #INCLUDETABLE <HeroSkin.txt> #EFR
-  elseif old_id[hero[hn]] == '%2' then
-    #FOR $X$ FROM $SKINSTART$ TO $SKINEND$
-    set skin[#EVAL{$X$-2}] = '%$X$'
-    #ENDFOR
-    set i = GetRandomInt(1, %1)
-    #AFTERINCLUDE
-  #ENDINCLUDE
-  else
-    return // unknow hero
-  endif
-  if skin[i] != '0' then
-    call BlzSetUnitSkinAMAI(hero_unit[hn], skin[i])  // set skin API at 1.33+ and some unit at 1.32+ , old WE make map cannot use - so just in case check max player num
-  endif
-endfunction
-#UNDEF $SKINSTART$
-#UNDEF $SKINEND$
-
-function InitHeroInfo takes integer hn returns nothing
-  set hero_loc[hn] = GetUnitLoc(hero_unit[hn])
-  set hero_dir[hn] = Location(0,0)
-  set hero_enemy_loc[hn] = Location(0,0)
-  set hero_ally_loc[hn] = Location(0,0)
-  set hero_hp[hn] = 1
-  call GetHeroSkin(hn)
-endfunction
-
 function HeroReviver takes nothing returns nothing
   local integer i = 1
   loop
     exitwhen i > 3
     if GetUnitCountDone(old_id[hero[i]]) > 0 then
       if not hero_built[i] then
-        set hero_unit[i] = GetOneOfId(hero_unit[i], ai_player, old_id[hero[i]])
-        if hero_unit[i] != null then
-          set hero_built[i] = true
-          call InitHeroInfo(i)
-          call TQAddJob(1, MICRO_HERO, i)
-        endif
+        call SetHeroUnit(i)
       endif
     elseif hero_built[i] then
       call BuildUnit(1, hero[i], hero_revive_prio[i])
@@ -13432,8 +13444,13 @@ function SkillArraysAM takes nothing returns integer
   if level > max_hero_level then
     set max_hero_level = level
   endif
-  if skillfix == true and hero_unit[hn] != null and UnitAlive(hero_unit[hn]) then    //Assisted Hero Learning Skills , for war3 1.31 bug
-    call SelectHeroSkill(hero_unit[hn], skills[(hn - 1) * HERO_LEVEL_NUMBER + level])
+  if skillfix == true then
+    if hero_unit[hn] == null then
+      set hero_unit[hn] = GetOneOfId(hero_unit[hn], ai_player, hero_id)
+    endif
+    if hero_unit[hn] != null and UnitAlive(hero_unit[hn]) then    //Assisted Hero Learning Skills , for war3 1.31 bug
+      call SelectHeroSkill(hero_unit[hn], skills[(hn - 1) * HERO_LEVEL_NUMBER + level])
+    endif
   endif
   return skills[(hn - 1) * HERO_LEVEL_NUMBER + level]
 endfunction
