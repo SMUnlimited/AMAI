@@ -5,14 +5,15 @@ use Tk;
 use Tk::TextUndo;
 use Tk::Table;
 use Tk::NoteBook;
+use Tk::Balloon; # Add for tooltips
 use Tk::Font;
 use open ':std', ':encoding(UTF-8)';
 
 
 BEGIN{
   if($^O eq 'MSWin32'){
-    require Win32::Console;
-    #Win32::Console::Free();
+      require Win32::Console;
+      #Win32::Console::Free();
   }
 }
 
@@ -93,18 +94,18 @@ sub get_translation {
 }
 
 my $main = MainWindow->new(-title => get_translation('title_strategy_manager'));
+my $lframe = $main->Frame->pack(-side => 'left', -padx => 4);
 my ($screen_width, $screen_height) = ($main->screenwidth, $main->screenheight);
 $main->maxsize(520, 1280);
-my $lframe = $main->Frame->pack(-side => 'left', -padx => 4);
+$main->minsize(520, 880);
 my $race;
 my $ver;
 my $strat;
 my $profile;
 my $rframe = $main->Frame->pack(-side => 'right');
-my $font = $main->Font(-family => "Segoe UI", -size => 10, -weight => 'normal');
-
+my $font = $main->Font(-family => "Segoe UI", -size => 11, -weight => 'normal');
 my $notebook = $rframe->NoteBook()->pack(-side => 'left');
-$notebook->configure(-font => ['Segoe UI', 12]);
+$notebook->configure(-font => ['Segoe UI', 11]);
 my $stratframe = $notebook->add("strat", -label => get_translation('label_strategies'));
 my $profileframe = $notebook->add("profile", -label => get_translation('label_profiles'));
 my $stratlb = $stratframe->Scrolled('Listbox',
@@ -119,6 +120,7 @@ my $profilelb = $profileframe->Scrolled('Listbox',
 )->pack(-fill => 'both', -expand => 1);
 mouse_wheel($profilelb);
 tie $profile, "Tk::Listbox", $profilelb;
+my $bframe = $rframe->Frame->pack(-side => 'right');
 sub confirm_box {
   my ($message) = @_;
   $main->messageBox(
@@ -139,125 +141,93 @@ sub mouse_wheel {
   });
 }
 
-my $bframe = $rframe->Frame->pack(-side => 'right');
-$bframe->Label(
-                -text => get_translation('placeholder_operate'),
-                -font => $font,
-                -width => 18,
-                -height => 1,
-)->pack;
-$bframe->Button(
-                -text => get_translation('button_new'),
-                -font => $font,
-                -command => sub {
-                    if ($notebook->raised eq 'strat') {
-                      InsertStratSub("$ver\\$race\\New.ais", $ver, $race);
-                      UpdateStratList($stratlb, $ver, $race)
-                    }
-                    else {
-                      InsertProfileSub("$ver\\New.aip", $ver);
-                      UpdateProfileList($profilelb, $ver)
-                    }
-                },
-                -width => 18,
-)->pack;
-$bframe->Button(
-                -text => get_translation('button_copy'),
-                -font => $font,
-                -command => sub {
-                    if ($notebook->raised eq 'strat') {
-                      CopyStrat($ver, $race, $strat);
-                      UpdateStratList($stratlb, $ver, $race)
-                    }
-                    else {
-                      CopyProfile($ver, $profile);
-                      UpdateProfileList($profilelb, $ver)
-                    }
-                },
-                -width => 18,
-)->pack;
-$bframe->Button(
-                -text => get_translation('button_edit'),
-                -font => $font,
-                -command => sub {
-                    if ($notebook->raised eq 'strat') {
-                      EditStrat($main, $ver, $race, $strat)
-                    }
-                    else {
-                      EditProfile($main, $ver, $profile)
-                    }
-                },
-                -width => 18,
-)->pack;
-$bframe->Button(
-                -text => get_translation('button_lock'),
-                -font => $font,
-                -command => sub {
-                    if ($notebook->raised eq 'strat') {
-                      SetRaceOption($ver, $race, 'debug_strategy', "STRAT_$strat->[0]")
-                    }
-                    else {
-                      SetVerOption($ver, 'debug_profile', GetArrayIndex($profile, $profilelb->get(0, 'end')))
-                    }
-                },
-                -width => 18,
-)->pack;
-$bframe->Button(
-                -text => get_translation('button_unlock'),
-                -font => $font,
-                -command => sub {
-                    if ($notebook->raised eq 'strat') {
-                      SetRaceOption($ver, $race, 'debug_strategy', -1)
-                    }
-                    else {
-                      SetVerOption($ver, 'debug_profile', -1)
-                    }
-                },
-                -width => 18,
-)->pack;
-$bframe->Button(
-                -text => get_translation('button_extract'),
-                -font => $font,
-                -command => sub {
-                    if ($notebook->raised eq 'strat') {
-                      ExtractStrat($main, $ver, $race, $strat)
-                    }
-                    else {
-                      ExtractProfile($main, $ver, $profile)
-                    }
-                },
-                -width => 18,
-)->pack;
-$bframe->Button(
-                -text => get_translation('button_insert'),
-                -font => $font,
-                -command => sub {
-                    if ($notebook->raised eq 'strat') {
-                      InsertStrat($main, $ver, $race);
-                      UpdateStratList($stratlb, $ver, $race)
-                    }
-                    else {
-                      InsertProfile($main, $ver);
-                      UpdateProfileList($profilelb, $ver)
-                    }
-                },
-                -width => 18,
-)->pack;
-$bframe->Button(
-                -text => get_translation('button_remove'),
-                -font => $font,
-                -command => sub {
-                    if ($notebook->raised eq 'strat') {
-                      RemoveStrat($main, $ver, $race, $strat);
-                      UpdateStratList($stratlb, $ver, $race)
-                    }
-                    else {
-                      RemoveProfile($main, $ver, $profile);
-                      UpdateProfileList($profilelb, $ver)
-                    }
-                },
-                -width => 18,
-)->pack;
+# Add a Balloon widget for tooltips
+my $balloon = $main->Balloon(
+    -background  => '#f8f9fa',  # Soft, light-gray background
+    -foreground  => '#343a40', # Dark gray text for high contrast
+    -font        => $font, # Clean and modern font style
+    -borderwidth => 1,          # Thin border for a sleek appearance
+    -relief      => 'flat',     # Flat style for a minimalistic look
+);
+
+# Create a reusable subroutine for button creation
+sub create_button {
+    my ($parent, $text, $command, $width, $tooltip) = @_;
+    my $button = $parent->Button(
+        -text    => $text,
+        -font => $font,
+        -command => $command,
+        -width   => $width
+    )->pack;
+    $balloon->attach($button, -msg => $tooltip) if $tooltip;
+    return $button;
+}
+
+# Replace button creation with the reusable subroutine
+create_button($bframe, get_translation('button_new'), sub {
+    if ($notebook->raised eq 'strat') {
+        InsertStratSub("$ver\\$race\\New.ais", $ver, $race);
+        UpdateStratList($stratlb, $ver, $race);
+    } else {
+        InsertProfileSub("$ver\\New.aip", $ver);
+        UpdateProfileList($profilelb, $ver);
+    }
+}, 18, get_translation('button_tip_new'));
+create_button($bframe, get_translation('button_copy'), sub {
+    if ($notebook->raised eq 'strat') {
+        CopyStrat($ver, $race, $strat);
+        UpdateStratList($stratlb, $ver, $race);
+    } else {
+        CopyProfile($ver, $profile);
+        UpdateProfileList($profilelb, $ver);
+    }
+}, 18, get_translation('button_tip_copy'));
+create_button($bframe, get_translation('button_edit'), sub {
+    if ($notebook->raised eq 'strat') {
+        EditStrat($main, $ver, $race, $strat);
+    } else {
+        EditProfile($main, $ver, $profile);
+    }
+}, 18, get_translation('button_tip_edit'));
+create_button($bframe, get_translation('button_lock'), sub {
+    if ($notebook->raised eq 'strat') {
+        SetRaceOption($ver, $race, 'debug_strategy', "STRAT_$strat->[0]");
+    } else {
+        SetVerOption($ver, 'debug_profile', GetArrayIndex($profile, $profilelb->get(0, 'end')));
+    }
+}, 18, get_translation('button_tip_lock'));
+create_button($bframe, get_translation('button_unlock'), sub {
+    if ($notebook->raised eq 'strat') {
+        SetRaceOption($ver, $race, 'debug_strategy', -1);
+    } else {
+        SetVerOption($ver, 'debug_profile', -1);
+    }
+}, 18, get_translation('button_tip_unlock'));
+create_button($bframe, get_translation('button_extract'), sub {
+    if ($notebook->raised eq 'strat') {
+        ExtractStrat($main, $ver, $race, $strat);
+    } else {
+        ExtractProfile($main, $ver, $profile);
+    }
+}, 18, get_translation('button_tip_extract'));
+create_button($bframe, get_translation('button_insert'), sub {
+    if ($notebook->raised eq 'strat') {
+        InsertStrat($main, $ver, $race);
+        UpdateStratList($stratlb, $ver, $race);
+    } else {
+        InsertProfile($main, $ver);
+        UpdateProfileList($profilelb, $ver);
+    }
+}, 18, get_translation('button_tip_insert'));
+create_button($bframe, get_translation('button_remove'), sub {
+    if ($notebook->raised eq 'strat') {
+        RemoveStrat($main, $ver, $race, $strat);
+        UpdateStratList($stratlb, $ver, $race);
+    } else {
+        RemoveProfile($main, $ver, $profile);
+        UpdateProfileList($profilelb, $ver);
+    }
+}, 18, get_translation('button_tip_remove'));
 
 open(VERFILE, "Versions.txt") or do { confirm_box(get_translation('err_file_not_writing', "<Versions.txt>")) };
 my @vers = <VERFILE>;
@@ -296,11 +266,8 @@ $lframe->Label(
                 -width => 24,
                 -height => 1,
 )->pack;
-$lframe->Button(
-                -text => get_translation('button_edit_global'),
-                -font => $font,
-                -command => sub { EditSettings($main, "$ver\\GlobalSettings.txt") },
-                -width => 24)->pack;
+create_button($lframe, get_translation('button_edit_global'), sub { EditSettings($main, "$ver\\GlobalSettings.txt") }, 24, 
+get_translation('button_tip_edit_global'));
 $lframe->Label(
                 -height => 1,
 )->pack;  # Placeholder
@@ -310,17 +277,10 @@ $lframe->Label(
                 -width => 24,
                 -height => 1,
 )->pack;
-$lframe->Button(
-                -text => get_translation('button_edit_racial_builds'),
-                -font => $font,
-                -command => sub { EditRacialBuilds($main, $ver, $race) },
-                -width => 24
-)->pack;
-$lframe->Button(
-                -text => get_translation('button_edit_racial_settings'),
-                -font => $font,
-                -command => sub { EditSettings($main, "$ver\\$race\\Settings.txt") },
-                -width => 24)->pack;
+create_button($lframe, get_translation('button_edit_racial_builds'), sub { EditRacialBuilds($main, $ver, $race) }, 24, 
+  get_translation('button_tip_edit_racial_builds'));
+create_button($lframe, get_translation('button_edit_racial_settings'), sub { EditSettings($main, "$ver\\$race\\Settings.txt") }, 24, 
+get_translation('button_tip_edit_racial_settings'));
 $lframe->Label(
                 -height => 1,
 )->pack;  # Placeholder
@@ -330,38 +290,12 @@ $lframe->Label(
                 -width => 24,
                 -height => 1,
 )->pack;
-$lframe->Button(
-                -text => get_translation('button_compile'),
-                -font => $font,
-                -command => sub { system "Make$ver.bat" },
-                -width => 24,
-)->pack(-anchor => 'nw');
-my $row1 = $lframe->Frame->pack(-fill => 'x', -anchor => 'nw');
-$row1->Button(
-                -text => get_translation('button_compile_opt'),
-                -font => $font,
-                -command => sub { system "MakeOpt$ver.bat" },
-                -width => 18,
-)->pack(-side => 'left', -padx => 0, -pady => 0);
-$row1->Button(
-                -text => '?',
-                -font => $font,
-                -command => sub { do { confirm_box(get_translation('confirm_compile_opt')) } },
-                -width => 4,
-)->pack(-side => 'left', -padx => 2, -pady => 0);
-my $row2 = $lframe->Frame->pack(-fill => 'x', -anchor => 'nw');
-$row2->Button(
-                -text => get_translation('button_compile_vsai'),
-                -font => $font,
-                -command => sub { system "MakeVAI$ver.bat" },
-                -width => 18,
-)->pack(-side => 'left', -padx => 0, -pady => 0);
-$row2->Button(
-                -text => '?',
-                -font => $font,
-                -command => sub { do { confirm_box(get_translation('confirm_compile_vsai')) } },
-                -width => 4,
-)->pack(-side => 'left', -padx => 2, -pady => 0);
+create_button($lframe, get_translation('button_compile_ver'), sub { system("Make$ver.bat", "1"), system("MakeOpt$ver.bat", "1") }, 24, 
+get_translation('button_tip_compile_ver'));
+create_button($lframe, get_translation('button_compile_opt'), sub { system("MakeOpt$ver.bat", "1")  }, 24, 
+get_translation('button_tip_compile_opt'));
+create_button($lframe, get_translation('button_compile_all'), sub { system("MakeAll.bat", "1")  }, 24, 
+get_translation('button_tip_compile_all'));
 $lframe->Label(
                 -height => 1,
 )->pack;  # Placeholder
@@ -387,16 +321,13 @@ $lframe->Label(
                 -width => 24,
                 -height => 1,
  )->pack;
- $lframe->Button(
-                -text => get_translation('button_about'),
-                -font => $font,
-                -command => sub {
+create_button($lframe, get_translation('button_about'), sub {
+                  -command => sub {
                   my $url = "https://github.com/SMUnlimited/AMAI";
                   my $open_cmd = qq{start "" "$url"};
                   system($open_cmd);
                 },
-                -width => 24,
-)->pack;
+}, 24, '');
 $lframe->Label(
                 -height => 4,
 )->pack;  # Placeholder
@@ -404,15 +335,16 @@ $lframe->Label(
                 -text => ("v 1.1"),
                 -font => $font,
  )->pack;
-# $lframe->Label(
-#                 -height => 4,
-# )->pack;  # Placeholder
-# $lframe->Button(
-#                 -text => get_translation('button_quit'),  # no need
-#                 -font => $font,
-#                 -command => [$main => 'destroy'],
-#                 -width => 24,
-# )->pack;
+# create_button($bframe, get_translation('button_quit'), sub {
+  # my $response = $main->messageBox(
+    # -message => get_translation('message_quit'),
+    # -title   => get_translation('title_really'),
+    # -type    => 'YesNo',
+    # -default => 'no'
+  # );
+# $main->destroy if $response eq 'Yes';
+# }, 24, get_translation('button_tip_quit'));
+
 MainLoop;
 
 sub GetLanguages {
@@ -687,11 +619,9 @@ sub InsertStratSub {
     $x++;
     $stratname = "$oldstratname$x";
   }
-  seek(STRATFILE, -1, 2);
-  my $last_char;
-  read(STRATFILE, $last_char, 1);
-  print STRATFILE "\n" if $last_char ne "\n";
   $line =~ s/^$oldstratname/$stratname/;
+  $line = $line =~ /\S/ ? $line : ''; # Remove empty lines
+  $line =~ s/^\s+|\s+$//g; # Remove leading and trailing whitespace
   print STRATFILE $line;
   print AIFILE "\n";
   while (<SOURCE>) {
@@ -701,11 +631,6 @@ sub InsertStratSub {
   close(AIFILE);
   close(STRATFILE);
   close(SOURCE);
-  open(STRATFILE, "$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
-  my @lnewline = grep { /\S/ } <STRATFILE>;
-  open(STRATFILE, ">$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
-  print STRATFILE @lnewline;  # Remove blank lines
-  close(STRATFILE);
 }
 
 sub InsertStrat {
@@ -724,30 +649,23 @@ sub InsertProfileSub {
   my $profilelist = join ',', GetProfileList($version);
   open(SOURCE, $filename) or do { confirm_box(get_translation('err_file_not_writing', "<$filename>")) };
   open(PROFILEFILE, ">>$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
-  seek(PROFILEFILE, -1, 2);
-  my $last_char;
-  read(PROFILEFILE, $last_char, 1);
-  print PROFILEFILE "\n" if $last_char ne "\n";
   my $line = <SOURCE>;
   if ($line !~ /#AMAI 2.0 Profile/) {die get_translation('err_not_file_profiles');}
   $line = <SOURCE>;
   $line =~ /^([^\t]*)\t/;
   my $oldprofilename = $1;
-  my $profilename = "$oldprofilename";
+  my $profilename = $oldprofilename;
   my $x = 0;
   while ($profilelist =~ /\b$profilename\b/) {
     $x++;
     $profilename = "$oldprofilename$x";
   }
   $line =~ s/^$oldprofilename/$profilename/;
+  $line = $line =~ /\S/ ? $line : '';
+  $line =~ s/^\s+|\s+$//g; # Remove leading and trailing whitespace
   print PROFILEFILE $line;
   close(PROFILEFILE);
   close(SOURCE);
-  open(PROFILEFILE, "$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
-  my @lnewline = grep { /\S/ } <PROFILEFILE>;
-  open(PROFILEFILE, ">$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
-  print PROFILEFILE @lnewline;  # Remove blank lines
-  close(PROFILEFILE);
 }
 
 sub InsertProfile {
@@ -834,8 +752,8 @@ sub EditProfile {
   my $edit = $main->Toplevel(-title => get_translation('title_profile_editor'));
   my $bframe = $edit->Frame->pack(-side => 'right');
   my $profiletable = $edit->Table(-rows => 40)->pack(-side => 'left');
-  my $optarrayref = FillProfileTable($profiletable, $version, @$profile[0]);
   mouse_wheel($profiletable);
+  my $optarrayref = FillProfileTable($profiletable, $version, @$profile[0]);
   $bframe->Button(
                 (-text => get_translation('button_ok'), -font => $font),
                 -command => sub {SaveProfile($edit, $profiletable, $version, @$profile[0], $optarrayref)},
