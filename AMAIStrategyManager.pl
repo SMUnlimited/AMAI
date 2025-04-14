@@ -103,9 +103,9 @@ my $ver;
 my $strat;
 my $profile;
 my $rframe = $main->Frame->pack(-side => 'right');
-my $font = $main->Font(-family => "Segoe UI", -size => 11, -weight => 'normal');
+my $font = $main->Font(-family => "Segoe", -size => 11, -weight => 'normal');
 my $notebook = $rframe->NoteBook()->pack(-side => 'left');
-$notebook->configure(-font => ['Segoe UI', 11]);
+$notebook->configure(-font => ['Segoe', 11]);
 my $stratframe = $notebook->add("strat", -label => get_translation('label_strategies'));
 my $profileframe = $notebook->add("profile", -label => get_translation('label_profiles'));
 my $stratlb = $stratframe->Scrolled('Listbox',
@@ -145,7 +145,7 @@ sub mouse_wheel {
 my $balloon = $main->Balloon(
     -background  => '#f8f9fa',  # Soft, light-gray background
     -foreground  => '#343a40', # Dark gray text for high contrast
-    -font        => $font, # Clean and modern font style
+    -font        => 'Segoe 11 bold', # Clean and modern font style
     -borderwidth => 1,          # Thin border for a sleek appearance
     -relief      => 'flat',     # Flat style for a minimalistic look
 );
