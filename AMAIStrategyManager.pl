@@ -155,7 +155,7 @@ sub create_button {
     my ($parent, $text, $command, $width, $tooltip) = @_;
     my $button = $parent->Button(
         -text    => $text,
-        -font => $font,
+        -font    => $font,
         -command => $command,
         -width   => $width
     )->pack;
