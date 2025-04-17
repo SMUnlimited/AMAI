@@ -10032,6 +10032,7 @@ endfunction
 //============================================================================
 function InitHarass takes nothing returns nothing
   local integer i = 1
+  local group g = null
   loop
     exitwhen i > max_harass_groups
     set harass_size[i] = 0
@@ -10042,11 +10043,20 @@ function InitHarass takes nothing returns nothing
   if harass_groups == null then
     set harass_groups = InitHashtable()
   else
+    set i = 1
+    loop
+      exitwhen i >= max_harass_groups
+      set g = CreateGroup()
+      set g = ReturnLivingUnitsOfHashtable(additional_info, i, HARASS_UNITGROUP, g)
+      call GroupRecycleGuardPositionInstant(g)
+      set i = i + 1
+    endloop
     call FlushParentHashtable(harass_groups)
     set harass_groups = InitHashtable()
   endif
   //call Trace("InitHarassEnd")
   set distraction_group = 0
+  set g = null
 endfunction
 
 function AddHarass takes integer groupnum, integer qty, integer unitid returns nothing
@@ -10086,8 +10096,8 @@ endfunction
 function StartHarass takes integer groupnum, integer harass_target, boolean avoid_towers, real strength_limit, real flee_percent, integer flee_number, real lx, real ly returns nothing
   local integer i = 0
   local integer t = 0
-  local group harasser = CreateGroup()
-  local group g = CreateGroup()
+  local group harasser = null
+  local group g = null
   local integer key = groupnum
   local real strength = 0
   local integer qty = 0
@@ -10097,7 +10107,8 @@ function StartHarass takes integer groupnum, integer harass_target, boolean avoi
     // This harass is still running
     return
   endif
-  
+  set harasser = CreateGroup()
+  set g = CreateGroup()
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
@@ -10154,8 +10165,8 @@ function GetHarassGroupStrength takes integer groupnum returns real
   local integer t = 0
   loop
     exitwhen i >= harass_size[groupnum] or t >= 12
-    set id = LoadInteger(harass_groups, groupnum, i)
-    set qty = LoadInteger(harass_groups, groupnum, i + 1)
+    set id = LoadInteger(harass_groups, groupnum, i + 1)
+    set qty = LoadInteger(harass_groups, groupnum, i)
     set t = t + qty 
     if t + qty > 12 then
       set qty = 12 - t
