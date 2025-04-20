@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) Strategy Manager now has tooltips for various buttons.
 - (DevTools) Strategy Manager can now compile all scripts.
 - (DevTools) Strategy Manager now finally has some mouse wheel support (jzy-chitong56)
+- (DevTools) Added minimum version check for perl 5.30.
 
 ### Changed
 - Some fixes and optimizations to the chat logic. (jzy-chitong56)

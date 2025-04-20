@@ -2,11 +2,11 @@
 SET VER=%~1
 SET SILENT=%~2
 SET RESULTMAKEVER=0
-where perl
+call perlcheck.bat
 if "%errorlevel%"=="1" SET RESULTMAKEVER=1
 if "%RESULTMAKEVER%"=="1" (
   ECHO Compilation AMAI Optimization %VER% error
-  ECHO Please install Perl as a requirement to compile AMAI. Download : https://strawberryperl.com/
+  ECHO Perl version check failed. Exiting. Download : https://strawberryperl.com/
   exit /b %RESULTMAKEVER%
 )
 mkdir Scripts\
