@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Changed
 - DefendTown build commands have extra protection to not build total structures more than number of valid expansions.
 - If required units are already built, AMAI will no longer attempt to keep rebuilding the prerequsite buildings unless it must build more units.
+- Reduced army threat limit required by allies from 20% to 5%.
+- Town locations for various logic will use the town hall location if detected, otherwise will use the generated location based on average.
 - Some fixes and optimizations to the chat logic. (jzy-chitong56)
 
 ### Fixed
