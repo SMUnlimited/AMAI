@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## [Unreleased]
 
 ### Added
-- Optimal version for REFORGED in line with war3 2.0.2 patch.
+- Support for war3 2.0.2 increasing optimal version for REFORGED scripts.
 - AMAI will now attempt to destroy trees, or kill blocking structures or teleport free when blocked in its own base. (jzy-chitong56)
 - (Commander) When Ghost++ is used to host AMAI maps, if the mapcfg file has `map_defaulthcl = ny`, AMAI will send New Year greetings. Alternatively, use `!hcl ny` before `!start`. (Slayer95)
 - (DevTools) Strength prediction rules supports negative end time to have running all game.
