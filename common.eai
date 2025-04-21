@@ -9581,22 +9581,23 @@ endfunction
 //AMAI Build Code
 //============================================================================
 
-function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns nothing
+// Returns false if already built or invalid so no need to build its prerequisites
+function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns boolean
   local integer i = 0
   local integer j = 0
   if unitid == 0 or qty == 0 then
-    return
+    return false
   endif
   if t == BUILD_UPGRADE then
     if GetUpgradeLevel(old_id[unitid]) >= qty then
-      return
+      return false
     endif
   elseif t == BUILD_ITEM then
     if GetItemNumber(unitid) >= qty then
-      return
+      return false
     endif
   elseif TownCountTown(unitid, town) >= qty or (buy_type[unitid] > BT_RACIAL_ITEM and not neutral_available[GetNeutralNumber(unitid)]) then
-    return
+    return false
   endif
   call GetBuildLock()
   set j = Max(build_length - 1,0)
@@ -9605,7 +9606,7 @@ function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer
     exitwhen build_prio[i] < prio
     if build_item[i] == unitid and build_qty[i] >= qty and build_town[i] == town then
       call ReleaseBuildLock()
-      return
+      return true
     endif
     set i = i + 1
   endloop
@@ -9631,6 +9632,8 @@ function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer
   if qty > 1 then
     call SetBuildAllAMCore(t, qty - 1, unitid, town, bloc, prio + prio_q_inc )
   endif
+
+  return true
 
 endfunction
 
@@ -9694,8 +9697,9 @@ endfunction
 function SetBuildAllAM takes integer t, integer mqty, integer unitid, integer town, integer bloc, integer prio returns nothing
   set mqty = BlockListCheck(mqty, unitid)
   if unitid != 0 and mqty > 0 then
-    call SetBuildAllAMCore(t, mqty, unitid, town, bloc, prio)
-    call RefreshNeeded(t, mqty, unitid, town, bloc, prio)
+    if (SetBuildAllAMCore(t, mqty, unitid, town, bloc, prio)) then
+      call RefreshNeeded(t, mqty, unitid, town, bloc, prio) 
+    endif
   endif
 endfunction
 
@@ -10265,7 +10269,7 @@ function DefendTownsEx takes boolean only_done, boolean at_front, integer qty, i
   set i = twm
   loop
     exitwhen i > twm + 2
-    if TownHasMine(i) and TownCountEx(racial_expansion,only_done,i) > 0 then
+    if TownHasMine(i) and TownCountEx(racial_expansion,only_done,i) > 0 and TownCountEx(unitid, only_done, -1) < qty * Max(TownCountEx(racial_expansion, false, -1),1) then
       if i <= 0 and at_front then
         call BuildFront(qty, unitid, prio)
       else  

@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (DevTools) Added minimum version check for perl 5.30.
 
 ### Changed
+- DefendTown build commands have extra protection to not build total structures more than number of valid expansions.
+- If required units are already built, AMAI will no longer attempt to keep rebuilding the prerequsite buildings unless it must build more units.
 - Some fixes and optimizations to the chat logic. (jzy-chitong56)
 
 ### Fixed
