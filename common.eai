@@ -441,7 +441,7 @@ globals
     integer red_creep_camp_strength_bonus = 10  // Bonus strength added to major creep camps
 	boolean disable_surrender = false  // Set to true to stop amai from giving up early when it detects its going to lose
 	real strategy_change_threshold = 1.2  // New strategy priority must be larger than this (default 1.20) multiple to the current strategy prority
-    boolean debugging = false  // Can turn on for debugging mode to display debug type messages
+    integer debugging = 0  // Set to number to enable debugging mode and display debug type messages of that number
     integer major_hero_skill_value = 60  // Priority to choose the first line of hero skills
     integer minor_hero_skill_value = 30  // Priority to choose the second line of hero skills
     integer rare_hero_skill_value = 10  // Priority to choose the third line of hero skills
@@ -1065,7 +1065,6 @@ globals
     gamecache udg_debug_cache = null
     string udg_current_category = null
     timer udg_debug_timer = CreateTimer()
-    boolean job_debug = false  // Job system reports will be displayed (used for finding thread crashes)
     integer debug_player = 0
 
 //==============================================================
@@ -1275,7 +1274,7 @@ endfunction
 function CreateDebugTagLoc takes string s, real fontsize, real posx, real posy, real lifespan, real fadespan returns nothing
 	local texttag tt = null
 
-	if debugging then
+	if debugging > 0 then
 		set tt = CreateTextTag()
 		call SetTextTagText(tt, s, ( fontsize * 0.023 / 10))  // *0.023/10 creates the correct font size from given real
 		call SetTextTagPos(tt, posx, posy, 0)	
@@ -1291,7 +1290,7 @@ endfunction
 function CreateDebugTag takes string s, real fontsize, unit u, real lifespan, real fadespan returns nothing
 	local texttag tt = null
 
-	if debugging then
+	if debugging > 0 then
 		set tt = CreateTextTag()
 		call SetTextTagText(tt, s, ( fontsize * 0.023 / 10))  // *0.023/10 creates the correct font size from given real
 		call SetTextTagPosUnit(tt, u, 0)	
@@ -1636,17 +1635,21 @@ function UpdateDebugPlayer takes nothing returns nothing
 endfunction
 
 function TracePlayer takes string s, integer playernum returns nothing
-	if debugging then
+	if debugging == 1 then
 		call DisplayToAllFromPlayer(s, playernum, false)
 	endif	
 endfunction
 
 //============================================================================
-function Trace takes string s returns nothing
-  if debugging then
+function TraceN takes string s, integer debugnum returns nothing
+  if debugging == debugnum then
     call UpdateDebugPlayer()
     call DisplayToAllFromPlayer(s, debug_player, false)
   endif
+endfunction    
+
+function Trace takes string s returns nothing
+  call TraceN(s, 1)
 // Blizzard ai part
   if trace_on then
       call DisplayText(GetAiPlayer(),s)
@@ -1654,17 +1657,14 @@ function Trace takes string s returns nothing
 endfunction
 
 function TraceAll takes string s returns nothing
-  if debugging then
+  if debugging == 1 then
     call DisplayToAll(s)
   endif
 endfunction
 
 //============================================================================
-function TraceI takes string s, integer val returns nothing	
-  if debugging then
-    call UpdateDebugPlayer()
-    call DisplayToAllFromPlayer(s+":"+Int2Str(val), debug_player, false)
-  endif
+function TraceI takes string s, integer val returns nothing
+  call TraceN(s+":"+Int2Str(val), 1)
   if trace_on then
     call DisplayTextI(GetAiPlayer(),s,val)
   endif
@@ -1672,10 +1672,7 @@ endfunction
 
 //============================================================================
 function TraceII takes string message, integer v1, integer v2 returns nothing
-  if debugging then
-    call UpdateDebugPlayer()
-    call DisplayToAllFromPlayer(message+":"+Int2Str(v1)+":"+Int2Str(v2), debug_player, false)
-  endif
+  call TraceN(message+":"+Int2Str(v1)+":"+Int2Str(v2), 1)
   if trace_on then
     call DisplayTextII(GetAiPlayer(),message,v1,v2)
   endif
@@ -1683,10 +1680,7 @@ endfunction
 
 //============================================================================
 function TraceIII takes string message, integer v1, integer v2, integer v3 returns nothing
-  if debugging then
-    call UpdateDebugPlayer()
-    call DisplayToAllFromPlayer(message+":"+Int2Str(v1)+":"+Int2Str(v2)+":"+Int2Str(v3), debug_player, false)
-  endif
+  call TraceN(message+":"+Int2Str(v1)+":"+Int2Str(v2)+":"+Int2Str(v3), 1)
   if trace_on then
     call DisplayTextIII(GetAiPlayer(),message,v1,v2,v3)
   endif
@@ -1697,9 +1691,7 @@ endfunction
 //  replays where the job system crashes to display when jobs run
 //============================================================================
 function DisplayToAllJobDebug takes string s returns nothing
-  if job_debug then
-    call DisplayToAllFromPlayer(s, debug_player, false)
-  endif
+  call TraceN(s, 2)
 endfunction
 
 //============================================================================
@@ -1724,7 +1716,7 @@ endfunction
 
 //============================================================================
 function DisplayToAlliesDebug takes string s returns nothing
-  if debugging then
+  if debugging == 1 then
     if IsPlayerAlly(ai_player,GetLocalPlayer()) then
       call DisplayTimedTextToPlayer(GetLocalPlayer(),0,0,15,message_add+s)
       call StartSound(chatSound)
@@ -4495,7 +4487,7 @@ function CreatePathingUnitFull takes unit u, player p, integer id, real x, real 
     set p = Player(PLAYER_NEUTRAL_PASSIVE)
   endif
   set u = CreateUnit(p, id, x, y, 270.00)
-  if (not debugging) then
+  if (debugging <= 0) then
     call ShowUnit(u, false)
   endif
   call UnitShareVision(u, ai_player, false)
@@ -7611,7 +7603,7 @@ function TQHandleOnce takes nothing returns boolean
   if TimerGetElapsed(tq_timer) >= tq_time[1] then
     set jobtimings = TimerGetElapsed(tq_timer)
     call TQRemoveRoot()
-    if debugging then
+    if debugging > 0 then
       call UpdateDebugTextTag(debugjobtag, Int2Str(jid), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
     endif
     call TQDoJob(jid, par, unit_par, group_par, unit_par2)
@@ -7644,7 +7636,7 @@ endfunction
 //============================================================================
 function TQLoop takes nothing returns nothing
   local real i = 0
-  if debugging then
+  if debugging > 0 then
     call SetTextTagPermanent(debugjobtag, true)
   endif
   set tq_time[0] = 0
@@ -7672,7 +7664,7 @@ function TQLoop takes nothing returns nothing
       call Sleep(1)
     endif
   endloop
-  if debugging then
+  if debugging > 0 then
     call SetTextTagText(debugjobtag, "Shutting down Job Thread", 0.1)
   endif
   //call Trace("Shutting down Job Thread")
@@ -7920,7 +7912,7 @@ function PathingThread takes nothing returns nothing
   //  set command_wait = 3
   call ComputeFrontPoints()
   //  call Sleep(3)
-  if debugging then
+  if debugging > 0 then
      call PingFrontPoints()
   endif
   call CheckAllNeutralsQuick() // Old system check
@@ -8208,7 +8200,11 @@ function cmd_misc takes integer cmd, integer data returns nothing
     set chatting = not chatting
 
   elseif cmd == 51 then	// Triggering debug
-    set debugging = not debugging
+    if debugging > 0 then
+      set debugging = 0
+    else
+      set debugging = 1
+    endif    
 
   elseif cmd == 52 then	// Triggering balancing
     set balancing = not balancing
@@ -8723,7 +8719,7 @@ endfunction
 // AMAI Code
 //============================================================================
 function InitAMAI takes nothing returns nothing
-  if debugging and IsPlayerObserver(GetLocalPlayer()) then
+  if debugging > 0 and IsPlayerObserver(GetLocalPlayer()) then
     call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_HELP_REQUEST,  true)
     call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_HELP_RESPONSE, true)
     call SetPlayerAlliance(ai_player, GetLocalPlayer(), ALLIANCE_SHARED_XP,     true)
@@ -9306,6 +9302,7 @@ endfunction
 function SetHeroUnit takes integer hn returns nothing
   set hero_unit[hn] = GetOneOfId(hero_unit[hn], ai_player, old_id[hero[hn]])
   if hero_unit[hn] != null then
+    call TraceN("Random Hero set as built", 3)
     set hero_built[hn] = true
     call InitHeroInfo(hn)
     call TQAddJob(1, MICRO_HERO, hn)
@@ -9314,7 +9311,12 @@ endfunction
 
 function ChooseFirstHero takes nothing returns integer
   local integer i = 0
-  if hero_built[1] and recalculate_heros then
+  if IsMapFlagSet(MAP_RANDOM_HERO) and hero[1] == null then
+    call TraceN("Picked Random Hero", 3)
+    set hero[1] = GetExistingHero()
+    call SetHeroUnit(1)
+  elseif hero_built[1] and recalculate_heros then
+    call TraceN("Recalculated Heros", 3)
     loop
       exitwhen i >= hero_number
       if hero[1] == all_heroes[i] then
@@ -9323,11 +9325,8 @@ function ChooseFirstHero takes nothing returns integer
       endif
       set i = i + 1
     endloop
-  endif
-  if IsMapFlagSet(MAP_RANDOM_HERO) and hero[1] == null then
-    set hero[1] = GetExistingHero()
-    call SetHeroUnit(1)
   else
+    call TraceN("Picked Normal Hero", 3)
     call make_hero_rp_positive()
     set chosen = ChooseHero()
     set hero[1] = all_heroes[chosen]
@@ -11598,7 +11597,7 @@ function LocalizeNewTown takes integer num returns boolean
   set own_town_dist[num] = DistanceBetweenPoints(home_location, own_town_loc[num])
   set exist_town[exist_town_num] = own_town_loc[num]
   set exist_town_num = exist_town_num + 1
-  if debugging then
+  if debugging > 0 then
     call PingMinimap(GetUnitX(u), GetUnitY(u), 20)
   endif
   set u = null
@@ -13475,7 +13474,10 @@ function SkillArraysAM takes nothing returns integer
   if level > max_hero_level then
     set max_hero_level = level
   endif
-  if skillfix == true and hero_unit[hn] != null and UnitAlive(hero_unit[hn]) then    //Assisted Hero Learning Skills , for war3 1.31 bug
+  call TraceN("skills array set:" + Int2Str(hn), 3)
+  //Assisted Hero Learning Skills , for war3 1.31 bugfix
+  if skillfix == true and hero_unit[hn] != null and UnitAlive(hero_unit[hn]) then  
+    call TraceN("Assisted pick hero skill", 3)
     call SelectHeroSkill(hero_unit[hn], skills[(hn - 1) * HERO_LEVEL_NUMBER + level])
   endif
   return skills[(hn - 1) * HERO_LEVEL_NUMBER + level]
