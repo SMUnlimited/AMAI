@@ -17,7 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 - DefendTown build commands have extra protection to not build total structures more than number of valid expansions.
-- If required units are already built, AMAI will no longer attempt to keep rebuilding the prerequsite buildings unless it must build more units.
+- If required units are already built, AMAI will no longer attempt to keep rebuilding the prerequsite buildings unless it must build more units. Should be a slight improvement to macro.
 - Reduced army threat limit required by allies from 20% to 5%.
 - Town locations for various logic will use the town hall location if detected, otherwise will use the generated location based on average.
 - Some fixes and optimizations to the chat logic. (jzy-chitong56)
@@ -25,7 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Fixed
 - Fixed some consistency and edge case issues when checking if expansions are claimed. (jzy-chitong56)
 - Improvements to the chinese language translations (jzy-chitong56)
-- Fixes to random hero mode not being responsive enough in detecting the hero.
+- Fixes to random hero mode not being responsive enough in detecting the hero and its skills.
+- Fixed a small issue where if AMAI upgraded to tier 2 a second time, it could trigger the tier up block when its not tiering up.
 - Fixed minor memory leak in harass (jzy-chitong56)
 - Fixed mistake in harass strength calculation (jzy-chitong56)
 - (DevTools) Strategy Manager will strip whitespace when extracting or importing new strategies and profiles correctly. (jzy-chitong56)
