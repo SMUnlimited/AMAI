@@ -26,6 +26,15 @@ COPY Scripts\%VER%\vsai\Blizzard.j Scripts\OPT%VER%\vsai\Blizzard.j
 
 ECHO _____________________________
 ECHO Disable Debug
+
+perl -i -pe"s#(call TraceN)#//$1#g" Scripts/OPT%VER%/common.ai
+perl -i -pe"s#(call TraceN)#//$1#g" Scripts/OPT%VER%/Blizzard.j
+perl -i -pe"s#(call TraceN)#//$1#g" Scripts/OPT%VER%/elf.ai
+perl -i -pe"s#(call TraceN)#//$1#g" Scripts/OPT%VER%/human.ai
+perl -i -pe"s#(call TraceN)#//$1#g" Scripts/OPT%VER%/orc.ai
+perl -i -pe"s#(call TraceN)#//$1#g" Scripts/OPT%VER%/undead.ai
+perl -i -pe"s#(call TraceN)#//$1#g" Scripts/OPT%VER%/vsai/Blizzard.j
+
 perl -i -pe"s#(debug call Trace)#//$1#g" Scripts/OPT%VER%/common.ai
 perl -i -pe"s#(debug call Trace)#//$1#g" Scripts/OPT%VER%/Blizzard.j
 perl -i -pe"s#(debug call Trace)#//$1#g" Scripts/OPT%VER%/elf.ai
