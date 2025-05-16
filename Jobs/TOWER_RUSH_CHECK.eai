@@ -77,27 +77,37 @@ function TowerRushCheck takes integer delay returns nothing
 
 	//set rushedplayer = GetNearestEnemy()  // no longer needed as is set from the GetNearestEnemyDistance function
 	if toweringplayerloc == null then
-		set toweringplayerloc = GetUnitLoc(builder[10])  // builder[10] from the GetNearestEnemyDistance
-		set u = GetAllianceTarget()
-		if u != null and race_tower_alliancetarget == false and ai_time <= 96 and towers_built == 0 then  //coordinate towertush with allies , 480 second
+		if race_tower_alliancetarget == false and ai_time <= 96 then  // Priority collaboration with allies
+			set u = GetAllianceTarget()
+			if u == null or not UnitAlive(u) then
+				set u = I2U(GetStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0"))
+			endif
+		endif
+		if u != null then  //coordinate towertush with allies , 480 second
 			set p = GetOwningPlayer(u)
-			if IsPlayerEnemy(p, ai_player) and p != Player(PLAYER_NEUTRAL_AGGRESSIVE) then
+			if IsPlayerEnemy(p, ai_player) and p != Player(PLAYERAGGRESSIVE) then
 				set rushedplayer = p
-				call RemoveLocation(toweringplayerloc)
 				set toweringplayerloc = GetStartLocationLoc(GetPlayerStartLocation(rushedplayer))
 				set race_tower_alliancetarget = true
 				set builder[10] = null
 			endif
 			set p = null
 		endif
-		set enemy_point_x = GetLocationX(toweringplayerloc)
-		set enemy_point_y = GetLocationY(toweringplayerloc)
+		if toweringplayerloc == null and builder[10] != null then
+			set toweringplayerloc = GetUnitLoc(builder[10])  // builder[10] from the GetNearestEnemyDistance
+		endif
 		set u = null
 	endif
 	if toweringplayerloc != null then
-		set tower_target_loc = GetLocationInDistanceFromLoc(toweringplayerloc,front_base_distance, true)  //DistanceBetweenPoints the toweringplayerloc and first_tower_point , front_base_distance now is change , so need set new
+		if GetPlayerRace(rushedplayer) == RACE_NIGHTELF then
+			set tower_target_loc = GetLocationInDistanceFromLoc(toweringplayerloc, 700, true)  // ELF can be closer
+		else
+			set tower_target_loc = GetLocationInDistanceFromLoc(toweringplayerloc, front_base_distance, true)  //DistanceBetweenPoints the toweringplayerloc and first_tower_point , front_base_distance now is change , so need set new
+		endif
 		if tower_target_loc != null then
 			set racial_rushcreep = 0  // TowerRush BR , waste time
+			set enemy_point_x = GetLocationX(toweringplayerloc)
+			set enemy_point_y = GetLocationY(toweringplayerloc)
 			set towerrushsubloc = GetSubtractionLoc(tower_target_loc, toweringplayerloc)
 			call StartTowerRush(delay)
 			return
