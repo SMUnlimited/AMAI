@@ -7,15 +7,8 @@ use Tk::Table;
 use Tk::NoteBook;
 use Tk::Balloon; # Add for tooltips
 use Tk::Font;
+use utf8;
 use open ':std', ':encoding(UTF-8)';
-
-
-BEGIN{
-  if($^O eq 'MSWin32'){
-      require Win32::Console;
-      #Win32::Console::Free();
-  }
-}
 
 my $fdialogbug = 0;
 
@@ -94,6 +87,7 @@ sub get_translation {
 }
 
 my $main = MainWindow->new(-title => get_translation('title_strategy_manager'));
+$main->optionAdd('*font' => 'Segoe 12');
 my $lframe = $main->Frame->pack(-side => 'left', -padx => 4);
 my ($screen_width, $screen_height) = ($main->screenwidth, $main->screenheight);
 $main->maxsize(520, 1280);
@@ -129,7 +123,7 @@ sub confirm_box {
     -type    => 'OK',
     -default => 'OK',
   );
-  return;
+  die;
 }
 
 sub mouse_wheel {
@@ -609,7 +603,7 @@ sub InsertStratSub {
   open(AIFILE, ">>$version\\$race\\BuildSequence.ai") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\BuildSequence.ai>")) };
   open(STRATFILE, ">>$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
   my $line = <SOURCE>;
-  if ($line !~ /#AMAI 2.0 Strategy/) {die get_translation('err_not_file_sequence');}
+  if ($line !~ /#AMAI 2.0 Strategy/) {do { confirm_box(get_translation('err_not_file_sequence')) };}
   $line = <SOURCE>;
   $line =~ /^([^\t]*)\t/;
   my $oldstratname = $1;
@@ -650,7 +644,7 @@ sub InsertProfileSub {
   open(SOURCE, $filename) or do { confirm_box(get_translation('err_file_not_writing', "<$filename>")) };
   open(PROFILEFILE, ">>$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
   my $line = <SOURCE>;
-  if ($line !~ /#AMAI 2.0 Profile/) {die get_translation('err_not_file_profiles');}
+  if ($line !~ /#AMAI 2.0 Profile/) {do { confirm_box(get_translation('err_not_file_profiles')) };}
   $line = <SOURCE>;
   $line =~ /^([^\t]*)\t/;
   my $oldprofilename = $1;
@@ -663,6 +657,7 @@ sub InsertProfileSub {
   $line =~ s/^$oldprofilename/$profilename/;
   $line = $line =~ /\S/ ? $line : '';
   $line =~ s/^\s+|\s+$//g; # Remove leading and trailing whitespace
+  print PROFILEFILE "\n";
   print PROFILEFILE $line;
   close(PROFILEFILE);
   close(SOURCE);
