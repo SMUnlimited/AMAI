@@ -480,6 +480,7 @@ sub RemoveStrat {
   }
   close(STRATFILE);
   open(STRATFILE, ">$version\\$race\\Strategy.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\$race\\Strategy.txt>")) };
+  chomp($stratfile[-1]);
   print STRATFILE @stratfile;
   close(STRATFILE);
   @stratfile = ();
@@ -515,6 +516,7 @@ sub RemoveProfile {
   }
   close(PROFILEFILE);
   open(PROFILEFILE, ">$version\\Profiles.txt") or do { confirm_box(get_translation('err_file_not_writing', "<$version\\Profiles.txt>")) };
+  chomp($profilefile[-1]);
   print PROFILEFILE @profilefile;
   close(PROFILEFILE);
 }
@@ -616,6 +618,7 @@ sub InsertStratSub {
   $line =~ s/^$oldstratname/$stratname/;
   $line = $line =~ /\S/ ? $line : ''; # Remove empty lines
   $line =~ s/^\s+|\s+$//g; # Remove leading and trailing whitespace
+  print STRATFILE "\n";
   print STRATFILE $line;
   print AIFILE "\n";
   while (<SOURCE>) {
