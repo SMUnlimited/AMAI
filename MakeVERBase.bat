@@ -17,7 +17,7 @@ SET H=%TIME:~0,2%
 SET M=%TIME:~3,2%
 SET S=%TIME:~6,2%
 
-ECHO %Y%-%M%-%D% %H%:%M%:%S% > ReleaseDate.txt
+ECHO %Y%-%MM%-%D% %H%:%M%:%S% > ReleaseDate.txt
 
 mkdir Scripts\
 mkdir Scripts\%VER%\
