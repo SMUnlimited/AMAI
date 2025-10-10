@@ -1,5 +1,5 @@
 //============================================================================
-// 1.33 Native types. All native functions take extended handle types when
+// Native types. All native functions take extended handle types when
 // possible to help prevent passing bad values to native functions
 //
 type agent			    extends     handle  // all reference counted objects
@@ -2045,6 +2045,7 @@ globals
     constant unitrealfield UNIT_RF_MANA_REGENERATION                        = ConvertUnitRealField('umpr')
     constant unitrealfield UNIT_RF_DEATH_TIME                               = ConvertUnitRealField('udtm')
     constant unitrealfield UNIT_RF_FLY_HEIGHT                               = ConvertUnitRealField('ufyh')
+    constant unitrealfield UNIT_RF_FLY_MAX_HEIGHT                           = ConvertUnitRealField('ufmh')
     constant unitrealfield UNIT_RF_TURN_RATE                                = ConvertUnitRealField('umvr')
     constant unitrealfield UNIT_RF_ELEVATION_SAMPLE_RADIUS                  = ConvertUnitRealField('uerd')
     constant unitrealfield UNIT_RF_FOG_OF_WAR_SAMPLE_RADIUS                 = ConvertUnitRealField('ufrd')
@@ -4010,10 +4011,6 @@ native BlzSetEventAttackType                       takes attacktype attackType r
 native BlzSetEventDamageType                       takes damagetype damageType returns boolean
 native BlzSetEventWeaponType                       takes weapontype weaponType returns boolean
 native BlzGetEventIsAttack                         takes nothing returns boolean
-native RequestExtraIntegerData                     takes integer dataType, player whichPlayer, string param1, string param2, boolean param3, integer param4, integer param5, integer param6 returns integer
-native RequestExtraBooleanData                     takes integer dataType, player whichPlayer, string param1, string param2, boolean param3, integer param4, integer param5, integer param6 returns boolean
-native RequestExtraStringData                      takes integer dataType, player whichPlayer, string param1, string param2, boolean param3, integer param4, integer param5, integer param6 returns string
-native RequestExtraRealData                        takes integer dataType, player whichPlayer, string param1, string param2, boolean param3, integer param4, integer param5, integer param6 returns real
 // Add this function to follow the style of GetUnitX and GetUnitY, it has the same result as BlzGetLocalUnitZ
 native BlzGetUnitZ                                 takes unit whichUnit returns real
 native BlzEnableSelections                         takes boolean enableSelection, boolean enableSelectionCircle returns nothing

@@ -107,6 +107,16 @@
     button %1_button = null
 #ENDINCLUDE
 
+    trigger Random_Hero = null
+    triggeraction Random_Hero_Action = null
+    integer array RandomHeroNum
+    integer array RandomHero_Max
+    sound array RandomHeroSound
+    boolean RandomHero = true  // if do not want random hero, set this to false
+    boolean RandomHeroRun = false  // do not change this
+    trigger Random_HireUnit = null
+    triggeraction Random_HireUnit_Action = null
+
     string chat_no_ally = ""
     string you_no_gold = ""
     string i_no_gold = ""
@@ -559,6 +569,215 @@ endfunction
 
 function ShowBoard takes nothing returns nothing
   call LeaderboardDisplay(color_board, not IsLeaderboardDisplayed(color_board))
+endfunction
+
+//===========================================================================
+// Random Hero and Hire Unit
+//===========================================================================
+function RandomHireUnit takes nothing returns nothing
+  local unit s = GetSellingUnit()
+  local unit u = GetSoldUnit()
+  local player p = GetOwningPlayer(u)
+  local integer i = GetUnitTypeId(s)
+  if GetPlayerController(p) == MAP_CONTROL_USER then
+    if i == 'nmr5' then
+    elseif i == 'nmr4' then
+    elseif i == 'nmrf' then
+    elseif i == 'nmr8' then
+    elseif i == 'nmr9' then
+    elseif i == 'nmrb' then
+    elseif i == 'nmr6' then
+    elseif i == 'nmrd' then
+    elseif i == 'nmr2' then
+    elseif i == 'nmer' then
+    elseif i == 'nmr3' then
+    elseif i == 'nmr7' then
+    elseif i == 'nmre' then
+    elseif i == 'nmrc' then
+    elseif i == 'nmra' then
+    elseif i == 'nmr0' then
+    elseif i == 'ndrk' then
+    elseif i == 'ndru' then
+    elseif i == 'ndrz' then
+    elseif i == 'ndrg' then
+    elseif i == 'ndro' then
+    elseif i == 'ndrr' then
+    else
+      set s = null
+      set u = null
+      set p = null
+      return
+    endif
+    set i = ChooseRandomCreep(GetRandomInt(1, 20))
+    if i > 0 then
+      if i < GetUnitLevel(u) then
+        call AdjustPlayerStateBJ(i * 25, p, PLAYER_STATE_RESOURCE_GOLD)
+        call AdjustPlayerStateBJ(i * 5, p, PLAYER_STATE_RESOURCE_LUMBER)
+      endif
+      call ReplaceUnitBJ(u, ChooseRandomCreep(i), bj_UNIT_STATE_METHOD_DEFAULTS)
+    endif
+  endif
+  set s = null
+  set u = null
+  set p = null
+endfunction
+
+function SetStartHero_d takes player p, race r, location l returns nothing
+  local unit u = null
+  if GetPlayerController(p) == MAP_CONTROL_COMPUTER then
+    if r == RACE_NIGHTELF then
+      set u = CreateUnit(p, RandomHeroNum[GetRandomInt(8, 11)], GetLocationX(l), GetLocationY(l) - GetRandomInt(350, 450), bj_UNIT_FACING)
+    elseif r == RACE_ORC then
+      set u = CreateUnit(p, RandomHeroNum[GetRandomInt(12, 15)], GetLocationX(l), GetLocationY(l) - GetRandomInt(350, 450), bj_UNIT_FACING)
+    elseif r == RACE_UNDEAD then
+      set u = CreateUnit(p, RandomHeroNum[GetRandomInt(16, 19)], GetLocationX(l), GetLocationY(l) - GetRandomInt(350, 450), bj_UNIT_FACING)
+    elseif r == RACE_HUMAN then
+      set u = CreateUnit(p, RandomHeroNum[GetRandomInt(20, 23)], GetLocationX(l), GetLocationY(l) - GetRandomInt(350, 450), bj_UNIT_FACING)
+    endif
+  else
+    set u = CreateUnit(p, RandomHeroNum[GetRandomInt(0, 23)], GetLocationX(l), GetLocationY(l) - GetRandomInt(350, 450), bj_UNIT_FACING)
+  endif
+  call UnitAddItemById(u, 'stwp')
+  set bj_meleeTwinkedHeroes[GetPlayerId(p)] = bj_meleeTwinkedHeroes[GetPlayerId(p)] + 1
+  call RemoveLocation(l)
+  set u = null
+endfunction
+
+function SetOtherHero takes nothing returns nothing
+  local unit u = GetTrainedUnit()
+  local unit t = GetSoldUnit()
+  local unit x = null
+  local location l = null
+  local player p = null
+  local integer c = GetRandomInt(0, 23)
+  local integer i = 0
+  if u == null then
+    set u = t
+  endif
+  set p = GetOwningPlayer(u)
+  set i = GetPlayerId(p)
+  if GetPlayerController(p) == MAP_CONTROL_COMPUTER or RandomHero_Max[i] > 2 then
+    set u = null
+    set t = null
+    set p = null
+    return
+  endif
+  call ShowUnit(u, false)
+  call SetUnitOwner(u, Player(PLAYER_NEUTRAL_PASSIVE), false)
+  set x = u
+  set u = CreateUnit(p, RandomHeroNum[c], GetUnitX(x), GetUnitY(x), bj_UNIT_FACING)
+  call KillUnit(x)  // Prevent the unit from continuing to exist
+  call RemoveUnit(x)
+  if GetLocalPlayer() == p then
+    call PlaySoundOnUnitBJ(RandomHeroSound[c], 100, u)
+  endif
+  set c = GetBJMaxPlayers()
+  set RandomHero_Max[i] = RandomHero_Max[i] + 1
+  set RandomHero_Max[c] = RandomHero_Max[c] - 1
+  if t == null then
+    set l = GetUnitRallyPoint(GetTriggerUnit())
+    if l != null then
+      call IssuePointOrderLocBJ(u, "move", l)
+      call RemoveLocation(l)
+      set l = null
+    endif
+  endif
+  set u = null
+  set t = null
+  set x = null
+  set p = null
+  if RandomHero_Max[i] == 2 then
+    call SetPlayerTechMaxAllowed(p, 'HERO', 4)
+  endif
+  if RandomHero_Max[c] < 1 then
+    call TriggerRemoveAction(Random_Hero, Random_Hero_Action)
+    call DestroyTrigger(Random_Hero)
+    set Random_Hero = null
+  endif
+endfunction
+
+function InitRandomHeroAndHireUnit takes nothing returns nothing
+  local integer i = 0
+  local integer c = GetBJMaxPlayers()
+  local player p = null
+  if IsMapFlagSet(MAP_RANDOM_HERO) then
+    if RandomHero and Random_Hero == null then
+      set Random_HireUnit = CreateTrigger()
+      set Random_Hero = CreateTrigger()
+      set RandomHeroRun = true
+      call SetMapFlag(MAP_RANDOM_HERO, false)
+      set RandomHeroNum[0] = 'Nngs'
+      set RandomHeroNum[1] = 'Nbst'
+      set RandomHeroNum[2] = 'Nbrn'
+      set RandomHeroNum[3] = 'Nplh'
+      set RandomHeroNum[4] = 'Npbm'
+      set RandomHeroNum[5] = 'Ntin'
+      set RandomHeroNum[6] = 'Nfir'
+      set RandomHeroNum[7] = 'Nalc'
+      set RandomHeroNum[8] = 'Edem'
+      set RandomHeroNum[9] = 'Ekee'
+      set RandomHeroNum[10] = 'Emoo'
+      set RandomHeroNum[11] = 'Ewar'
+      set RandomHeroNum[12] = 'Obla'
+      set RandomHeroNum[13] = 'Ofar'
+      set RandomHeroNum[14] = 'Otch'
+      set RandomHeroNum[15] = 'Oshd'
+      set RandomHeroNum[16] = 'Udea'
+      set RandomHeroNum[17] = 'Udre'
+      set RandomHeroNum[18] = 'Ulic'
+      set RandomHeroNum[19] = 'Ucrl'
+      set RandomHeroNum[20] = 'Hamg'
+      set RandomHeroNum[21] = 'Hpal'
+      set RandomHeroNum[22] = 'Hmkg'
+      set RandomHeroNum[23] = 'Hblm'
+      set RandomHeroSound[0] = CreateSound("Units\\Naga\\LadyVashj\\LadyVashjReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[1] = CreateSound("Units\\Creeps\\Beastmaster\\OgreBeastMasterReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[2] = CreateSound("Units\\Creeps\\BansheeRanger\\DarkRangerReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[3] = CreateSound("Units\\Demon\\HeroPitLord\\HPitLordReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[4] = CreateSound("Units\\Creeps\\PandarenBrewmaster\\PandarenBrewmasterReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[5] = CreateSound("Units\\Creeps\\HeroTinker\\HeroTinkerReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[6] = CreateSound("Units\\Creeps\\HeroFlameLord\\HeroFireLordReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[7] = CreateSound("Units\\Creeps\\HEROGoblinALCHEMIST\\HeroAlchemistReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[8] = CreateSound("Units\\NightElf\\HeroDemonHunter\\HeroDemonHunterReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[9] = CreateSound("Units\\NightElf\\HeroKeeperOfTheGrove\\KeeperOfTheGroveReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[10] = CreateSound("Units\\NightElf\\HeroMoonPriestess\\HeroMoonPriestessReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[11] = CreateSound("Units\\NightElf\\HeroWarden\\HeroWardenReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[12] = CreateSound("Units\\Orc\\HeroBladeMaster\\HeroBladeMasterReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[13] = CreateSound("Units\\Orc\\HeroFarseer\\HeroFarseerReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[14] = CreateSound("Units\\Orc\\HeroTaurenChieftain\\HeroTaurenChieftainReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[15] = CreateSound("Units\\Orc\\HeroShadowHunter\\ShadowHunterReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[16] = CreateSound("Units\\Undead\\HeroDeathKnight\\DeathKnightReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[17] = CreateSound("Units\\Undead\\HeroDreadLord\\HeroDreadlordReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[18] = CreateSound("Units\\Undead\\HeroLich\\HeroLichReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[19] = CreateSound("Units\\Undead\\HeroCryptLord\\NerubianCryptLordReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[20] = CreateSound("Units\\Human\\HeroArchMage\\HeroArchMageReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[21] = CreateSound("Units\\Human\\HeroPaladin\\HeroPaladinReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[22] = CreateSound("Units\\Human\\HeroMountainKing\\HeroMountainKingReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHeroSound[23] = CreateSound("Units\\Human\\HeroBloodElf\\BloodElfMageReady1.wav", false, true, true, 10, 10, "HeroAcksEAX")
+      set RandomHero_Max[c] = 0
+      loop
+        exitwhen i >= c
+        set p = Player(i)
+        if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
+          if GetPlayerController(p) != MAP_CONTROL_COMPUTER then
+            set RandomHero_Max[i] = 1
+            set RandomHero_Max[c] = RandomHero_Max[c] + 2
+            call DisplayTimedTextToPlayer(p, 0, 0, 7, "AMAI Real Player Random Hero and Random Hire Unit: |cff00ff00[on]|r")
+            call TriggerRegisterPlayerUnitEvent(Random_Hero, p, EVENT_PLAYER_UNIT_TRAIN_FINISH, filterMeleeTrainedUnitIsHeroBJ)
+          endif
+          call SetStartHero_d(p, GetPlayerRace(p), GetStartLocationLoc(GetPlayerStartLocation(p)))  // include AI
+        endif
+        set i = i + 1
+      endloop
+      call TriggerRegisterPlayerUnitEvent(Random_Hero, Player(PLAYER_NEUTRAL_PASSIVE), EVENT_PLAYER_UNIT_SELL, filterMeleeTrainedUnitIsHeroBJ)
+      call TriggerRegisterPlayerUnitEventSimple(Random_HireUnit, Player(PLAYER_NEUTRAL_PASSIVE), EVENT_PLAYER_UNIT_SELL)
+      set Random_Hero_Action = TriggerAddAction(Random_Hero, function SetOtherHero)
+      set Random_HireUnit_Action = TriggerAddAction(Random_HireUnit, function RandomHireUnit)
+      set p = null
+    endif
+  elseif RandomHero then
+    call DisplayToAll("Enable Random Hero on room options can use |cff00ff00ATR|r !")
+  endif
 endfunction
 
 //===========================================================================
@@ -2014,4 +2233,5 @@ endfunction
     call InitHCL()
     call InitCommander()
     call InitZoom()
+    call InitRandomHeroAndHireUnit()
 #INCLUDE <$VER$\tmp\Blizzard6.j>
