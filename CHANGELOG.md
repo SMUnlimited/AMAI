@@ -13,7 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Undead scroll of healing priority in tier 2 is slightly higher but still less than tier 3. (jzy-chitong56)
 
 ### Fixed
-- Fixed undead unable to upgrade creature armor past the first tier. 
+- Fixed cases where disabling chat allowed some give up messages to still occur.
+- Fixed cases where disabling surrender the AI could still give up.
+- Fixed undead unable to upgrade creature armor past the first tier.
 - Standard AI hero ability fixes for TFT and 1.31/2.0.3 compatability (jzy-chitong56)
 
 ## [3.5.0] - 2025-05-02
