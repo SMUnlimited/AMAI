@@ -1072,6 +1072,7 @@ globals
 //==============================================================
     integer chosen_counter = -1
     integer chosen_counter_unit = 0
+    integer reset_counter_unit = 0
     boolean no_counter = true
     string array strengthtext
     #INCLUDETABLE <$VER$\Strengths.txt>
@@ -9958,6 +9959,7 @@ function ResetDynamicSystem takes nothing returns nothing
 	set totalanti_%1 = 0
 	set totalchance_%1 = 0
 #ENDINCLUDE
+  set reset_counter_unit = 1
 endfunction
 
 #INCLUDETABLE <$VER$\Strengths.txt>
@@ -9967,6 +9969,9 @@ function AddUnitToAnti%1 takes integer u, integer percent returns nothing
     set dychance_%1[totalanti_%1]= percent
     set totalanti_%1 = totalanti_%1 + 1
     set totalchance_%1 = totalchance_%1 + percent
+    if u == chosen_counter_unit and reset_counter_unit == 1 then
+      set reset_counter_unit = 0
+    endif  
   endif
 endfunction
 #ENDINCLUDE
@@ -10005,7 +10010,9 @@ endfunction
 
 function DynamicBuildUnit takes integer count, integer prio returns nothing
 	local integer num
-	if chosen_counter_unit > 0 then
+  if reset_counter_unit == 1 and chosen_counter_unit > 0 then
+    set chosen_counter_unit = 0 // If previous unit removed from the dynamic lists, then must choose a new unit and stop building current one
+	elseif chosen_counter_unit > 0 then
 		if IsUnitIdType(old_id[chosen_counter_unit], UNIT_TYPE_STRUCTURE) == false and not (buy_type[chosen_counter_unit] > BT_RACIAL_ITEM and buy_type[chosen_counter_unit] < BT_MERCHANT_ITEM) then // Normal units/upgrades
 			set num = R2I((count - FoodUsed()) / Max(GetFoodUsed(old_id[chosen_counter_unit]),1))
 			if num > 0 and GetUnitCount(old_id[chosen_counter_unit]) < num then

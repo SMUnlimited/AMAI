@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Changed
 - Removed more trace messages from optimized map scripts to improve performance.
 - Undead scroll of healing priority in tier 2 is slightly higher but still less than tier 3. (jzy-chitong56)
+- If you no longer add the current dynamic counter unit as a counter in a strategy, that unit will stop building entirely and counters will wait until the dynamic strategy is re-evaluated. This gives strategies more direct control of counters if nessecary.
 
 ### Fixed
 - Fixed cases where disabling chat allowed some give up messages to still occur.
