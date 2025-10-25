@@ -17,18 +17,20 @@ function BuildExpansionJob takes unit u, unit expansion returns nothing
       return
     endif
     set d = DistanceBetweenUnits(u, expansion)
-    call Trace("Build Expansion JOB start" + Real2Str(d))
+    //call Trace("Build Expansion JOB start" + Real2Str(d))
+    call CreateDebugTagLoc("Expand JOB", 10, GetUnitX(expansion), GetUnitY(expansion), 5.00, 1.50)
     if GetUnitCurrentOrder(u) == old_id[racial_expansion] then
-      call Trace("Build Expansion JOB has order")
+      //call Trace("Build Expansion JOB has order")
       if CheckDoubleExpansionsClaimedInArea(GetUnitX(expansion), GetUnitY(expansion), true) then
+        call Trace("Double expansion check triggered: ally=" + B2S(double_expansion_ally_present) + " enemy=" + B2S(double_expansion_enemy_present) + " own=" + B2S(double_own_present))
         if double_expansion_ally_present then
-          call Trace("Cancelling Expansion - ally expansion detected")
+          //call Trace("Cancelling Expansion - ally expansion detected")
           call IssueImmediateOrder(u, "stop")
           return
         endif
         if double_expansion_enemy_present then
           if d > (190 * 30) then // movement speed of peasant * seconds away. If way too far give up as enemy will be built first.
-            call Trace("Cancelling Expansion - Enemy double expansion detected")
+            //call Trace("Cancelling Expansion - Enemy double expansion detected")
             call IssueImmediateOrder(u, "stop")
             return
           endif
@@ -36,8 +38,9 @@ function BuildExpansionJob takes unit u, unit expansion returns nothing
       endif
       call TQAddUnit2Job(2, BUILD_EXPANSION, 0, u, expansion)
     elseif not race_uses_mine_expansion and GetUnitCurrentOrder(u) != old_id[racial_expansion] and d < 190 * 30 then
-      call Trace("Build Expansion JOB Retry Check")
+      //call Trace("Build Expansion JOB Retry Check")
       call CheckDoubleExpansionsClaimedInArea(GetUnitX(expansion), GetUnitY(expansion), d > race_max_expa_mine_distance) // Result doesn't matter as long as its only enemies in the proximity
+      call Trace("Double expansion check 2 triggered: ally=" + B2S(double_expansion_ally_present) + " enemy=" + B2S(double_expansion_enemy_present) + " own=" + B2S(double_own_present))
       if (not double_own_present and not double_expansion_ally_present and double_expansion_enemy_present and GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), race_max_expa_mine_distance) == 0) then
         set v = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(expansion), GetUnitY(expansion), 270.0)
         set x = GetUnitX(v)
@@ -45,10 +48,15 @@ function BuildExpansionJob takes unit u, unit expansion returns nothing
         call RemoveUnit(v)
         if DistanceBetweenPoints_dd(Location(x,y), GetUnitLoc(expansion)) <= race_max_expa_mine_distance then
           call IssuePointOrderById(u, old_id[racial_expansion], x, y)
+          call CreateDebugTagLoc("Expand Fix JOB", 10, x, y, 5.00, 1.50)
           call TQAddUnit2Job(2, BUILD_EXPANSION, 0, u, expansion)
-          call Trace("Build Expansion JOB Retry Threat")
+          //call Trace("Build Expansion JOB Retry Threat")
+        else
+          // tODO this can break as then nothing ever happens  
         endif
         set v = null
+      else
+          // TODO this can break expansion  
       endif
     endif
 

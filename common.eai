@@ -6886,10 +6886,10 @@ function ChooseExpansion takes nothing returns nothing
   endif
   call add_exp_rp()
 //  call make_exp_rp_positive()
-  if exp_number == 0  and first_town_mine > 1 and fixmine != null then
-    set current_expansion = fixmine  // let expansion system work
-    call Trace("Using fixmine for chosen expansion")
-  elseif exp_number == 0 then
+  //if exp_number == 0  and first_town_mine > 1 and fixmine != null then
+  //  set current_expansion = fixmine  // let expansion system work
+  //  call Trace("Using fixmine for chosen expansion")
+  if exp_number == 0 then
     set current_expansion = null
     call Trace("No valid expansions")
   else
@@ -8325,6 +8325,7 @@ function InitCheckHarvest takes nothing returns nothing
             if i == GOLD_MINE and own_town_mine[0] == null then
               set own_town_mine[0] = u
             else
+              set own_town_mine[0] = u
               set fixmine = u
             endif
           endif
@@ -8365,7 +8366,9 @@ function InitCheckHarvest takes nothing returns nothing
     call HarvestGold(0,3)
     call HarvestWood(0,2)  // Early triggering Harvest , convenient HARVEST_CHECK job check peon
   endif
-  call CreateDebugTag("FIX mine", 10, fixmine, 4.00, 2.00)
+  if fixmine != null then
+    call CreateDebugTag("FIX mine", 10, fixmine, 4.00, 2.00)
+  endif
   call Trace("first town mine mode : " + Int2Str(first_town_mine) + ", sys mine : " + Int2Str(GetMinesOwned()) + ", gold mine : " + Int2Str(c) + ", race mine : "+ Int2Str(s) + ", player : " + Int2Str(p))
 endfunction
 
@@ -10935,6 +10938,10 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   //elseif not race_uses_mine_expansion and first_town_mine > 0 then
   //  set countdone = Min(countdone, GetMinesOwned())
   endif
+  if fixmine != null then
+    call CreateDebugTag("FIX mine", 10, fixmine, 4.00, 2.00)
+  endif
+  call Trace("first town mine mode : " + Int2Str(first_town_mine) + ", sys mine : " + Int2Str(GetMinesOwned()))
   // Disabled as breaking orc and humans not expanding at all currently
   //if first_town_mine > 1 or (count == 0 and first_town_mine < 2 and GetMinesOwned() > 0 and (race_manual_loading or race_uses_mine_expansion)) then
   //  set f = MultipleMinefix()  // fix home_location multiple mine
@@ -10995,6 +11002,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   set u = null
   
   if ancient_expanding or militia_expanding then
+    call Trace("AMAIStartexpa: Ancient or Militia expansion running")
     return BUILT_SOME // Just safety check to prevent normal expansion running while these are both running
   endif
   
@@ -11009,13 +11017,16 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   endif
 
   if total_gold < 0 and gold_cost > 0 then
+    call Trace("AMAIStartexpa: Need More Resources gold")
     return NOT_ENOUGH_RES
   endif
   if total_wood < 0 and wood_cost > 0 then
+    call Trace("AMAIStartexpa: Need More Resources wood")
     return NOT_ENOUGH_RES
   endif
   
   if item_expanding then  
+    call Trace("AMAIStartexpa: Expanding via item")
     return BUILT_SOME
   endif  
 
@@ -11060,6 +11071,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
       call ConstructExpansion(expansion_peon,old_id[hall])
     endif
   endif
+  call Trace("AMAIStartexpa: Expansion Running")
   //  call DisplayTextToPlayer(GetLocalPlayer(), 0, 0, "Expansion Finished")
   return BUILT_SOME
 endfunction
@@ -11412,7 +11424,7 @@ if minetimeready then
   else
     set take_exp = false
     set exp_prepared = true
-    call Trace("ExpansionBuilder:Ready to expand to mine")
+    //call Trace("ExpansionBuilder:Ready to expand to mine")
   endif
 endif
 
@@ -11443,7 +11455,7 @@ endif
 //call Trace("ANCIENT: RUSH HERO " + Int2Str(i) + " vs rush level " + Int2Str(race_ancient_expansion_hero_rush_level)) 
 //call Trace("ANCIENT: PROB " + Int2Str(GetRandomInt(1,100)) + " vs race prob " +Int2Str(race_ancient_expansion_probability))
 if take_exp and race_ancient_expansion_available and not ancient_expanding and specialexpand and c_ally_total <= 0 then
-  call TraceAll("ExpansionBuilder:Ancient Expand")
+  call Trace("ExpansionBuilder:Ancient Expand")
   set specialexpand = false
   set i = 0
   if hero_unit[1] != null then
@@ -11460,7 +11472,7 @@ if take_exp and race_ancient_expansion_available and not ancient_expanding and s
     set u = null
     return
   else
-    call TraceAll("ExpansionBuilder:Won't ancient exp this time")
+    call Trace("ExpansionBuilder:Won't ancient exp this time")
   endif
 //elseif race_ancient_expansion_available and not ancient_expanding and specialexpand and c_ally_total <= 0 then
 //    call TraceAll("ExpansionBuilder:Could ancient expand")
@@ -11470,7 +11482,7 @@ endif
 if not exp_prepared and u == null then
   set rebuild = CheckExpansionRebuild()
   if rebuild then
-    call Trace("ExpansionBuilder:Ready to rebuild mine")
+    //call Trace("ExpansionBuilder:Ready to rebuild mine")
     set exp_prepared = true
   endif
 endif
@@ -11496,8 +11508,8 @@ loop
 endloop
 
 if mines < 1 or gold_left < 2500 or exp_prepared then
-  call Trace("ExpansionBuilder: Putting mine on build list")
-  call CreateDebugTagLoc("Current Expansion", 10, GetUnitX(current_expansion), GetUnitY(current_expansion), 1.00, 0.80)
+  //call Trace("ExpansionBuilder: Putting mine on build list")
+  call CreateDebugTagLoc("Expand Here", 10, GetUnitX(current_expansion), GetUnitY(current_expansion), 1.00, 0.80)
   if mines < 1 or gold_left < 2500 then
     call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_emergency_prio)
   elseif rebuild or upkeepboost then
