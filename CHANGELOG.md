@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## Unreleased
+## [3.5.1] - 2025-10-26
 
 ### Added
 - Support for 2.0.2a and 2.0.3, increasing optimal version for REFORGED scripts.
@@ -14,11 +14,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - If you no longer add the current dynamic counter unit as a counter in a strategy, that unit will stop building entirely and counters will wait until the dynamic strategy is re-evaluated. This gives strategies more direct control of counters if nessecary.
 
 ### Fixed
-- Fixed cases where disabling chat allowed some give up messages to still occur.
-- Fixed cases where disabling surrender the AI could still give up.
+- (DevTools) Fixed cases where disabling chat allowed some give up messages to still occur.
+- (DevTools) Fixed cases where disabling surrender the AI could still give up.
 - Fixed undead unable to upgrade creature armor past the first tier.
-- Standard AI hero ability fixes for TFT and 1.31/2.0.3 compatability (jzy-chitong56)
-- Disabled multimine fix as was blocking orcs/human/undead from mining entirely on maps like ice crown.
+- Standard AI hero ability fixes for TFT and 1.31/2.0.3 compatibility (jzy-chitong56)
+- Disabled multi mine fix as was blocking orcs/human/undead from mining entirely on maps like ice crown.
 - Fixed an issue where expansion cycle could get stuck trying to build expansion in same place if it cannot get a good ground location for it.
 - Fixed an issue where upgrading a hall temporarily blocked expanding.
 
