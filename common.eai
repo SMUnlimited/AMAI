@@ -2538,36 +2538,69 @@ endfunction
 
 //============================================================================
 // If units upgrade requirement unit is the same as passed in upgrade unit id for three levels of upgrades.
-// TODO Won't currently work with 4 or more tiers.
 function isSameUpgradeLine takes integer unitid, integer upgradeid returns boolean
-  if upgradeid == 0 then
+  // Detect whether unitid and upgradeid are on the same upgrade/transform chain.
+  // Walk the needed1 chain in both directions with a small depth limit to avoid
+  // infinite loops in malformed data.
+  local integer a = unitid
+  local integer depth = 0
+
+  if upgradeid == 0 or unitid == 0 then
     return false
   endif
-  if needed3[unitid] == UPGRADED and needed1[unitid] == upgradeid then
-    return true
-  endif
-  return false  
+  // Walk upwards from unitid looking for upgradeid
+  loop
+    exitwhen a == 0 or depth >= 6
+    if needed1[a] == upgradeid and needed3[a] == UPGRADED then
+      return true
+    endif
+    if needed3[a] == UPGRADED then
+      set a = needed1[a]
+    else
+      // If this node isn't marked as an UPGRADED step, stop this direction
+      set a = 0
+    endif
+    set depth = depth + 1
+  endloop
+
+  // Reverse walk: walk upwards from upgradeid looking for unitid
+  set a = upgradeid
+  set depth = 0
+  loop
+    exitwhen a == 0 or depth >= 6
+    if needed1[a] == unitid and needed3[a] == UPGRADED then
+      return true
+    endif
+    if needed3[a] == UPGRADED then
+      set a = needed1[a]
+    else
+      set a = 0
+    endif
+    set depth = depth + 1
+  endloop
+  return false
 endfunction  
 
-// Counts other units that count as this unit, can optionally pass an upgradeid that is ignored from the count
+// Counts other units that count as this unit, can optionally pass an upgradeid that is ignored from the alternate counts if its on the same upgrade line
+// Passing 0 upgradeid will count all alternates regardless
 function GetUnitCountAlt takes integer unitid, integer upgradeid, boolean only_done, integer townid returns integer
   local integer have_qty = 0
   if IsAMAI then
     if upgradeid != tc_add1[unitid] and not isSameUpgradeLine(tc_add1[unitid], upgradeid) then
-      set have_qty = have_qty + GetUnitCountEx(tc_add1[unitid],only_done,townid)
+      set have_qty = have_qty + GetUnitCountEx(tc_add1[unitid], only_done, townid)
     endif
     if upgradeid != tc_add2[unitid] and not isSameUpgradeLine(tc_add2[unitid], upgradeid)  then
-      set have_qty = have_qty + GetUnitCountEx(tc_add2[unitid],only_done,townid)
+      set have_qty = have_qty + GetUnitCountEx(tc_add2[unitid], only_done, townid)
     endif  
   else
   #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%9" ne "0"
     if unitid == %1 and upgradeid != %9 and not isSameUpgradeLine(%9, upgradeid) then
-      set have_qty = have_qty + GetUnitCountEx(%9,only_done,townid)
+      set have_qty = have_qty + GetUnitCountEx(%9, only_done, townid)
     endif
   #ENDINCLUDE
   #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%10" ne "0"
     if unitid == %1 and upgradeid != %10 and not isSameUpgradeLine(%10, upgradeid) then
-      set have_qty = have_qty + GetUnitCountEx(%10, only_done,townid)
+      set have_qty = have_qty + GetUnitCountEx(%10, only_done, townid)
     endif
   #ENDINCLUDE
   endif
@@ -2584,7 +2617,7 @@ function TownCountEx takes integer unitid, boolean only_done, integer townid ret
   //local integer newid = 0
   //set newid = GetAMAIId(unitid)
   //set have_qty = GetUnitCountEx(unitid,only_done,townid) + GetUnitCountEx(tc_add1[newid],false,townid) + GetUnitCountEx(tc_add2[newid],false,townid)
-  return GetUnitCountEx(unitid,only_done,townid) + GetUnitCountAlt(unitid,0,only_done,townid)
+  return GetUnitCountEx(unitid,only_done,townid) + GetUnitCountAlt(unitid,0,only_done,townid) // Pass 0 as upgradeid to count all alternates
 endfunction
 
 //============================================================================
@@ -9678,7 +9711,8 @@ function RefreshNeeded takes integer t, integer qty, integer unitid, integer tow
     if needed1[unitid] != 0 then
       if needed3[unitid] == UPGRADED then
         // Number needed is on top of the already upgraded as cannot upgrade the already upgraded. Remove existing desired upgrade from count to avoid it infinitely increasing.
-        call SetBuildAllAMCore(BUILD_UNIT, Max(0,qty + GetUnitCountAlt(needed1[unitid], unitid, false, town)), needed1[unitid], town, bloc, prio + prio_n_inc*3)
+  // Count only completed alternates of the prerequisite when deciding how many prerequisite units to build
+  call SetBuildAllAMCore(BUILD_UNIT, Max(0,qty + GetUnitCountAlt(needed1[unitid], unitid, true, town)), needed1[unitid], town, bloc, prio + prio_n_inc*3)
       else
         call SetBuildAllAMCore(BUILD_UNIT, Get_f_qty(qty, unitid, town), needed1[unitid], -1, BLOC_STD, prio + prio_n_inc*3)
       endif
@@ -10923,7 +10957,7 @@ endfunction
 
 //============================================================================
 function StartExpansionAM takes integer qty, integer hall returns integer
-  local integer count = TownCount(hall)
+  local integer count = TownCount(hall) // main hall (does not include alternates) + any done alternate/higher-tier halls
   local integer countdone = TownCountDone(hall)
   local integer mines = GetMinesOwned()
   local integer i = racial_expansion
@@ -10934,15 +10968,16 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   local boolean w = false
   
   if race_manual_loading then  //check actual number mines
+    // For manual-loading mines apply the same logic: main mine count + done alternate/higher-tier forms
+    set countdone = TownCountDone(race_manual_loading_mine)
     set count = TownCount(race_manual_loading_mine)
-    set countdone = TownCountDone(race_manual_loading_mine)  
   //elseif not race_uses_mine_expansion and first_town_mine > 0 then
   //  set countdone = Min(countdone, GetMinesOwned())
   endif
   if fixmine != null then
     call CreateDebugTag("FIX mine", 10, fixmine, 4.00, 2.00)
   endif
-  call Trace("first town mine mode : " + Int2Str(first_town_mine) + ", sys mine : " + Int2Str(GetMinesOwned()))
+  call Trace("Hall Count:" + Int2Str(count) + ", Hall Done:" + Int2Str(countdone) + ", first town mine mode : " + Int2Str(first_town_mine) + ", sys mine : " + Int2Str(GetMinesOwned()))
   // Disabled as breaking orc and humans not expanding at all currently
   //if first_town_mine > 1 or (count == 0 and first_town_mine < 2 and GetMinesOwned() > 0 and (race_manual_loading or race_uses_mine_expansion)) then
   //  set f = MultipleMinefix()  // fix home_location multiple mine
@@ -10953,13 +10988,9 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   //  call Trace("AMAIStartexpa: Try ReBuilt Home Mine")  // no take home near mine forced rebuild home mine when UD mine or ELF town lost , but not affect expansion so not add count
   //endif
   
-  if countdone >= qty then
+  if count >= qty then
     call Trace("AMAIStartexpa: Built All Expansions")
     return BUILT_ALL
-  endif
-  if count > countdone then
-    call Trace("AMAIStartexpa: All Expansions being built")
-    return BUILT_SOME
   endif
   
   if town_threatened then
@@ -11406,11 +11437,11 @@ endif
 set exp_prepared = false
 // check actual number of gold mines
 if race_manual_loading then
-  set mines = TownCount(race_manual_loading_mine)
+  set mines = TownCountDone(race_manual_loading_mine)
 elseif race_uses_mine_expansion then
-  set mines = TownCount(racial_expansion)
+  set mines = TownCountDone(racial_expansion)
 elseif first_town_mine > 0 and not race_manual_loading and not race_uses_mine_expansion then  //home_location have multiple mine , fix GetMinesOwned bug(HUMAN and ORC)
-  set mines = Min(TownCount(racial_expansion), mines)
+  set mines = Min(TownCountDone(racial_expansion), mines)
 endif
 
 set u = GetExpFoe(u)
@@ -11512,11 +11543,11 @@ if mines < 1 or gold_left < 2500 or exp_prepared then
   //call Trace("ExpansionBuilder: Putting mine on build list")
   call CreateDebugTagLoc("Expand Here", 10, GetUnitX(current_expansion), GetUnitY(current_expansion), 1.00, 0.80)
   if mines < 1 or gold_left < 2500 then
-    call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_emergency_prio)
+    call BuildExpa(TownCountDone(racial_expansion) + 1, racial_expansion, expa_emergency_prio)
   elseif rebuild or upkeepboost then
-    call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_rebuild_prio)
+    call BuildExpa(TownCountDone(racial_expansion) + 1, racial_expansion, expa_rebuild_prio)
   else
-    call BuildExpa(TownCount(racial_expansion) + 1, racial_expansion, expa_prio)
+    call BuildExpa(TownCountDone(racial_expansion) + 1, racial_expansion, expa_prio)
   endif
 else
   //call Trace("ExpansionBuilder: Not ready to build mine")
