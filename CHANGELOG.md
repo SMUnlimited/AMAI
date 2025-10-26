@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed undead unable to upgrade creature armor past the first tier.
 - Standard AI hero ability fixes for TFT and 1.31/2.0.3 compatability (jzy-chitong56)
 - Disabled multimine fix as was blocking orcs/human/undead from mining entirely on maps like ice crown.
+- Fixed an issue where expansion cycle could get stuck trying to build expansion in same place if it cannot get a good ground location for it.
 
 ## [3.5.0] - 2025-05-02
 
