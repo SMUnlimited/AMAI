@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Fixed
 - Fixed chat messages based on profile name not running as was still using ai_name which hasn't matched for a long time. (jzy-chitong56)
 - Fix rush value check not correctly taking account of uneven enemies vs allies.
+- Fix an issue where refunded blocking units could return additional resources.
+- Some pathing checks don't need to be created as the current player so ensured they use neutral passive to avoid confusing the AI and stats.
 
 ## [3.5.1] - 2025-10-26
 
