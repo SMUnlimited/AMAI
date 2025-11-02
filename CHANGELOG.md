@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## Unreleased
 
 ### Changed
+- Reworked expansion rebuild logic
+  - It interrupts current expansion if its newly lost rather than once the current expansion choice is expanded to.
+  - It has an 80% chance to rebuild an expansion. 20% to pick a standard expansion.
 - When counter unit changes, re-evaluate build order faster to stop building old counters.
 
 ### Fixed

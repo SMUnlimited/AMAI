@@ -1036,6 +1036,18 @@ globals
     integer array exp_creeps
     boolean array exp_iswater
 
+  // Rebuild expansion tracking (expansions we previously held and can rebuild)
+  integer rebuild_exp_number = 0
+  integer array rebuild_exp_rp
+  unit array rebuild_exp_unit
+  real array rebuild_exp_dist
+  location array rebuild_exp_ancient
+  integer array rebuild_exp_creeps
+  boolean array rebuild_exp_iswater
+  integer prev_rebuild_exp_count = 0
+  // Flag set by ExpansionBuilder when new rebuild candidates appear.
+  boolean prefer_rebuild_now = false
+
     integer current_expansion_creeps = 0
     boolean current_expansion_iswater = false
     unit current_expansion = null
@@ -6640,6 +6652,58 @@ function add_exp takes unit u, real dist, location ancient, integer creeps, bool
 endfunction
 
 //============================================================================
+function add_rebuild_exp takes unit u, real dist, location ancient, integer creeps, boolean iswater returns nothing
+  set rebuild_exp_unit[rebuild_exp_number] = u
+  set rebuild_exp_dist[rebuild_exp_number] = dist
+  set rebuild_exp_ancient[rebuild_exp_number] = ancient
+  set rebuild_exp_creeps[rebuild_exp_number] = creeps
+  set rebuild_exp_iswater[rebuild_exp_number] = iswater
+  set rebuild_exp_number = rebuild_exp_number + 1
+endfunction
+
+//============================================================================
+function ChooseRebuildExp takes nothing returns integer
+  // Mirrors ChooseExp but for rebuild_exp arrays
+  local integer i = 1
+  local integer sum = 0
+  local integer exp_roll = GetRandomInt(1,100)
+  local integer first = 0
+  local integer second = 0
+  local integer third = 0
+  local integer riskyexp = 0
+  if rebuild_exp_number < 2 then
+    return 0
+  endif
+  set riskyexp = GetRandomInt(1, rebuild_exp_number - 1)
+  loop
+    exitwhen i >= rebuild_exp_number
+    if rebuild_exp_rp[i] < rebuild_exp_rp[first] then
+      set third = second
+      set second = first
+      set first = i
+    else
+      if rebuild_exp_rp[i] < rebuild_exp_rp[second] then
+        set third = second
+        set second = i
+      else
+        if rebuild_exp_rp[i] < rebuild_exp_rp[third] then
+          set third = i
+        endif
+      endif
+    endif
+    set i = i + 1
+  endloop
+  if (exp_roll <= 80) then 
+    return first
+  elseif (exp_roll <= 100) then 
+    return second
+  else
+    return riskyexp
+  endif
+  return 0
+endfunction
+
+//============================================================================
 function GetNearestEnemyDistance takes nothing returns real
 local integer i = 0
 local real dist = 0
@@ -6798,6 +6862,45 @@ function CheckExpansionRebuild takes nothing returns boolean
 endfunction
 
 //============================================================================
+// Returns true if the given expansion unit appears to be a rebuild candidate
+// (no own town present, resource present and no nearby enemy creeps)
+function CheckExpansionRebuildAt takes unit exp_u returns boolean
+  local group g = CreateGroup()
+  local unit u = null
+  // Do not consider rebuilds for expansions that are already taken
+  if CheckExpansionTaken(exp_u) then
+    return false
+  endif
+  call GroupEnumUnitsInRange(g, GetUnitX(exp_u), GetUnitY(exp_u), expansion_taken_radius, null)
+  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+  set g = SelectByPlayer(g, ai_player, true)
+  set g = SelectByAlive(g, true)
+
+  if FirstOfGroup(g) != null then
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      if GetUnitTypeId(u) == old_id[racial_expansion] then
+        call DestroyGroup(g)
+        set g = null
+        set u = null
+        return false
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+    // If there are no town buildings but resource remains and no creep/enemy strength nearby then candidate
+    if GetResourceAmount(exp_u) > 2 * GetUnitGoldCost2(racial_expansion) and GetLocationNonCreepStrength(GetUnitX(exp_u), GetUnitY(exp_u), expansion_taken_radius) <= 0 then
+      call DestroyGroup(g)
+      set g = null
+      return true
+    endif
+  endif
+  call DestroyGroup(g)
+  set g = null
+  return false
+endfunction
+
+//============================================================================
 function ExpansionFormula takes integer exp_d, unit exp_u returns integer
 // Lower Result back is better
   local group g = CreateGroup()
@@ -6901,6 +7004,7 @@ function ChooseExpansion takes nothing returns nothing
   set exp_number = 0
   loop
     exitwhen i >= expansion_list_length
+    // Normal new expansion candidate
     if GetResourceAmount(expansion_list[i]) > gold and not CheckExpansionTaken(expansion_list[i]) and DistanceBetweenPoints_kd(home_location,GetUnitLoc(expansion_list[i])) > 1500 then
       call add_exp(expansion_list[i], expansion_dist[i], expansion_ancient[i], i, false)
     endif
@@ -6910,16 +7014,41 @@ function ChooseExpansion takes nothing returns nothing
     set i = 0
     loop
       exitwhen i >= water_expansion_list_length
+      // water expansions: normal
       if GetResourceAmount(water_expansion_list[i]) > gold and not CheckExpansionTaken(water_expansion_list[i]) then
         call add_exp(water_expansion_list[i], water_expansion_dist[i] + 5120, null, i, true)
       endif
       set i = i + 1
     endloop
   endif
+  // compute rebuild expansion ratings
+  set i = 0
+  loop
+    exitwhen i >= rebuild_exp_number
+    set rebuild_exp_rp[i] = ExpansionFormula(R2I(rebuild_exp_dist[i]), rebuild_exp_unit[i])
+    if rebuild_exp_rp[i] < 0 then
+      set rebuild_exp_rp[i] = 0
+    endif
+    set i = i + 1
+  endloop
   if active_expansion and not pathing_done and exp_number < c_enemy_total + c_ally_total + 1 then
     set active_expansion = false
   endif
   call add_exp_rp()
+  // If ExpansionBuilder signalled a new set of rebuild candidates, prefer them 80% of the time
+  if rebuild_exp_number > 0 then
+    if GetRandomInt(1,100) <= 80 then
+      set exp_chosen = ChooseRebuildExp()
+      set current_expansion = rebuild_exp_unit[exp_chosen]
+      set current_expansion_creeps = rebuild_exp_creeps[exp_chosen]
+      set current_expansion_iswater = rebuild_exp_iswater[exp_chosen]
+      return
+    endif
+    // clear the signal even if not chosen so it's only applied once per detection
+    set prefer_rebuild_now = false
+  else
+    set prefer_rebuild_now = false  
+  endif
 //  call make_exp_rp_positive()
   //if exp_number == 0  and first_town_mine > 1 and fixmine != null then
   //  set current_expansion = fixmine  // let expansion system work
@@ -11408,9 +11537,9 @@ function ExpansionBuilder takes nothing returns nothing
 local integer mines = GetMinesOwned()
 local integer gold_left = GetGoldOwned()
 local integer i = 0
+local integer rebi = 0
 local integer f = 0
 local boolean exp_prepared = false
-local boolean rebuild = false
 local unit u = null
 local boolean upkeepboost = false
 local integer aggexpand = 0
@@ -11467,6 +11596,56 @@ if minetimeready then
   endif
 endif
 
+  // Detect rebuild candidates proactively and trigger ChooseExpansion if found
+  set rebi = 0
+  set rebuild_exp_number = 0
+  loop
+    exitwhen rebi >= expansion_list_length
+    if CheckExpansionRebuildAt(expansion_list[rebi]) then
+      call add_rebuild_exp(expansion_list[rebi], expansion_dist[rebi], expansion_ancient[rebi], rebi, false)
+    endif
+    set rebi = rebi + 1
+  endloop
+  set rebi = 0
+  loop
+    exitwhen rebi >= water_expansion_list_length
+    if CheckExpansionRebuildAt(water_expansion_list[rebi]) then
+      call add_rebuild_exp(water_expansion_list[rebi], water_expansion_dist[rebi] + 5120, null, rebi, true)
+    endif
+    set rebi = rebi + 1
+  endloop
+  if rebuild_exp_number > 0 then
+    // Only trigger ChooseExpansion when new rebuild candidates appear
+    if rebuild_exp_number > prev_rebuild_exp_count then
+      set prefer_rebuild_now = true
+      // remember the count used so we only trigger on increases
+      set prev_rebuild_exp_count = rebuild_exp_number
+      // Trigger ChooseExpansion so the rebuild candidates get processed
+      call ChooseExpansion()
+      if current_expansion == null then
+        call Trace("ExpansionBuilder: No mine available (after rebuild scan)")
+        return
+      endif
+      if CheckExpansionTaken(current_expansion) then
+        call Trace("ExpansionBuilder: Expansion taken by someone else (after rebuild scan)")
+        if current_expansion != not_taken_expansion then
+          set current_expansion = null
+        endif
+        return
+      endif
+      set specialexpand = not IsWaterExpansion(current_expansion)
+      set aggexpand = 1
+    else
+      // If rebuild candidates exist but are not new, don't re-trigger ChooseExpansion
+      set prev_rebuild_exp_count = rebuild_exp_number
+    endif
+  else
+    // No rebuilds: keep prev_rebuild_exp_count in sync
+    if prev_rebuild_exp_count > 0 then
+      set prev_rebuild_exp_count = 0
+    endif
+  endif
+
 // Every mine has chance to check expand
 //if (take_exp) then
 //  call Trace("Take EXP")
@@ -11519,10 +11698,11 @@ endif
 
 
 if not exp_prepared and u == null then
-  set rebuild = CheckExpansionRebuild()
-  if rebuild then
-    //call Trace("ExpansionBuilder:Ready to rebuild mine")
-    set exp_prepared = true
+  // If ChooseExpansion previously populated rebuild candidates and the chosen
+  // current_expansion is one of them, treat it as prepared for rebuild.
+  if prefer_rebuild_now and current_expansion != null then
+        //call Trace("ExpansionBuilder:Ready to rebuild mine (chosen as rebuild)")
+        set exp_prepared = true
   endif
 endif
 set u = null
@@ -11551,7 +11731,7 @@ if mines < 1 or gold_left < 2500 or exp_prepared then
   call CreateDebugTagLoc("Expand Here", 10, GetUnitX(current_expansion), GetUnitY(current_expansion), 1.00, 0.80)
   if mines < 1 or gold_left < 2500 then
     call BuildExpa(TownCountDone(racial_expansion) + 1, racial_expansion, expa_emergency_prio)
-  elseif rebuild or upkeepboost then
+  elseif prefer_rebuild_now or upkeepboost then
     call BuildExpa(TownCountDone(racial_expansion) + 1, racial_expansion, expa_rebuild_prio)
   else
     call BuildExpa(TownCountDone(racial_expansion) + 1, racial_expansion, expa_prio)
