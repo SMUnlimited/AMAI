@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fix rush value check not correctly taking account of uneven enemies vs allies.
 - Fix an issue where refunded blocking units could return additional resources.
 - Some pathing checks don't need to be created as the current player so ensured they use neutral passive to avoid confusing the AI and stats.
+- Add protection against bad strategies crashing the build queue.
 
 ## [3.5.1] - 2025-10-26
 

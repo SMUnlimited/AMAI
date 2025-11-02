@@ -9635,8 +9635,11 @@ function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer
       return false
     endif
   elseif TownCountTown(unitid, town) >= qty or (buy_type[unitid] > BT_RACIAL_ITEM and not neutral_available[GetNeutralNumber(unitid)]) then
-    return false
+    return false  
   endif
+  if build_length >= JASS_MAX_ARRAY_SIZE then
+    return false // Build queue full
+  endif  
   call GetBuildLock()
   set j = Max(build_length - 1,0)
   loop
@@ -10392,13 +10395,15 @@ endfunction
 // (AMAI) Refresh and Builds
 //============================================================================
 function AddRefresh takes integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns nothing
-    set t_build_qty[t_build_length] = qty
-    set t_build_type[t_build_length] = t
-    set t_build_item[t_build_length] = unitid
-    set t_build_town[t_build_length] = town
-    set t_build_loc[t_build_length] = bloc
-    set t_build_prio[t_build_length] = prio
-    set t_build_length = t_build_length + 1
+    if t_build_length < JASS_MAX_ARRAY_SIZE then
+      set t_build_qty[t_build_length] = qty
+      set t_build_type[t_build_length] = t
+      set t_build_item[t_build_length] = unitid
+      set t_build_town[t_build_length] = town
+      set t_build_loc[t_build_length] = bloc
+      set t_build_prio[t_build_length] = prio
+      set t_build_length = t_build_length + 1
+    endif
 endfunction
 
 //============================================================================
@@ -11816,7 +11821,7 @@ function OneBuildLoopAM takes nothing returns nothing
           
           if ret == CANNOT_BUILD then
             if (traced == 0) then
-              call Trace("CANNOT BUILD " + logtype + unitNames[id] + " " + Int2Str(id))
+              //call Trace("CANNOT BUILD " + logtype + unitNames[id] + " " + Int2Str(id))
               set traced = id
             endif
             call AddRefresh(tp, qty, id, build_town[index], build_loc[index], build_prio[index])
@@ -11827,7 +11832,7 @@ function OneBuildLoopAM takes nothing returns nothing
             //call Trace("BUILT ALL " + logtype + unitNames[id] + " " + Int2Str(id))
             set tracedall = id
           elseif ret == NOT_ENOUGH_RES and tracednoresources == 0 then
-            call Trace("NO RESOURCES " + logtype + unitNames[id] + " " + Int2Str(id))
+            //call Trace("NO RESOURCES " + logtype + unitNames[id] + " " + Int2Str(id))
             set tracednoresources = id
           endif
           
@@ -11857,6 +11862,7 @@ function OneBuildLoopAM takes nothing returns nothing
 
 //    call EndDump(Int2Str(ai_time))
 
+    // Increase priority of unbuilt items over time
     loop
           exitwhen index >= build_length
           if index > 0 and ModuloInteger(index, 300) == 0 then
@@ -11872,6 +11878,15 @@ function OneBuildLoopAM takes nothing returns nothing
           set index = index + 1
     endloop
     set build_length = index_free
+    if ret == CANNOT_BUILD then
+      call Trace(Int2Str(build_length) + " items remain on build list : CANNOT BUILD " + logtype + unitNames[id] + " " + Int2Str(id))
+    elseif ret == NOT_ENOUGH_RES then
+      call Trace(Int2Str(build_length) + " items remain on build list : NO RESOURCES " + logtype + unitNames[id] + " " + Int2Str(id))
+    elseif ret == BUILT_SOME then
+      call Trace(Int2Str(build_length) + " items remain on build list : BUILT SOME " + logtype + unitNames[id] + " " + Int2Str(id))
+    elseif ret == BUILT_ALL then
+      call Trace(Int2Str(build_length) + " items remain on build list : BUILT ALL " + logtype + unitNames[id] + " " + Int2Str(id))
+    endif
     
     call ResetUpkeepSaveTime()
     call ReleaseBuildLock()
