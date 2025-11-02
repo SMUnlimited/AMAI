@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+### Changed
+- When counter unit changes, re-evaluate build order faster to stop building old counters.
+
 ### Fixed
 - Fixed chat messages based on profile name not running as was still using ai_name which hasn't matched for a long time. (jzy-chitong56)
 - Fix rush value check not correctly taking account of uneven enemies vs allies.
