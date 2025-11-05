@@ -10437,6 +10437,7 @@ endfunction
 function DefendTownsEx takes boolean only_done, boolean at_front, integer qty, integer unitid, integer prio returns nothing
   local integer twm = TownWithMine()
   local integer i = twm
+  local integer lasttown = twm
   //call Trace("DefendTownsEx TownWithMine:" + Int2Str(twm))
   if not at_front then
     set twm = Max(twm, 1) // Home town is town 0 and exclude if at_front is not set
@@ -10446,6 +10447,13 @@ function DefendTownsEx takes boolean only_done, boolean at_front, integer qty, i
   set i = twm
   loop
     exitwhen i > twm + 2
+    if TownHasMine(i) then
+      set lasttown = i
+    endif
+    set i = i + 1
+  endloop 
+  loop
+    exitwhen i > twm + 2 or (ancient_expanding and ancient_exp_state > 1 and ancient_exp_state != 4 and i == lasttown) // If ancient expanding new town isn't ready yet even if town hall is built
     if TownHasMine(i) and TownCountEx(racial_expansion,only_done,i) > 0 and TownCountEx(unitid, only_done, -1) < qty * Max(TownCountEx(racial_expansion, false, -1),1) then
       if i <= 0 and at_front then
         call BuildFront(qty, unitid, prio)
@@ -10477,8 +10485,16 @@ endfunction
 function DefendTownsCond takes integer qty, integer unitid, integer min_dist, integer max_dist, integer min_gold, integer prio returns nothing
   local integer twm = Max(TownWithMine(),1)
   local integer i = twm
+  local integer lasttown = twm
   loop
     exitwhen i > twm + 2
+    if TownHasMine(i) then
+      set lasttown = i
+    endif
+    set i = i + 1
+  endloop 
+  loop
+    exitwhen i > twm + 2 or (ancient_expanding and ancient_exp_state > 1 and ancient_exp_state != 4 and i == lasttown)
     if TownHasMine(i) and town_built[i] and own_town_dist[i] >= min_dist and own_town_dist[i] <= max_dist and GetResourceAmount(own_town_mine[i]) >= min_gold then
         call SecondaryTownAM(i, qty, unitid, prio)
     endif
