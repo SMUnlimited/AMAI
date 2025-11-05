@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Add protection against bad strategies crashing the build queue.
 - Avoid constantly setting the captain locations to same location to reduce any side effects within hardcoded ai functions.
 - Fix an issue where towers could be built next to ancient expansion while it was still expanding/creeping the mine.
+- Fixed an issue where multiple upgrades or a failure to start an upgrade caused the upgrade to go missing from the build queue which means it wouldn't retry until the build queue is re-evaluated.
 
 ## [3.5.1] - 2025-10-26
 
