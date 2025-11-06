@@ -1013,6 +1013,9 @@ globals
     real array expansion_dist
     hashtable expansion_creeps = InitHashtable()
     integer expansion_list_length = 0
+  // Flags to mark expansions that should not be re-chosen after a failed attempt
+  integer array bad_expansion_flag
+  integer array bad_water_expansion_flag
     
     unit array water_expansion_list
     integer water_expansion_list_length = 0
@@ -7005,7 +7008,7 @@ function ChooseExpansion takes nothing returns nothing
   loop
     exitwhen i >= expansion_list_length
     // Normal new expansion candidate
-    if GetResourceAmount(expansion_list[i]) > gold and not CheckExpansionTaken(expansion_list[i]) and DistanceBetweenPoints_kd(home_location,GetUnitLoc(expansion_list[i])) > 1500 then
+    if GetResourceAmount(expansion_list[i]) > gold and not CheckExpansionTaken(expansion_list[i]) and DistanceBetweenPoints_kd(home_location,GetUnitLoc(expansion_list[i])) > 1500 and bad_expansion_flag[i] == 0 then
       call add_exp(expansion_list[i], expansion_dist[i], expansion_ancient[i], i, false)
     endif
     set i = i + 1
@@ -7015,7 +7018,7 @@ function ChooseExpansion takes nothing returns nothing
     loop
       exitwhen i >= water_expansion_list_length
       // water expansions: normal
-      if GetResourceAmount(water_expansion_list[i]) > gold and not CheckExpansionTaken(water_expansion_list[i]) then
+      if GetResourceAmount(water_expansion_list[i]) > gold and not CheckExpansionTaken(water_expansion_list[i]) and bad_water_expansion_flag[i] == 0 then
         call add_exp(water_expansion_list[i], water_expansion_dist[i] + 5120, null, i, true)
       endif
       set i = i + 1
@@ -7740,6 +7743,42 @@ endfunction
 function GetSleepMultipler takes integer aiCount returns real
   return LinearInterpolation(I2R(slm_start), I2R(slm_end), slm_start_mult, slm_end_mult, I2R(aiCount)) + GetRandomReal(-0.2, 0.2)
 endfunction 
+
+//============================================================================
+// Mark an expansion (land or water) as "bad" so it won't be re-chosen by
+// ChooseExpansion for the current selection round. This helps avoid
+// infinite re-selection of expansions that failed during ConstructExpansion.
+function MarkBadExpansion takes unit u returns nothing
+  local integer i = 0
+  // Check land expansions
+  loop
+    exitwhen i >= expansion_list_length
+    if expansion_list[i] == u then
+      set bad_expansion_flag[i] = 1
+      return
+    endif
+    set i = i + 1
+  endloop
+  // Check water expansions
+  set i = 0
+  loop
+    exitwhen i >= water_expansion_list_length
+    if water_expansion_list[i] == u then
+      set bad_water_expansion_flag[i] = 1
+      return
+    endif
+    set i = i + 1
+  endloop
+endfunction
+
+//============================================================================
+function IsBadExpansionIndex takes integer idx, boolean iswater returns boolean
+  if iswater then
+    return bad_water_expansion_flag[idx] == 1
+  else
+    return bad_expansion_flag[idx] == 1
+  endif
+endfunction
 
 //============================================================================
 // (AMAI) Jobs Listing (Custom Job Scripts are placed here)
@@ -11062,6 +11101,8 @@ function ConstructExpansion takes unit peon, integer unitid returns boolean
       call RemoveUnit(u)
       set u = null
       call Trace("ConstructExpa: Not a valid build location cancel expa")
+      // Mark this expansion as bad so ChooseExpansion will not re-select it immediately
+      call MarkBadExpansion(current_expansion)
       set current_expansion = null // Too far away reset expansion to avoid infinite loop
       return false
     endif
