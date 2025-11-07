@@ -6300,9 +6300,16 @@ function CheckExpansionTaken takes unit expa returns boolean
   local group g = null
   local unit u = null
   local integer claimedMines = 0
+  local integer enemyClaimedMines = 0
   local integer minecount = 0
   local integer ownedmines = 0
   local boolean mineclaimed = true
+  local group ag = null
+  local unit a = null
+  local group mg = null
+  local unit nearest_mine = null
+  local real da = 0
+  local real de = 0
   if expa == null or not UnitAlive(expa)  then
     return true
   elseif first_town_mine > 1 and DistanceBetweenPoints_dk(GetUnitLoc(expa), home_location) < expansion_taken_radius then
@@ -6336,13 +6343,77 @@ function CheckExpansionTaken takes unit expa returns boolean
     endif
     // A single town hall of humans and orcs can capture close enough mines
     // For now elf will also claim the mines, due to elf mine has to wait for tree of ages to be built so don't want allies to grab mine before its complete.
-    if IsUnitType(u, UNIT_TYPE_TOWNHALL) and ((not race_uses_mine_expansion) or (race_uses_mine_expansion and GetOwningPlayer(u) != ai_player)) then
-      set claimedMines = claimedMines + 1
+    if IsUnitType(u, UNIT_TYPE_TOWNHALL) then
+      // Count enemy-owned townhalls separately so the allied-claim heuristic
+      // only gets blocked by enemy claims. Keep claimedMines for backward
+      // compatibility with the original return behavior.
+      if IsPlayerEnemy(GetOwningPlayer(u), ai_player) then
+        set enemyClaimedMines = enemyClaimedMines + 1
+      endif
+      if ((not race_uses_mine_expansion) or (race_uses_mine_expansion and GetOwningPlayer(u) != ai_player)) then
+        set claimedMines = claimedMines + 1
+      endif
     endif
     call GroupRemoveUnit(g, u)
   endloop
   call DestroyGroup(g)
   set g = null
+  // If there are multiple unclaimed neutral mines nearby, check for allied townhalls
+  // that may claim a different mine. If an ally is closer to another neutral mine than
+  // to this expansion, treat this expansion as available for us to claim.
+  // Only run allied-claim heuristic when there are multiple neutral mines,
+  // no enemy townhalls have claimed the area, and this mine isn't already
+  // marked as claimed.
+  if minecount > 1 and enemyClaimedMines == 0 and not mineclaimed then
+    set ag = CreateGroup()
+    set a = null
+    // find nearby townhalls that are not owned by AI (potential ally builders)
+    call GroupEnumUnitsInRange(ag, GetUnitX(expa), GetUnitY(expa), expansion_taken_radius, null)
+    set ag = SelectUnittype(ag, UNIT_TYPE_TOWNHALL, true)
+    set ag = SelectByPlayer(ag, ai_player, false) // remove AI-owned townhalls
+    set ag = SelectByAlive2(ag, true)
+    loop
+      set a = FirstOfGroup(ag)
+      exitwhen a == null
+      // only consider allied players (not enemies)
+      if IsPlayerAlly(GetOwningPlayer(a), ai_player) and GetOwningPlayer(a) != ai_player then
+        set mg = CreateGroup()
+        set nearest_mine = null
+        // enumerate neutral passive mines around the ally
+        call GroupEnumUnitsInRange(mg, GetUnitX(a), GetUnitY(a), expansion_taken_radius, null)
+        set mg = SelectByPlayer(mg, Player(PLAYER_NEUTRAL_PASSIVE), true)
+        set mg = SelectByAlive2(mg, true)
+        // find the nearest neutral mine to the ally
+        set nearest_mine = GetNearestOfGroup(nearest_mine, mg, GetUnitLoc(a))
+        if nearest_mine != null then
+          // distance from ally to its nearest neutral mine
+          set da = DistanceBetweenPoints_dd(GetUnitLoc(a), GetUnitLoc(nearest_mine))
+          // distance from ally to the target expansion
+          set de = DistanceBetweenPoints_dd(GetUnitLoc(a), GetUnitLoc(expa))
+          // if ally is closer to another neutral mine than to this expansion
+          // then they are likely to claim that other mine and this expansion
+          // should be considered available for us
+          if da < de then
+            call Trace("AlliedClaimHeuristic: ally " + Int2Str(GetPlayerId(GetOwningPlayer(a))) + " nearer to other mine (da=" + Int2Str(R2I(da)) + ") than to expa (de=" + Int2Str(R2I(de)) + ") - treating target as available")
+            call DestroyGroup(ag)
+            call DestroyGroup(mg)
+            set ag = null
+            set mg = null
+            set a = null
+            set nearest_mine = null
+            return false
+          endif
+        endif
+        call DestroyGroup(mg)
+        set mg = null
+        set nearest_mine = null
+      endif
+      call GroupRemoveUnit(ag, a)
+    endloop
+    call DestroyGroup(ag)
+    set ag = null
+    set a = null
+  endif
   call CreateDebugTagLoc("Mines:" + Int2Str(minecount) +" Taken:" + Int2Str(claimedMines) + " Own:" + Int2Str(ownedmines), 10, GetUnitX(expa), GetUnitY(expa), 10.00, 1.80)
   return claimedMines >= 1 or mineclaimed// While there may be extra mines, we focusing on is this mine taken
 endfunction
@@ -8610,10 +8681,14 @@ endfunction
 
 //============================================================================
 function GetBuildLock takes nothing returns nothing
+    local integer i = 0
     loop
       exitwhen build_lock
-      //call Trace("Build Lock not received")
+      if i >= 200 then
+        call TraceAll("ERROR: Build Lock not received, possibly hung")
+      endif  
       call Sleep(0.5)
+      set i = i + 1
     endloop
     set build_lock = false
 endfunction

@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+### Added
+- Humans and orcs are now aware of safe spare mines near allies and will expand to them instead of ignoring them.
+
 ### Changed
 - Reworked expansion rebuild logic
   - It interrupts current expansion if its newly lost rather than once the current expansion choice is expanded to.
