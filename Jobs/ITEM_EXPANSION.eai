@@ -5,6 +5,7 @@
   boolean item_job_running = false
   boolean expitem_buy = false
   location item_exp_guard_loc = null
+  integer item_exp_attempts = 0
 #ELSE
 
 function ItemExpansionJob takes nothing returns nothing
@@ -38,16 +39,25 @@ function ItemExpansionJob takes nothing returns nothing
     endif
     if u == null then
       if itemhero == null and expitem_buy == false then
-        if GetGold() < gold_price[race_item_expansion_item_id] or GetWood() < wood_price[race_item_expansion_item_id] then
-          call Trace("Expansion no gold or wood")
+        if not shop_ordered and GetGold() < gold_price[race_item_expansion_item_id] or GetWood() < wood_price[race_item_expansion_item_id] then
+          call Trace("Expansion no gold or wood") // Technically cost already approved and resourced by StartExpansion so unlikely to hit this
           set item_expanding = false
           set item_job_running = false
           set item_exp_state = 0
           set itemhero = null
           return
         endif
-        set shop_ordered = true
-        call TQAddJob(5, BUY_ITEM, race_item_expansion_item_id)
+        if not shop_ordered and item_exp_attempts < 3 then
+          set shop_ordered = true
+          set item_exp_attempts = item_exp_attempts + 1
+          call TQAddJob(5, BUY_ITEM, race_item_expansion_item_id)
+        elseif item_exp_attempts >= 3 then
+          call Trace("Item expansion buy failed too many times switch to normal expansion")
+          set item_expanding = false
+          set item_job_running = false
+          set item_exp_state = 0
+          return
+        endif  
         call TQAddJob(20, ITEM_EXPANSION, 0)
         return
       endif
@@ -60,14 +70,24 @@ function ItemExpansionJob takes nothing returns nothing
       set item_exp_loc = GetUnitLoc(temp)
       call RemoveUnit(temp)
       set temp = null
-      set loc = GetUnitLoc(current_expansion)
-      call RemoveLocation(item_exp_guard_loc)
-      set item_exp_guard_loc = AIGetProjectedLoc(loc, item_exp_loc, 850, 0)  //Guarding position
-      call RemoveLocation(loc)
-      set loc = null
-      call UnitUseItemPoint(itemhero, GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), GetLocationX(item_exp_loc), GetLocationY(item_exp_loc))
-      set time_next_try = 1
-      set item_exp_state = 3
+      //set loc = GetUnitLoc(current_expansion)
+      //call RemoveLocation(item_exp_guard_loc)
+      //set item_exp_guard_loc = AIGetProjectedLoc(loc, item_exp_loc, 850, 0)  //Guarding position
+      //call RemoveLocation(loc)
+      //set loc = null
+      if DistanceBetweenPoints_kd(item_exp_loc, GetUnitLoc(current_expansion)) > race_max_expa_mine_distance then
+          set item_expanding = false
+          set item_job_running = false
+          set item_exp_state = 0
+          set itemhero = null
+          call RecycleGuardPosition(itemhero)
+          call MarkBadExpansion(current_expansion)
+          return
+      else
+        call UnitUseItemPoint(itemhero, GetItemOfTypeOnUnit(race_item_expansion_item_id, itemhero), GetLocationX(item_exp_loc), GetLocationY(item_exp_loc))
+        set time_next_try = 1
+        set item_exp_state = 3
+      endif
       call RemoveLocation(item_exp_loc)
       set item_exp_loc = null
     endif
