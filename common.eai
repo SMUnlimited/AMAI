@@ -12538,36 +12538,17 @@ function SleepInCombatAM takes boolean ally_override returns nothing
 endfunction
 
 //============================================================================
-function GetNearAlliedStrength takes unit target returns real
+function GetNearAlliedStrength takes unit target, real distance returns real
   local integer i = 0
   local real sum = 0
   local location unitloc = GetUnitLoc(target)
-  local real dist = DistanceBetweenPoints(unitloc, ally_loc) + 600
+  local real dist = 600
   loop
     exitwhen i >= army_num
     if IsPlayerAlly(ai_player, Player(army_owner[i])) and Player(army_owner[i]) != ai_player then
-      if army_loc[i] != null and army_future[i] != null and DistanceBetweenPoints(unitloc, army_loc[i]) > dist and DistanceBetweenPoints(unitloc, army_future[i]) < 1300 then
+      if army_loc[i] != null and army_future[i] != null and DistanceBetweenPoints(unitloc, army_loc[i]) > dist and DistanceBetweenPoints(unitloc, army_future[i]) < distance then
         set sum = sum + army_strength[i]
-      endif
-    endif
-    set i = i + 1
-  endloop
-  call RemoveLocation(unitloc)
-  set unitloc = null
-  return sum
-endfunction
-
-//============================================================================
-function GetNearerAlliedStrength takes unit target returns real
-  local integer i = 0
-  local real sum = 0
-  local location unitloc = GetUnitLoc(target)
-  local real dist = DistanceBetweenPoints(unitloc, ally_loc) + 600
-  loop
-    exitwhen i >= army_num
-    if IsPlayerAlly(ai_player, Player(army_owner[i])) and Player(army_owner[i]) != ai_player then
-      if army_loc[i] != null and army_future[i] != null and DistanceBetweenPoints(unitloc, army_loc[i]) <= dist and DistanceBetweenPoints(unitloc, army_future[i]) < 1600 then
-        set sum = sum + army_strength[i]
+        call MoveLocation(ally_loc, GetLocationX(army_loc[i]), GetLocationY(army_loc[i]))
       endif
     endif
     set i = i + 1
@@ -12579,13 +12560,13 @@ endfunction
 
 //============================================================================
 function CheckAttackWait takes unit target returns boolean
-  local real target_strength = GetLocationStrength(GetUnitX(target), GetUnitY(target), battle_radius)
+  local real target_strength = GetLocationEnemyStrength(GetUnitX(target), GetUnitY(target), battle_radius, false)
   local real strength = GetOwnStrength()
-  local real nearer_strength = GetNearerAlliedStrength(target)
-  if strength + nearer_strength > target_strength * 1.1 then
-    return false
+  local real nearer_strength = GetNearAlliedStrength(target, 1300)
+  if strength + nearer_strength > target_strength * 1.1 and strength <= target_strength * 1.1 then
+    return false // Together we stronger so wait to regroup with each other
   endif
-  return GetNearAlliedStrength(target) > 10.0
+  return GetNearAlliedStrength(target, 1800) > 10.0 // if allied strength nearby is significant then group with them
 endfunction
 
 //============================================================================
@@ -12615,6 +12596,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
   local integer attack_length_counter = 0
   local integer combat_length_counter = 0
   local unit ally_target = null
+  local boolean ally_found = false
   //local group g = null
 
   set lastcaptainx = GetUnitX(target)
@@ -12660,8 +12642,11 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       //call Trace("Units, Creeps: " + Int2Str(GetLocationNonCreepStrength(unitx, unity, battle_radius)) + "," + Int2Str(GetLocationCreepStrength(unitx, unity, 500)))
     //	exitwhen GetLocationNonCreepStrength(unitx, unity, battle_radius) <= 0 and not UnitAlive(target) and GetLocationCreepStrength(unitx, unity, 500) <= 0			
     //endif
+    if c_ally_total > 0 and CheckAttackWait(target) and ally_override then
+      set ally_found = true
+    endif  
     set dist = DistanceBetweenPoints_kd(ally_loc, GetUnitLoc(target))
-    if c_ally_total > 0 and dist > 1300 and dist < 2500 and CheckAttackWait(target) and ally_override then
+    if ally_found and dist > 1300 and dist < 2500 then
       set lastcaptainx = GetLocationX(ally_loc)
       set lastcaptainy = GetLocationY(ally_loc)
       //call SetCaptainHome(, lastcaptainx, lastcaptainy)
@@ -12672,13 +12657,13 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       endif
       call CreateDebugTagLoc("Reform near ally", 10, GetLocationX(ally_loc), GetLocationY(ally_loc), 1.00, 0.80)
     else
-      set lastcaptainx = GetUnitX(target)
-      set lastcaptainy = GetUnitY(target)
       set ally_target = I2U(GetStoredInteger(amaiCache, Int2Str(ALLIANCE_TARGET), "0"))
       // We now control ally, only certain attack operations will let AMAI join around a shared ally target
       if (ally_override and c_ally_total > 0 and ally_target != null and ally_target != target) then
         set target = ally_target
       endif
+      set lastcaptainx = GetUnitX(target)
+      set lastcaptainy = GetUnitY(target)  
       if true or CaptainAtGoal() or (attack_length_counter == 0 and not CaptainInCombat(true)) or CaptainInCombat(true) or ally_override or c_ally_total == 0 then
         call AttackMoveKill(target) // use attack length counter to do an ocassional attack move incase enemies nearby
       elseif (c_ally_total > 0 and not ally_override) then // CURRENTLY DISABLED AS FIGHTS WITH ABOVE, NEED NEW COMBAT ATTACK MOVE FUNCTION

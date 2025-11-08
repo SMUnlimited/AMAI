@@ -28,6 +28,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Item expansion will now check placement of a bad town as above.
 - Item expansion after 3 attempts to buy the item, will switch to normal expansion to avoid blocking orcs from expanding as they always in combat.
 - Workaround hardcoded issue where revive hero costs are not actually evaluated correctly.
+- Fixed some attack regrouping with nearby allies not functioning correctly.
+- Fixed an issue where last known captain location didn't match ally target.
 
 ## [3.5.1] - 2025-10-26
 
