@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - It has an 80% chance to rebuild an expansion. 20% to pick a standard expansion.
 - When counter unit changes, re-evaluate build order faster to stop building old counters.
 - Heroes will buy from racial shops in a wider radius of 3000 up from 1000 as this is still close by, even if an attack is running or town needs defending.
+- Insane AMAI now need 25% less gold and wood to be able to share the extra with other players as they earn alot more
 
 ### Fixed
 - Fixed chat messages based on profile name not running as was still using ai_name which hasn't matched for a long time. (jzy-chitong56)
@@ -30,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Workaround hardcoded issue where revive hero costs are not actually evaluated correctly.
 - Fixed some attack regrouping with nearby allies not functioning correctly.
 - Fixed an issue where last known captain location didn't match ally target.
+- Fixed an issue where AI was constantly sharing gold and wood with each other for no reason. Only share with those with low gold and wood.
 
 ## [3.5.1] - 2025-10-26
 

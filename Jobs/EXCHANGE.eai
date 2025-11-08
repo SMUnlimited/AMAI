@@ -18,33 +18,58 @@ function IncreasePlayerWood takes player p, integer i returns nothing
   call SetPlayerWood(p, GetPlayerState(p,PLAYER_STATE_RESOURCE_LUMBER) + i)
 endfunction
 
+// Distribute excess gold/wood to allies below threshold, higher difficulty means 75% more is available to distribute
 function DistributeGold takes integer value returns nothing
   local integer amount = value
-  local integer p_amount = value / force_number
+  local integer p_amount = 0
   local integer i = 0
   loop
     exitwhen i >= force_number
-    if GetPlayerSlotState(own_force[i]) == PLAYER_SLOT_STATE_PLAYING then
-      call IncreasePlayerGold(own_force[i], p_amount)
-      set amount = amount - p_amount
+    if GetPlayerSlotState(own_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetPlayerGold(own_force[i]) < gold_exchange_level then
+      set p_amount = p_amount + 1
     endif
     set i = i + 1
   endloop
+  if p_amount > 0 then
+    set p_amount = value / p_amount // Only share with players who need gold
+    call Trace("EXCHANGE: Distribute Gold per player: " + Int2Str(p_amount))
+    set i = 0
+    loop
+      exitwhen i >= force_number
+      if GetPlayerSlotState(own_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetPlayerGold(own_force[i]) < gold_exchange_level then
+        call IncreasePlayerGold(own_force[i], p_amount)
+        set amount = amount - p_amount
+      endif
+      set i = i + 1
+    endloop
+  endif
   call IncreasePlayerGold(ai_player,amount)
 endfunction
 
 function DistributeWood takes integer value returns nothing
   local integer amount = value
-  local integer p_amount = value / force_number
+  local integer p_amount = 0
   local integer i = 0
   loop
     exitwhen i >= force_number
-    if GetPlayerSlotState(own_force[i]) == PLAYER_SLOT_STATE_PLAYING then
-      call IncreasePlayerWood(own_force[i], p_amount)
-      set amount = amount - p_amount
+    if GetPlayerSlotState(own_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetPlayerWood(own_force[i]) < wood_exchange_level then
+      set p_amount = p_amount + 1
     endif
     set i = i + 1
-  endloop
+  endloop  
+  if p_amount > 0 then
+    set p_amount = value / p_amount // Only share with players who need wood
+    call Trace("EXCHANGE: Distribute Wood per player: " + Int2Str(p_amount))
+    set i = 0
+    loop
+      exitwhen i >= force_number
+      if GetPlayerSlotState(own_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetPlayerWood(own_force[i]) < wood_exchange_level then
+        call IncreasePlayerWood(own_force[i], p_amount)
+        set amount = amount - p_amount
+      endif
+      set i = i + 1
+    endloop
+  endif
   call IncreasePlayerWood(ai_player,amount)
 endfunction
 
@@ -53,12 +78,12 @@ function ExchangeOnce takes nothing returns nothing
   if force_number <= 0 then
     return
   endif
-  set amount = GetPlayerGold(ai_player) - gold_exchange_level
+  set amount = GetPlayerGold(ai_player) - R2I(gold_exchange_level * (Max(difficulty - 2, 0) * 0.75))
   if amount > 0 then
     call IncreasePlayerGold(ai_player, -amount)
     call DistributeGold(amount)
   endif
-  set amount = GetPlayerWood(ai_player) - wood_exchange_level
+  set amount = GetPlayerWood(ai_player) - R2I(wood_exchange_level * (Max(difficulty - 2, 0) * 0.75))
   if amount > 0 then
     call IncreasePlayerWood(ai_player, -amount)
     call DistributeWood(amount)
