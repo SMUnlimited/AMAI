@@ -309,6 +309,7 @@ globals
     integer shredder_peon_count = 12  // how many peons does a goblin shredder replace in lumber harvesting
     integer minimum_peon_wood = 2000 // computers don't build any workers for lumber harvesting if they have more lumber than this
     integer maximum_peon_wood = 200  // computers build all needed workers for lumber harvesting if they have lumber lower than this  
+    boolean custom_data_set = false // Set to true if you want AMAI to somewhat work on maps using the custom 1.0.1 dataset mode
 #PRAGMA END VERSION SETTINGS
                  
 //==============================================================
@@ -1989,7 +1990,13 @@ endfunction
 function GetUnitGoldCost2 takes integer id returns integer
   local integer i = 1
   if needed3[id] == UPGRADED then
-    return GetUnitGoldCost(old_id[id]) - GetUnitGoldCost(old_id[needed1[id]])
+    // Newer version of the game GetUnitGoldCost returns the sum cost including previous upgrades
+    // Old versions of the game this only returned the raw cost in the game editor of each upgrade
+    if custom_data_set then
+      return GetUnitGoldCost(old_id[id])
+    else  
+      return GetUnitGoldCost(old_id[id]) - GetUnitGoldCost2(old_id[needed1[id]])
+    endif
   else
     loop
       exitwhen i > 3
@@ -2006,7 +2013,11 @@ endfunction
 function GetUnitWoodCost2 takes integer id returns integer
   local integer i = 1
   if needed3[id] == UPGRADED then
-    return GetUnitWoodCost(old_id[id]) - GetUnitWoodCost(old_id[needed1[id]])
+    if custom_data_set then
+      return GetUnitWoodCost(old_id[id])
+    else  
+      return GetUnitWoodCost(old_id[id]) - GetUnitWoodCost2(old_id[needed1[id]])
+    endif
   else
     loop
       exitwhen i > 3
@@ -10163,7 +10174,7 @@ function GetTier takes nothing returns integer
   local integer i = tiernum
   loop
     exitwhen i <= 1
-    exitwhen TownCountDone(racial_hall[i]) >= 1
+    exitwhen GetUnitCountDone(racial_hall[i]) >= 1
     set i = i - 1
   endloop
   return i

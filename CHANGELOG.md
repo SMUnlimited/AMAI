@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 - Humans and orcs are now aware of safe spare mines near allies and will expand to them instead of ignoring them.
+- (DevTools) Added new game setting "custom_data_set" which if set to true will make attempted changes to make AMAI work with the custom 1.0.1 dataset used in custom maps. Its just a quick fix and not optimal but they will least upgrade to the next tier when set.
 
 ### Changed
 - Reworked expansion rebuild logic
@@ -32,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed some attack regrouping with nearby allies not functioning correctly.
 - Fixed an issue where last known captain location didn't match ally target.
 - Fixed an issue where AI was constantly sharing gold and wood with each other for no reason. Only share with those with low gold and wood.
+- Fixed an issue where the price of tier 3 upgrade was more expensive than it should be.
 
 ## [3.5.1] - 2025-10-26
 
