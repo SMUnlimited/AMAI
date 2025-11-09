@@ -117,7 +117,16 @@ sub ExtendTable {
 
 sub CheckTable {
   my ($tablefile, $def, $race) = @_;
-  open(DEFTABLE, $def) or die "File <$def> not found!";
+  # Try to open the definition file as given, otherwise look in the Templates folder.
+  if (-e $def) {
+    open(DEFTABLE, $def) or die "File <$def> could not be opened!";
+  }
+  elsif (-e "Templates\\$def") {
+    open(DEFTABLE, "Templates\\$def") or die "File <Templates\\$def> could not be opened!";
+  }
+  else {
+    die "File <$def> not found! (looked in . and Templates\\)";
+  }
   <DEFTABLE>;
   my @defs = <DEFTABLE>;
   close(DEFTABLE);

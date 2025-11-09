@@ -35,6 +35,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed an issue where AI was constantly sharing gold and wood with each other for no reason. Only share with those with low gold and wood.
 - Fixed an issue where the price of tier 3 upgrade was more expensive than it should be.
 - Prevent Elf Barracks Rush triggering on mine creeps as they usually too strong and creeps will usually destroy it early.
+- Reign of chaos version now inherits fix to be able to stand down peons from burrows.
+- (DevTools) Fixed ApplyTableChanges.pl and which ensures all settings files are back to being consistent with each other.
 
 ## [3.5.1] - 2025-10-26
 
