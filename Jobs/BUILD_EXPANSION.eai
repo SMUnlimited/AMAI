@@ -4,64 +4,91 @@
 
 // Extra prevention against AMAI building two townhalls at the same location
 function BuildExpansionJob takes unit u, unit expansion returns nothing
-    local unit v = null
-    local player p = null
-    local real d = 0
-    local real x = 0
-    local real y = 0
-    if u == null or not UnitAlive(u) then
-      return
-    endif
-    if expansion == null then
+  local unit v = null
+  local player p = null
+  local real d = 0
+  local real x = 0
+  local real y = 0
+  local real peon_threat = 0
+  local real exp_threat = 0
+  local real atexpadistance = 190 * 30
+  if u == null or not UnitAlive(u) then
+    return
+  endif
+  if expansion == null then
+    call IssueImmediateOrder(u, "stop")
+    return
+  endif
+  set d = DistanceBetweenUnits(u, expansion)
+  //call Trace("Build Expansion JOB start" + Real2Str(d))
+  call CreateDebugTagLoc("Expand JOB", 10, GetUnitX(expansion), GetUnitY(expansion), 5.00, 1.50)
+  // --- New: check for nearby enemies around the peon or expansion site ---
+  if d >= atexpadistance then
+    set peon_threat = GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 600)
+    if peon_threat > 0 then
+      // Enemy near the worker: send it home to avoid death
+      call CreateDebugTag("BuildExpansion: Enemy near peon", 10, u, 3.00, 1.50)
       call IssueImmediateOrder(u, "stop")
+      call TQAddUnit2Job(10, BUILD_EXPANSION, 0, u, expansion)
       return
     endif
-    set d = DistanceBetweenUnits(u, expansion)
-    //call Trace("Build Expansion JOB start" + Real2Str(d))
-    call CreateDebugTagLoc("Expand JOB", 10, GetUnitX(expansion), GetUnitY(expansion), 5.00, 1.50)
-    if GetUnitCurrentOrder(u) == old_id[racial_expansion] then
-      //call Trace("Build Expansion JOB has order")
-      if CheckDoubleExpansionsClaimedInArea(GetUnitX(expansion), GetUnitY(expansion), true) then
-        call Trace("Double expansion check triggered: ally=" + B2S(double_expansion_ally_present) + " enemy=" + B2S(double_expansion_enemy_present) + " own=" + B2S(double_own_present))
-        if double_expansion_ally_present then
-          //call Trace("Cancelling Expansion - ally expansion detected")
+
+    if difficulty == HARD then
+      set exp_threat = GetLocationNonCreepStrength(GetUnitX(expansion), GetUnitY(expansion), 600)
+      if exp_threat > 0 then
+        // Enemy at the expansion location
+          // On HARD difficulty we pause and retry later (map-hack behaviour)
+          call CreateDebugTagLoc("BuildExpansion: Enemy at expansion", 10, GetUnitX(expansion), GetUnitY(expansion), 3.00, 1.50)
+          call IssueImmediateOrder(u, "stop")
+          // Re-queue the build job with a short delay to wait for danger to pass
+          call TQAddUnit2Job(10, BUILD_EXPANSION, 0, u, expansion)
+          return
+      endif
+    endif
+  endif
+  if GetUnitCurrentOrder(u) == old_id[racial_expansion] then
+    //call Trace("Build Expansion JOB has order")
+    if CheckDoubleExpansionsClaimedInArea(GetUnitX(expansion), GetUnitY(expansion), true) then
+      call Trace("Double expansion check triggered: ally=" + B2S(double_expansion_ally_present) + " enemy=" + B2S(double_expansion_enemy_present) + " own=" + B2S(double_own_present))
+      if double_expansion_ally_present then
+        //call Trace("Cancelling Expansion - ally expansion detected")
+        call IssueImmediateOrder(u, "stop")
+        set current_expansion = null
+        return
+      endif
+      if double_expansion_enemy_present then
+        if d > (190 * 30) then // movement speed of peasant * seconds away. If way too far give up as enemy will be built first.
+          //call Trace("Cancelling Expansion - Enemy double expansion detected")
           call IssueImmediateOrder(u, "stop")
           set current_expansion = null
           return
         endif
-        if double_expansion_enemy_present then
-          if d > (190 * 30) then // movement speed of peasant * seconds away. If way too far give up as enemy will be built first.
-            //call Trace("Cancelling Expansion - Enemy double expansion detected")
-            call IssueImmediateOrder(u, "stop")
-            set current_expansion = null
-            return
-          endif
-        endif
-      endif
-      call TQAddUnit2Job(2, BUILD_EXPANSION, 0, u, expansion)
-    elseif not race_uses_mine_expansion and GetUnitCurrentOrder(u) != old_id[racial_expansion] and d < 190 * 30 then
-      //call Trace("Build Expansion JOB Retry Check")
-      call CheckDoubleExpansionsClaimedInArea(GetUnitX(expansion), GetUnitY(expansion), d > race_max_expa_mine_distance) // Result doesn't matter as long as its only enemies in the proximity
-      call Trace("Double expansion check 2 triggered: ally=" + B2S(double_expansion_ally_present) + " enemy=" + B2S(double_expansion_enemy_present) + " own=" + B2S(double_own_present))
-      if (not double_own_present and not double_expansion_ally_present and double_expansion_enemy_present and GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), race_max_expa_mine_distance) == 0) then
-        set v = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(expansion), GetUnitY(expansion), 270.0)
-        set x = GetUnitX(v)
-        set y = GetUnitY(v)
-        call RemoveUnit(v)
-        if DistanceBetweenPoints_dd(Location(x,y), GetUnitLoc(expansion)) <= race_max_expa_mine_distance then
-          call IssuePointOrderById(u, old_id[racial_expansion], x, y)
-          call CreateDebugTagLoc("Expand Fix JOB", 10, x, y, 5.00, 1.50)
-          call TQAddUnit2Job(2, BUILD_EXPANSION, 0, u, expansion)
-          //call Trace("Build Expansion JOB Retry Threat")
-        else
-          call MarkBadExpansion(current_expansion) // Can't place the mine in a good place so add to bad expansions to avoid for rest of the game
-          set current_expansion = null // Force expansion to re-evaluate as could not build here as build location is too far, avoids infinite loop of trying to build at expansion
-        endif
-        set v = null
-      elseif (double_own_present or double_expansion_ally_present or double_expansion_enemy_present) then
-          set current_expansion = null // Force expansion to re-evaluate as could not build here
       endif
     endif
+    call TQAddUnit2Job(2, BUILD_EXPANSION, 0, u, expansion)
+  elseif not race_uses_mine_expansion and GetUnitCurrentOrder(u) != old_id[racial_expansion] and d < atexpadistance then
+    //call Trace("Build Expansion JOB Retry Check")
+    call CheckDoubleExpansionsClaimedInArea(GetUnitX(expansion), GetUnitY(expansion), d > race_max_expa_mine_distance) // Result doesn't matter as long as its only enemies in the proximity
+    call Trace("Double expansion check 2 triggered: ally=" + B2S(double_expansion_ally_present) + " enemy=" + B2S(double_expansion_enemy_present) + " own=" + B2S(double_own_present))
+    if (not double_own_present and not double_expansion_ally_present and double_expansion_enemy_present and GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), race_max_expa_mine_distance) == 0) then
+      set v = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(expansion), GetUnitY(expansion), 270.0)
+      set x = GetUnitX(v)
+      set y = GetUnitY(v)
+      call RemoveUnit(v)
+      if DistanceBetweenPoints_dd(Location(x,y), GetUnitLoc(expansion)) <= race_max_expa_mine_distance then
+        call IssuePointOrderById(u, old_id[racial_expansion], x, y)
+        call CreateDebugTagLoc("Expand Fix JOB", 10, x, y, 5.00, 1.50)
+        call TQAddUnit2Job(2, BUILD_EXPANSION, 0, u, expansion)
+        //call Trace("Build Expansion JOB Retry Threat")
+      else
+        call MarkBadExpansion(current_expansion) // Can't place the mine in a good place so add to bad expansions to avoid for rest of the game
+        set current_expansion = null // Force expansion to re-evaluate as could not build here as build location is too far, avoids infinite loop of trying to build at expansion
+      endif
+      set v = null
+    elseif (double_own_present or double_expansion_ally_present or double_expansion_enemy_present) then
+        set current_expansion = null // Force expansion to re-evaluate as could not build here
+    endif
+  endif
 
 endfunction
 
