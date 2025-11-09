@@ -34,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fixed an issue where last known captain location didn't match ally target.
 - Fixed an issue where AI was constantly sharing gold and wood with each other for no reason. Only share with those with low gold and wood.
 - Fixed an issue where the price of tier 3 upgrade was more expensive than it should be.
+- Prevent Elf Barracks Rush triggering on mine creeps as they usually too strong and creeps will usually destroy it early.
 
 ## [3.5.1] - 2025-10-26
 

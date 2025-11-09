@@ -6101,6 +6101,7 @@ function BuildBRAtCreep takes nothing returns boolean
   local real distance = 3200
   local group g = null
   local unit u = null
+  local group gtest = null
   local unit array ua
   local unit array ub
   local unit array uc
@@ -6138,8 +6139,18 @@ function BuildBRAtCreep takes nothing returns boolean
     endif
     exitwhen loc != null or s == ru
     if (DistanceBetweenUnits(ua[i], ub[i]) < 200 or DistanceBetweenUnits(ua[i], uc[i]) < 600) and GetUnitState(uc[i], UNIT_STATE_LIFE) > 0 then
-      set loc = GetUnitLoc(uc[i])
-      set rushcreep_target = uc[i]
+      // Do not target creeps that are close to gold mines (they have larger sight / are often too strong)
+      set gtest = CreateGroup()
+      call GroupEnumUnitsInRange(gtest, GetUnitX(uc[i]), GetUnitY(uc[i]), ver_creeps_attack_buildings_dist, null)
+      set gtest = SelectById(gtest, old_id[GOLD_MINE], true)
+      if FirstOfGroup(gtest) == null then
+        set loc = GetUnitLoc(uc[i])
+        set rushcreep_target = uc[i]
+      else
+        set s = s + 1  
+      endif
+      call DestroyGroup(gtest)
+      set gtest = null
     elseif GetUnitState(ua[i], UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(ua[i]) == OrderId("stop") or GetUnitCurrentOrder(ua[i]) != OrderId("move") or DistanceBetweenPoints_kd(home_location,GetUnitLoc(ua[i])) > 3200 then
       set s = s + 1
     elseif GetUnitState(ub[i], UNIT_STATE_LIFE) <= 0 or DistanceBetweenPoints_kd(home_location,GetUnitLoc(ub[i])) > 3200 then
