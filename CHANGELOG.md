@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Insane AMAI now need 25% less gold and wood to be able to share the extra with other players as they earn alot more.
 - AMAI will be a bit more careful when sending a peon to build an expansion. If enemy is present it will wait for dangers to pass. Insane difficulty goes further and will check the expansion location itself is safe.
 - AMAI will now buy also items from goblin merchants during an attack if hero is close by to the store.
+- AMAI will now move its units that need healing togther with the town that needs the most defense to help shore up defense.
 
 ### Fixed
 - Fixed chat messages based on profile name not running as was still using ai_name which hasn't matched for a long time. (jzy-chitong56)
