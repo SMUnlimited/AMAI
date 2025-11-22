@@ -13,12 +13,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Reworked expansion rebuild logic
   - It interrupts current expansion if its newly lost rather than once the current expansion choice is expanded to.
   - It has an 80% chance to rebuild an expansion. 20% to pick a standard expansion.
+- Reworked town tracking system such that own towns and enemy towns are now combined under the same system to reduce inconsistencies.
+- Stability fixes to town tracking, towns are now permanent.
+- Home town does a better job of being able to change instead of fixed to town 0. Towns with both a mine and hall will be a little bit more valuable.
 - When counter unit changes, re-evaluate build order faster to stop building old counters.
 - Heroes will buy from racial shops in a wider radius of 3000 up from 1000 as this is still close by, even if an attack is running or town needs defending.
 - Insane AMAI now need 25% less gold and wood to be able to share the extra with other players as they earn alot more.
 - AMAI will be a bit more careful when sending a peon to build an expansion. If enemy is present it will wait for dangers to pass. Insane difficulty goes further and will check the expansion location itself is safe.
 - AMAI will now buy also items from goblin merchants during an attack if hero is close by to the store.
 - AMAI will now move its units that need healing togther with the town that needs the most defense to help shore up defense.
+- DefendTownsCond fixes and it only counts completed units.
+
+### Removed
+- (DevTools) max_towns global setting has been removed as it is no longer applicable.
 
 ### Fixed
 - Fixed chat messages based on profile name not running as was still using ai_name which hasn't matched for a long time. (jzy-chitong56)

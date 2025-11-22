@@ -275,8 +275,7 @@ globals
     real statue_distance = 300  // how near the units a statue used by undead should be in the fights
     real teleport_radius = 800  // units will stay within this radius from a hero that is using town portal  
     integer gold_exchange_level = 650  // computers give extra gold above this value to other computers on the same team in need of gold
-    integer wood_exchange_level = 350  // computers give extra lumber above this value to other computers on the same team in need of lumber
-    integer max_towns = 5  // how many towns is a computer allowed to have?   
+    integer wood_exchange_level = 350  // computers give extra lumber above this value to other computers on the same team in need of lumber 
     boolean add_tag = true // Add the [AMAI] tag in front of name
     boolean add_skill = true // Add the current skill after the name    
     integer fav_hero_add = 20  // priority added to heroes to be picked if they are favorites of the used profile       
@@ -792,10 +791,6 @@ globals
 #ENDINCLUDE
 
 
-    boolean array town_built
-    location array own_town_loc
-    real array own_town_dist
-    unit array own_town_mine
     integer first_town_mine = 0
 
     integer attacking_ghouls = 0
@@ -6189,7 +6184,9 @@ function BuildBRAtCreep takes nothing returns boolean
           set loc = null
           return false
         endif  
-        call IssueTargetOrder(own_town_mine[0], "unload", u)
+        if home_town >= 0 and town_mine[home_town] != null then
+          call IssueTargetOrder(town_mine[home_town], "unload", u)
+        endif
         call Sleep(0.01)
       endif
       call RemoveGuardPosition(u)
@@ -6978,10 +6975,29 @@ endfunction
 function CheckExpansionRebuildAt takes unit exp_u returns boolean
   local group g = CreateGroup()
   local unit u = null
+  local integer i = 0
+  local integer town_idx = 0
+  local boolean has_destroyed_town = false
+  local boolean old_units = false
+  
   // Do not consider rebuilds for expansions that are already taken
   if CheckExpansionTaken(exp_u) then
     return false
   endif
+  
+  // Check if this expansion location has a destroyed town in our town tracking system
+  loop
+    exitwhen i >= own_town_num
+    set town_idx = own_town[i]
+    if town_idx < town_num and town_count[town_idx] == 0 and town_loc[town_idx] != null then
+      if DistanceBetweenPoints_kd(GetUnitLoc(exp_u), town_loc[town_idx]) < expansion_taken_radius then
+        set has_destroyed_town = true
+        exitwhen true
+      endif
+    endif
+    set i = i + 1
+  endloop
+  
   call GroupEnumUnitsInRange(g, GetUnitX(exp_u), GetUnitY(exp_u), expansion_taken_radius, null)
   set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
   set g = SelectByPlayer(g, ai_player, true)
@@ -6999,12 +7015,12 @@ function CheckExpansionRebuildAt takes unit exp_u returns boolean
       endif
       call GroupRemoveUnit(g, u)
     endloop
-    // If there are no town buildings but resource remains and no creep/enemy strength nearby then candidate
-    if GetResourceAmount(exp_u) > 2 * GetUnitGoldCost2(racial_expansion) and GetLocationNonCreepStrength(GetUnitX(exp_u), GetUnitY(exp_u), expansion_taken_radius) <= 0 then
-      call DestroyGroup(g)
-      set g = null
-      return true
-    endif
+    set old_units = true
+  endif
+  if (has_destroyed_town or old_units) and (GetResourceAmount(exp_u) > 2 * GetUnitGoldCost2(racial_expansion)) and GetLocationNonCreepStrength(GetUnitX(exp_u), GetUnitY(exp_u), expansion_taken_radius) <= 0 then
+    call DestroyGroup(g)
+    set g = null
+    return true
   endif
   call DestroyGroup(g)
   set g = null
@@ -8633,17 +8649,19 @@ function InitCheckHarvest takes nothing returns nothing
           set check = DistanceBetweenPoints_kd(home_location,GetUnitLoc(u))  // human and orc need find closest mine
           if check < expansion_taken_radius and check < distance then
             set distance = check
-            if i == GOLD_MINE and own_town_mine[0] == null then
-              set own_town_mine[0] = u
-            else
-              set own_town_mine[0] = u
+            if i == GOLD_MINE and (home_town >= 0 and town_mine[home_town] == null) then
+              set town_mine[home_town] = u
+            elseif home_town >= 0 then
+              set town_mine[home_town] = u
               set fixmine = u
             endif
           endif
           set c = c + 1
         else
-          if i != GOLD_MINE and GetOwningPlayer(u) == ai_player and (own_town_mine[0] == null or GetUnitTypeId(own_town_mine[0]) != old_id[i]) then
-             set own_town_mine[0] = u
+          if i != GOLD_MINE and GetOwningPlayer(u) == ai_player and (home_town < 0 or town_mine[home_town] == null or GetUnitTypeId(town_mine[home_town]) != old_id[i]) then
+             if home_town >= 0 then
+               set town_mine[home_town] = u
+             endif
           elseif GetOwningPlayer(u) != ai_player then
             set m = 1
           endif
@@ -8685,17 +8703,8 @@ endfunction
 
 //===========================================================================
 function InitTownBuilt takes nothing returns nothing
-  local integer i = 1
-  loop
-    exitwhen i >= max_towns
-    set town_built[i] = false
-    set own_town_loc[i] = null
-    set i = i + 1
-  endloop
-  set town_built[0] = true
-  set own_town_loc[0] = Location(GetLocationX(home_location), GetLocationY(home_location))
-  set own_town_dist[0] = 0
-  set own_town_mine[0] = GetMineNearLoc(own_town_mine[0] ,home_location, 1500)
+  set own_town_num = 0
+  call TownTrackJob()
 endfunction
 
 //============================================================================
@@ -9107,8 +9116,8 @@ function InitAMAI takes nothing returns nothing
   call InitTownBuilt()
   call Trace("Init AMAI step end")
   set max_farms = GetMaxFarms()
-  if own_town_mine[0] != null then
-    set mine_loc = GetUnitLoc(own_town_mine[0])
+  if home_town >= 0 and town_mine[home_town] != null then
+    set mine_loc = GetUnitLoc(town_mine[home_town])
   endif
 
 //    call DebugSequenceStart("DebugRun")
@@ -10607,7 +10616,7 @@ function DefendTownsEx takes boolean only_done, boolean at_front, integer qty, i
   endloop 
   loop
     exitwhen i > twm + 2 or (ancient_expanding and ancient_exp_state > 1 and ancient_exp_state != 4 and i == lasttown) // If ancient expanding new town isn't ready yet even if town hall is built
-    if TownHasMine(i) and TownCountEx(racial_expansion,only_done,i) > 0 and TownCountEx(unitid, only_done, -1) < qty * Max(TownCountEx(racial_expansion, false, -1),1) then
+    if TownHasMine(i) and TownCountEx(racial_expansion,only_done,i) > 0 and TownCountEx(unitid, only_done, -1) < qty * Max(TownCountEx(racial_expansion, true, -1),1) then
       if i <= 0 and at_front then
         call BuildFront(qty, unitid, prio)
       else  
@@ -10648,7 +10657,7 @@ function DefendTownsCond takes integer qty, integer unitid, integer min_dist, in
   endloop 
   loop
     exitwhen i > twm + 2 or (ancient_expanding and ancient_exp_state > 1 and ancient_exp_state != 4 and i == lasttown)
-    if TownHasMine(i) and town_built[i] and own_town_dist[i] >= min_dist and own_town_dist[i] <= max_dist and GetResourceAmount(own_town_mine[i]) >= min_gold then
+    if i < own_town_num and town_dist[own_town[i]] >= min_dist and town_dist[own_town[i]] >= max_dist and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 and TownCountEx(unitid, true, -1) < qty * Max(TownCountEx(racial_expansion, true, -1),1) then
         call SecondaryTownAM(i, qty, unitid, prio)
     endif
     set i = i + 1
@@ -10840,9 +10849,9 @@ function UpgradeBuilding takes integer qty, integer unitid, integer town, intege
       call GroupRemoveUnit(g,u)
     endloop
   endif
-  if own_town_loc[current_town] != null then
+  if current_town < own_town_num and town_loc[current_town] != null then
     call GroupClear(g)
-    call GroupEnumUnitsInRangeOfLoc(g, own_town_loc[current_town], 2000, null)
+    call GroupEnumUnitsInRangeOfLoc(g, town_loc[current_town], 2000, null)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
@@ -10959,7 +10968,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     local integer i = 1
 
     // If specified town not built ignore town specific requests
-    if town != -1 and (not town_built[town] or (unitid != racial_expansion and TownCountTown(racial_expansion, town) <= 0)) then
+    if town != -1 and (town >= own_town_num or (unitid != racial_expansion and TownCountTown(racial_expansion, town) <= 0)) then
         return BUILT_ALL
     endif
 
@@ -11768,8 +11777,7 @@ if minetimeready then
     //call Trace("ExpansionBuilder:Ready to expand to mine")
   endif
 endif
-
-  // Detect rebuild candidates proactively and trigger ChooseExpansion if found
+  
   set rebi = 0
   set rebuild_exp_number = 0
   loop
@@ -11931,98 +11939,7 @@ function HeroReviver takes nothing returns nothing
   endloop
 endfunction
 
-//============================================================================
-function CheckUnitNewTown takes unit u, integer num returns boolean
-  local integer id = GetUnitTypeId(u)
-  local integer i = 0
-  local location l = GetUnitLoc(u)
-  loop
-    exitwhen i >= num
-    if town_built[i] and own_town_loc[i] != null and DistanceBetweenPoints(l, own_town_loc[i]) < town_radius and GetTownUnitCount(id, num, true) > 0 then
-      call RemoveLocation(l)
-      set l = null
-      return false
-    endif
-    set i = i + 1
-  endloop
-  call RemoveLocation(l)
-  set l = null
-  return true
-endfunction
 
-//============================================================================
-function LocalizeOldTown takes integer num returns boolean
-  local group g = CreateGroup()
-  local unit u = null
-  call GroupEnumUnitsInRangeOfLoc(g, own_town_loc[num], 2000, null)
-  set g = SelectByPlayer(g,ai_player,true)
-  set g = SelectByHidden(g,false)
-  set g = SelectByAlive(g,true)
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    exitwhen IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetTownUnitCount(GetUnitTypeId(u), num, true) > 0
-    call GroupRemoveUnit(g,u)
-  endloop
-  call DestroyGroup(g)
-  set g = null
-  if u == null then
-    return false
-  endif
-  set u = null
-  return true
-endfunction
-
-function LocalizeNewTown takes integer num returns boolean
-  local group g = CreateGroup()
-  local unit u = null
-  call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  set g = SelectById(g, old_id[racial_expansion], true)
-  set g = SelectByHidden(g,false)
-  set g = SelectByAlive(g,true)
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    exitwhen CheckUnitNewTown(u, num)
-    call GroupRemoveUnit(g,u)
-  endloop
-  call DestroyGroup(g)
-  set g = null
-  if own_town_loc[num] != null then
-    call RemoveLocation(own_town_loc[num])
-  endif
-  if u == null then
-//    call DisplayToAll("Debug: New town not found")
-    set own_town_loc[num] = null
-    set own_town_mine[num] = null
-    set own_town_dist[num] = 0
-    return false
-  endif
-  set own_town_loc[num] = GetUnitLoc(u)
-  set own_town_mine[num] = GetMineNearLoc(own_town_mine[num], own_town_loc[num], 1500)
-  set own_town_dist[num] = DistanceBetweenPoints(home_location, own_town_loc[num])
-  if debugging > 0 then
-    call PingMinimap(GetUnitX(u), GetUnitY(u), 20)
-  endif
-  set u = null
-  return true
-endfunction
-
-//============================================================================
-function CheckTownBuilt takes nothing returns nothing
-  local integer i = 0
-  loop
-    exitwhen i >= max_towns
-    if not town_built[i] then
-      if (TownCountEx(racial_expansion, true, i) > 0) then
-        set town_built[i] = LocalizeNewTown(i)
-      endif
-    else
-       set town_built[i] = LocalizeOldTown(i)
-    endif
-    set i = i + 1
-  endloop
-endfunction
 
 //============================================================================
 function TimeKeeper takes nothing returns nothing
@@ -12089,7 +12006,6 @@ function OneBuildLoopAM takes nothing returns nothing
     call InitLastUpkeep()
 
     call TimeKeeper()
-    call CheckTownBuilt()
     call SetBuildFree()
     call FarmBuilder()
     call PeonBuilder()
@@ -14333,7 +14249,7 @@ function universal_peon_assignment takes nothing returns nothing
     //call Trace("Harvest Gold at Town:" + Int2Str(T+2))
   endif
 
-  if own_town_mine[0] != null and UnitAlive(own_town_mine[0]) and T < 1 and GetResourceAmount(own_town_mine[0]) > 0 then
+  if home_town >= 0 and town_mine[home_town] != null and UnitAlive(town_mine[home_town]) and T < 1 and GetResourceAmount(town_mine[home_town]) > 0 then
     // Override hardcoded mining logic for humans and orcs. Some maps like (10)dustwallowkeys register multiple mines or a single mine thats far away rather than the nearest mine to the town hall
     // Once this mine is gone switch over to hardcoded logic.
     call HarvestWood(0,1)
