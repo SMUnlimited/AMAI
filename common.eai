@@ -8847,6 +8847,7 @@ endfunction
 //===========================================================================
 // (AMAI) Function Initializations
 //===========================================================================
+// This function is used to clear the build queue to stop building items already placed on the queue
 function InitBuildArrayAM takes nothing returns nothing
     local integer i = 0
     call GetBuildLock()
@@ -10608,15 +10609,16 @@ function DefendTownsEx takes boolean only_done, boolean at_front, integer qty, i
   endif
   set i = twm
   loop
-    exitwhen i > twm + 2
+    exitwhen i >= own_town_num
     if TownHasMine(i) then
       set lasttown = i
     endif
     set i = i + 1
   endloop 
+  set i = twm
   loop
-    exitwhen i > twm + 2 or (ancient_expanding and ancient_exp_state > 1 and ancient_exp_state != 4 and i == lasttown) // If ancient expanding new town isn't ready yet even if town hall is built
-    if TownHasMine(i) and TownCountEx(racial_expansion,only_done,i) > 0 and TownCountEx(unitid, only_done, -1) < qty * Max(TownCountEx(racial_expansion, true, -1),1) then
+    exitwhen i >= own_town_num or (ancient_expanding and ancient_exp_state > 1 and ancient_exp_state != 4 and i == lasttown) // If ancient expanding new town isn't ready yet even if town hall is built
+    if i < own_town_num and TownCountTown(racial_expansion, i) > 0 and TownHasMine(i) and TownCountEx(unitid, only_done, -1) < qty * Max(TownCountEx(racial_expansion, true, -1),1) then
       if i <= 0 and at_front then
         call BuildFront(qty, unitid, prio)
       else  
@@ -10649,16 +10651,17 @@ function DefendTownsCond takes integer qty, integer unitid, integer min_dist, in
   local integer i = twm
   local integer lasttown = twm
   loop
-    exitwhen i > twm + 2
+    exitwhen i >= own_town_num
     if TownHasMine(i) then
       set lasttown = i
     endif
     set i = i + 1
-  endloop 
+  endloop
+  set i = twm
   loop
-    exitwhen i > twm + 2 or (ancient_expanding and ancient_exp_state > 1 and ancient_exp_state != 4 and i == lasttown)
-    if i < own_town_num and town_dist[own_town[i]] >= min_dist and town_dist[own_town[i]] >= max_dist and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 and TownCountEx(unitid, true, -1) < qty * Max(TownCountEx(racial_expansion, true, -1),1) then
-        call SecondaryTownAM(i, qty, unitid, prio)
+    exitwhen i >= own_town_num or (ancient_expanding and ancient_exp_state > 1 and ancient_exp_state != 4 and i == lasttown)
+    if i < own_town_num and town_dist[own_town[i]] >= min_dist and town_dist[own_town[i]] >= max_dist and TownHasMine(i) and GetResourceAmount(town_mine[own_town[i]]) > min_gold and TownCountEx(racial_expansion,true,i) > 0 and TownCountEx(unitid, true, -1) < qty * Max(TownCountEx(racial_expansion, true, -1),1) then
+      call SecondaryTownAM(i, qty, unitid, prio)
     endif
     set i = i + 1
   endloop
@@ -10968,8 +10971,8 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     local integer i = 1
 
     // If specified town not built ignore town specific requests
-    if town != -1 and (town >= own_town_num or (unitid != racial_expansion and TownCountTown(racial_expansion, town) <= 0)) then
-        return BUILT_ALL
+    if town != -1 and (town >= own_town_num or (unitid != racial_expansion and (TownCountTown(racial_expansion, town) <= 0 or not TownHasMine(town)))) then
+        return CANNOT_BUILD
     endif
 
     // If merc must wait for appropiate time to buy, otherwise ignore
@@ -10978,7 +10981,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     endif
 
     // Previous upgrade will set some time aside while upgrading, during which time requests are ignored till time has expired
-    if needed3[unitid] == UPGRADED and town != -1 and ai_time < available_time[unitid] then
+    if needed3[unitid] == UPGRADED and ai_time < available_time[unitid] then
       return BUILT_SOME
     endif
     

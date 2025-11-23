@@ -14,8 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   - It interrupts current expansion if its newly lost rather than once the current expansion choice is expanded to.
   - It has an 80% chance to rebuild an expansion. 20% to pick a standard expansion.
 - Reworked town tracking system such that own towns and enemy towns are now combined under the same system to reduce inconsistencies.
-- Stability fixes to town tracking, towns are now permanent.
-- Home town does a better job of being able to change instead of fixed to town 0. Towns with both a mine and hall will be a little bit more valuable.
+  - Stability fixes to town tracking, towns are now permanent.
+  - Home town does a better job of being able to change instead of fixed to town 0. Towns with both a mine and hall will be a little bit more valuable.
+  - Town defense can occur on all future towns not just 2 mines worth of expansions.
 - When counter unit changes, re-evaluate build order faster to stop building old counters.
 - Heroes will buy from racial shops in a wider radius of 3000 up from 1000 as this is still close by, even if an attack is running or town needs defending.
 - Insane AMAI now need 25% less gold and wood to be able to share the extra with other players as they earn alot more.
