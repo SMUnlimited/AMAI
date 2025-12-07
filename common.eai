@@ -376,12 +376,22 @@ globals
     boolean race_manual_loading = true  // does the race need manual loading of wisps in goldmines ?
     integer race_manual_loading_wisp = 0 //
     integer race_manual_loading_mine = 0 //
-    boolean race_towerrush_available = false  // does the race have a towerrush ?
-    integer race_towerrush_requirement = 0  // what is the building required to build towers ?
-    integer race_tower_id = 0  // what is the id of the races towers?
-    integer race_tower_upgrade = 0  //what is the id of the tower upgrade ?
-    integer race_towerrush_probability = 33 // how high (in percent) is the probability of doing a tower rush?
-	integer race_towerrush_hero_rush_level = 2   // the bonus strength value hero must have to be able to do the tower rush
+    boolean race_towerrush_available = false  // Does this race perform tower rushes?
+    integer race_towerrush_requirement = 0  // Building required before towers can be built (0 = none)
+    integer race_tower_id = 0  // Unit ID of this race's basic tower
+    integer race_tower_upgrade = 0  // Unit ID of the first tower upgrade (level 2), or 0 if none
+    integer race_tower_upgrade2	= 0  // Unit ID of the second tower upgrade (secondary), or 0 if none
+    integer race_towerrush_probability = 33 // Probability (percent) AI will attempt a tower rush
+    integer race_tower_id_replace = 0  // Alternate tower ID used when the main tower can't be built (e.g., due to abilities)
+    boolean race_tower_move = false  // Can the tower move (e.g., uprooted elf structures)?
+    string race_tower_movestartstring = ""  // Order string used to start tower movement (if applicable)
+    string race_tower_moveendstring = ""  // Order string used to end tower movement (if applicable)
+    boolean race_tower_bypeon = false  // Do towers consume a peon when built (tree-like structures)?
+    integer race_tower_peon	= 2  // Number of peons required to build a tower
+    integer race_tower_item = 0  // Item required to build the tower (0 = none)
+    boolean race_tower_item_must = false  // Is the item required (true) or optional (false)?
+    integer race_tower_item_quantity = 0  // How many items are required/purchased at a time (if applicable)
+    integer race_towerrush_hero_rush_level = 2   // Minimum hero bonus strength required to allow tower rush
     boolean race_militia_expansion_available = false  // does the race have a militia expansion ?
     integer race_hero_number = 4  // how many racial heroes ?
     integer race_simple_melee = 0  // a basic melee unit, only necessary when basic_melee is used
@@ -850,6 +860,7 @@ globals
     string chat_confirm_attack_unit = ""
     string chat_towerrush = ""
     string chat_no_orc = ""
+    string chat_stop_towerrush = ""
     string invalid_strategy_number = ""
     string chat_dynamic_counter = "and countering "
     string militia_expansion_chat = ""
@@ -5717,7 +5728,6 @@ function GetLocationTowerStrength takes real x, real y, real radius returns real
   return sum
 endfunction
 
-//============================================================================
 function GetLocationStrength takes real x, real y, real radius returns real
   local group g = CreateGroup()
   local real sum = 0
@@ -5807,6 +5817,34 @@ function GetOwnStrength takes nothing returns integer
   set g = null
   set air_strength = R2I(airsum + 0.5)
   return R2I(sum) + GetPlayerHeroStrengthMod(ai_player)
+endfunction
+
+//============================================================================
+// Helper: decide if a tower rush should be ended based on strength comparisons.
+// Returns true when enemy strength around the target greatly exceeds own strength.
+function ShouldEndTowerRushStrength takes real tx, real ty, integer towers_built, integer towers_built_count, integer towers_attck, real bt returns boolean
+  local real EnemyStrength = 0
+  local real OwnStrength = 0
+  // If no valid target location, don't end by strength here
+  if tx == 0 and ty == 0 then
+    return false
+  endif
+  set EnemyStrength = GetLocationNonCreepStrength(tx, ty, 1200) + GetLocationTowerStrength(tx, ty, 1200)
+  set OwnStrength = GetOwnStrength() + towers_attck + bt
+  return (EnemyStrength > OwnStrength * 4) or (EnemyStrength > OwnStrength * 2 and towers_built_count > 5 and towers_built < 2)
+endfunction
+
+//============================================================================
+// Helper: compare enemy vs own strength with a multiplier. Returns true if enemy > own * factor
+function EnemyStrongerThan takes real tx, real ty, real factor, integer towers_attck, real bt returns boolean
+  local real EnemyStrength = 0
+  local real OwnStrength = 0
+  if tx == 0 and ty == 0 then
+    return false
+  endif
+  set EnemyStrength = GetLocationNonCreepStrength(tx, ty, 1200) + GetLocationTowerStrength(tx, ty, 1200)
+  set OwnStrength = GetOwnStrength() + towers_attck + bt
+  return EnemyStrength > OwnStrength * factor
 endfunction
 
 //============================================================================
@@ -6887,6 +6925,30 @@ set nearhumanplayer = null
 set tempu = null
 set temphumanu = null
 return mindistance
+endfunction
+
+//============================================================================
+function GetNearestEnemy takes nothing returns player
+local integer i = 0
+local integer nearplayer = 30
+local real dist = 0
+local real mindistance = 1000000
+
+loop
+  exitwhen i >= c_enemy_total
+  if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
+    set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(enemy_force[i]))
+    if dist < mindistance then
+      set mindistance = dist
+      set nearplayer = i
+    endif
+  endif
+  set i = i + 1
+endloop
+if nearplayer != 30 then
+  return enemy_force[nearplayer]
+endif
+return null
 endfunction
 
 //============================================================================
@@ -8448,9 +8510,12 @@ function cmd_attack takes integer cmd, integer data returns nothing
 
   elseif cmd == 17 then // Towerrush
     if race_towerrush_available then
-      call StartTowerRush(1)
-      call DisplayToAllies(chat_towerrush)
-      call DisplayToObservers( chat_towerrush )
+      if not towerrush then
+        call TQAddJob(0, TOWER_RUSH_CHECK, 0)
+        call DisplayToAllies(chat_towerrush)
+        call DisplayToObserversImportant(chat_towerrush)
+      endif
+      set console_tr_command = true
     else
       call DisplayToAllies(chat_no_orc)
       call DisplayToObservers( chat_no_orc )
@@ -12819,36 +12884,162 @@ endfunction
 
 //============================================================================
 function AttackMoveTowerRush takes nothing returns nothing
+	local integer x = R2I(enemy_point_x)
+	local integer y = R2I(enemy_point_y)
 	local integer attack_length_counter = 0
-	set attack_running = true
+	local integer i = 0
+	local integer exp = 0
+  local real threat = (teleport_low_threat + teleport_high_threat) / 2
+	local real d = 0
+	local real md = 10000
+  local real EnemyStrength = 0
+  local real OwnStrength = 0
+	local group g = CreateGroup()
+	local location l = GetStartLocationLoc(GetPlayerStartLocation(rushedplayer))
+	local unit mine = null
+	local unit u = null
+	local unit au = builder[10]
+	set break_attack = false
+  set attack_running = true
+  call Trace("AttackMoveTowerRush: started; enemy_point_x=" + Int2Str(x) + " y=" + Int2Str(y) + " rushedplayer=" + Int2Str(GetPlayerId(rushedplayer)))
 	loop
 		exitwhen not towerrush
-		exitwhen town_threatened and town_threat[most_threatened_town] >= teleport_low_threat
-		exitwhen break_attack
-		//exitwhen CaptainIsEmpty()       // all units died
-		if first_tower_point_x == 0 and first_tower_point_y == 0 then
-			call CreateDebugTag("Reform protect peon", 10, builder[1], 2.00, 1.50)
-			call SetAllianceTargetIfLead(builder[1])
-  		call AttackMoveKill(builder[1])
-		else
-			//call SetCaptainHome(BOTH_CAPTAINS,R2I(((enemy_point_x - first_tower_point_x)/ 4) + first_tower_point_x),R2I(((enemy_point_y - first_tower_point_y)/ 4) + first_tower_point_y))
-			if towers_built < 3 then
-				call AttackMoveXY(R2I(((enemy_point_x - first_tower_point_x)/ 4) + first_tower_point_x), R2I(((enemy_point_y - first_tower_point_y)/ 4) + first_tower_point_y))
-			elseif towers_built < 6 then
-				call AttackMoveXY(R2I(((enemy_point_x - first_tower_point_x)/ 2) + first_tower_point_x), R2I(((enemy_point_y - first_tower_point_y)/ 4) + first_tower_point_y))			
-			elseif towers_built <= 9 then
-				call AttackMoveXY(R2I(enemy_point_x), R2I(enemy_point_y))
+		exitwhen town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= threat
+		exitwhen break_attack and not teleporting
+		exitwhen CaptainIsEmpty()  // all units died
+		if tower_attack_run != true and (GetUnitCountDone(old_id[hero[1]]) + GetUnitCountDone(old_id[hero[2]]) + GetUnitCountDone(old_id[hero[3]])) > 0 and (race_tower_item_must != true or (race_tower_item_must == true and (builder[0] != null or tower_used_item))) then
+			set tower_attack_run = true
+			set attack_running = true
+			call FormGroupAM(0)
+			set attack_length_counter = 0
+			if not town_threatened then
+				call SetAllianceTargetIfLead(builder[10])
 			endif
+      call Trace("AttackMoveTowerRush: tower_attack_run enabled; forming attack group")
+		elseif tower_attack_run then
+			//if take_exp and GetMinesOwned() < 2 and (mine == null or CheckExpansionTaken(mine)) then
+			//	loop
+			//		exitwhen i >= expansion_list_length
+			//		if GetResourceAmount(expansion_list[i]) > 0 and not CheckExpansionTaken(expansion_list[i]) then
+			//			set d = DistanceBetweenPoints_dk(GetUnitLoc(expansion_list[i]), l)
+			//			if d < md then
+			//				set md = d
+			//				set mine = expansion_list[i]
+			//				set exp = i
+			//			endif
+			//		endif
+			//		set i = i + 1
+			//	endloop
+			//	if mine != null then
+			//		set current_expansion_iswater = false
+			//		set current_expansion = mine
+			//		set current_expansion_creeps = exp
+			//		set u = GetExpFoe(mine)
+			//	endif
+			//	set i = 0
+			//endif
+			//if mine != null and u != null and GetPlayerStrength(rushedplayer) < 3 then
+			//	call CreateDebugTag("TRush: take mine", 10, u, 4.00, 2.00)
+			//	call Trace("TR : take mine" )
+			//	call FormGroupAM(0)
+			//	call AttackMoveKillCreep(u, false)
+			//	call ClearCaptainTargets()
+			//	set u = null
+			//endif
+			if not town_threatened then
+				if builder[10] == null or not UnitAlive(builder[10]) then
+					call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1200, null)
+					set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+					set g = SelectByAlive(g, true)
+					set g = SelectByHidden(g,false)
+					set builder[10] = FirstOfGroup(g)
+					set au = builder[10]
+					call GroupClear(g)
+				endif
+        if builder[10] != null then
+          call Trace("AttackMoveTowerRush: builder unit located for towerrush")
+        endif
+				if builder[10] != null and ModuloInteger(attack_length_counter + 1,6) == 0 then
+					call SetAllianceTargetIfLead(builder[10])
+				endif
+			endif
+      // Strength-based attack termination: let the attack controller decide when to break
+      if not town_threatened and enemy_point_x != 0 and enemy_point_y != 0 then
+        set EnemyStrength = GetLocationNonCreepStrength(enemy_point_x, enemy_point_y, 1200) + GetLocationTowerStrength(enemy_point_x, enemy_point_y, 1200)
+        set OwnStrength = GetOwnStrength()
+        if (EnemyStrength > OwnStrength * 4) or (EnemyStrength > OwnStrength * 2 and towers_built_count > 5 and towers_built < 2) then
+          set break_attack = true
+          call Trace("AttackMoveTowerRush: ending attack by strength check")
+        endif
+      endif
+			if towers_built < 4 then
+				if tower_peon_inplace then
+					if towers_built_count + force_number - 1 > 35 and towers_built < 2 then  //Prevent cannot build tower , but Enemy army is weak (maybe have ally attack), and AI not attack Enemy home
+						call AttackMoveXY(R2I((x + first_tower_point_x) / 3),R2I((y + first_tower_point_y) / 3))
+					elseif towers_built_count + force_number - 1 > 50 and towers_built < 2 then
+						call AttackMoveXY(x,y)
+					else
+						call AttackMoveXY(R2I(first_tower_point_x),R2I(first_tower_point_y))
+					endif
+				else
+					if tower_peon_point_x != 0 and tower_peon_point_y != 0 and ModuloInteger(attack_length_counter + 1,6) == 0 and not town_threatened then
+						call GroupEnumUnitsInRange(g, tower_peon_point_x, tower_peon_point_y, 1200, null)
+						set g = SelectUnittype(g, UNIT_TYPE_PEON, true)
+						set g = SelectByPlayer(g, ai_player, true)
+						set g = SelectByAlive(g, true)
+						set g = SelectByHidden(g,false)
+					endif
+					set u = FirstOfGroup(g)  // Ensure always give U a value
+					if u != null then
+						call AttackMoveXY(R2I(GetUnitX(u)),R2I(GetUnitY(u)))
+					elseif builder[1] != null and UnitAlive(builder[1]) then
+						call AttackMoveXY(R2I(GetUnitX(builder[1])),R2I(GetUnitY(builder[1])))
+					else
+						call AttackMoveXY(R2I(first_tower_point_x),R2I(first_tower_point_y))
+					endif
+					call GroupClear(g)
+				endif
+			elseif towers_built < 7 then
+				if second_attack_point_x != 0 and second_attack_point_y != 0 then
+					call AttackMoveXY(R2I(second_attack_point_x),R2I(second_attack_point_y))
+				else
+					call AttackMoveXY(R2I((x + first_tower_point_x) / 2),R2I((y + first_tower_point_y) / 2))
+				endif
+			else
+				call AttackMoveXY(x,y)
+			endif
+			set attack_length_counter = attack_length_counter + 1
 		endif
-		call StaggerSleep(2*sleep_multiplier, 3*sleep_multiplier)
-		set attack_length_counter = attack_length_counter + 1
+		call Sleep(1)
 		if attack_length_counter > attack_reform_length * 2 then
 			set attack_length_counter = 0
-			call FormGroupAM(2)
+			call FormGroupAM(1)
+			if towers_built >= 7 or (towers_built_count + force_number - 1 > 50 and towers_built < 2) then
+				call GroupEnumUnitsInRange(g, enemy_point_x, enemy_point_y, 1800, null)
+				set g = SelectByEnemy(g, ai_player, true)
+				set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+				set g = SelectByAlive(g, true)
+				set g = SelectByHidden(g,false)
+				set u = FirstOfGroup(g)
+				if u != null then
+					set x = R2I(GetUnitX(u))
+					set y = R2I(GetUnitY(u))
+				endif
+				call GroupClear(g)
+			endif
 		endif
 	endloop
-	call SleepInCombatAM(false)
+  call Trace("AttackMoveTowerRush: ending; towers_built=" + Int2Str(towers_built) + " towers_built_count=" + Int2Str(towers_built_count))
+  call ClearAllianceTarget(au)
+	call ClearCaptainTargets()
+	call DestroyGroup(g)
+	set g = null
+	call RemoveLocation(l)
+	set l = null
+	set u = null
+	set au = null
 	set attack_running = false
+  set console_tr_command = false
 endfunction
 
 //============================================================================
@@ -13059,30 +13250,6 @@ function GetWeakAndNearEnemy takes nothing returns player
     return enemy_force[pmin]
   endif
   return null
-endfunction
-
-//============================================================================
-function GetNearestEnemy takes nothing returns player
-local integer i = 0
-local integer nearplayer = 30
-local real dist = 0
-local real mindistance = 1000000
-
-loop
-  exitwhen i >= c_enemy_total
-  if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
-    set dist = DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(enemy_force[i]))
-    if dist < mindistance then
-      set mindistance = dist
-      set nearplayer = i
-    endif
-  endif
-  set i = i + 1
-endloop
-if nearplayer != 30 then
-  return enemy_force[nearplayer]
-endif
-return null
 endfunction
 
 //============================================================================
