@@ -25,7 +25,10 @@ function TowerRushRecoveryBuild takes nothing returns nothing
 	call DestroyGroup(g)
 	set g = null
 	set u = null
+	// If we're recovering towers, clear any reserved buffers then requeue
 	if c > 0 and s > 0 then
+		set gold_buffer = 0
+		set wood_buffer = 0
 		call TQAddJob(4, TOWER_RUSH, 0)
 		return
 	endif
@@ -39,6 +42,9 @@ function TowerRushRecoveryBuild takes nothing returns nothing
 	endloop
 	call RemoveLocation(towerrecoveryloc)
 	set towerrecoveryloc = null
+	// Ensure buffers cleared when recovery completes
+	set gold_buffer = 0
+	set wood_buffer = 0
 endfunction
 
 function TowerRushHeroControl_k takes unit u, location t returns nothing
@@ -208,6 +214,17 @@ function TowerRushJob takes nothing returns nothing
 	local integer towermove = 30
 	local integer buildtries = 10
 	local integer id = 0
+    local integer assigned_count = 0
+    local integer ii = 0
+    local integer tower_unit_id = 0
+    local integer gold_per = 0
+    local integer wood_per = 0
+    local integer reserve_gold = 0
+    local integer reserve_wood = 0
+    local integer extra_gold = 0
+    local integer extra_wood = 0
+    local integer base_gold = 0
+    local integer base_wood = 0
 	local real bt = 0
 	local real time_next_try = 4
 	local real EnemyStrength = 0
@@ -215,6 +232,7 @@ function TowerRushJob takes nothing returns nothing
 	local real x = 0
 	local real y = 0
 	local boolean CloseJob = false
+
 	call DisplayToAllJobDebug("TOWER_RUSH Job START")
 	if towerrecoveryloc != null then
 		call TowerRushRecoveryBuild()
@@ -434,24 +452,6 @@ function TowerRushJob takes nothing returns nothing
 		return
 	endif
 
-	// if tower_attack_run == true then
-	// 	if towers_built < 4 and race_simple_melee > 2 then
-	// 		if race_tower_upgrade == 0 then
-	// 			set gold_buffer = GetUnitGoldCost2(race_tower_id) + 100
-	// 			set wood_buffer = GetUnitWoodCost2(race_tower_id) + 110
-	// 		else
-	// 			set gold_buffer = GetUnitGoldCost2(race_tower_upgrade) + 70
-	// 			set wood_buffer = GetUnitWoodCost2(race_tower_upgrade) + 80
-	// 		endif
-	// 	elseif towers_built < 8 and race_simple_melee > 3 then
-	// 		set gold_buffer = GetUnitGoldCost2(race_tower_id) + 40
-	// 		set wood_buffer = GetUnitWoodCost2(race_tower_id) + 50
-	// 	else
-	// 		set gold_buffer = 0
-	// 		set wood_buffer = 0
-	// 	endif
-	// endif
-
 	if builder[0] != null and UnitAlive(builder[0]) and GetItemOfTypeOnUnit(race_item_expansion_item_id, builder[0]) == null then
 		call RecycleGuardPosition(builder[0])  //prevent item change hero
 	endif
@@ -504,6 +504,83 @@ function TowerRushJob takes nothing returns nothing
 		set i = i + 1
 		call GroupRemoveUnit(g,u)
 	endloop
+
+	// Reserve resources for towers/upgrades when peons assigned so other build logic
+	// doesn't spend them during this build loop. Also keep a small extra for repairs.
+	if gold_buffer == 0 and wood_buffer == 0 then
+
+		loop
+			exitwhen ii > race_tower_peon
+			if builder[ii] != null and UnitAlive(builder[ii]) and not IsUnitType(builder[ii], UNIT_TYPE_STRUCTURE) then
+				set assigned_count = assigned_count + 1
+			endif
+			set ii = ii + 1
+		endloop
+
+		// Only set reservation buffers when an attack-style tower run is active.
+		if tower_attack_run == true then
+			// If we have assigned builders prefer reserving per-builder cost
+			if assigned_count > 0 then
+				if race_tower_upgrade != 0 then
+					set tower_unit_id = race_tower_upgrade
+				else
+					set tower_unit_id = race_tower_id
+				endif
+				set gold_per = GetUnitGoldCost2(tower_unit_id)
+				set wood_per = GetUnitWoodCost2(tower_unit_id)
+				set reserve_gold = assigned_count * gold_per
+				set reserve_wood = assigned_count * wood_per
+				set extra_gold = reserve_gold / 7
+				if extra_gold < 1 then
+					set extra_gold = 1
+				endif
+				set extra_wood = reserve_wood / 7
+				if extra_wood < 1 then
+					set extra_wood = 1
+				endif
+				set gold_buffer = reserve_gold + extra_gold
+				set wood_buffer = reserve_wood + extra_wood
+			else
+				// No peons assigned — fall back to conservative fixed buffers (commented rules)
+				set base_gold = 0
+				set base_wood = 0
+				if towers_built < 4 and race_simple_melee > 2 then
+					if race_tower_upgrade == 0 then
+						set base_gold = GetUnitGoldCost2(race_tower_id) + 100
+						set base_wood = GetUnitWoodCost2(race_tower_id) + 110
+					else
+						set base_gold = GetUnitGoldCost2(race_tower_upgrade) + 70
+						set base_wood = GetUnitWoodCost2(race_tower_upgrade) + 80
+					endif
+				elseif towers_built < 8 and race_simple_melee > 3 then
+					set base_gold = GetUnitGoldCost2(race_tower_id) + 40
+					set base_wood = GetUnitWoodCost2(race_tower_id) + 50
+				else
+					set base_gold = 0
+					set base_wood = 0
+				endif
+				if base_gold > 0 or base_wood > 0 then
+					set extra_gold = base_gold / 7
+					if extra_gold < 1 then
+						set extra_gold = 1
+					endif
+					set extra_wood = base_wood / 7
+					if extra_wood < 1 then
+						set extra_wood = 1
+					endif
+					set gold_buffer = base_gold + extra_gold
+					set wood_buffer = base_wood + extra_wood
+				else
+					set gold_buffer = 0
+					set wood_buffer = 0
+				endif
+			endif
+		else
+			// Not an attack run — ensure no buffers are set
+			set gold_buffer = 0
+			set wood_buffer = 0
+		endif
+	endif
 	if race_has_power_build and tower_attack_run == true then  // fix AI pull all peon to build tower
 		set i = 41
 		loop
