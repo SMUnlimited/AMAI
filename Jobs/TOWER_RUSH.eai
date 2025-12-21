@@ -122,6 +122,15 @@ function TowerRushBuilderControl_k takes unit u, location t returns nothing
 					set builder_y = GetUnitY(loccheck)
 					call RemoveUnit(loccheck)
 					if not IsTerrainPathable(builder_x, builder_y, PATHING_TYPE_BUILDABILITY) then
+						// Ensure prerequisites for the tower are available before sending peons to build
+						if not CanBuildUnit(race_tower_id) then
+							call TQAddJob(4, TOWER_RUSH, 0)
+							call RemoveLocation(l)
+							set l = null
+							set loccheck = null
+							set unitloc = null
+							return
+						endif
 						call IssueBuildOrderById(u, old_id[race_tower_id], builder_x, builder_y)
 						if towers_built != 0 then
 							call CreateDebugTag("TRush: Building", 10, u, 4.00, 2.00)
@@ -227,12 +236,23 @@ function TowerRushJob takes nothing returns nothing
 			set id = GetUnitTypeId(u)
 			if id == old_id[race_tower_id] or id == old_id[race_tower_upgrade] or id == old_id[race_tower_upgrade2] then
 				if id == old_id[race_tower_id] then
-					if (randomnum == 4 or GetUnitCountDone(old_id[race_towerrush_requirement]) == 0) and race_tower_upgrade2 != 0 and TownCount(race_tower_upgrade2) < 2 then
-						call IssueImmediateOrderById(u, old_id[race_tower_upgrade2])
-					elseif race_tower_upgrade != 0 then
-						call IssueImmediateOrderById(u, old_id[race_tower_upgrade])
+						// Prefer higher upgrade when appropriate and when requirements for doing so are met
+						if (randomnum == 4 or not CanBuildUnit(race_tower_id)) and race_tower_upgrade2 != 0 and TownCount(race_tower_upgrade2) < 2 then
+							if CanBuildUnit(race_tower_upgrade2) then
+								call IssueImmediateOrderById(u, old_id[race_tower_upgrade2])
+							else
+								call TQAddJob(4, TOWER_RUSH, 0)
+								return
+							endif
+						elseif race_tower_upgrade != 0 then
+							if CanBuildUnit(race_tower_upgrade) then
+								call IssueImmediateOrderById(u, old_id[race_tower_upgrade])
+							else
+								call TQAddJob(4, TOWER_RUSH, 0)
+								return
+							endif
+						endif
 					endif
-				endif
 				if race_tower_move == true then
 					set builder[towermove] = u
 					set towermove = towermove + 1

@@ -377,7 +377,6 @@ globals
     integer race_manual_loading_wisp = 0 //
     integer race_manual_loading_mine = 0 //
     boolean race_towerrush_available = false  // Does this race perform tower rushes?
-    integer race_towerrush_requirement = 0  // Building required before towers can be built (0 = none)
     integer race_tower_id = 0  // Unit ID of this race's basic tower
     integer race_tower_upgrade = 0  // Unit ID of the first tower upgrade (level 2), or 0 if none
     integer race_tower_upgrade2	= 0  // Unit ID of the second tower upgrade (secondary), or 0 if none
@@ -7966,6 +7965,17 @@ function IsBadExpansionIndex takes integer idx, boolean iswater returns boolean
   endif
 endfunction
 
+function CanBuildUnit takes integer unitid returns boolean
+  local boolean b = (needed1[unitid] == 0 or TownCountDone(needed1[unitid]) > 0) and (needed2[unitid] == 0 or TownCountDone(needed2[unitid]) > 0) and (needed3[unitid] == 0 or needed3[unitid] == UPGRADED or TownCountDone(needed3[unitid]) > 0)
+  #INCLUDETABLE <$VER$\NeededExtra.txt> #EFR #COND "%2" eq "UNIT"
+    set b = b and (unitid != %1 or TownCountDone(%4) > 0)
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\NeededExtra.txt> #EFR #COND "%2" eq "UPGRADE"
+    set b = b and (unitid != %1 or GetUpgradeLevel(old_id[%4]) >= %3)
+  #ENDINCLUDE
+  return b
+endfunction
+
 //============================================================================
 // (AMAI) Jobs Listing (Custom Job Scripts are placed here)
 //============================================================================
@@ -10098,18 +10108,7 @@ function SetBuildAllAM takes integer t, integer mqty, integer unitid, integer to
     endif
   endif
 endfunction
-
 //============================================================================
-function CanBuildUnit takes integer unitid returns boolean
-  local boolean b = (needed1[unitid] == 0 or TownCountDone(needed1[unitid]) > 0) and (needed2[unitid] == 0 or TownCountDone(needed2[unitid]) > 0) and (needed3[unitid] == 0 or needed3[unitid] == UPGRADED or TownCountDone(needed3[unitid]) > 0)
-#INCLUDETABLE <$VER$\NeededExtra.txt> #EFR #COND "%2" eq "UNIT"
-  set b = b and (unitid != %1 or TownCountDone(%4) > 0)
-#ENDINCLUDE
-#INCLUDETABLE <$VER$\NeededExtra.txt> #EFR #COND "%2" eq "UPGRADE"
-  set b = b and (unitid != %1 or GetUpgradeLevel(old_id[%4]) >= %3)
-#ENDINCLUDE
-  return b
-endfunction
 
 //============================================================================
 function BuildUnit takes integer qty, integer unitid, integer prio returns nothing
@@ -11717,6 +11716,10 @@ function BuildPeons takes integer number returns nothing
     if not race_manual_loading and not race_uses_mine_expansion and not race_has_ghouls then
       set number = number + 3
     endif
+  endif
+  // During a tower rush, ensure we build enough peons to supply the tower builders.
+  if towerrush then
+      set number = number + race_tower_peon
   endif
   call BuildUnit(number, racial_peon, peon_prio)
 endfunction
