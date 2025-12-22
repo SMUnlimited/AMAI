@@ -48,7 +48,7 @@ function TowerRushCheck takes nothing returns nothing
 	local unit u = null
 	local player p = null
 	local real distance = GetNearestEnemyDistance()
-	local boolean mapinappropriate = (c_ally_total + c_enemy_total) > 5 or (c_ally_total - c_enemy_total < -1) or mapSize > 3  // only 1V1 OR 2V2 map
+	local boolean mapinappropriate = game_is_ffa or (c_ally_total > 0) // Cannot use in FFA or team games due to attack override bug
 	call DisplayToAllJobDebug("TOWER_RUSH_CHECK JOB START")
 	//if rushedplayer == null or (not IsLocationFoggedToPlayer(home_location, rushedplayer) and not console_tr_command) or distance > 14000 or distance < front_base_distance * 2 or builder[10] == null or (mapinappropriate and not console_tr_command) or (race_tower_item_must and racial_shop == 0 and not IsPointBlighted(GetUnitX(builder[10]), GetUnitY(builder[10])) and IsPointBlighted(GetLocationX(home_location), GetLocationY(home_location))) then  //Distance to too far or player too many or ffa , ROC not shop
 	//	call Trace("the map unsuited tower rush")
@@ -59,13 +59,25 @@ function TowerRushCheck takes nothing returns nothing
 	//	return
 	//endif
 
+	if i > race_towerrush_probability and not console_tr_command and debugging <= 0 then
+		call Trace("Not tower rushing this time due to probability check")
+		return
+	endif	
+
+	if mapinappropriate and not console_tr_command then
+		call Trace("Not tower rushing this time due to a inappropiate map or player setup")
+    	return
+  	endif  
+
 	if not console_tr_command then
+		set i = GetRandomInt(1,100)
 		// Apply probability check based on distance before starting tower rush
 		// Check distance-based probability
  		if i > 75 and distance >= 11000 then
 			// Fail 25% of cases at 11000+ distance
 			call RemoveLocation(tower_target_loc)
 			set tower_target_loc = null
+			set builder[10] = null
 			//call TQAddJob(90, TOWER_RUSH_CHECK, 0)
 			call Trace("At this distance chance to rush failed")
 			return
@@ -73,13 +85,22 @@ function TowerRushCheck takes nothing returns nothing
 			// Fail 50% of cases at 14000+ distance
 			call RemoveLocation(tower_target_loc)
 			set tower_target_loc = null
+			set builder[10] = null
 			//call TQAddJob(90, TOWER_RUSH_CHECK, 0)
 			call Trace("At this distance chance to rush failed")
 			return
-		elseif i > 20 and distance >= 16000 then
+		elseif i > 20 and (distance >= 16000 or mapSize > 3) then
 			// Fail 80% of cases at 16000+ distance
 			call RemoveLocation(tower_target_loc)
 			set tower_target_loc = null
+			set builder[10] = null
+			//call TQAddJob(90, TOWER_RUSH_CHECK, 0)
+			call Trace("At this distance chance to rush failed")
+			return
+		elseif distance >= 20000 then
+			call RemoveLocation(tower_target_loc)
+			set tower_target_loc = null
+			set builder[10] = null
 			//call TQAddJob(90, TOWER_RUSH_CHECK, 0)
 			call Trace("At this distance chance to rush failed")
 			return
