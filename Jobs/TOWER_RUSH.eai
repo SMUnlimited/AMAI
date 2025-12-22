@@ -48,8 +48,12 @@ function TowerRushRecoveryBuild takes nothing returns nothing
 endfunction
 
 function TowerRushHeroControl_k takes unit u, location t returns nothing
-	local location l = GetUnitLoc(u)
+	local location l = null
+	local item it = null
+	local unit loccheck = null
+	local location unitloc = null
 	call RemoveGuardPosition(u)
+	set l = GetUnitLoc(u)
 	if not tower_peon_inplace then
 		call IssuePointOrder(u, "move", tower_peon_point_x, tower_peon_point_y)
 	elseif DistanceBetweenPoints(l, t) > 200 then
@@ -57,10 +61,29 @@ function TowerRushHeroControl_k takes unit u, location t returns nothing
 		call IssuePointOrderLoc(u, "move", t)
 	endif
 	if DistanceBetweenPoints(l, toweringplayerloc) <= DistanceBetweenPoints(t, toweringplayerloc) + 230 then
-		call UnitUseItemPoint( u, GetItemOfTypeOnUnit(race_tower_item, u), GetLocationX(l), GetLocationY(l))
+		set it = GetItemOfTypeOnUnit(race_tower_item, u)
+		if it != null then
+			if race_tower_id_replace == 0 then
+				set loccheck = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[race_tower_id], GetLocationX(t), GetLocationY(t), 270.0)
+			else
+				set loccheck = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[race_tower_id_replace], GetLocationX(t), GetLocationY(t), 270.0)
+			endif
+			set unitloc = GetUnitLoc(loccheck)
+			call RemoveUnit(loccheck)
+			if unitloc != null then
+				call UnitUseItemPoint(u, it, GetLocationX(unitloc), GetLocationY(unitloc))
+				call RemoveLocation(unitloc)
+			else
+				call UnitUseItemPoint(u, it, GetLocationX(t), GetLocationY(t))
+			endif
+		endif
+		set it = null
+		set loccheck = null
 	endif
 	call RemoveLocation(l)
 	set l = null
+	call RemoveLocation(unitloc)
+	set unitloc = null
 endfunction
 
 function TowerRushBuilderFirstControl takes unit u, unit hall returns integer
