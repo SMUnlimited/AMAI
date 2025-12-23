@@ -11500,9 +11500,6 @@ endfunction
 //============================================================================
 // Set up to buy an item
 function BuyItem takes integer qty, integer id returns boolean
-  if attack_running then
-    return false
-  endif
   if shop_ordered then
     //call Trace("Already ordered to get an item")
     return true
@@ -11528,9 +11525,6 @@ function BuyAllyShopItem takes integer qty, integer id returns boolean
   local unit u = null
   local integer i = 0
   local integer m = 0
-  if attack_running then
-    return false
-  endif
   if shop_ordered then
     //call Trace("Already ordered to get an item")
     return true
@@ -11641,10 +11635,20 @@ function StartItem takes integer ask_qty, integer itemid returns integer
   endif
 
   if available_time[itemid] > ai_time or GetSlotsFree() <= 0 or (buy_type[itemid] == BT_MERCHANT_ITEM and neutral_guarded[NEUTRAL_MERCHANT] and ((daytime >= 5 and daytime < 18) or not neutral_night_buy[NEUTRAL_MERCHANT])) then
+    if available_time[itemid] > ai_time then
+      //call Trace("StartItem: item " + unitNames[itemid] + " not available until " + Int2Str(available_time[itemid]) + " (ai_time=" + Int2Str(ai_time) + ")")
+    endif
+    if GetSlotsFree() <= 0 then
+      //call Trace("StartItem: no hero inventory slots free to buy " + unitNames[itemid])
+    endif
+    if buy_type[itemid] == BT_MERCHANT_ITEM and neutral_guarded[NEUTRAL_MERCHANT] and ((daytime >= 5 and daytime < 18) or not neutral_night_buy[NEUTRAL_MERCHANT]) then
+      //call Trace("StartItem: merchant guarded or night-buy blocked for " + unitNames[itemid])
+    endif
     return BUILT_SOME
   endif
 
   if (needed1[itemid] != 0 and TownCountDone(needed1[itemid]) < 1) or (needed2[itemid] != 0 and TownCountDone(needed2[itemid]) < 1) or (needed3[itemid] != 0 and TownCountDone(needed3[itemid]) < 1) then
+    //call Trace("StartItem: prerequisites missing for " + unitNames[itemid] + ", need: " + Int2Str(needed1[itemid]) + "," + Int2Str(needed2[itemid]) + "," + Int2Str(needed3[itemid]))
     return CANNOT_BUILD
   endif
 
@@ -11653,10 +11657,12 @@ function StartItem takes integer ask_qty, integer itemid returns integer
     set total_gold = total_gold - gold_cost
     set total_wood = total_wood - wood_cost
     if total_gold < 0 and (gold_cost > 0) then
+      //call Trace("StartItem: not enough gold for " + unitNames[itemid] + ", need " + Int2Str(gold_cost) + ", available (after buffer) " + Int2Str(GetGold() - gold_buffer))
       return NOT_ENOUGH_RES
     endif
 
     if total_wood < 0 and (wood_cost > 0) then
+      //call Trace("StartItem: not enough wood for " + unitNames[itemid] + ", need " + Int2Str(wood_cost) + ", available (after buffer) " + Int2Str(GetWood() - wood_buffer))
       return NOT_ENOUGH_RES
     endif
   endif
@@ -12886,6 +12892,100 @@ function AttackMoveKillXYAAM takes integer x, integer y returns nothing
 endfunction
 
 //============================================================================
+function GetIntervalCreep takes unit u, integer lower, integer upper, integer str, integer anti_air_strength, boolean allow_air, integer sd returns unit
+    local integer creepstrength = 0
+    local integer creepstrengthalt = 0
+    local unit alt = null
+    local integer middle = (lower + upper) / 2
+
+    if sd < 0 then
+      return null
+    endif
+    set u = GetCreepCamp(1, middle, allow_air)
+    set alt = GetCreepCamp(1, middle, false)
+    if u == null and alt == null then
+        return GetIntervalCreep(u, middle, upper, str, anti_air_strength, allow_air, sd - 1)
+    endif
+    if u != null then
+      set creepstrength = GetCreepCampStrength(u) + 1
+    endif
+    if alt != null then
+      set creepstrengthalt = GetCreepCampStrength(u) + 1
+    endif
+    if balancing then
+      //call Trace("Creep strength: " + Int2Str(creepstrength))
+      call PingMinimap(GetUnitX(u), GetUnitY(u), 1)
+    endif
+    if u != null and creepstrength < str then
+      if air_strength <= anti_air_strength then
+        set alt = null
+        return u
+      elseif alt != null and creepstrengthalt < str then
+        set u = alt
+        set alt = null
+        return u
+      endif
+    elseif alt != null and creepstrengthalt < str then
+        set u = alt
+        set alt = null
+        return u
+    endif
+    set alt = null
+    return GetIntervalCreep(u, lower, middle, str, anti_air_strength, allow_air, sd - 1)
+endfunction
+
+//============================================================================
+function GetFittingCreep takes unit u, integer str returns unit
+  local integer anti_air_strength = R2I(GetPlayerAntiAirStrength(ai_player))
+  local integer creepstrength = 0
+  local boolean allow_air = false
+  local integer lvl = str
+
+  set u = GetCreepCamp(1, lvl, true)
+  if u != null then
+    set air_strength = GetLocationCreepAirStrength(GetUnitX(u), GetUnitY(u), creep_camp_radius)
+  endif
+  set allow_air = air_strength <= anti_air_strength
+
+  if not allow_air then
+    set u = GetCreepCamp(1, lvl, false)
+  endif
+
+  //call Trace("Our strength: " + Int2Str(str))
+  if u != null then
+    set creepstrength = GetCreepCampStrength(u)
+  endif  
+  if u != null and creepstrength < str and air_strength <= anti_air_strength then
+    //call Trace("Creep match")
+    call Trace("Creeping strength: " + Int2Str(creepstrength))
+    set air_strength = creepstrength
+    return u
+  endif
+  return GetIntervalCreep(u, 1,100,str, anti_air_strength, allow_air, camp_scan_depth)
+
+endfunction
+
+//============================================================================
+function CreepAttack takes integer str returns nothing
+  local unit target = null
+  set target = GetFittingCreep(target,str)
+// Creep camp small is level 1 - 9
+// Creep camp medium is level 10 - 19
+// Creep camp strong is level 20 - 100
+
+  if target == null then
+    call Trace("No creep target found")
+    call Sleep(3 * sleep_multiplier)
+    return
+  endif
+  if air_strength > 15 then
+    call SetAllianceTargetIfLeadAndChat(target, C_Creep)
+  endif
+  call AttackMoveKillCreep(target, true)
+  call ClearAllianceTarget(target)
+  set target = null
+endfunction
+
 function AttackMoveTowerRush takes nothing returns nothing
 	local integer x = R2I(enemy_point_x)
 	local integer y = R2I(enemy_point_y)
@@ -12905,7 +13005,9 @@ function AttackMoveTowerRush takes nothing returns nothing
 	set break_attack = false
   set attack_running = true
   call Trace("AttackMoveTowerRush: started; enemy_point_x=" + Int2Str(x) + " y=" + Int2Str(y) + " rushedplayer=" + Int2Str(GetPlayerId(rushedplayer)))
-	loop
+  loop
+    // If we still haven't enabled the tower-attack group, do small creeping
+    // runs so the AI doesn't sit idle while waiting for TOWER_RUSH conditions.
 		exitwhen not towerrush
 		exitwhen town_threatened and most_threatened_town >= 0 and town_threat[most_threatened_town] >= threat
 		exitwhen break_attack and not teleporting
@@ -12919,6 +13021,11 @@ function AttackMoveTowerRush takes nothing returns nothing
 				call SetAllianceTargetIfLead(builder[10])
 			endif
       call Trace("AttackMoveTowerRush: tower_attack_run enabled; forming attack group")
+    elseif tower_attack_run != true then
+      set attack_length_counter = attack_length_counter + 1
+      if ModuloInteger(attack_length_counter,attack_reform_length*2) == 0 then
+        call FormGroupAM(0)  // Form to be ready but do not attack
+      endif
 		elseif tower_attack_run then
 			//if take_exp and GetMinesOwned() < 2 and (mine == null or CheckExpansionTaken(mine)) then
 			//	loop
@@ -13043,101 +13150,6 @@ function AttackMoveTowerRush takes nothing returns nothing
 	set au = null
 	set attack_running = false
   set console_tr_command = false
-endfunction
-
-//============================================================================
-function GetIntervalCreep takes unit u, integer lower, integer upper, integer str, integer anti_air_strength, boolean allow_air, integer sd returns unit
-    local integer creepstrength = 0
-    local integer creepstrengthalt = 0
-    local unit alt = null
-    local integer middle = (lower + upper) / 2
-
-    if sd < 0 then
-      return null
-    endif
-    set u = GetCreepCamp(1, middle, allow_air)
-    set alt = GetCreepCamp(1, middle, false)
-    if u == null and alt == null then
-        return GetIntervalCreep(u, middle, upper, str, anti_air_strength, allow_air, sd - 1)
-    endif
-    if u != null then
-      set creepstrength = GetCreepCampStrength(u) + 1
-    endif
-    if alt != null then
-      set creepstrengthalt = GetCreepCampStrength(u) + 1
-    endif
-    if balancing then
-      //call Trace("Creep strength: " + Int2Str(creepstrength))
-      call PingMinimap(GetUnitX(u), GetUnitY(u), 1)
-    endif
-    if u != null and creepstrength < str then
-      if air_strength <= anti_air_strength then
-        set alt = null
-        return u
-      elseif alt != null and creepstrengthalt < str then
-        set u = alt
-        set alt = null
-        return u
-      endif
-    elseif alt != null and creepstrengthalt < str then
-        set u = alt
-        set alt = null
-        return u
-    endif
-    set alt = null
-    return GetIntervalCreep(u, lower, middle, str, anti_air_strength, allow_air, sd - 1)
-endfunction
-
-//============================================================================
-function GetFittingCreep takes unit u, integer str returns unit
-  local integer anti_air_strength = R2I(GetPlayerAntiAirStrength(ai_player))
-  local integer creepstrength = 0
-  local boolean allow_air = false
-  local integer lvl = str
-
-  set u = GetCreepCamp(1, lvl, true)
-  if u != null then
-    set air_strength = GetLocationCreepAirStrength(GetUnitX(u), GetUnitY(u), creep_camp_radius)
-  endif
-  set allow_air = air_strength <= anti_air_strength
-
-  if not allow_air then
-    set u = GetCreepCamp(1, lvl, false)
-  endif
-
-  //call Trace("Our strength: " + Int2Str(str))
-  if u != null then
-    set creepstrength = GetCreepCampStrength(u)
-  endif  
-  if u != null and creepstrength < str and air_strength <= anti_air_strength then
-    //call Trace("Creep match")
-    call Trace("Creeping strength: " + Int2Str(creepstrength))
-    set air_strength = creepstrength
-    return u
-  endif
-  return GetIntervalCreep(u, 1,100,str, anti_air_strength, allow_air, camp_scan_depth)
-
-endfunction
-
-//============================================================================
-function CreepAttack takes integer str returns nothing
-  local unit target = null
-  set target = GetFittingCreep(target,str)
-// Creep camp small is level 1 - 9
-// Creep camp medium is level 10 - 19
-// Creep camp strong is level 20 - 100
-
-  if target == null then
-    call Trace("No creep target found")
-    call Sleep(3 * sleep_multiplier)
-    return
-  endif
-  if air_strength > 15 then
-    call SetAllianceTargetIfLeadAndChat(target, C_Creep)
-  endif
-  call AttackMoveKillCreep(target, true)
-  call ClearAllianceTarget(target)
-  set target = null
 endfunction
 
 //============================================================================
