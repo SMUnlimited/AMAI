@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 - Humans and orcs are now aware of safe spare mines near allies and will expand to them instead of ignoring them.
+- All races can now perform a successful tower rush not just orc players and also make use of items like sacrificial skull and ivory towers. (jzy-chitong56)
 - (DevTools) Added new game setting "custom_data_set" which if set to true will make attempted changes to make AMAI work with the custom 1.0.1 dataset used in custom maps. Its just a quick fix and not optimal but they will least upgrade to the next tier when set.
 
 ### Changed
