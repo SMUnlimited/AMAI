@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - AMAI will now buy also items from goblin merchants during an attack if hero is close by to the store.
 - AMAI will now move its units that need healing togther with the town that needs the most defense to help shore up defense.
 - DefendTownsCond fixes and it only counts completed units.
+- Increased strength of towers so they more of a threat, and made all ancients have a passive strength as they can hit back.
 
 ### Removed
 - (DevTools) max_towns global setting has been removed as it is no longer applicable.
