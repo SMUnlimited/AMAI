@@ -46,6 +46,19 @@ function EnsureSetCaptainHome takes location target returns nothing
   endif
 endfunction
 
+// Helper: store a copy of a location for captain_home to avoid shared-handle invalidation
+function SetCaptainHomeLoc takes location target returns nothing
+  local location new_loc = null
+  if target == null then
+    return
+  endif
+  set new_loc = Location(GetLocationX(target), GetLocationY(target))
+  if captain_home != null then
+    call RemoveLocation(captain_home)
+  endif
+  set captain_home = new_loc
+endfunction
+
 function TrackArmy takes integer num returns boolean
   local group g = CreateGroup()
   local unit u = null
@@ -226,6 +239,10 @@ function UpdateSpecificTownThreat takes integer num returns nothing
   local real threat = 0
   local real max_threat = 0
   local location loc = null
+  if town_count[num] <= 0 then
+    set town_threat[num] = 0
+    return
+  endif
   
   set town_threat[num] = GetLocationTowerStrength(GetLocationX(town_loc[num]), GetLocationY(town_loc[num]), ver_tower_check_radius) * 2 // Detect any tower rush events
   loop
@@ -284,6 +301,8 @@ function UpdateTownThreat takes nothing returns nothing
   local real accepted_threat_level = LinearInterpolation(atl_time_start, atl_time_end, atl_time_start_val, atl_time_end_val, TimerGetElapsed(tq_timer)) * LinearInterpolation(atl_enemy_start, atl_enemy_end, atl_enemy_start_mult, atl_enemy_end_mult, c_enemy_total)
   local real playerthreat = 0
   local integer enemy_army = -1
+  local boolean has_player_town = false
+  local boolean has_threat_town = false
   loop
     exitwhen i >= town_num
     if i > 0 and ModuloInteger(i, 10) == 0 then 
@@ -298,13 +317,16 @@ function UpdateTownThreat takes nothing returns nothing
     set mode = 3
     set lastFreeNum = 0
     
+    set has_player_town = most_threatened_player_town >= 0 and town_count[most_threatened_player_town] > 0
+    set has_threat_town = most_threatened_town >= 0 and town_count[most_threatened_town] > 0
+
     if town_threat[most_threatened_town] > 0 then
       call Trace("ThreatenedTownThreat:" + Real2Str(town_threat[most_threatened_town]) + " AcceptedThreatLevel:" + Real2Str(accepted_threat_level))
     endif
     if town_threat[most_threatened_player_town] > 0 then
       call Trace("PlayerThreatenedTownThreat:" + Real2Str(town_threat[most_threatened_player_town]) + " AcceptedThreatLevel:" + Real2Str(accepted_threat_level))
     endif
-    if town_threat[most_threatened_player_town] > accepted_threat_level and town_threat[most_threatened_player_town] <= playerthreat then //and town_threat[most_threatened_town] > (I2R(c_ally_total + 1) / c_enemy_total) * town_threat[most_threatened_enemy_town] then
+    if has_player_town and town_threat[most_threatened_player_town] > accepted_threat_level and town_threat[most_threatened_player_town] <= playerthreat then //and town_threat[most_threatened_town] > (I2R(c_ally_total + 1) / c_enemy_total) * town_threat[most_threatened_enemy_town] then
       set town_threatened = true
       set town_threat_count = 0
       set most_threatened_town = most_threatened_player_town
@@ -314,9 +336,10 @@ function UpdateTownThreat takes nothing returns nothing
       else
         call EnsureSetCaptainHome(town_loc[most_threatened_player_town])
       endif
-      set captain_home = town_loc[most_threatened_player_town]
+      call SetCaptainHomeLoc(town_loc[most_threatened_player_town])
       set captain_tp = town_can_tp[most_threatened_player_town]
-    elseif town_threat[most_threatened_town] > accepted_threat_level * 1.05 and town_threat[most_threatened_town] <= playerthreat then
+      //call TraceAll("ARMYTRACK: captain_home from player town " + Int2Str(most_threatened_player_town) + " loc=(" + Real2Str(GetLocationX(captain_home)) + "," + Real2Str(GetLocationY(captain_home)) + ")")
+    elseif has_threat_town and town_threat[most_threatened_town] > accepted_threat_level * 1.05 and town_threat[most_threatened_town] <= playerthreat then
       set town_threatened = true
       set town_threat_count = 0
       set enemy_army = town_threat_army[most_threatened_town]
@@ -325,32 +348,37 @@ function UpdateTownThreat takes nothing returns nothing
       else
         call EnsureSetCaptainHome(town_loc[most_threatened_town])
       endif  
-      set captain_home = town_loc[most_threatened_town]
+      call SetCaptainHomeLoc(town_loc[most_threatened_town])
       set captain_tp = town_can_tp[most_threatened_town]
-    elseif town_threatened and town_threat_count < 3 and (most_threatened_town > 0 or most_threatened_player_town > 0) then
+      //call TraceAll("ARMYTRACK: captain_home from allied town " + Int2Str(most_threatened_town) + " loc=(" + Real2Str(GetLocationX(captain_home)) + "," + Real2Str(GetLocationY(captain_home)) + ")")
+    elseif town_threatened and town_threat_count < 3 and (has_threat_town or has_player_town) then
       // persist town threat a bit longer around picked town before standing down
       set town_threat_count = town_threat_count + 1
-    elseif town_threat[most_threatened_player_town] > 0 and town_threat[most_threatened_player_town] <= playerthreat then
+    elseif has_player_town and town_threat[most_threatened_player_town] > 0 and town_threat[most_threatened_player_town] <= playerthreat then
       set town_threatened = false
       call EnsureSetCaptainHome(town_loc[most_threatened_player_town])
       set most_threatened_town = most_threatened_player_town
-      set captain_home = town_loc[most_threatened_player_town]
+      call SetCaptainHomeLoc(town_loc[most_threatened_player_town])
       set captain_tp = town_can_tp[most_threatened_player_town]
-    elseif town_threat[most_threatened_town] > 0 and town_threat[most_threatened_town] <= playerthreat then
+      //call TraceAll("ARMYTRACK: captain_home settle player town " + Int2Str(most_threatened_player_town) + " loc=(" + Real2Str(GetLocationX(captain_home)) + "," + Real2Str(GetLocationY(captain_home)) + ")")
+    elseif has_threat_town and town_threat[most_threatened_town] > 0 and town_threat[most_threatened_town] <= playerthreat then
       set town_threatened = false
       call EnsureSetCaptainHome(town_loc[most_threatened_town])
-      set captain_home = town_loc[most_threatened_town]
+      call SetCaptainHomeLoc(town_loc[most_threatened_town])
       set captain_tp = town_can_tp[most_threatened_town]
-    elseif home_town >= 0 then
+      //call TraceAll("ARMYTRACK: captain_home settle allied town " + Int2Str(most_threatened_town) + " loc=(" + Real2Str(GetLocationX(captain_home)) + "," + Real2Str(GetLocationY(captain_home)) + ")")
+    elseif home_town >= 0 and town_count[home_town] > 0 then
       set town_threatened = false
       call EnsureSetCaptainHome(town_loc[home_town]) // Return to known home town
-      set captain_home = town_loc[home_town]
+      call SetCaptainHomeLoc(town_loc[home_town])
       set captain_tp = town_can_tp[home_town]
+      //call TraceAll("ARMYTRACK: captain_home home_town=" + Int2Str(home_town) + " loc=(" + Real2Str(GetLocationX(captain_home)) + "," + Real2Str(GetLocationY(captain_home)) + ")")
     else
       set town_threatened = false
       call EnsureSetCaptainHome(home_location) // Final fallback, just use start location
-      set captain_home = home_location
+      call SetCaptainHomeLoc(home_location)
       set captain_tp = true
+      //call TraceAll("ARMYTRACK: captain_home fallback home_location loc=(" + Real2Str(GetLocationX(captain_home)) + "," + Real2Str(GetLocationY(captain_home)) + ")")
     endif
   else
     set lastFreeNum = i
