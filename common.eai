@@ -118,17 +118,22 @@ globals
 
 
     constant integer o0                 = 0
+    constant integer u0                 = 0
     string array unitNames
 
+  // Cannot be constants for VS AI support
+  // constant complex integers can cause crashes in reforged when reloading save games, so no longer constant
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR
-  integer %1 = %row  // Cannot be constants for VS AI support
+  integer %1 = '%2'
   constant integer o%1 = '%2'
+  constant integer u%1 = %row
 #AFTERINCLUDE
   constant integer OBJECT_NUM = %row
 #ENDINCLUDE
 #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "AI_COMP"
-  integer %3 = %1
+  integer %3 = o%1
   integer o%3 = o%1
+  integer u%3 = u%1
 #ENDINCLUDE
 
 #INCLUDETABLE <$VER$\HeroAbilities.txt> #EFR
@@ -211,6 +216,7 @@ globals
     constant integer HEALER_TYPE_HERO = 4
 
     constant integer UPGRADED = 9999
+    constant integer uUPGRADED = 9999
     
     constant integer BT_UNIT = 0
     constant integer BT_BUILDING = 1
@@ -252,8 +258,8 @@ globals
     real sleep_multiplier = 1  // increases performance by checking stuff not so often
     integer slm_start = 4  // how many computer players is needed tor the sleep multiplier to start increasing
     integer slm_end = 10 // how many computer players is needed tor the sleep multiplier to stop increasing
-    real slm_start_mult = 1 // how much is the sleep multiplied when it´s below the slm_start codition
-    real slm_end_mult = 2  // how much is the sleep multiplied when it´s above the slm_end codition
+    real slm_start_mult = 1 // how much is the sleep multiplied when it?s below the slm_start codition
+    real slm_end_mult = 2  // how much is the sleep multiplied when it?s above the slm_end codition
     real hero_radius = 200  // scanning this small area around hero to detect if the hero gets surrounded by enemy or is in danger of becoming that so it should move
     boolean use_linear_upkeep_saving = false  // should the computers save the upkeep threshold gold over the time above or save it all at once when it get's to the upkeep border?
     integer repair_threshold = 6  // computers only repair buildings if they have more than this many workers
@@ -497,6 +503,7 @@ globals
     integer racial_peon	= 0
     integer neededPeons = 0
     integer array racial_hall
+    integer array uracial_hall
     integer array racial_goldmine
     integer minearray = 0
     integer array gold_mines_ids
@@ -505,7 +512,9 @@ globals
     integer ziggarray = 0
     integer racial_expansion = 0
     integer racial_altar = 0
+    integer uracial_altar = 0
     integer racial_shop = 0
+    integer uracial_shop = 0
     integer racial_militia = 0
     integer racial_militiahero = 0
     integer racial_ghoul = 0
@@ -2640,20 +2649,20 @@ function GetUnitCountAlt takes integer unitid, integer upgradeid, boolean only_d
     endif  
   else
   #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%9" ne "0"
-    if unitid == %1 and upgradeid != %9 and not isSameUpgradeLine(%9, upgradeid) then
-      set have_qty = have_qty + GetUnitCountEx(%9, only_done, townid)
+    if unitid == u%1 and upgradeid != u%9 and not isSameUpgradeLine(u%9, upgradeid) then
+      set have_qty = have_qty + GetUnitCountEx(u%9, only_done, townid)
     endif
   #ENDINCLUDE
   #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%10" ne "0"
-    if unitid == %1 and upgradeid != %10 and not isSameUpgradeLine(%10, upgradeid) then
-      set have_qty = have_qty + GetUnitCountEx(%10, only_done, townid)
+    if unitid == u%1 and upgradeid != u%10 and not isSameUpgradeLine(u%10, upgradeid) then
+      set have_qty = have_qty + GetUnitCountEx(u%10, only_done, townid)
     endif
   #ENDINCLUDE
   endif
 
 #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "TC_ADD"
-  if unitid == %1 and upgradeid != %3  and not isSameUpgradeLine(%3, upgradeid) then
-    set have_qty = have_qty + GetUnitCountEx(%3, only_done, townid)
+  if unitid == u%1 and upgradeid != u%3  and not isSameUpgradeLine(u%3, upgradeid) then
+    set have_qty = have_qty + GetUnitCountEx(u%3, only_done, townid)
   endif
 #ENDINCLUDE
   return have_qty
@@ -2983,12 +2992,12 @@ function set_profiles takes nothing returns nothing
     set p_surrender[#EVAL{%row-1}] = %15
 
   #FOR $X$ FROM $ONE$ TO $RACENUM$
-    set fav_hero[#EVAL{(%row-1)*($RACENUM$+1)+$X$-1}] = %#OEVAL{15+$X$}
+    set fav_hero[#EVAL{(%row-1)*($RACENUM$+1)+$X$-1}] = u%#OEVAL{15+$X$}
   #ENDFOR
-    set fav_hero[#EVAL{(%row-1)*($RACENUM$+1)+$RACENUM$}] = %#OEVAL{16+$RACENUM$}
+    set fav_hero[#EVAL{(%row-1)*($RACENUM$+1)+$RACENUM$}] = u%#OEVAL{16+$RACENUM$}
 
   #FOR $X$ FROM $ONE$ TO $RACENUM$
-    set fav_unit[#EVAL{(%row-1)*$RACENUM$+$X$-1}] = %#OEVAL{16+$RACENUM$+$X$}
+    set fav_unit[#EVAL{(%row-1)*$RACENUM$+$X$-1}] = u%#OEVAL{16+$RACENUM$+$X$}
   #ENDFOR
     set p_rare[#EVAL{%row-1}] = %#OEVAL{17+$RACENUM$+$RACENUM$}
 
@@ -3169,39 +3178,21 @@ function AddFavoriteHeroRP takes nothing returns nothing
   endloop
 endfunction
 
-//============================================================================
-// (AMAI)	InitArrays
-//============================================================================
-function InitAiUnits takes nothing returns nothing
-	if IsAMAI then
-	else
-	// Set the unit ids to that of the original ai for compatability with non AMAI scripts
-
-#INCLUDETABLE <$VER$\StandardUnits.txt> #EFR
-		set %1 = o%1
-#ENDINCLUDE
-
-#INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "AI_COMP"
-		set %3 = %1
-#ENDINCLUDE
-	endif
-endfunction
-
 function InitArrays takes nothing returns nothing
 
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR
-  set old_id[%1] = o%1
-  set buy_type[%1] = BT_%5
-  set needed1[%1] = %6
-  set needed2[%1] = %7
-  set needed3[%1] = %8
-  set tc_add1[%1] = %9
-  set tc_add2[%1] = %10
-  set available_time[%1] = R2I(%12 / 5)
-  set regenerate_time[%1] = R2I(%13 / 5)
-  set gold_price[%1] = %14
-  set wood_price[%1] = %15
-  set hero_rush_bonus[%1] = %16
+  set old_id[u%1] = o%1
+  set buy_type[u%1] = BT_%5
+  set needed1[u%1] = u%6
+  set needed2[u%1] = u%7
+  set needed3[u%1] = u%8
+  set tc_add1[u%1] = u%9
+  set tc_add2[u%1] = u%10
+  set available_time[u%1] = R2I(%12 / 5)
+  set regenerate_time[u%1] = R2I(%13 / 5)
+  set gold_price[u%1] = %14
+  set wood_price[u%1] = %15
+  set hero_rush_bonus[u%1] = %16
 
 #ENDINCLUDE
   //    call RLHashSet(o%1, %1)
@@ -3504,8 +3495,8 @@ function TownCountExForUpgrade takes integer unitid, integer unitid_upgr, boolea
     set count = count + GetUnitCountEx(tc_add2[unitid],false,townid)
   endif
 #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "TC_ADD"
-  if unitid == %1 and unitid_upgr != %1 then
-    set count = count + GetUnitCountEx(%3, false, townid)
+  if unitid == u%1 and unitid_upgr != u%1 then
+    set count = count + GetUnitCountEx(u%3, false, townid)
   endif
 #ENDINCLUDE
   return count
@@ -6175,7 +6166,7 @@ function BuildBRAtCreep takes nothing returns boolean
       // Do not target creeps that are close to gold mines (they have larger sight / are often too strong)
       set gtest = CreateGroup()
       call GroupEnumUnitsInRange(gtest, GetUnitX(uc[i]), GetUnitY(uc[i]), ver_creeps_attack_buildings_dist, null)
-      set gtest = SelectById(gtest, old_id[GOLD_MINE], true)
+      set gtest = SelectById(gtest, old_id[uGOLD_MINE], true)
       if FirstOfGroup(gtest) == null then
         set loc = GetUnitLoc(uc[i])
         set rushcreep_target = uc[i]
@@ -6257,7 +6248,7 @@ if town_threatened or not hero_built[1] or (not race_manual_loading and not race
   call Trace("Check Multiple Mine")
   set g = CreateGroup()
   call GroupEnumUnitsInRangeOfLoc(g, home_location, expansion_taken_radius, null)
-  set g = SelectById(g, old_id[GOLD_MINE], true)
+  set g = SelectById(g, old_id[uGOLD_MINE], true)
   set g = SelectByHidden(g, false)
   set g = SelectByAlive(g, true)
   if FirstOfGroup(g) == null then
@@ -7579,11 +7570,11 @@ endfunction
 function GetItemEquivalence takes integer id, unit u returns integer
   local integer qty = 0
   #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "TC_ITEM"
-  if id == %1 then
-    set qty = qty + GetItemNumberOnUnit(%3, u)
+  if id == u%1 then
+    set qty = qty + GetItemNumberOnUnit(u%3, u)
   endif
-  if id == %3 then
-    set qty = qty + GetItemNumberOnUnit(%1, u)
+  if id == u%3 then
+    set qty = qty + GetItemNumberOnUnit(u%1, u)
   endif
   #ENDINCLUDE
   return qty
@@ -7718,7 +7709,7 @@ function InitHealers takes nothing returns nothing
 #ENDINCLUDE
   if false then
 #INCLUDETABLE <$VER$\Healers.txt> #EFR #COND "%2" eq "NEUTRAL"
-  elseif merc_healer == %1 then
+  elseif merc_healer == u%1 then
     call AddHealer(o%1, %4, %5, HEALER_TYPE_%3, o%6, %7)
 #ENDINCLUDE
   endif
@@ -7830,8 +7821,8 @@ endfunction
 function GetHealingItem takes nothing returns integer
 	if false then
 #INCLUDETABLE <$VER$\HealingItems.txt> #EFR #COND "%3" eq "HEALINGITEM_SINGLE"
-	elseif %2 and available_time[%1] <= ai_time then
-		return %1
+	elseif %2 and available_time[u%1] <= ai_time then
+		return u%1
 #ENDINCLUDE
 	endif
 	return 0
@@ -7841,8 +7832,8 @@ endfunction
 function GetMassHealingItem takes nothing returns integer
   if false then
 #INCLUDETABLE <$VER$\HealingItems.txt> #EFR #COND "%3" eq "HEALINGITEM_MASS"
-  elseif %2 and available_time[%1] <= ai_time then
-    return %1
+  elseif %2 and available_time[u%1] <= ai_time then
+    return u%1
 #ENDINCLUDE
   endif
   return 0
@@ -7852,8 +7843,8 @@ endfunction
 function GetMerchantMassHealingItem takes nothing returns integer
 	if false then
 #INCLUDETABLE <$VER$\HealingItems.txt> #EFR #COND "%3" eq "MERCHANTITEM_MASS"
-	elseif %2 and available_time[%1] <= ai_time then
-		return %1
+	elseif %2 and available_time[u%1] <= ai_time then
+		return u%1
 #ENDINCLUDE
 	endif
 	return 0
@@ -7864,8 +7855,8 @@ endfunction
 function GetGlobalHealingItem takes nothing returns integer
 	if false then
 #INCLUDETABLE <$VER$\HealingItems.txt> #EFR #COND "%3" eq "GLOBALHEALING"
-	elseif %2 and available_time[%1] <= ai_time then
-		return %1
+	elseif %2 and available_time[u%1] <= ai_time then
+		return u%1
 #ENDINCLUDE
 	endif
 	return 0
@@ -7876,8 +7867,8 @@ endfunction
 function GetHeroManaItem takes nothing returns integer
 	if false then
 #INCLUDETABLE <$VER$\HealingItems.txt> #EFR #COND "%3" eq "MANAITEM_HERO"
-	elseif %2 and available_time[%1] <= ai_time then
-		return %1
+	elseif %2 and available_time[u%1] <= ai_time then
+		return u%1
 #ENDINCLUDE
 	endif
 	return 0
@@ -7887,7 +7878,7 @@ endfunction
 function GetItemHealingTime takes integer id returns integer
   if false then
 #INCLUDETABLE <$VER$\HealingItems.txt> #EFR #COND "%4" eq "CONTINUOUS" or "%4" eq "NO_TARGET"
-  elseif %1 == id then
+  elseif u%1 == id then
     return %5
 #ENDINCLUDE
   endif
@@ -7898,11 +7889,11 @@ endfunction
 function GetItemInstantType takes integer id returns integer
 	if false then
 #INCLUDETABLE <$VER$\HealingItems.txt> #EFR #COND "%4" eq "SUDDEN"
-	elseif %1 == id then
+	elseif u%1 == id then
 		return ITEMTYPE_SUDDEN
 #ENDINCLUDE
 #INCLUDETABLE <$VER$\HealingItems.txt> #EFR #COND "%4" eq "CONTINUOUS"
-	elseif %1 == id then
+	elseif u%1 == id then
 		return ITEMTYPE_CONTINUOUS
 #ENDINCLUDE
 	endif
@@ -7913,8 +7904,8 @@ endfunction
 function GetHeroHealingItem takes nothing returns integer
 	if false then
 #INCLUDETABLE <$VER$\HealingItems.txt> #EFR #COND "%3" eq "HEALINGITEM_HERO"
-	elseif %2 and available_time[%1] <= ai_time then
-		return %1
+	elseif %2 and available_time[u%1] <= ai_time then
+		return u%1
 #ENDINCLUDE
 	elseif GetHealingItem() != 0 then
 		return GetHealingItem()
@@ -7971,10 +7962,10 @@ endfunction
 function CanBuildUnit takes integer unitid returns boolean
   local boolean b = (needed1[unitid] == 0 or TownCountDone(needed1[unitid]) > 0) and (needed2[unitid] == 0 or TownCountDone(needed2[unitid]) > 0) and (needed3[unitid] == 0 or needed3[unitid] == UPGRADED or TownCountDone(needed3[unitid]) > 0)
   #INCLUDETABLE <$VER$\NeededExtra.txt> #EFR #COND "%2" eq "UNIT"
-    set b = b and (unitid != %1 or TownCountDone(%4) > 0)
+    set b = b and (unitid != u%1 or TownCountDone(u%4) > 0)
   #ENDINCLUDE
   #INCLUDETABLE <$VER$\NeededExtra.txt> #EFR #COND "%2" eq "UPGRADE"
-    set b = b and (unitid != %1 or GetUpgradeLevel(old_id[%4]) >= %3)
+    set b = b and (unitid != u%1 or GetUpgradeLevel(old_id[u%4]) >= %3)
   #ENDINCLUDE
   return b
 endfunction
@@ -8197,12 +8188,12 @@ if mercfound then
   if not mercfound then
 #INCLUDETABLE <$VER$\Mercs.txt> #EFR
   elseif i == %row then
-    set merc_unit[0] = %3
-    set merc_unit[1] = %4
-    set merc_unit[2] = %5
-    set merc_unit[3] = %6
+    set merc_unit[0] = u%3
+    set merc_unit[1] = u%4
+    set merc_unit[2] = u%5
+    set merc_unit[3] = u%6
   #FOR $X$ FROM $ONE$ TO $MERCTYPENUM$
-    set merc_types[$X$] = %#OEVAL{6+$X$}
+    set merc_types[$X$] = u%#OEVAL{6+$X$}
   #ENDFOR
 #ENDINCLUDE
   endif
@@ -8230,7 +8221,7 @@ if roostfound then
 #INCLUDETABLE <$VER$\Dragons.txt> #EFR
   elseif k == %row then
   #FOR $X$ FROM $ONE$ TO $DRAGONTYPENUM$
-    set dragons[$X$] = %#OEVAL{2+$X$}
+    set dragons[$X$] = u%#OEVAL{2+$X$}
   #ENDFOR
 #AFTERINCLUDE
   endif
@@ -8700,7 +8691,7 @@ endfunction
 function InitCheckHarvest takes nothing returns nothing
   local group g = CreateGroup()
   local unit u = null
-  local integer i = GOLD_MINE
+  local integer i = uGOLD_MINE
   local integer c = 0 // gold mine count
   local integer s = 0 // captured gold mine count
   local integer m = 0 // captured by other player
@@ -8723,11 +8714,11 @@ function InitCheckHarvest takes nothing returns nothing
     if UnitAlive(u) and not IsUnitHidden(u) then
       set m = 0
       if GetResourceAmount(u) > 0 then
-        if GetUnitTypeId(u) == old_id[GOLD_MINE] then
+        if GetUnitTypeId(u) == old_id[uGOLD_MINE] then
           set check = DistanceBetweenPoints_kd(home_location,GetUnitLoc(u))  // human and orc need find closest mine
           if check < expansion_taken_radius and check < distance then
             set distance = check
-            if i == GOLD_MINE and (home_town >= 0 and town_mine[home_town] == null) then
+            if i == uGOLD_MINE and (home_town >= 0 and town_mine[home_town] == null) then
               set town_mine[home_town] = u
             elseif home_town >= 0 then
               set town_mine[home_town] = u
@@ -8736,7 +8727,7 @@ function InitCheckHarvest takes nothing returns nothing
           endif
           set c = c + 1
         else
-          if i != GOLD_MINE and GetOwningPlayer(u) == ai_player and (home_town < 0 or town_mine[home_town] == null or GetUnitTypeId(town_mine[home_town]) != old_id[i]) then
+          if i != uGOLD_MINE and GetOwningPlayer(u) == ai_player and (home_town < 0 or town_mine[home_town] == null or GetUnitTypeId(town_mine[home_town]) != old_id[i]) then
              if home_town >= 0 then
                set town_mine[home_town] = u
              endif
@@ -8756,12 +8747,12 @@ function InitCheckHarvest takes nothing returns nothing
     call GroupRemoveUnit(g, u)
   endloop
   if p > 1 then
-    if c + s == p and i != GOLD_MINE then
+    if c + s == p and i != uGOLD_MINE then
       set first_town_mine = 1  // mode one , Right number of players and mines or this mine too close (like (4)synergybigpaved.w3x) , just fix UD and ELF harvest
     elseif c > p then
       set first_town_mine = 2  // mode two , more mines than players, one player have more mine , fix UD and ELF harvest and all race expensive - prior take closest home_location mine
     endif
-  elseif (i == GOLD_MINE and c > p) or (i != GOLD_MINE and c > 0) then  // more mine and one player
+  elseif (i == uGOLD_MINE and c > p) or (i != uGOLD_MINE and c > 0) then  // more mine and one player
     set first_town_mine = 3  // mode three , one player have this mine , fix all race harvest and expensive - prior take closest home_location mine
   endif
   if first_town_mine == 0 and GetMinesOwned() > 1 then
@@ -8977,13 +8968,13 @@ endfunction
 //===========================================================================
 function InitNeutralSpecial takes nothing returns nothing
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\btransporter\b/
-  set neutral_zeppelin = %1
+  set neutral_zeppelin = u%1
 #ENDINCLUDE
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bshredder\b/
-  set neutral_shredder = %1
+  set neutral_shredder = u%1
 #ENDINCLUDE
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\btp\b/
-  set tp_item = %1
+  set tp_item = u%1
 #ENDINCLUDE
 endfunction
 
@@ -9867,7 +9858,7 @@ endfunction
 function IsOneOnlyBuilding takes integer unitid returns boolean
   if false then
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\boneonly\b/
-  elseif unitid == %1 then
+  elseif unitid == u%1 then
     return true
 #ENDINCLUDE
   endif
@@ -10097,8 +10088,8 @@ function RefreshNeeded takes integer t, integer qty, integer unitid, integer tow
     endif
   endif
   #INCLUDETABLE <$VER$\NeededExtra.txt> #EFR
-  if unitid == %1 then
-    call SetBuildAllAMCore(BUILD_%2, %3, %4, -1, BLOC_STD, prio + prio_n_inc)
+  if unitid == u%1 then
+    call SetBuildAllAMCore(BUILD_%2, %3, u%4, -1, BLOC_STD, prio + prio_n_inc)
   endif
   #ENDINCLUDE
 endfunction
@@ -10871,7 +10862,7 @@ endfunction
 //============================================================================
 function CheckNotBuiltFrom takes integer unitid returns boolean
 #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "BUILT_FROM"
-  if unitid == %1 then
+  if unitid == u%1 then
     return false
   endif
 #ENDINCLUDE
@@ -11190,7 +11181,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
 
 // If research has modified the unit permanently into a different unit
   #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "UPGRADED_TO"
-    if unitid == %1 and GetUpgradeLevel(o%4) >= %5 then
+    if unitid == u%1 and GetUpgradeLevel(o%4) >= %5 then
       if SetProduce(afford_qty,o%3,town) then
         if (afford_qty + have_qty == need_qty) then
           return BUILT_ALL
@@ -11205,7 +11196,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
 
 // Unit must be built/transformed from another unit
   #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "BUILT_FROM"
-    if unitid == %1 then
+    if unitid == u%1 then
       if GetUpgradeLevel(o%4) >= %5 then
         if ConvertUnits(afford_qty + have_qty, o%3) then
           if (afford_qty + have_qty == need_qty) then
@@ -12272,7 +12263,7 @@ endfunction
 //============================================================================
 function ConversionsAM takes integer desire, integer unitid returns nothing
 #INCLUDETABLE <$VER$\UnitConversions.txt> #EFR
-  if unitid == %1 then
+  if unitid == u%1 then
     call MergeUnits(desire,o%2,o%3,o%1)
   endif
 #ENDINCLUDE
@@ -12355,8 +12346,8 @@ function FormGroupAM takes integer seconds returns nothing
     set unitid = attack_units[index]
 
   #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "UPGRADED_TO"
-    if unitid == %1 and GetUpgradeLevel(o%4) >= %5 then
-      set unitid = %3
+    if unitid == u%1 and GetUpgradeLevel(o%4) >= %5 then
+      set unitid = u%3
     endif
   #ENDINCLUDE
 
@@ -14177,7 +14168,7 @@ function ApplyHealingItem takes unit u, item heal_item returns nothing
 	call GroupPointOrder(small_healing_group, "move", GetUnitX(u), GetUnitY(u))
 	call Sleep(5 * sleep_multiplier)
 	if false then
-	#INCLUDETABLE <$VER$\HealingItems.txt> #EFR #COND "%1" eq "RITUAL_DAGGER"
+	#INCLUDETABLE <$VER$\HealingItems.txt> #EFR #COND "%1" eq "uRITUAL_DAGGER"
 	elseif GetItemTypeId(heal_item) == old_id[%1] then  //prevent killing high health units
 		set target = FirstOfGroup(urgent)
 		if target != null then
@@ -14321,7 +14312,7 @@ function universal_attack_sequence takes nothing returns nothing
   set needs_exp        = take_exp and (ai_strength > exp_strength and ai_antiair_strength >= exp_air_strength)
   set has_siege        = ai_strength > 60
 #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bsiege\b/
-  set has_siege        = has_siege or TownCountDone(%1) > 0
+  set has_siege        = has_siege or TownCountDone(u%1) > 0
 #ENDINCLUDE
 
   call SingleMeleeAttackAM(needs_exp,has_siege,ai_strength)
