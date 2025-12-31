@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 - Fixed an issue where reloading a saved game with AMAI vs AI would crash the game in REFORGED.
+  - (DevTools) BREAKING CHANGE all unitids in strategies are now prefixed with a 'u'. The previous ids are only to support the vanilla AI. This is a BREAKING CHANGE for custom strategies. This is only required in strategies and some racial settings, everywhere else automatically handles adding the 'u'.
 - Fixed chat messages based on profile name not running as was still using ai_name which hasn't matched for a long time. (jzy-chitong56)
 - Fix rush value check not correctly taking account of uneven enemies vs allies.
 - Fix an issue where refunded blocking units could return additional resources.
