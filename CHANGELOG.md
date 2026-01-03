@@ -53,7 +53,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Reign of chaos version now inherits fix to be able to stand down peons from burrows.
 - Fixed an issue where captain location was sometimes set to 0,0 on a map due to location being removed.
 - Fixed an issue where during flee, units didn't flee. Now all units will be forced to flee.
-- (DevTools) Added tower type for units, so we can detect towers before construction is completed. 
+- Fix an issue where a mine is detected as a land mine incorrectly, now it will abandon the attack.
+- (DevTools) Added tower type for units, so we can detect towers before construction is completed.
 - (DevTools) Fixed ApplyTableChanges.pl and which ensures all settings files are back to being consistent with each other.
 
 ## [3.5.1] - 2025-10-26

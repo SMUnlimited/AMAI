@@ -12592,6 +12592,13 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
   local integer combat_length_counter = 0
   local unit ally_target = null
   local boolean ally_found = false
+  local integer stuck_counter = 0
+  local real last_dist = -1
+  local real cur_dist = 0
+  local location target_loc = null
+  local integer gen_stuck_counter = 0
+  local real gen_last_dist = -1
+  local real gen_cur_dist = 0
   //local group g = null
 
   set lastcaptainx = GetUnitX(target)
@@ -12616,6 +12623,46 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     exitwhen not UnitAlive(target)
     exitwhen IsPlayerAlly(ai_player, GetOwningPlayer(target))
     exitwhen IsUnitInvisibleAM(target, ai_player)
+    if attacking_expansion and current_expansion != null and main_army >= 0 and army_loc[main_army] != null and not CaptainInCombat(true) then
+      set target_loc = GetUnitLoc(target)
+      set cur_dist = DistanceBetweenPoints_dd(army_loc[main_army], target_loc)
+      call RemoveLocation(target_loc)
+      set target_loc = null
+      if last_dist >= 0 and RAbs(cur_dist - last_dist) <= 50 then
+        set stuck_counter = stuck_counter + 1
+      else
+        set stuck_counter = 0
+      endif
+      set last_dist = cur_dist
+      if stuck_counter > 10 then
+        call Trace("Expansion attack stuck, marking bad expansion")
+        call MarkBadExpansion(current_expansion) // Mark land expansion as bad, before adding to water expansions
+        if not IsWaterExpansion(current_expansion) then
+          call AddWaterExpansion(current_expansion, DistanceBetweenPoints_kd(home_location, GetUnitLoc(current_expansion)))
+        endif
+        set current_expansion = null
+        set take_exp = false
+        set break_attack = true
+        return
+      endif
+    endif
+    if not attacking_expansion and main_army >= 0 and army_loc[main_army] != null and not CaptainInCombat(true) and not CaptainAtGoal() and not CaptainIsHome() then
+      set target_loc = GetUnitLoc(target)
+      set gen_cur_dist = DistanceBetweenPoints_dd(army_loc[main_army], target_loc)
+      call RemoveLocation(target_loc)
+      set target_loc = null
+      if gen_last_dist >= 0 and RAbs(gen_cur_dist - gen_last_dist) <= 50 then
+        set gen_stuck_counter = gen_stuck_counter + 1
+      else
+        set gen_stuck_counter = 0
+      endif
+      set gen_last_dist = gen_cur_dist
+      if gen_stuck_counter > 10 then
+        call Trace("Attack stuck, aborting target")
+        set break_attack = true
+        return
+      endif
+    endif
     //if IsPlayerAlly(ai_player, GetOwningPlayer(target)) or not UnitAlive(target) or (UnitInvis(target) and not IsUnitDetected(target, ai_player)) then
     //  set g = CreateGroup()
     //  call GroupEnumUnitsInRange(g,GetUnitX(target), GetUnitY(target),battle_radius,null)
