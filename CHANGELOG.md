@@ -195,6 +195,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- Community API.(Slayer95)
+  - In the future, AMAI will develop some interfaces for the community to enable map authors to quickly modify certain functions in the game without the need to study AMAI's code.
 - Basic AI interopability for LUA maps but with some issues: 
   - Commander works enough in LUA maps to let you set the initial language and game mode, but bringing up rest of commander during the game or typing commands does not currently work.
   - (DevTools) Note chat placeholders is no longer supported in languages. This affects both Jass and Lua maps.
