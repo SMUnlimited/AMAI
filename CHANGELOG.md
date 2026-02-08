@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 - Humans and orcs are now aware of safe spare mines near allies and will expand to them instead of ignoring them.
-- All races can now perform a successful tower rush not just orc players and also make use of items like sacrificial skull and ivory towers. (jzy-chitong56)
+- All races can now perform a successful tower rush at the start of the game or via commander, not just orc players and also make use of items like sacrificial skull and ivory towers. (jzy-chitong56)
 - (DevTools) Added new game setting "custom_data_set" which if set to true will make attempted changes to make AMAI work with the custom 1.0.1 dataset used in custom maps. Its just a quick fix and not optimal but they will least upgrade to the next tier when set.
 
 ### Changed
@@ -22,7 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Heroes will buy from racial shops in a wider radius of 3000 up from 1000 as this is still close by, even if an attack is running or town needs defending.
 - Insane AMAI now need 25% less gold and wood to be able to share the extra with other players as they earn alot more.
 - AMAI will be a bit more careful when sending a peon to build an expansion. If enemy is present it will wait for dangers to pass. Insane difficulty goes further and will check the expansion location itself is safe.
-- AMAI will now buy also items from goblin merchants during an attack if hero is close by to the store.
+- AMAI will now also buy items from goblin merchants during an attack if hero is close by to the store.
 - AMAI will now move its units that need healing togther with the town that needs the most defense to help shore up defense.
 - DefendTownsCond fixes and it only counts completed units.
 - Increased strength of towers so they more of a threat, and made all ancients have a passive strength as they can hit back.
