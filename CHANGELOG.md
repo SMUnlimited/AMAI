@@ -6,11 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## Unreleased
 
 ### Added
+- Support for 2.0.4, increasing optimal version for REFORGED scripts.
 - Humans and orcs are now aware of safe spare mines near allies and will expand to them instead of ignoring them.
 - All races can now perform a successful tower rush at the start of the game or via commander, not just orc players and also make use of items like sacrificial skull and ivory towers. (jzy-chitong56)
 - (DevTools) Added new game setting "custom_data_set" which if set to true will make attempted changes to make AMAI work with the custom 1.0.1 dataset used in custom maps. Its just a quick fix and not optimal but they will least upgrade to the next tier when set.
 
 ### Changed
+- Reforged Wand of Negation cost updated from 150 to 120 for 2.0.4 data.
 - Reworked expansion rebuild logic
   - It interrupts current expansion if its newly lost rather than once the current expansion choice is expanded to.
   - It has an 80% chance to rebuild an expansion. 20% to pick a standard expansion.
