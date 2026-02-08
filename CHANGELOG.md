@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - AMAI will now move its units that need healing togther with the town that needs the most defense to help shore up defense.
 - DefendTownsCond fixes and it only counts completed units.
 - Increased strength of towers so they more of a threat, and made all ancients have a passive strength as they can hit back.
+- Hero chance rebalancement to ensure all heroes still have a chance to be picked some were basically 0 and some were nearly always garunteed.
 
 ### Removed
 - (DevTools) max_towns global setting has been removed as it is no longer applicable.
