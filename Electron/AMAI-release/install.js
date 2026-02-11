@@ -3,7 +3,8 @@ const path = require("path");
 const { takeHeapSnapshot } = require("process");
 const spawnSync = require("child_process").spawnSync;
 const arrayOfFiles = [];
-
+let totalFiles = 0;
+let currentFileIndex = 0;
 
 /** uncomment to debbug */
 // const ls = spawnSync(
@@ -33,17 +34,15 @@ const installOnDirectory = async () => {
   const args = process.argv.slice(2);
   const response = args[0];
   const commander = args[1];
-  const ver = args[2]
-  const language =  args[3]
-  const installCommander = commander == 1
-  const vsAICommander = commander == 2
-  let bj = 'Blizzard.j' 
-  if (vsAICommander) { bj = 'vsai\\Blizzard.j'}
-
+  const ver = args[2];
+  const language = args[3];
+  const installCommander = commander == 1;
+  const vsAICommander = commander == 2;
+  let bj = 'Blizzard.j';
+  if (vsAICommander) {bj = 'vsai\\Blizzard.j'}
   const commonAIPath = `Scripts\\${ver}\\common.ai`
   const blizzardPath =`Scripts\\${ver}\\Blizzard.j`
-
-  process.send(`#### Installing AMAI for ${ver} Commander ${commander > 0 ? bj : 'None'} forcing ai language to ${language || 'default'} ####`);
+  process.send(`#### Installing AMAI for ${ver} Commander ${installCommander ? 'install' : (vsAICommander ? 'install VS AI' : 'none')} , forcing ai language to ${args[3]} ####`);
 
   // TODO: change to receive array of maps
   if (fs.statSync(response).isDirectory()) {
@@ -71,8 +70,6 @@ const installOnDirectory = async () => {
     return
   }
 
-
-
   if (language !== '-') {
     setLanguage(commonAIPath, language);
     if (installCommander) {
@@ -85,8 +82,9 @@ const installOnDirectory = async () => {
     }
   }
 
-
   if(arrayOfFiles) {
+    totalFiles = arrayOfFiles.length;
+    //process.send({ type: 'progress', current: currentFileIndex, total: totalFiles });
     for (const file of arrayOfFiles) {
       /** uncomment to debbug */
       // process.send(`path.extname(file): ${path.extname(file)}`);
@@ -94,6 +92,15 @@ const installOnDirectory = async () => {
       const ext = path.extname(file).toLowerCase();
 
       if(ext.indexOf(`w3m`) >= 0 || ext.indexOf(`w3x`) >= 0) {
+        currentFileIndex++;
+         // Send complete progress data including both current and total
+         if (process.send) {
+           process.send({ 
+             type: 'progress',
+             current: currentFileIndex,
+             total: totalFiles,
+           });
+         }
         process.send(`#### Installing ${ver} into file: ${file} ####`);
       } else {
         process.send(`skip file: ${file}`);
@@ -128,7 +135,7 @@ const installOnDirectory = async () => {
           process.send(mpqEditor.error.message)
             : process.send(`Resize map hashtable size ${file}`);
 
-        const f1AddToMPQ =  spawnSync(
+        const f1AddToMPQ = spawnSync(
           `MPQEditor.exe`,
           [
             'a',
@@ -178,16 +185,15 @@ const installOnDirectory = async () => {
               f1AddVSAIToMPQ.error ?
                 process.send(f1AddVSAIToMPQ.error.message)
                   : process.send(`Installing VS Vanilla AI Scripts ${file}`);
-            
           }
 
-          const f2AddToMPQ =  spawnSync(
+          const f2AddToMPQ = spawnSync(
             `MPQEditor.exe`,
             [
               'a',
               file,
               `Scripts\\${ver}\\${bj}`,
-              `Scripts\\Blizzard.j`,
+              `Scripts\\Blizzard.j`
             ],
             { encoding : `utf8` }
           );
@@ -206,7 +212,6 @@ const installOnDirectory = async () => {
           f2AddToMPQ.error ?
             process.send(f2AddToMPQ.error.message)
               : process.send(installCommander ? `Installing commander ${file}` : `Installing VS Vanilla AI commander ${file}`);
-
         }
 
         const f3AddToMPQ =  spawnSync(
@@ -238,7 +243,6 @@ const installOnDirectory = async () => {
       }
     }
   }
-
 
   function setLanguage(file, language) {
     let data = fs.readFileSync(file, 'utf8');
