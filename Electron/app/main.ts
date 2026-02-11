@@ -25,13 +25,14 @@ const isDev = () => {
 const createWindow = (): BrowserWindow => {
 
   const size = screen.getPrimaryDisplay().workAreaSize;
-
   // Create the browser window.
   win = new BrowserWindow({
     x: 0,
     y: 0,
     width: size.width,
     height: size.height,
+    minWidth: 1280,
+    minHeight: 940,
     webPreferences: {
       devTools: true,
       nodeIntegration: true,
@@ -156,10 +157,16 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
       }
     );
 
-
     // send messages to modal on front
     child.on('message', (message) => {
-      win.webContents.send('on-install-message', message);
+      if (typeof message === 'object' && message.type === 'progress') {
+        // Send progress updates via dedicated channel
+        console.log('progress:', message);
+        win.webContents.send('on-install-progress', message);
+      } else {
+        // Send regular messages via standard channel
+        win.webContents.send('on-install-message', message);
+      }
     });
 
     // close modal on process finishes
