@@ -42,7 +42,7 @@ const installOnDirectory = async () => {
   if (vsAICommander) {bj = 'vsai\\Blizzard.j'}
   const commonAIPath = `Scripts\\${ver}\\common.ai`
   const blizzardPath =`Scripts\\${ver}\\Blizzard.j`
-  process.send(`#### Installing AMAI for ${ver} Commander ${installCommander ? 'install' : (vsAICommander ? 'install VS AI' : 'none')} , forcing ai language to ${args[3]} ####`);
+  process.send(`#### Installing AMAI for ${ver} Commander ${commander > 0 ? bj : 'None'} forcing ai language to ${language || 'default'} ####`);
 
   // TODO: change to receive array of maps
   if (fs.statSync(response).isDirectory()) {
