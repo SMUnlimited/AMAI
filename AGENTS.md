@@ -11,8 +11,10 @@
 ## Important rules & constraints
 
 - Language rule: local variables must always be declared at the start of a function. Any edits to JASS-style code must respect this rule.
+- Function order is important, functions cannot be called unless it is imported or available higher up in the file.
 - Do not edit generated artifacts in `Scripts/` directly — change source `.eai` files and re-run the project build to regenerate compiled output.
-- `Common.j`, `Natives.j` and `Blizzard.j` are built-in war3 code do not make changes to them, they are for reference and building.
+- `Common.j`, `Natives.j` and `Blizzard.j` are built-in war3 code do not make changes to them, they are for reference to hardcoded functions and building.
+- Update the CHANGELOG.md when changes are made.
 
 ## Useful file locations
 

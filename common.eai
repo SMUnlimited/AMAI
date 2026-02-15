@@ -500,6 +500,7 @@ globals
 
     integer racial_peon	= 0
     integer neededPeons = 0
+    integer pendingExpansionPeons = 0
     integer array racial_hall
     integer array uracial_hall
     integer array racial_goldmine
@@ -9807,6 +9808,64 @@ function GetMinesHarvested takes nothing returns integer
 endfunction
 
 //============================================================================
+function GetPeonBuilderShredderCount takes nothing returns integer
+  if race_uses_shredder and neutral_shredder != 0 then
+    return TownCount(neutral_shredder)
+  endif
+  return 0
+endfunction
+
+//============================================================================
+function GetPeonTargetForMines takes integer mo, real w, integer sc returns integer
+  if race_has_ghouls then
+    if mo <= 1 then
+      return min_peon_number_single_mine
+    elseif mo <= 2 then
+      return min_peon_number_double_mine
+    else
+      return min_peon_number_multi_mine
+    endif
+  endif
+
+  if mo <= 1 then
+    return Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_1_mine_number, min_peon_number_single_mine, w) - shredder_peon_count*sc),min_peon_number_single_mine)
+  elseif mo <= 2 then
+    return Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_2_mines_number, min_peon_number_double_mine, w) - shredder_peon_count*sc),min_peon_number_double_mine)
+  endif
+  return Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_mines_number, min_peon_number_multi_mine, w) - shredder_peon_count*sc),min_peon_number_multi_mine)
+endfunction
+
+//============================================================================
+// Ensure existing mines are fully staffed before starting another expansion.
+// Also pre-queue peons for the upcoming mine so expansion worker demand starts early.
+function QueueExpansionPeonsIfNeeded takes integer currentMines returns boolean
+  local integer done = TownCountDone(racial_peon)
+  local integer sc = 0
+  local integer currentTarget = 0
+  local integer nextTarget = 0
+  local real w = GetWood()
+
+  if currentMines <= 0 then
+    return true
+  endif
+
+  set sc = GetPeonBuilderShredderCount()
+  set currentTarget = GetPeonTargetForMines(currentMines, w, sc)
+  set nextTarget = GetPeonTargetForMines(currentMines + 1, w, sc)
+
+  if done < nextTarget then
+    set pendingExpansionPeons = Max(pendingExpansionPeons, nextTarget)
+  endif
+
+  if done < currentTarget then
+    call Trace("ExpansionBuilder: Waiting workers " + Int2Str(done) + "/" + Int2Str(currentTarget))
+    return false
+  endif
+
+  return true
+endfunction
+
+//============================================================================
 // Total expected income per second (plus spare gold)
 function GetGoldIncome takes nothing returns real
   local real inc = I2R(GetMinesHarvested()*income_per_mine)
@@ -11427,6 +11486,11 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     call TQAddJob(1, ITEM_EXPANSION, 0)
   endif
 
+  // Do not start a new expansion until previous mines are worker-saturated.
+  if not QueueExpansionPeonsIfNeeded(GetMinesHarvested()) then
+    return CANNOT_BUILD
+  endif
+
   set total_gold = total_gold - gold_cost
   set total_wood = total_wood - wood_cost
   
@@ -11751,9 +11815,10 @@ endfunction
 function PeonBuilder takes nothing returns nothing
   local integer mo = GetMinesHarvested()
   local integer sc = 0
+  local integer peonTarget = 0
   local real w = GetWood()
   if race_uses_shredder and neutral_shredder != 0 then
-    set sc = TownCount(neutral_shredder)
+    set sc = GetPeonBuilderShredderCount()
     call ShredderBuilder()
   endif
   //if w <= maximum_peon_wood then 
@@ -11764,29 +11829,13 @@ function PeonBuilder takes nothing returns nothing
   //  call BuildPeons( peon_1_mine_number * mo + Max(Max(min_lumber_peons, R2I(I2R(max_lumber_peons) / 2)) - shredder_peon_count*sc, 1 )  )
   //endif
 
-  if race_has_ghouls then  // Ignore shredders
-    if mo <= 1 then
-      call BuildPeons(min_peon_number_single_mine)
-    elseif mo <= 2 then
-      call BuildPeons(min_peon_number_double_mine)
-    else
-      call BuildPeons(min_peon_number_multi_mine)
-    endif
-  else
-    if mo <= 1 then
-      // call BuildPeons(Max(min_peon_number_single_mine, R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_1_mine_number, 5, w)) - shredder_peon_count*sc))
-      call BuildPeons(Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_1_mine_number, min_peon_number_single_mine, w) - shredder_peon_count*sc),min_peon_number_single_mine))  // the Max condition prevents having loads of shredders stoping amai getting peons for gold
-    elseif mo <= 2 then
-      // call BuildPeons(Max(min_peon_number_double_mine, R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_2_mines_number, 10, w)) - shredder_peon_count*sc))
-      call BuildPeons(Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_2_mines_number, min_peon_number_double_mine, w) - shredder_peon_count*sc),min_peon_number_double_mine))
-    else
-      // call BuildPeons(Max(min_peon_number_multi_mine, R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_mines_number, 10, w)) - shredder_peon_count*sc))
-      call BuildPeons(Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, peon_mines_number, min_peon_number_multi_mine, w) - shredder_peon_count*sc),min_peon_number_multi_mine))	
-    endif
-  endif
+  set peonTarget = GetPeonTargetForMines(mo, w, sc)
+  set peonTarget = Max(peonTarget, pendingExpansionPeons)
+  call BuildPeons(peonTarget)
   if race_has_ghouls then
     call BuildGhouls(Max(R2I(LinearInterpolation(maximum_peon_wood, minimum_peon_wood, race_max_ghouls, race_min_ghouls, w) - R2I(shredder_peon_count/2)*sc),2)) 
   endif
+  set pendingExpansionPeons = 0
   set neededPeons = 0 // Reset
 endfunction
 
@@ -11998,6 +12047,9 @@ endloop
 if mines < 1 or gold_left < 2500 or exp_prepared then
   //call Trace("ExpansionBuilder: Putting mine on build list")
   call CreateDebugTagLoc("Expand Here", 10, GetUnitX(current_expansion), GetUnitY(current_expansion), 1.00, 0.80)
+  if not QueueExpansionPeonsIfNeeded(mines) then
+    return
+  endif
   if mines < 1 or gold_left < 2500 then
     call BuildExpa(TownCountDone(racial_expansion) + 1, racial_expansion, expa_emergency_prio)
   elseif prefer_rebuild_now or upkeepboost then
