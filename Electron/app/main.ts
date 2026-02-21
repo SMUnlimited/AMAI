@@ -9,6 +9,7 @@ const cp = require('child_process');
 let win: BrowserWindow = null;
 let translations : { [key: string]: string } = {};
 let currentLanguage: string = "English";
+let defaultPath: string | null = null;
 const args = process.argv.slice(1),
   serve = args.some(val => val === '--serve');
 
@@ -77,16 +78,65 @@ const createWindow = (): BrowserWindow => {
 
 const execInstall = async (signal, commander: number = 1, isMap: boolean = false, ver: string = "REFORGED", forceLang: boolean) => {
   const controller = new AbortController();
-  const response = dialog.showOpenDialogSync(win, {
-    // TODO: add i18n here
-    title : isMap ? translations["PAGES.ELECTRON.OPEN_MAP"] || '': translations["PAGES.ELECTRON.OPEN_DIR"] || '',
-    // TODO: Change to let multiples selections when is map
-    properties: isMap ? ['openFile'] : ['openDirectory'],
-    // TODO: add i18n here
-    filters: isMap ? [
+  let response;
+  try {
+    const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+    if (fs.existsSync(settingsPath)) {
+      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      defaultPath = settings.defaultPath || null;
+      console.log('get default Path :',defaultPath);
+    }
+  } catch (err) {
+    console.error('Failed to load default path:', err);
+  }
+  // Handle folder mode (isMap = false)
+  if (!isMap) {
+    // If default path exists, use it directly
+    if (defaultPath) {
+      response = [defaultPath];
+    } else {
+      // Show dialog and save selected path as default
+      response = dialog.showOpenDialogSync(win, {
+        title: translations["PAGES.ELECTRON.OPEN_DIR"] || '',
+        properties: ['openDirectory'],
+      });
+      
+      // Save the selected path as default if not canceled
+      if (response && response.length > 0) {
+        defaultPath = response[0];
+        console.log('set default Path :',defaultPath);
+        // Save to settings.json directly in main process
+        const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+        const settings = {
+          defaultPath: defaultPath
+        };
+        fs.writeFileSync(settingsPath, JSON.stringify(settings));
+      }
+    }
+  } else {
+    // Handle map mode (isMap = true)
+    const documentsPath = app.getPath('documents');
+    response = dialog.showOpenDialogSync(win, {
+      title: translations["PAGES.ELECTRON.OPEN_MAP"] || '',
+      properties: ['openFile'],
+      filters: [
       { name: translations["PAGES.ELECTRON.MAPFILE"] || '', extensions: ['w3x', 'w3m'] },
-    ] : null,
-  });
+      ],
+      // Use default path if available, otherwise open "documents"
+      defaultPath: defaultPath || documentsPath,
+    });
+    // 选择文件后自动将文件所在目录设为默认路径
+    if (response && response.length > 0) {
+      const filePath = response[0];
+      const folderPath = path.dirname(filePath);
+      defaultPath = folderPath;
+      const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+      const settings = { defaultPath: folderPath };
+      fs.writeFileSync(settingsPath, JSON.stringify(settings));
+      console.log('Default path updated to:', folderPath);
+    }
+    console.log('default Path :',defaultPath);
+  }
 
   let child;
 
@@ -176,6 +226,37 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
   } catch(err) {
     win.webContents.send('on-install-error', err.message);
   }
+}
+
+
+const setupFileOperations = () => {
+  ipcMain?.handle('file-operations', async (_, { operation, payload }) => {
+    switch(operation) {
+      case 'load-default-path':
+        const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+        if (fs.existsSync(settingsPath)) {
+          return JSON.parse(fs.readFileSync(settingsPath, 'utf8')).defaultPath;
+        }
+        return null;
+
+      case 'select-folder':
+        const result = dialog.showOpenDialogSync(win, {
+          title: translations["PAGES.ELECTRON.OPEN_DIR"] || '',
+          defaultPath: payload?.defaultPath,
+          properties: ['openDirectory'],
+        });
+        return result && result.length > 0 ? result[0] : null;
+
+      case 'save-default-path': {
+        const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+        fs.writeFileSync(settingsPath, JSON.stringify({ defaultPath: payload }));
+        return true;
+      }
+
+      default:
+        throw new Error(`unknow: ${operation}`);
+    }
+  });
 }
 
 const installProcess = () => {
@@ -274,4 +355,5 @@ const installTrans = () => {
 
 init();
 installTrans();
+setupFileOperations();
 installProcess();
