@@ -14,6 +14,9 @@ export class AppComponent implements AfterViewChecked {
   public active = false;
   public couldClose = false;
   public messages = [];
+  public currentFile = 0;
+  public totalFiles = 0;
+  public installingText = '';
 
   @ViewChild('logareawrapper') private readonly logContainer: ElementRef; 
     
@@ -44,16 +47,29 @@ export class AppComponent implements AfterViewChecked {
       })
       this.cdr.detectChanges();
     });
-    
 
     if (electronService.isElectron) {
       this.menuService.createMenu();
+
+      this.electronService.ipcRenderer.on('on-install-progress', (_, args: { current: number, total: number }) => {
+        // console.log('totalFiles-in:', args.total, 'currentFile-in:', args.current);
+        if ( args.total > 0 && this.totalFiles < args.total) {
+          this.totalFiles = args.total;
+        }
+        if (this.currentFile < this.totalFiles) {
+          this.currentFile++;
+          this.title = '(' + this.currentFile + '/' + this.totalFiles + ') ' + this.installingText;
+        }
+        // console.log('totalFiles-out:', this.totalFiles, 'currentFile-out:', this.currentFile);
+        this.cdr.detectChanges();
+      });
 
       // TODO: add 'push notification'/'notification'
       this.electronService.ipcRenderer.on('on-install-init', (_, args: InstallModel) => {
         console.log('args-install-init', args)
         this.translate.get(t_('PAGES.APP.INSTALLING'), {path: args.response}).subscribe((res: string) => {
-          this.title = res
+          this.title = '(0/X) ' + res;
+          this.installingText = res;
         });
         this.active = true;
         this.couldClose = false;
@@ -77,16 +93,19 @@ export class AppComponent implements AfterViewChecked {
         console.log('args-install-empty', args);
         this.active = false;
         this.couldClose = true;
+        this.totalFiles = 0;
+        this.currentFile = 0;
         this.cdr.detectChanges();
       });
 
       // TODO: add 'push notification'/'notification'
       this.electronService.ipcRenderer.on('on-install-exit', (_, args) => {
         this.translate.get(t_('PAGES.APP.INSTALL_DONE')).subscribe((res: string) => {
-          this.title = res;
+          this.title = '(' + this.currentFile + '/' + this.totalFiles + ')' + ' ' + res;
         });
         this.couldClose = true;
-
+        this.totalFiles = 0;
+        this.currentFile = 0;
         this
           .menuService
           .changeEnabledMenuState(true);
@@ -104,7 +123,8 @@ export class AppComponent implements AfterViewChecked {
       this.electronService.ipcRenderer.on('on-install-error', (_, args) => {
         console.log('args-install-error', args);
         this.couldClose = true;
-
+        this.totalFiles = 0;
+        this.currentFile = 0;
         this
           .menuService
           .changeEnabledMenuState(true);
