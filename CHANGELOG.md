@@ -17,6 +17,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Orc heroes will prioritize buying an Orb of Lightning at tier three. (Powerer)
 - Orcs prioritize Fortified Defenses and their weapon and armor upgrades more highly. (Powerer)
 - Undead dynamic builder prefers Gargoyles over Crypt Fiends for anti-air after tier one, while retaining Fiends as a secondary counter. (Powerer)
+- Rebalanced Reforged Human, Orc, and Undead strategies with moderate earlier expansion windows and strategy-specific hero preferences.
+- Raised low town-hall upgrade priorities so tier progression is less likely to stall behind routine production.
+- Increased specialist counter weights without replacing normal mixed-army composition.
+- Expansion sites now prioritize additional existing racial defenses and their shop, without changing defense placement functions.
+- Rebalanced core consumables, movement and survival items, and tier-three racial orbs.
+- Increased priorities for composition-related upgrades including Human Defend/Masonry, Orc anti-air and siege support, and Undead Stone Form.
 - Electron releases now package the compiled scripts and MPQEditor directly from the base AMAI directory. (devtools)
 - Refreshed Electron installer dependencies and test discovery while retaining Electron 22 and its OS compatibility baseline. (devtools)
 
