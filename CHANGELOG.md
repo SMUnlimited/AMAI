@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Orcs prioritize Fortified Defenses and their weapon and armor upgrades more highly. (Powerer)
 - Undead dynamic builder prefers Gargoyles over Crypt Fiends for anti-air after tier one, while retaining Fiends as a secondary counter. (Powerer)
 - Electron releases now package the compiled scripts and MPQEditor directly from the base AMAI directory. (devtools)
+- Refreshed Electron installer dependencies and test discovery while retaining Electron 22 and its OS compatibility baseline. (devtools)
 
 ### Removed
 

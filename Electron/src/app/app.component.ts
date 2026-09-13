@@ -1,6 +1,7 @@
 import { AfterViewChecked, ChangeDetectorRef, Component, ElementRef, ViewChild } from '@angular/core';
 import { ElectronService, MenuService } from './core/services';
-import { TranslateService, TranslatePipe, TranslateDirective, _ as t_, LangChangeEvent } from "@codeandweb/ngx-translate";
+import { TranslateService, TranslatePipe, TranslateDirective, _ as t_ } from "@codeandweb/ngx-translate";
+import type { LangChangeEvent } from "@codeandweb/ngx-translate";
 import { APP_CONFIG } from '../environments/environment';
 import { InstallModel } from '../../commons/models';
 
