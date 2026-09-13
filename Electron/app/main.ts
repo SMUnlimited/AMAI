@@ -32,6 +32,8 @@ const createWindow = (): BrowserWindow => {
     y: 0,
     width: size.width,
     height: size.height,
+    minWidth: 1280,
+    minHeight: 940,
     webPreferences: {
       devTools: true,
       nodeIntegration: true,
@@ -159,7 +161,12 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
 
     // send messages to modal on front
     child.on('message', (message) => {
-      win.webContents.send('on-install-message', message);
+      win.webContents.send(
+        message && typeof message === 'object' && message.type === 'progress'
+          ? 'on-install-progress'
+          : 'on-install-message',
+        message
+      );
     });
 
     // close modal on process finishes

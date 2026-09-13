@@ -4,6 +4,7 @@ const { takeHeapSnapshot } = require("process");
 const spawnSync = require("child_process").spawnSync;
 const arrayOfFiles = [];
 
+const isMapFile = file => [`.w3m`, `.w3x`].includes(path.extname(file).toLowerCase());
 
 /** uncomment to debbug */
 // const ls = spawnSync(
@@ -87,18 +88,13 @@ const installOnDirectory = async () => {
 
 
   if(arrayOfFiles) {
-    for (const file of arrayOfFiles) {
+    const mapFiles = arrayOfFiles.filter(isMapFile);
+    for (const [index, file] of mapFiles.entries()) {
       /** uncomment to debbug */
       // process.send(`path.extname(file): ${path.extname(file)}`);
 
-      const ext = path.extname(file).toLowerCase();
-
-      if(ext.indexOf(`w3m`) >= 0 || ext.indexOf(`w3x`) >= 0) {
-        process.send(`#### Installing ${ver} into file: ${file} ####`);
-      } else {
-        process.send(`skip file: ${file}`);
-        continue;
-      }
+      process.send({ type: 'progress', current: index + 1, total: mapFiles.length });
+      process.send(`#### Installing ${ver} into file: ${file} ####`);
 
       try {
         fs.accessSync(file, fs.constants.W_OK)
@@ -250,4 +246,8 @@ const installOnDirectory = async () => {
   // spawnSync(`echo`, [`finish install processing into folder ${dirPath}`]);
 }
 
-installOnDirectory();
+if (require.main === module) {
+  installOnDirectory();
+}
+
+module.exports = { isMapFile };

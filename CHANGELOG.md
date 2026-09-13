@@ -24,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Installer progress now counts only Warcraft III map files and displays the current map count.
+- Added a minimum installer window size to keep the interface usable when resized.
 - Ensure all peons for pre-existing expansions are trained before expanding again.
 - Item duplicate checks no longer inspect the invalid seventh inventory slot. (Powerer)
 

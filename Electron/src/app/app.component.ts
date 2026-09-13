@@ -14,6 +14,7 @@ export class AppComponent implements AfterViewChecked {
   public active = false;
   public couldClose = false;
   public messages = [];
+  private installingTitle = '';
 
   @ViewChild('logareawrapper') private readonly logContainer: ElementRef; 
     
@@ -49,11 +50,17 @@ export class AppComponent implements AfterViewChecked {
     if (electronService.isElectron) {
       this.menuService.createMenu();
 
+      this.electronService.ipcRenderer.on('on-install-progress', (_, progress: { current: number, total: number }) => {
+        this.title = `(${progress.current}/${progress.total}) ${this.installingTitle}`;
+        this.cdr.detectChanges();
+      });
+
       // TODO: add 'push notification'/'notification'
       this.electronService.ipcRenderer.on('on-install-init', (_, args: InstallModel) => {
         console.log('args-install-init', args)
         this.translate.get(t_('PAGES.APP.INSTALLING'), {path: args.response}).subscribe((res: string) => {
-          this.title = res
+          this.installingTitle = res;
+          this.title = res;
         });
         this.active = true;
         this.couldClose = false;
