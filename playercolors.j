@@ -52,6 +52,8 @@ function ColorText takes playercolor c returns string
     return "Emerald"
   elseif (c == PLAYER_COLOR_PEANUT) then
     return "Peanut"
+  elseif (c == PLAYER_COLOR_BLACK) then
+    return "Black"
   endif
   //Returns text version
   return ""
@@ -104,7 +106,9 @@ function cs2s takes string name, playercolor c returns string
       return "|Cff00781E"+name+"|r"
   elseif c == PLAYER_COLOR_PEANUT then
       return "|CffA57033"+name+"|r"
-  else //Brown
+  elseif c == PLAYER_COLOR_BROWN then
       return "|Cff4F2B05"+name+"|r"
+  else
+    return "|cff000000"+name+"|r"
   endif
 endfunction

@@ -6,11 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## Unreleased
 
 ### Changed
+
+- Added support for v3.0.0 Reforged (helped by jzy-chitong56)
+  - Forsaken Paladin skill builds for all hero acquisition tiers.
+  - New race colour option
+  - Minimum supported version for reforged is now v3 due to the native changes
 - Additional peons needed for an expansion will start to be trained early.
 - Added boots of speed to all strategies.
 - Undead will buy an orb of corruption if you have a lich.
 
 ### Fixed
+
 - Ensure all peons for pre-existing expansions are trained before expanding again.
 
 ## [3.6.0] - 2026-02-08

@@ -1,5 +1,5 @@
 //===========================================================================
-// 1.33 Blizzard.j ( define Jass2 functions that need to be in every map script )
+// Blizzard.j ( define Jass2 functions that need to be in every map script )
 //===========================================================================
 
 
@@ -44,6 +44,8 @@ globals
 
     // Game constants
     constant integer   bj_MAX_INVENTORY                 =  6
+    constant integer   bj_MAX_EXTENDED_INVENTORY        =  30
+    constant integer   bj_MAX_EQUIPMENT_INVENTORY       =  9
     constant integer   bj_MAX_PLAYERS                   =  GetBJMaxPlayers()
     constant integer   bj_PLAYER_NEUTRAL_VICTIM         =  GetBJPlayerNeutralVictim()
     constant integer   bj_PLAYER_NEUTRAL_EXTRA          =  GetBJPlayerNeutralExtra()
@@ -159,6 +161,8 @@ globals
     constant integer   bj_CAMPAIGN_INDEX_XH       = 6
     constant integer   bj_CAMPAIGN_INDEX_XU       = 7
     constant integer   bj_CAMPAIGN_INDEX_XO       = 8
+    constant integer   bj_CAMPAIGN_INDEX_RH       = 9
+    constant integer   bj_CAMPAIGN_INDEX_RU       = 10
 
     // Campaign offset constants (for mission indexing)
     constant integer   bj_CAMPAIGN_OFFSET_T       = 0
@@ -170,6 +174,8 @@ globals
     constant integer   bj_CAMPAIGN_OFFSET_XH      = 6
     constant integer   bj_CAMPAIGN_OFFSET_XU      = 7
     constant integer   bj_CAMPAIGN_OFFSET_XO      = 8
+    constant integer   bj_CAMPAIGN_OFFSET_RH      = 0
+    constant integer   bj_CAMPAIGN_OFFSET_RU      = 1
 
     // Mission indexing constants
     // Tutorial
@@ -263,13 +269,22 @@ globals
     constant integer   bj_MISSION_INDEX_XU11       = bj_CAMPAIGN_OFFSET_XU * 1000 + 11
     constant integer   bj_MISSION_INDEX_XU12       = bj_CAMPAIGN_OFFSET_XU * 1000 + 12
     constant integer   bj_MISSION_INDEX_XU13       = bj_CAMPAIGN_OFFSET_XU * 1000 + 13
-
     // Expansion Orc
     constant integer   bj_MISSION_INDEX_XO00       = bj_CAMPAIGN_OFFSET_XO * 1000 + 0
     constant integer   bj_MISSION_INDEX_XO01       = bj_CAMPAIGN_OFFSET_XO * 1000 + 1
     constant integer   bj_MISSION_INDEX_XO02       = bj_CAMPAIGN_OFFSET_XO * 1000 + 2
     constant integer   bj_MISSION_INDEX_XO03       = bj_CAMPAIGN_OFFSET_XO * 1000 + 3
-
+    // Rebirth Human
+    constant integer   bj_MISSION_INDEX_RH00       = bj_CAMPAIGN_OFFSET_RH * 1000 + 0
+    constant integer   bj_MISSION_INDEX_RH01       = bj_CAMPAIGN_OFFSET_RH * 1000 + 1
+    constant integer   bj_MISSION_INDEX_RH02       = bj_CAMPAIGN_OFFSET_RH * 1000 + 2
+    constant integer   bj_MISSION_INDEX_RH03       = bj_CAMPAIGN_OFFSET_RH * 1000 + 3
+    constant integer   bj_MISSION_INDEX_RH04       = bj_CAMPAIGN_OFFSET_RH * 1000 + 4
+    // Rebirth Undead
+    constant integer   bj_MISSION_INDEX_RU00       = bj_CAMPAIGN_OFFSET_RU * 1000 + 0
+    constant integer   bj_MISSION_INDEX_RU01       = bj_CAMPAIGN_OFFSET_RU * 1000 + 1
+    constant integer   bj_MISSION_INDEX_RU02       = bj_CAMPAIGN_OFFSET_RU * 1000 + 2
+    constant integer   bj_MISSION_INDEX_RU03       = bj_CAMPAIGN_OFFSET_RU * 1000 + 3
     // Cinematic indexing constants
     constant integer   bj_CINEMATICINDEX_TOP      = 0
     constant integer   bj_CINEMATICINDEX_HOP      = 1
@@ -282,6 +297,8 @@ globals
     constant integer   bj_CINEMATICINDEX_NED      = 8
     constant integer   bj_CINEMATICINDEX_XOP      = 9
     constant integer   bj_CINEMATICINDEX_XED      = 10
+    constant integer   bj_CINEMATICINDEX_HFO      = 11
+    constant integer   bj_CINEMATICINDEX_UFE      = 12
 
     // Alliance settings
     constant integer   bj_ALLIANCE_UNALLIED        = 0
@@ -302,6 +319,7 @@ globals
     constant integer   bj_KEYEVENTKEY_RIGHT        = 1
     constant integer   bj_KEYEVENTKEY_DOWN         = 2
     constant integer   bj_KEYEVENTKEY_UP           = 3
+    constant integer   bj_KEYEVENTKEY_A           = 4
 
     // Mouse Event Types
     constant integer   bj_MOUSEEVENTTYPE_DOWN     = 0
@@ -611,6 +629,9 @@ globals
     trigger            bj_delayedSuspendDecayTrig  = null
     integer            bj_livingPlayerUnitsTypeId  = 0
     widget             bj_lastDyingWidget          = null
+    boolean            bj_HeroGlowAllUnitsFlag     = true
+    boolean            bj_enableAurasAllUnits      = true
+    boolean            bj_affectsUIAurasAllUnits   = true
 
     // Random distribution vars
     integer            bj_randDistCount            = 0
@@ -649,6 +670,8 @@ globals
     ubersplat          bj_lastCreatedUbersplat     = null
     minimapicon        bj_lastCreatedMinimapIcon   = null
 	commandbuttoneffect bj_lastCreatedCommandButtonEffect = null
+    item               bj_lastEquippedItem         = null
+    item               bj_lastUnequippedItem       = null
 
     // Filter function vars
     boolexpr           filterIssueHauntOrderAtLocBJ      = null
@@ -661,6 +684,8 @@ globals
 
     // Memory cleanup vars
     boolean            bj_wantDestroyGroup         = false
+	effect 			   bj_destroyEffectAsyncEffect = null
+	real 			   bj_destroyEffectAsyncTime   = 0
 
     // Instanced Operation Results
     boolean            bj_lastInstObjFuncSuccessful = true
@@ -684,7 +709,23 @@ function BJDebugMsg takes string msg returns nothing
     endloop
 endfunction
 
+//***************************************************************************
+//*
+//*  Memory Cleanup Functions
+//*
+//***************************************************************************
 
+function SetWantDestroyGroupBJ takes nothing returns nothing
+	set bj_wantDestroyGroup = true
+endfunction
+
+function ClearWantDestroyGroupBJ takes nothing returns nothing
+	set bj_wantDestroyGroup = false
+endfunction
+
+function GetWantDestroyGroupBJ takes nothing returns boolean
+	return bj_wantDestroyGroup
+endfunction
 
 //***************************************************************************
 //*
@@ -1356,6 +1397,14 @@ function SetCameraFieldForPlayer takes player whichPlayer, camerafield whichFiel
 endfunction
 
 //===========================================================================
+function SetCameraFieldControlledByInputForPlayer takes player whichPlayer, camerafield whichField, boolean controlled returns nothing
+    if (GetLocalPlayer() == whichPlayer) then
+        // Use only local code (no net traffic) within this block to avoid desyncs.
+        call SetCameraFieldControlledByInput(whichField, controlled)
+    endif
+endfunction
+
+//===========================================================================
 function SetCameraTargetControllerNoZForPlayer takes player whichPlayer, unit whichUnit, real xoffset, real yoffset, boolean inheritOrientation returns nothing
     if (GetLocalPlayer() == whichPlayer) then
         // Use only local code (no net traffic) within this block to avoid desyncs.
@@ -1794,6 +1843,21 @@ function TriggerRegisterPlayerMouseEventBJ takes trigger trig, player whichPlaye
 endfunction
 
 //===========================================================================
+function IsMouseButtonPressedBJ takes mousebuttontype mouseButtonType returns boolean
+    return BlzIsMouseButtonPressed(mouseButtonType)
+endfunction
+
+//===========================================================================
+function IsMetaKeyPressedBJ takes integer metakey returns boolean
+    return BlzIsMetaKeyPressed(metakey)
+endfunction
+
+//===========================================================================
+function IsKeyPressedBJ takes oskeytype key returns boolean
+    return BlzIsKeyPressed(key)
+endfunction
+
+//===========================================================================
 function TriggerRegisterPlayerEventVictory takes trigger trig, player whichPlayer returns event
     return TriggerRegisterPlayerEvent(trig, whichPlayer, EVENT_PLAYER_VICTORY)
 endfunction
@@ -2109,6 +2173,67 @@ function SetWaterBaseColorBJ takes real red, real green, real blue, real transpa
 endfunction
 
 //===========================================================================
+function SetHDWaterParamsExBJ takes real red, real green, real blue, boolean override, integer vertexDisplacement, integer minOpacity, integer maxOpacity, integer reflectivity, integer emissivity, integer edgeSoftness, integer waveStrength, integer envMapStrength returns nothing
+    call SetHDWaterParamsEx (PercentTo255(red), PercentTo255(green), PercentTo255(blue), override, vertexDisplacement, minOpacity, maxOpacity, reflectivity, emissivity, edgeSoftness, waveStrength, envMapStrength)
+endfunction
+
+//===========================================================================
+function BlzSetHDWaterColorBJ takes real red, real green, real blue returns nothing
+	call BlzSetHDWaterColor(PercentTo255(red), PercentTo255(green), PercentTo255(blue))
+	call BlzSetHDWaterColorOverride(true)
+endfunction
+
+//===========================================================================
+function BlzSetHDWaterColorOverrideBJ takes nothing returns nothing
+	call BlzSetHDWaterColorOverride(true)
+endfunction
+
+//===========================================================================
+function BlzClearHDWaterColorOverrideBJ takes nothing returns nothing
+	call BlzSetHDWaterColorOverride(false)
+endfunction
+
+//===========================================================================
+function BlzSetHDWaterVertexDisplacementBJ takes integer vertexDisplacement returns nothing
+	call BlzSetHDWaterVertexDisplacement(vertexDisplacement)
+endfunction
+
+//===========================================================================
+function BlzSetHDWaterMinOpacityBJ takes integer minOpacity returns nothing
+	call BlzSetHDWaterMinOpacity(minOpacity)
+endfunction
+
+//===========================================================================
+function BlzSetHDWaterMaxOpacityBJ takes integer maxOpacity returns nothing
+	call BlzSetHDWaterMaxOpacity(maxOpacity)
+endfunction
+
+//===========================================================================
+function BlzSetHDWaterReflectivityBJ takes integer reflectivity returns nothing
+	call BlzSetHDWaterReflectivity(reflectivity)
+endfunction
+
+//===========================================================================
+function BlzSetHDWaterEmissivityBJ takes integer emissivity returns nothing
+	call BlzSetHDWaterEmissivity(emissivity)
+endfunction
+
+//===========================================================================
+function BlzSetHDWaterEdgeSoftnessBJ takes integer edgeSoftness returns nothing
+	call BlzSetHDWaterEdgeSoftness(edgeSoftness)
+endfunction
+
+//===========================================================================
+function BlzSetHDWaterWaveStrengthBJ takes integer waveStrength returns nothing
+	call BlzSetHDWaterWaveStrength(waveStrength)
+endfunction
+
+//===========================================================================
+function BlzSetHDWaterEnvMapStrengthBJ takes integer envMapStrengthy returns nothing
+	call BlzSetHDWaterEnvMapStrength(envMapStrengthy)
+endfunction
+
+//===========================================================================
 function CreateFogModifierRectSimple takes player whichPlayer, fogstate whichFogState, rect r, boolean afterUnits returns fogmodifier
     set bj_lastCreatedFogModifier = CreateFogModifierRect(whichPlayer, whichFogState, r, true, afterUnits)
     return bj_lastCreatedFogModifier
@@ -2182,6 +2307,67 @@ function SetTerrainFogExBJ takes integer style, real zstart, real zend, real den
 endfunction
 
 //===========================================================================
+function SetTerrainFogExVBJ takes integer style, real zstart, real zend, real density, real heightStart, real heightEnd, real linearStart, real linearEnd, real red, real green, real blue returns nothing
+    call SetTerrainFogExV(style, zstart, zend, density, heightStart, heightEnd, linearStart, linearEnd, red * 0.01, green * 0.01, blue * 0.01)
+endfunction
+
+//===========================================================================
+function BlzSetTerrainFogStyleBJ takes fogstyle style returns nothing
+    call BlzSetTerrainFogStyle(style)
+endfunction
+
+//===========================================================================
+function BlzSetTerrainFogZStartBJ takes real zStart returns nothing
+    call BlzSetTerrainFogZStart(zStart)
+endfunction
+
+//===========================================================================
+function BlzSetTerrainFogZEndBJ takes real zEnd returns nothing
+    call BlzSetTerrainFogZEnd(zEnd)
+endfunction
+
+//===========================================================================
+function BlzSetTerrainFogDensityBJ takes real density returns nothing
+    call BlzSetTerrainFogDensity(density)
+endfunction
+
+//===========================================================================
+function BlzSetTerrainFogHeightStartBJ takes real heightStart returns nothing
+    call BlzSetTerrainFogHeightStart(heightStart)
+endfunction
+
+//===========================================================================
+function BlzSetTerrainFogHeightEndBJ takes real heightEnd returns nothing
+    call BlzSetTerrainFogHeightEnd(heightEnd)
+endfunction
+
+//===========================================================================
+function BlzSetTerrainFogLinearStartBJ takes real linearStart returns nothing
+    call BlzSetTerrainFogLinearStart(linearStart)
+endfunction
+
+//===========================================================================
+function BlzSetTerrainFogLinearEndBJ takes real linearEnd returns nothing
+    call BlzSetTerrainFogLinearEnd(linearEnd)
+endfunction
+
+//===========================================================================
+// It refers to max opacity
+function BlzSetTerrainFogMaxLinearDensityBJ takes real maxLinearDensity returns nothing
+    call BlzSetTerrainFogMaxLinearDensity(maxLinearDensity)
+endfunction
+
+//===========================================================================
+function BlzSetTerrainFogDrawOverSkyBJ takes boolean drawOverSky returns nothing
+    call BlzSetTerrainFogDrawOverSky(drawOverSky)
+endfunction
+
+//===========================================================================
+function BlzSetTerrainFogColorBJ takes real red, real green, real blue returns nothing
+    call BlzSetTerrainFogColor(red * 0.01, green * 0.01, blue * 0.01)
+endfunction
+
+//===========================================================================
 function ResetTerrainFogBJ takes nothing returns nothing
     call ResetTerrainFog()
 endfunction
@@ -2197,8 +2383,85 @@ function SetDoodadAnimationRectBJ takes string animName, integer doodadID, rect 
 endfunction
 
 //===========================================================================
+function BlzSetSingleDoodadAnimationBJ takes string animName, integer index returns nothing
+    call BlzSetSingleDoodadAnimation(index, animName, false)
+endfunction
+
+//===========================================================================
 function AddUnitAnimationPropertiesBJ takes boolean add, string animProperties, unit whichUnit returns nothing
     call AddUnitAnimationProperties(whichUnit, animProperties, add)
+endfunction
+
+//===========================================================================
+function SetDoodadColorBJ takes playercolor color, integer doodadID, real radius, location center returns nothing
+    call SetDoodadColor(GetLocationX(center), GetLocationY(center), radius, doodadID, false, color)
+endfunction
+
+//===========================================================================
+function SetDoodadColorRectBJ takes playercolor color, integer doodadID, rect r returns nothing
+    call SetDoodadColorRect(r, doodadID, color)
+endfunction
+
+//===========================================================================
+function BlzSetSingleDoodadColorBJ takes playercolor color, integer index returns nothing
+    call BlzSetSingleDoodadColor(index, color)
+endfunction
+
+//===========================================================================
+function AllowHeroGlowOnUnitBJ takes unit whichUnit returns nothing
+    call AllowHeroGlowOnUnit(whichUnit)
+endfunction
+
+//===========================================================================
+function DisallowHeroGlowOnUnitBJ takes unit whichUnit returns nothing
+    call DisallowHeroGlowOnUnit(whichUnit)
+endfunction
+
+//===========================================================================
+function ToggleHeroGlowOnAllUnitsBJEnum takes nothing returns nothing
+    if bj_HeroGlowAllUnitsFlag then
+        call AllowHeroGlowOnUnit(GetEnumUnit())
+    else
+        call DisallowHeroGlowOnUnit(GetEnumUnit())
+    endif
+endfunction
+
+//===========================================================================
+function ToggleHeroGlowOnAllUnitsBJ takes boolean allow returns nothing
+    local integer index
+    local player  indexPlayer
+    local group   g
+
+    set bj_HeroGlowAllUnitsFlag = allow
+    set g = CreateGroup()
+    set index = 0
+    loop
+        set indexPlayer = Player( index )
+
+        // Enumerate and allow/disallow glow on every unit owned by the player.
+        call GroupEnumUnitsOfPlayer( g, indexPlayer, null )
+        call ForGroup( g, function ToggleHeroGlowOnAllUnitsBJEnum )
+        call GroupClear( g )
+
+        set index = index + 1
+        exitwhen index == bj_MAX_PLAYER_SLOTS
+    endloop
+    call DestroyGroup(g)
+endfunction
+
+//===========================================================================
+function AllowHeroGlowOnAllUnitsBJ takes nothing returns nothing
+    call ToggleHeroGlowOnAllUnitsBJ(true)
+endfunction
+
+//===========================================================================
+function DisallowHeroGlowOnAllUnitsBJ takes nothing returns nothing
+    call ToggleHeroGlowOnAllUnitsBJ(false)
+endfunction
+
+//===========================================================================
+function HeroGlowIsAllowedOnUnitBJ takes unit whichUnit returns boolean
+    return HeroGlowIsAllowedOnUnit(whichUnit)
 endfunction
 
 
@@ -2781,6 +3044,24 @@ function GetLastCreatedEffectBJ takes nothing returns effect
     return bj_lastCreatedEffect
 endfunction
 
+//===========================================================================
+// Note: this function should be used in conjunction with the one below, which is the only one that is really exposed in GUI
+function DestroyEffectAsyncBJ takes nothing returns nothing
+	local effect localEffect = bj_destroyEffectAsyncEffect
+	local real localTime = bj_destroyEffectAsyncTime
+
+	call TriggerSleepAction(localTime)
+	call DestroyEffect(localEffect)
+endfunction
+
+function DestroyEffectAfterTimeBJ takes effect whichEffect, real time returns nothing
+	// Save arguments to globals
+	set bj_destroyEffectAsyncEffect = whichEffect
+	set bj_destroyEffectAsyncTime = time
+
+	// Externalize to an async thread
+	call ExecuteFunc("DestroyEffectAsyncBJ")
+endfunction
 
 
 //***************************************************************************
@@ -2935,11 +3216,48 @@ function UnitRemoveItemSwapped takes item whichItem, unit whichHero returns noth
 endfunction
 
 //===========================================================================
+function UnitEquipItemSwapped takes item whichItem, unit whichHero returns boolean
+    local boolean success = UnitEquipItem(whichHero, whichItem)
+    if (success) then
+        set bj_lastEquippedItem = whichItem
+    endif
+
+    return success
+endfunction
+
+//===========================================================================
+function UnitEquipItemByIdSwapped takes integer itemId, unit whichHero returns item
+    // Create the item at the hero's feet first, and then give it to him.
+    // This is to ensure that the item will be left at the hero's feet if
+    // his inventory is full.
+    local boolean success
+
+    set bj_lastCreatedItem = CreateItem(itemId, GetUnitX(whichHero), GetUnitY(whichHero))
+    set success = UnitEquipItem(whichHero, bj_lastCreatedItem)
+
+    if (success) then
+        set bj_lastEquippedItem = bj_lastCreatedItem
+    endif
+
+    return bj_lastCreatedItem
+endfunction
+
+//===========================================================================
 // Translates 0-based slot indices to 1-based slot indices.
 //
 function UnitRemoveItemFromSlotSwapped takes integer itemSlot, unit whichHero returns item
     set bj_lastRemovedItem = UnitRemoveItemFromSlot(whichHero, itemSlot-1)
     return bj_lastRemovedItem
+endfunction
+
+function UnitUnequipItemSwapped takes unit whichHero, item whichItem returns nothing
+    set bj_lastUnequippedItem = whichItem
+    call UnitUnequipItem(whichHero, whichItem)
+endfunction
+
+function UnitUnequipItemFromSlotSwapped takes unit whichHero, loadoutslot slot returns item
+    set bj_lastUnequippedItem = UnitUnequipItemFromSlot(whichHero, slot)
+    return bj_lastUnequippedItem
 endfunction
 
 //===========================================================================
@@ -2956,6 +3274,16 @@ endfunction
 //===========================================================================
 function GetLastRemovedItem takes nothing returns item
     return bj_lastRemovedItem
+endfunction
+
+//===========================================================================
+function GetLastEquippedItem takes nothing returns item
+    return bj_lastEquippedItem
+endfunction
+
+//===========================================================================
+function GetLastUnequippedItem takes nothing returns item
+    return bj_lastUnequippedItem
 endfunction
 
 //===========================================================================
@@ -3112,6 +3440,14 @@ function UnitItemInSlotBJ takes unit whichUnit, integer itemSlot returns item
     return UnitItemInSlot(whichUnit, itemSlot-1)
 endfunction
 
+function UnitItemInBagSlotBJ takes unit whichUnit, integer itemSlot returns item
+    return UnitItemInBagSlot(whichUnit, itemSlot-1)
+endfunction
+
+function UnitItemInEquipmentSlotBJ takes unit whichUnit, loadoutslot slot returns item
+    return UnitItemInEquipmentSlot(whichUnit, slot)
+endfunction
+
 //===========================================================================
 // Translates 0-based slot indices to 1-based slot indices.
 //
@@ -3149,6 +3485,132 @@ function UnitHasItemOfTypeBJ takes unit whichUnit, integer itemId returns boolea
 endfunction
 
 //===========================================================================
+function GetInventoryBagIndexOfItemTypeBJ takes unit whichUnit, integer itemId returns integer
+    local integer index
+    local item    indexItem
+
+    set index = 0
+    loop
+        set indexItem = UnitItemInBagSlot(whichUnit, index)
+        if (indexItem != null) and (GetItemTypeId(indexItem) == itemId) then
+            return index + 1
+        endif
+
+        set index = index + 1
+        exitwhen index >= bj_MAX_EXTENDED_INVENTORY
+    endloop
+    return 0
+endfunction
+
+//===========================================================================
+function GetItemOfTypeFromUnitBagBJ takes unit whichUnit, integer itemId returns item
+    local integer index = GetInventoryBagIndexOfItemTypeBJ(whichUnit, itemId)
+
+    if (index == 0) then
+        return null
+    else
+        return UnitItemInBagSlot(whichUnit, index - 1)
+    endif
+endfunction
+
+//===========================================================================
+function UnitHasItemOfTypeBaggedBJ takes unit whichUnit, integer itemId returns boolean
+    return GetInventoryBagIndexOfItemTypeBJ(whichUnit, itemId) > 0
+endfunction
+
+//===========================================================================
+function GetInventoryBagIndexOfEquipmentTypeBJ takes unit whichUnit, equipmentType whichEquipmentType returns integer
+    local integer index
+    local item    indexItem
+
+    set index = 0
+    loop
+        set indexItem = UnitItemInBagSlot(whichUnit, index)
+        if (indexItem != null) and (GetItemEquipmentType(indexItem) == whichEquipmentType) then
+            return index + 1
+        endif
+
+        set index = index + 1
+        exitwhen index >= bj_MAX_EXTENDED_INVENTORY
+    endloop
+    return 0
+endfunction
+
+//===========================================================================
+function GetItemOfEquipmentTypeFromUnitBagBJ takes unit whichUnit, equipmentType whichEquipmentType returns item
+    local integer index = GetInventoryBagIndexOfEquipmentTypeBJ(whichUnit, whichEquipmentType)
+
+    if (index == 0) then
+        return null
+    else
+        return UnitItemInBagSlot(whichUnit, index - 1)
+    endif
+endfunction
+
+//===========================================================================
+function GetEquipmentInventoryIndexOfItemTypeBJ takes unit whichUnit, integer itemId returns integer
+    local integer index
+    local item    indexItem
+
+    set index = 0
+    loop
+        set indexItem = UnitItemInEquipmentSlot(whichUnit, ConvertLoadoutSlot(index))
+        if (indexItem != null) and (GetItemTypeId(indexItem) == itemId) then
+            return index + 1
+        endif
+
+        set index = index + 1
+        exitwhen index >= bj_MAX_EQUIPMENT_INVENTORY
+    endloop
+    return 0
+endfunction
+
+//===========================================================================
+function GetEquipmentInventoryIndexOfEquipmentTypeBJ takes unit whichUnit, equipmentType whichEquipmentType returns integer
+    local integer index
+    local item    indexItem
+
+    set index = 0
+    loop
+        set indexItem = UnitItemInEquipmentSlot(whichUnit, ConvertLoadoutSlot(index))
+        if (indexItem != null) and (GetItemEquipmentType(indexItem) == whichEquipmentType) then
+            return index + 1
+        endif
+
+        set index = index + 1
+        exitwhen index >= bj_MAX_EQUIPMENT_INVENTORY
+    endloop
+    return 0
+endfunction
+
+//===========================================================================
+function GetItemEquippedByHeroOfTypeBJ takes unit whichUnit, integer itemId returns item
+    local integer index = GetEquipmentInventoryIndexOfItemTypeBJ(whichUnit, itemId)
+
+    if (index == 0) then
+        return null
+    else
+        return UnitItemInEquipmentSlot(whichUnit, ConvertLoadoutSlot(index - 1))
+    endif
+endfunction
+
+//===========================================================================
+function GetItemEquippedByHeroOfEquipmentTypeBJ takes unit whichUnit, equipmentType whichEquipmentType returns item
+    local integer index = GetEquipmentInventoryIndexOfEquipmentTypeBJ(whichUnit, whichEquipmentType)
+
+    if (index == 0) then
+        return null
+    else
+        return UnitItemInEquipmentSlot(whichUnit, ConvertLoadoutSlot(index - 1))
+    endif
+endfunction
+
+//===========================================================================
+function UnitHasItemOfTypeEquippedBJ takes unit whichUnit, integer itemId returns boolean
+    return GetEquipmentInventoryIndexOfItemTypeBJ(whichUnit, itemId) > 0
+endfunction
+
+//===========================================================================
 function UnitInventoryCount takes unit whichUnit returns integer
     local integer index = 0
     local integer count = 0
@@ -3168,6 +3630,45 @@ endfunction
 //===========================================================================
 function UnitInventorySizeBJ takes unit whichUnit returns integer
     return UnitInventorySize(whichUnit)
+endfunction
+
+//===========================================================================
+function UnitExtendedInventoryCount takes unit whichUnit returns integer
+    local integer index = 0
+    local integer count = 0
+
+    loop
+        if (UnitItemInBagSlot(whichUnit, index) != null) then
+            set count = count + 1
+        endif
+
+        set index = index + 1
+        exitwhen index >= bj_MAX_EXTENDED_INVENTORY
+    endloop
+
+    return count
+endfunction
+
+//===========================================================================
+function UnitExtendedInventorySizeBJ takes unit whichUnit returns integer
+    return UnitExtendedInventorySize(whichUnit)
+endfunction
+
+//===========================================================================
+function UnitEquipmentCount takes unit whichUnit returns integer
+    local integer index = 0
+    local integer count = 0
+
+    loop
+        if (UnitItemInEquipmentSlot(whichUnit, ConvertLoadoutSlot(index)) != null) then
+            set count = count + 1
+        endif
+
+        set index = index + 1
+        exitwhen index >= bj_MAX_EQUIPMENT_INVENTORY
+    endloop
+
+    return count
 endfunction
 
 //===========================================================================
@@ -3208,6 +3709,11 @@ endfunction
 //===========================================================================
 function ChooseRandomItemExBJ takes integer level, itemtype whichType returns integer
     return ChooseRandomItemEx(whichType, level)
+endfunction
+
+//===========================================================================
+function ChooseRandomItemExWithFilterBJ takes integer level, itemtype whichType, equipmentType whichEquipmentType, itemTag whichTag returns integer
+    return ChooseRandomItemExWithFilter(whichType, level, whichEquipmentType, whichTag)
 endfunction
 
 //===========================================================================
@@ -3921,6 +4427,35 @@ endfunction
 //===========================================================================
 function IsUnitPausedBJ takes unit whichUnit returns boolean
     return IsUnitPaused(whichUnit)
+endfunction
+
+//===========================================================================
+function BlzAllUnitsEnableAurasBJEnum takes nothing returns nothing
+    call BlzUnitEnableAuras( GetEnumUnit(), bj_enableAurasAllUnits, bj_affectsUIAurasAllUnits )
+endfunction
+
+//===========================================================================
+function BlzAllUnitsEnableAurasBJ takes boolean enable, boolean affectsUI returns nothing
+    local integer index
+    local player  indexPlayer
+    local group   g
+
+    set bj_enableAurasAllUnits = enable
+    set bj_affectsUIAurasAllUnits = affectsUI
+    set g = CreateGroup()
+    set index = 0
+    loop
+        set indexPlayer = Player( index )
+
+        // Enumerate and enable/disable auras on every unit owned by the player.
+        call GroupEnumUnitsOfPlayer( g, indexPlayer, null )
+        call ForGroup( g, function BlzAllUnitsEnableAurasBJEnum )
+        call GroupClear( g )
+
+        set index = index + 1
+        exitwhen index == bj_MAX_PLAYER_SLOTS
+    endloop
+    call DestroyGroup(g)
 endfunction
 
 //===========================================================================
@@ -5059,6 +5594,15 @@ function QueueUnitAnimationBJ takes unit whichUnit, string whichAnimation return
 endfunction
 
 //===========================================================================
+// This version differs from the common.j interface in that the alpha value
+// is reversed so as to be displayed as transparency, and all four parameters
+// are treated as percentages rather than bytes.
+//
+function SetDestructableVertexColorBJ takes destructable whichDestructable, real red, real green, real blue, real transparency returns nothing
+    call SetDestructableVertexColor(whichDestructable, PercentTo255(red), PercentTo255(green), PercentTo255(blue), PercentTo255(100.0-transparency))
+endfunction
+
+//===========================================================================
 function SetDestructableAnimationBJ takes destructable d, string whichAnimation returns nothing
     call SetDestructableAnimation(d, whichAnimation)
 endfunction
@@ -5643,6 +6187,10 @@ function CustomDefeatDialogBJ takes player whichPlayer, string message returns n
 
     if bj_isSinglePlayer then
         set t = CreateTrigger()
+        call TriggerRegisterDialogButtonEvent( t, DialogAddButton( d, GetLocalizedString( "GAMEOVER_LOAD" ), GetLocalizedHotkey("GAMEOVER_LOAD") ) )
+        call TriggerAddAction( t, function CustomDefeatLoadBJ )
+
+        set t = CreateTrigger()
         call TriggerRegisterDialogButtonEvent( t, DialogAddButton( d, GetLocalizedString( "GAMEOVER_RESTART" ), GetLocalizedHotkey("GAMEOVER_RESTART") ) )
         call TriggerAddAction( t, function CustomDefeatRestartBJ )
 
@@ -5651,10 +6199,6 @@ function CustomDefeatDialogBJ takes player whichPlayer, string message returns n
             call TriggerRegisterDialogButtonEvent( t, DialogAddButton( d, GetLocalizedString( "GAMEOVER_REDUCE_DIFFICULTY" ), GetLocalizedHotkey("GAMEOVER_REDUCE_DIFFICULTY") ) )
             call TriggerAddAction( t, function CustomDefeatReduceDifficultyBJ )
         endif
-
-        set t = CreateTrigger()
-        call TriggerRegisterDialogButtonEvent( t, DialogAddButton( d, GetLocalizedString( "GAMEOVER_LOAD" ), GetLocalizedHotkey("GAMEOVER_LOAD") ) )
-        call TriggerAddAction( t, function CustomDefeatLoadBJ )
     endif
 
     set t = CreateTrigger()
@@ -6855,6 +7399,14 @@ function GetLastTransmissionDurationBJ takes nothing returns real
 endfunction
 
 //===========================================================================
+function SetCameraBlockerForPlayerBJ takes rect r, boolean flag, player whichPlayer returns nothing
+    if (GetLocalPlayer() == whichPlayer) then
+        // Use only local code (no net traffic) within this block to avoid desyncs.
+        call EnableCameraBlocker(r,flag)
+    endif
+endfunction
+
+//===========================================================================
 function ForceCinematicSubtitlesBJ takes boolean flag returns nothing
     call ForceCinematicSubtitles(flag)
 endfunction
@@ -7238,6 +7790,10 @@ function SetCampaignMenuRaceBJ takes integer campaignNumber returns nothing
         call SetCampaignMenuRaceEx(bj_CAMPAIGN_OFFSET_XU)
     elseif (campaignNumber == bj_CAMPAIGN_INDEX_XO) then
         call SetCampaignMenuRaceEx(bj_CAMPAIGN_OFFSET_XO)
+    elseif (campaignNumber == bj_CAMPAIGN_INDEX_RH) then
+        call SetCampaignMenuRace(RACE_HUMAN)
+    elseif (campaignNumber == bj_CAMPAIGN_INDEX_RU) then
+        call SetCampaignMenuRace(RACE_UNDEAD)
     else
         // Unrecognized campaign - ignore the request
     endif
@@ -7273,6 +7829,10 @@ function SetCampaignAvailableBJ takes boolean available, integer campaignNumber 
         set campaignOffset = bj_CAMPAIGN_OFFSET_XU
     elseif (campaignNumber == bj_CAMPAIGN_INDEX_XO) then
         set campaignOffset = bj_CAMPAIGN_OFFSET_XO
+    elseif (campaignNumber == bj_CAMPAIGN_INDEX_RH) then
+        set campaignOffset = bj_CAMPAIGN_OFFSET_RH
+    elseif (campaignNumber == bj_CAMPAIGN_INDEX_RU) then
+        set campaignOffset = bj_CAMPAIGN_OFFSET_RU
     else
         set campaignOffset = campaignNumber
     endif
@@ -7317,6 +7877,12 @@ function SetCinematicAvailableBJ takes boolean available, integer cinematicIndex
     elseif (cinematicIndex == bj_CINEMATICINDEX_XED) then
         call SetEdCinematicAvailable( bj_CAMPAIGN_OFFSET_XU, available )
         call PlayCinematic( "OutroX" )
+    elseif (cinematicIndex == bj_CINEMATICINDEX_HFO) then
+        call SetOpCinematicAvailable( bj_CAMPAIGN_OFFSET_RH, available )
+        call PlayCinematic( "IntroRE" )
+    elseif (cinematicIndex == bj_CINEMATICINDEX_UFE) then
+        call SetEdCinematicAvailable( bj_CAMPAIGN_INDEX_RU, available )
+        call PlayCinematic( "OutroRE" )
     else
         // Unrecognized cinematic - ignore the request.
     endif
@@ -8375,6 +8941,7 @@ function MeleeStartingHeroLimit takes nothing returns nothing
         call ReducePlayerTechMaxAllowed(Player(index), 'Nalc', bj_MELEE_HERO_TYPE_LIMIT)
         call ReducePlayerTechMaxAllowed(Player(index), 'Ntin', bj_MELEE_HERO_TYPE_LIMIT)
         call ReducePlayerTechMaxAllowed(Player(index), 'Nfir', bj_MELEE_HERO_TYPE_LIMIT)
+        call ReducePlayerTechMaxAllowed(Player(index), 'Npal', bj_MELEE_HERO_TYPE_LIMIT)
 
         set index = index + 1
         exitwhen index == bj_MAX_PLAYERS
@@ -10808,4 +11375,9 @@ endfunction
 //===========================================================================
 function BlzSetUnitWeaponStringFieldBJ takes unit whichUnit, unitweaponstringfield whichField, integer index, string value returns nothing
     set bj_lastInstObjFuncSuccessful = BlzSetUnitWeaponStringField(whichUnit, whichField, index, value)
+endfunction
+
+//===========================================================================
+function BlzEnableAuras takes unit whichUnit, boolean enable returns nothing
+    call BlzUnitEnableAuras(whichUnit, enable, false)
 endfunction

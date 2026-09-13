@@ -1,5 +1,5 @@
 //============================================================================
-// 1.33 Native types. All native functions take extended handle types when
+// Native types. All native functions take extended handle types when
 // possible to help prevent passing bad values to native functions
 //
 type agent			    extends     handle  // all reference counted objects
@@ -99,12 +99,13 @@ type subanimtype        extends     handle
 type image              extends     handle
 type ubersplat          extends     handle
 type hashtable          extends     agent
-type framehandle        extends     handle
+type framehandle        extends     agent
 type originframetype    extends     handle
 type framepointtype     extends     handle
 type textaligntype      extends     handle
 type frameeventtype     extends     handle
 type oskeytype          extends     handle
+type metakeytype        extends     handle
 type abilityintegerfield            extends handle
 type abilityrealfield               extends handle
 type abilitybooleanfield            extends handle
@@ -138,7 +139,10 @@ type regentype                      extends handle
 type unitcategory                   extends handle
 type pathingflag                    extends handle
 type commandbuttoneffect            extends handle
-
+type fogstyle                       extends handle
+type equipmentType                  extends handle
+type itemTag                        extends handle
+type loadoutslot                    extends handle
 
 constant native ConvertRace                 takes integer i returns race
 constant native ConvertAllianceType         takes integer i returns alliancetype
@@ -224,6 +228,10 @@ constant native ConvertDefenseType                      takes integer i returns 
 constant native ConvertRegenType                        takes integer i returns regentype
 constant native ConvertUnitCategory                     takes integer i returns unitcategory
 constant native ConvertPathingFlag                      takes integer i returns pathingflag
+constant native ConvertFogStyle                         takes integer i returns fogstyle
+constant native ConvertEquipmentType                    takes integer i returns equipmentType
+constant native ConvertItemTag                          takes integer i returns itemTag
+constant native ConvertLoadoutSlot                      takes integer i returns loadoutslot
 
 constant native OrderId                     takes string  orderIdString     returns integer
 constant native OrderId2String              takes integer orderId           returns string
@@ -282,6 +290,7 @@ globals
     constant playercolor        PLAYER_COLOR_SNOW               = ConvertPlayerColor(21)
     constant playercolor        PLAYER_COLOR_EMERALD            = ConvertPlayerColor(22)
     constant playercolor        PLAYER_COLOR_PEANUT             = ConvertPlayerColor(23)
+    constant playercolor        PLAYER_COLOR_BLACK              = ConvertPlayerColor(24)
 
     constant race               RACE_HUMAN                      = ConvertRace(1)
     constant race               RACE_ORC                        = ConvertRace(2)
@@ -454,6 +463,7 @@ globals
     constant racepreference     RACE_PREF_DEMON                     = ConvertRacePref(16)
     constant racepreference     RACE_PREF_RANDOM                    = ConvertRacePref(32)
     constant racepreference     RACE_PREF_USER_SELECTABLE           = ConvertRacePref(64)
+    constant racepreference     RACE_PREF_FORSAKEN                  = ConvertRacePref(128)
 
     constant mapcontrol         MAP_CONTROL_USER                    = ConvertMapControl(0)
     constant mapcontrol         MAP_CONTROL_COMPUTER                = ConvertMapControl(1)
@@ -525,6 +535,13 @@ globals
     constant playerslotstate    PLAYER_SLOT_STATE_EMPTY             = ConvertPlayerSlotState(0)
     constant playerslotstate    PLAYER_SLOT_STATE_PLAYING           = ConvertPlayerSlotState(1)
     constant playerslotstate    PLAYER_SLOT_STATE_LEFT              = ConvertPlayerSlotState(2)
+
+    constant fogstyle           FOG_STYLE_LINEAR                    = ConvertFogStyle(0)
+    constant fogstyle           FOG_STYLE_EXP                       = ConvertFogStyle(1)
+    constant fogstyle           FOG_STYLE_EXP2                      = ConvertFogStyle(2)
+    constant fogstyle           FOG_STYLE_HEIGHT                    = ConvertFogStyle(3)
+    constant fogstyle           FOG_STYLE_NEW_EXP                   = ConvertFogStyle(4)
+    constant fogstyle           FOG_STYLE_NEW_EXP_2                 = ConvertFogStyle(5)
 
 //===================================================
 // Sound Constants
@@ -839,6 +856,8 @@ globals
     constant playerunitevent    EVENT_PLAYER_UNIT_SPELL_ENDCAST         = ConvertPlayerUnitEvent(276)
     constant playerunitevent    EVENT_PLAYER_UNIT_PAWN_ITEM             = ConvertPlayerUnitEvent(277)
     constant playerunitevent    EVENT_PLAYER_UNIT_STACK_ITEM            = ConvertPlayerUnitEvent(319)
+    constant playerunitevent    EVENT_PLAYER_UNIT_EQUIP_ITEM            = ConvertPlayerUnitEvent(321)
+    constant playerunitevent    EVENT_PLAYER_UNIT_UNEQUIP_ITEM          = ConvertPlayerUnitEvent(323)
 
     //===================================================
     // For use with TriggerRegisterUnitEvent
@@ -854,6 +873,8 @@ globals
     constant unitevent          EVENT_UNIT_SPELL_ENDCAST                = ConvertUnitEvent(293)
     constant unitevent          EVENT_UNIT_PAWN_ITEM                    = ConvertUnitEvent(294)
     constant unitevent          EVENT_UNIT_STACK_ITEM                   = ConvertUnitEvent(318)
+    constant unitevent          EVENT_UNIT_EQUIP_ITEM                   = ConvertUnitEvent(320)
+    constant unitevent          EVENT_UNIT_UNEQUIP_ITEM                 = ConvertUnitEvent(322)
 
     //===================================================
     // Limit Event API constants
@@ -916,11 +937,55 @@ globals
     constant itemtype ITEM_TYPE_PURCHASABLE                 = ConvertItemType(4)
     constant itemtype ITEM_TYPE_CAMPAIGN                    = ConvertItemType(5)
     constant itemtype ITEM_TYPE_MISCELLANEOUS               = ConvertItemType(6)
-    constant itemtype ITEM_TYPE_UNKNOWN                     = ConvertItemType(7)
-    constant itemtype ITEM_TYPE_ANY                         = ConvertItemType(8)
+    constant itemtype ITEM_TYPE_EQUIPMENT                   = ConvertItemType(7)
+    constant itemtype ITEM_TYPE_UNKNOWN                     = ConvertItemType(8)
+    constant itemtype ITEM_TYPE_ANY                         = ConvertItemType(9)
 
     // Deprecated, should use ITEM_TYPE_POWERUP
     constant itemtype ITEM_TYPE_TOME                        = ConvertItemType(2)
+
+//===================================================
+// Item Equipment Type Constants for use with ChooseRandomItemExWithFilter()
+//===================================================
+
+    constant equipmentType EQUIPMENT_TYPE_NONE                  = ConvertEquipmentType(0)
+    constant equipmentType EQUIPMENT_TYPE_HEAD                  = ConvertEquipmentType(1)
+    constant equipmentType EQUIPMENT_TYPE_CHEST                 = ConvertEquipmentType(2)
+    constant equipmentType EQUIPMENT_TYPE_GLOVES                = ConvertEquipmentType(3)
+    constant equipmentType EQUIPMENT_TYPE_BOOTS                 = ConvertEquipmentType(4)
+    constant equipmentType EQUIPMENT_TYPE_RING                  = ConvertEquipmentType(5)
+    constant equipmentType EQUIPMENT_TYPE_PRIMARY               = ConvertEquipmentType(6)
+    constant equipmentType EQUIPMENT_TYPE_OFFHAND               = ConvertEquipmentType(7)
+    constant equipmentType EQUIPMENT_TYPE_TRINKET               = ConvertEquipmentType(8)
+    constant equipmentType EQUIPMENT_TYPE_ANY                   = ConvertEquipmentType(9)
+
+//===================================================
+// Item Tag Type Constants for use with ChooseRandomItemExWithFilter()
+//===================================================
+
+    constant itemTag ITEMTAG_TYPE_UNDEFINED                     = ConvertItemTag(0)
+    constant itemTag ITEMTAG_TYPE_DROPPABLE                     = ConvertItemTag(1)
+    constant itemTag ITEMTAG_TYPE_QUESTREWARD                   = ConvertItemTag(2)
+    constant itemTag ITEMTAG_TYPE_BOSSDROP                      = ConvertItemTag(3)
+    constant itemTag ITEMTAG_TYPE_SECRET                        = ConvertItemTag(4)
+    constant itemTag ITEMTAG_TYPE_PUZZLE                        = ConvertItemTag(5)
+    constant itemTag ITEMTAG_TYPE_WORLD                         = ConvertItemTag(6)
+    constant itemTag ITEMTAG_TYPE_SHOP                          = ConvertItemTag(7)
+    constant itemTag ITEMTAG_TYPE_ANY                           = ConvertItemTag(8)
+
+//===================================================
+// Equipment slot constants
+//===================================================
+
+    constant loadoutslot EQUIPMENT_LOADOUT_SLOT_HEAD            = ConvertLoadoutSlot(0)
+    constant loadoutslot EQUIPMENT_LOADOUT_SLOT_CHEST           = ConvertLoadoutSlot(1)
+    constant loadoutslot EQUIPMENT_LOADOUT_SLOT_GLOVES          = ConvertLoadoutSlot(2)
+    constant loadoutslot EQUIPMENT_LOADOUT_SLOT_BOOTS           = ConvertLoadoutSlot(3)
+    constant loadoutslot EQUIPMENT_LOADOUT_SLOT_RING            = ConvertLoadoutSlot(4)
+    constant loadoutslot EQUIPMENT_LOADOUT_SLOT_RINGALT         = ConvertLoadoutSlot(5)
+    constant loadoutslot EQUIPMENT_LOADOUT_SLOT_PRIMARY         = ConvertLoadoutSlot(6)
+    constant loadoutslot EQUIPMENT_LOADOUT_SLOT_OFFHAND         = ConvertLoadoutSlot(7)
+    constant loadoutslot EQUIPMENT_LOADOUT_SLOT_TRINKET         = ConvertLoadoutSlot(8)
 
 //===================================================
 // Animatable Camera Fields
@@ -937,6 +1002,9 @@ globals
     constant camerafield CAMERA_FIELD_LOCAL_PITCH           = ConvertCameraField(8)
     constant camerafield CAMERA_FIELD_LOCAL_YAW             = ConvertCameraField(9)
     constant camerafield CAMERA_FIELD_LOCAL_ROLL            = ConvertCameraField(10)
+    constant camerafield CAMERA_FIELD_DEPTH_OF_FIELD_DISTANCE = ConvertCameraField(11)
+    constant camerafield CAMERA_FIELD_DEPTH_OF_FIELD_SCALE    = ConvertCameraField(12)
+    constant camerafield CAMERA_FIELD_ZABSOLUTE               = ConvertCameraField(13)
 
     constant blendmode   BLEND_MODE_NONE                    = ConvertBlendMode(0)
     constant blendmode   BLEND_MODE_DONT_CARE               = ConvertBlendMode(0)
@@ -1237,6 +1305,15 @@ globals
     constant oskeytype              OSKEY_NONAME                         = ConvertOsKeyType($FC)
     constant oskeytype              OSKEY_PA1                            = ConvertOsKeyType($FD)
     constant oskeytype              OSKEY_OEM_CLEAR                      = ConvertOsKeyType($FE)
+
+//===================================================
+// Meta Key constants
+//===================================================
+    constant integer                METAKEY_NONE                         = 0
+    constant integer                METAKEY_SHIFT                        = 1
+    constant integer                METAKEY_CTRL                         = 2
+    constant integer                METAKEY_ALT                          = 4
+    constant integer                METAKEY_WINKEYS                      = 8
 
 //===================================================
 // Instanced Object Operation API constants
@@ -2045,6 +2122,7 @@ globals
     constant unitrealfield UNIT_RF_MANA_REGENERATION                        = ConvertUnitRealField('umpr')
     constant unitrealfield UNIT_RF_DEATH_TIME                               = ConvertUnitRealField('udtm')
     constant unitrealfield UNIT_RF_FLY_HEIGHT                               = ConvertUnitRealField('ufyh')
+    constant unitrealfield UNIT_RF_FLY_MAX_HEIGHT                           = ConvertUnitRealField('ufmh')
     constant unitrealfield UNIT_RF_TURN_RATE                                = ConvertUnitRealField('umvr')
     constant unitrealfield UNIT_RF_ELEVATION_SAMPLE_RADIUS                  = ConvertUnitRealField('uerd')
     constant unitrealfield UNIT_RF_FOG_OF_WAR_SAMPLE_RADIUS                 = ConvertUnitRealField('ufrd')
@@ -2083,6 +2161,8 @@ globals
     constant unitbooleanfield UNIT_BF_SCALE_PROJECTILES                     = ConvertUnitBooleanField('uscb')
     constant unitbooleanfield UNIT_BF_SELECTION_CIRCLE_ON_WATER             = ConvertUnitBooleanField('usew')
     constant unitbooleanfield UNIT_BF_HAS_WATER_SHADOW                      = ConvertUnitBooleanField('ushr')
+    constant unitbooleanfield UNIT_BF_SHOW_AIR_TO_GROUND                    = ConvertUnitBooleanField('uatg')
+    constant unitbooleanfield UNIT_BF_FORCE_DISPLAY_HP                      = ConvertUnitBooleanField('ufhp')
 
     constant unitstringfield UNIT_SF_NAME                   = ConvertUnitStringField('unam')
     constant unitstringfield UNIT_SF_PROPER_NAMES           = ConvertUnitStringField('upro')
@@ -2306,6 +2386,7 @@ native SetPlayerColor           takes player whichPlayer, playercolor color retu
 native SetPlayerAlliance        takes player sourcePlayer, player otherPlayer, alliancetype whichAllianceSetting, boolean value returns nothing
 native SetPlayerTaxRate         takes player sourcePlayer, player otherPlayer, playerstate whichResource, integer rate returns nothing
 native SetPlayerRacePreference  takes player whichPlayer, racepreference whichRacePreference returns nothing
+native SetPlayerRaceSkin        takes player whichPlayer, racepreference whichRacePreference returns nothing
 native SetPlayerRaceSelectable  takes player whichPlayer, boolean value returns nothing
 native SetPlayerController      takes player whichPlayer, mapcontrol controlType returns nothing
 native SetPlayerName            takes player whichPlayer, string name returns nothing
@@ -2644,6 +2725,12 @@ constant native GetChangingUnitPrevOwner    takes nothing returns player
 constant native GetManipulatingUnit takes nothing returns unit
 constant native GetManipulatedItem  takes nothing returns item
 
+// EVENT_PLAYER_UNIT_EQUIP_ITEM
+constant native GetEquippedItem     takes nothing returns item
+
+// EVENT_PLAYER_UNIT_UNEQUIP_ITEM
+constant native GetUnequippedItem   takes nothing returns item
+
 // For EVENT_PLAYER_UNIT_PICKUP_ITEM, returns the item absorbing the picked up item in case it is stacking.
 // Returns null if the item was a powerup and not a stacking item.
 constant native BlzGetAbsorbingItem takes nothing returns item
@@ -2793,6 +2880,8 @@ native TriggerExecute       takes trigger whichTrigger returns nothing
 native TriggerExecuteWait   takes trigger whichTrigger returns nothing
 native TriggerSyncStart     takes nothing returns nothing
 native TriggerSyncReady     takes nothing returns nothing
+native BlzTriggerIsRunning     takes trigger whichTrigger returns boolean
+native BlzTriggerInterrupt     takes trigger whichTrigger returns nothing
 
 //============================================================================
 // Widget API
@@ -2825,6 +2914,7 @@ native          DestructableRestoreLife     takes destructable d, real life, boo
 native          QueueDestructableAnimation  takes destructable d, string whichAnimation returns nothing
 native          SetDestructableAnimation    takes destructable d, string whichAnimation returns nothing
 native          SetDestructableAnimationSpeed takes destructable d, real speedFactor returns nothing
+native          SetDestructableColor        takes destructable d, playercolor color returns nothing
 native          ShowDestructable            takes destructable d, boolean flag returns nothing
 native          GetDestructableOccluderHeight takes destructable d returns real
 native          SetDestructableOccluderHeight takes destructable d, real height returns nothing
@@ -2840,12 +2930,15 @@ native          GetItemTypeId   takes item i returns integer
 native          GetItemX        takes item i returns real
 native          GetItemY        takes item i returns real
 native          SetItemPosition takes item i, real x, real y returns nothing
+native          SetItemColor takes item whichItem, playercolor whichColor returns nothing
 native          SetItemDropOnDeath  takes item whichItem, boolean flag returns nothing
 native          SetItemDroppable takes item i, boolean flag returns nothing
 native          SetItemPawnable takes item i, boolean flag returns nothing
 native          SetItemPlayer    takes item whichItem, player whichPlayer, boolean changeColor returns nothing
 native          SetItemInvulnerable takes item whichItem, boolean flag returns nothing
 native          IsItemInvulnerable  takes item whichItem returns boolean
+native          IsItemEquipped  takes item whichItem returns boolean
+native          IsItemInBag     takes item whichItem returns boolean
 native          SetItemVisible  takes item whichItem, boolean show returns nothing
 native          IsItemVisible   takes item whichItem returns boolean
 native          IsItemOwned     takes item whichItem returns boolean
@@ -2864,6 +2957,8 @@ native          GetItemCharges  takes item whichItem returns integer
 native          SetItemCharges  takes item whichItem, integer charges returns nothing
 native          GetItemUserData takes item whichItem returns integer
 native          SetItemUserData takes item whichItem, integer data returns nothing
+native          GetItemEquipmentType takes item whichItem returns equipmentType
+native          GetItemTag           takes item whichItem returns itemTag
 
 //============================================================================
 // Unit API
@@ -2915,6 +3010,12 @@ native          SetUnitAnimation            takes unit whichUnit, string whichAn
 native          SetUnitAnimationByIndex     takes unit whichUnit, integer whichAnimation returns nothing
 native          SetUnitAnimationWithRarity  takes unit whichUnit, string whichAnimation, raritycontrol rarity returns nothing
 native          AddUnitAnimationProperties  takes unit whichUnit, string animProperties, boolean add returns nothing
+native          AllowHeroGlowOnUnit         takes unit whichUnit returns nothing
+native          DisallowHeroGlowOnUnit      takes unit whichUnit returns nothing
+native          HeroGlowIsAllowedOnUnit     takes unit whichUnit returns boolean
+
+native          BlzGetUnitAnimationDuration        takes unit whichUnit, string whichAnimation returns real
+native          BlzGetUnitAnimationDurationByIndex takes unit whichUnit, integer index returns real
 
 native          SetUnitLookAt       takes unit whichUnit, string whichBone, unit lookAtTarget, real offsetX, real offsetY, real offsetZ returns nothing
 native          ResetUnitLookAt     takes unit whichUnit returns nothing
@@ -2966,13 +3067,26 @@ native          GetUnitPointValueByType takes integer unitType returns integer
 //native        SetUnitPointValueByType takes integer unitType, integer newPointValue returns nothing
 
 native          UnitAddItem             takes unit whichUnit, item whichItem returns boolean
+native          UnitEquipItem           takes unit whichUnit, item whichItem returns boolean
 native          UnitAddItemById         takes unit whichUnit, integer itemId returns item
 native          UnitAddItemToSlotById   takes unit whichUnit, integer itemId, integer itemSlot returns boolean
 native          UnitRemoveItem          takes unit whichUnit, item whichItem returns nothing
 native          UnitRemoveItemFromSlot  takes unit whichUnit, integer itemSlot returns item
+native          UnitUnequipItem         takes unit whichUnit, item whichItem returns nothing
+native          UnitUnequipItemFromSlot takes unit whichUnit, loadoutslot slot returns item
 native          UnitHasItem             takes unit whichUnit, item whichItem returns boolean
+native          UnitHasItemBagged       takes unit whichUnit, item whichItem returns boolean
 native          UnitItemInSlot          takes unit whichUnit, integer itemSlot returns item
 native          UnitInventorySize       takes unit whichUnit returns integer
+native          UnitExtendedInventorySize takes unit whichUnit returns integer
+
+native          UnitItemInBagSlot               takes unit whichUnit, integer itemSlot returns item
+native          UnitItemInEquipmentSlot         takes unit whichUnit, loadoutslot itemSlot returns item
+native          UnitHasItemEquipped             takes unit whichUnit, item whichItem returns boolean
+native          UnitHasLoadoutSlotEmpty         takes unit whichUnit, loadoutslot itemSlot returns boolean
+native          UnitHasAnyItemEquiped           takes unit whichUnit returns boolean
+native          UnitHasItemEquipmentOfType      takes unit whichUnit, equipmentType equipmentId returns boolean
+native          UnitCanEquipItemOfEquipmentType takes unit whichUnit, equipmentType equipmentId returns boolean
 
 native          UnitDropItemPoint       takes unit whichUnit, item whichItem, real x, real y returns boolean
 native          UnitDropItemSlot        takes unit whichUnit, item whichItem, integer slot returns boolean
@@ -3409,6 +3523,7 @@ native ChooseRandomCreep        takes integer level returns integer
 native ChooseRandomNPBuilding   takes nothing returns integer
 native ChooseRandomItem         takes integer level returns integer
 native ChooseRandomItemEx       takes itemtype whichType, integer level returns integer
+native ChooseRandomItemExWithFilter takes itemtype whichType, integer level, equipmentType whichEquipmentType, itemTag whichTag returns integer
 native SetRandomSeed            takes integer seed returns nothing
 
 //============================================================================
@@ -3418,6 +3533,18 @@ native ResetTerrainFog              takes nothing returns nothing
 
 native SetUnitFog                   takes real a, real b, real c, real d, real e returns nothing
 native SetTerrainFogEx              takes integer style, real zstart, real zend, real density, real red, real green, real blue returns nothing
+native SetTerrainFogExV             takes integer style, real zstart, real zend, real density, real heightStart, real heightEnd, real linearStart, real linearEnd, real red, real green, real blue returns nothing
+native BlzSetTerrainFogStyle        takes fogstyle style returns nothing
+native BlzSetTerrainFogZStart       takes real zStart returns nothing
+native BlzSetTerrainFogZEnd         takes real ZEnd returns nothing
+native BlzSetTerrainFogDensity      takes real density returns nothing
+native BlzSetTerrainFogHeightStart  takes real heightStart returns nothing
+native BlzSetTerrainFogHeightEnd    takes real heightEnd returns nothing
+native BlzSetTerrainFogLinearStart  takes real linearStart returns nothing
+native BlzSetTerrainFogLinearEnd    takes real linearEnd returns nothing
+native BlzSetTerrainFogMaxLinearDensity takes real maxLinearDensity returns nothing
+native BlzSetTerrainFogDrawOverSky  takes boolean drawOverSky returns nothing
+native BlzSetTerrainFogColor        takes real red, real green, real blue returns nothing
 native DisplayTextToPlayer          takes player toPlayer, real x, real y, string message returns nothing
 native DisplayTimedTextToPlayer     takes player toPlayer, real x, real y, real duration, string message returns nothing
 native DisplayTimedTextFromPlayer   takes player toPlayer, real x, real y, real duration, string message returns nothing
@@ -3448,6 +3575,14 @@ native SetIntroShotText             takes string introText returns nothing
 native SetIntroShotModel            takes string introModelPath returns nothing
 native EnableWorldFogBoundary       takes boolean b returns nothing
 native PlayModelCinematic           takes string modelName returns nothing
+native BlzPreloadModelCinematicGame takes string modelName returns boolean
+native BlzGetModelCinematicGameShotCount  takes nothing returns integer
+native BlzGetModelCinematicGameCurrentShot  takes nothing returns integer
+native BlzGetModelCinematicGameRemainingTime  takes nothing returns real
+native BlzPlayModelCinematicGameAtPosition  takes string modelName, real posX, real posY, real posZ, real RotZ returns nothing
+native BlzSetCinematicEnabledDE     takes boolean enable returns nothing
+native BlzSetMinShadowCastingPointLightCount takes integer count returns nothing
+native BlzGetMinShadowCastingPointLightCount takes nothing returns integer
 native PlayCinematic                takes string movieName returns nothing
 native ForceUIKey                   takes string key returns nothing
 native ForceUICancel                takes nothing returns nothing
@@ -3631,8 +3766,12 @@ native SetCinematicCamera           takes string cameraModelFile returns nothing
 native SetCameraRotateMode          takes real x, real y, real radiansToSweep, real duration returns nothing
 native SetCameraField               takes camerafield whichField, real value, real duration returns nothing
 native AdjustCameraField            takes camerafield whichField, real offset, real duration returns nothing
+native SetCameraFieldControlledByInput takes camerafield whichField, boolean controlled returns nothing
+native GetCameraFieldControlledByInput takes camerafield whichField returns boolean
 native SetCameraTargetController    takes unit whichUnit, real xoffset, real yoffset, boolean inheritOrientation returns nothing
 native SetCameraOrientController    takes unit whichUnit, real xoffset, real yoffset returns nothing
+native BlzCameraSetCameraType       takes integer cameraType returns nothing
+native BlzCameraGetCameraType       takes nothing returns integer
 
 native CreateCameraSetup                    takes nothing returns camerasetup
 native CameraSetupSetField                  takes camerasetup whichSetup, camerafield whichField, real value, real duration returns nothing
@@ -3647,6 +3786,8 @@ native CameraSetupApplyForceDuration        takes camerasetup whichSetup, boolea
 native CameraSetupApplyForceDurationWithZ   takes camerasetup whichSetup, real zDestOffset, real forceDuration returns nothing
 native BlzCameraSetupSetLabel               takes camerasetup whichSetup, string label returns nothing
 native BlzCameraSetupGetLabel               takes camerasetup whichSetup returns string
+native BlzCameraSetupSetCameraType          takes camerasetup whichSetup, integer cameraType returns nothing
+native BlzCameraSetupGetCameraType          takes camerasetup whichSetup returns integer
 
 native CameraSetTargetNoise             takes real mag, real velocity returns nothing
 native CameraSetSourceNoise             takes real mag, real velocity returns nothing
@@ -3676,6 +3817,9 @@ native ForceCinematicSubtitles          takes boolean flag returns nothing
 native SetCinematicAudio                takes boolean cinematicAudio returns nothing
 
 native GetCameraMargin                  takes integer whichMargin returns real
+
+native EnableCameraBlocker              takes rect r, boolean flag returns nothing
+native AddCameraBlocker                 takes rect where returns nothing
 
 // These return values for the local players camera only...
 constant native GetCameraBoundMinX          takes nothing returns real
@@ -3735,6 +3879,7 @@ native ResumeMusic                  takes nothing returns nothing
 
 native PlayThematicMusic            takes string musicFileName returns nothing
 native PlayThematicMusicEx          takes string musicFileName, integer frommsecs returns nothing
+native BlzPauseThematicMusicOnFocusLost takes boolean pause returns nothing
 native EndThematicMusic             takes nothing returns nothing
 
 native SetMusicVolume               takes integer volume returns nothing
@@ -3812,12 +3957,25 @@ native GetAbilitySoundById          takes integer abilityId, soundtype t returns
 // Terrain API
 //
 native GetTerrainCliffLevel         takes real x, real y returns integer
-native SetWaterBaseColor            takes integer red, integer green, integer blue, integer alpha returns nothing
+native SetWaterBaseColor            	takes integer red, integer green, integer blue, integer alpha returns nothing
+native SetHDWaterParams             	takes integer red, integer green, integer blue, boolean useColor, integer vertexDisplacement, integer minOpacity, integer maxOpacity, integer reflectivity, integer emissivity, integer edgeSoftness, integer waveStrength returns nothing
+native SetHDWaterParamsEx           	takes integer red, integer green, integer blue, boolean override, integer vertexDisplacement, integer minOpacity, integer maxOpacity, integer reflectivity, integer emissivity, integer edgeSoftness, integer waveStrength, integer envMapStrength returns nothing
+native BlzSetHDWaterColor   			takes integer red, integer green, integer blue returns nothing
+native BlzSetHDWaterColorOverride   	takes boolean override returns nothing
+native BlzSetHDWaterVertexDisplacement  takes integer vertexDisplacement returns nothing
+native BlzSetHDWaterMinOpacity     		takes integer minOpacity returns nothing
+native BlzSetHDWaterMaxOpacity  		takes integer maxOpacity returns nothing
+native BlzSetHDWaterReflectivity    	takes integer reflectivity returns nothing
+native BlzSetHDWaterEmissivity  		takes integer emissivity returns nothing
+native BlzSetHDWaterEdgeSoftness    	takes integer edgeSoftness returns nothing
+native BlzSetHDWaterWaveStrength 		takes integer waveStrength returns nothing
+native BlzSetHDWaterEnvMapStrength  		takes integer envMapStrengthy returns nothing
 native SetWaterDeforms              takes boolean val returns nothing
 native GetTerrainType               takes real x, real y returns integer
 native GetTerrainVariance           takes real x, real y returns integer
 native SetTerrainType               takes real x, real y, integer terrainType, integer variation, integer area, integer shape returns nothing
 native IsTerrainPathable            takes real x, real y, pathingtype t returns boolean
+native BlzIsTerrainPathableEx       	takes real x, real y, pathingtype t returns boolean
 native SetTerrainPathable           takes real x, real y, pathingtype t, boolean flag returns nothing
 
 //============================================================================
@@ -3859,7 +4017,24 @@ native IsPointBlighted          takes real x, real y returns boolean
 // Doodad API
 //
 native SetDoodadAnimation       takes real x, real y, real radius, integer doodadID, boolean nearestOnly, string animName, boolean animRandom returns nothing
-native SetDoodadAnimationRect   takes rect r, integer doodadID, string animName, boolean animRandom returns nothing
+native SetDoodadAnimationRect       takes rect r, integer doodadID, string animName, boolean animRandom returns nothing
+native BlzSetSingleDoodadAnimation  takes integer index, string animName, boolean animRandom returns nothing
+native SetDoodadColor               takes real x, real y, real radius, integer doodadID, boolean nearestOnly, playercolor whichColor returns nothing
+native SetDoodadColorRect           takes rect r, integer doodadID, playercolor whichColor returns nothing
+native BlzSetSingleDoodadColor      takes integer index, playercolor whichColor returns nothing
+native BlzGetDoodadX                takes integer index returns real
+native BlzGetDoodadY                takes integer index returns real
+native BlzGetDoodadZ                takes integer index returns real
+native BlzGetDoodadScaleX           takes integer index returns real
+native BlzGetDoodadScaleY           takes integer index returns real
+native BlzGetDoodadScaleZ           takes integer index returns real
+native BlzGetDoodadIsUsingModelAxes takes integer index returns boolean
+native BlzGetDoodadYaw              takes integer index returns real
+native BlzGetDoodadPitch            takes integer index returns real
+native BlzGetDoodadRoll             takes integer index returns real
+native BlzGetDoodadVariation        takes integer index returns integer
+native BlzGetDoodadId               takes integer index returns integer
+native BlzGetNumDoodads             takes nothing returns integer
 
 //============================================================================
 // Computer AI interface
@@ -3956,6 +4131,7 @@ native BlzGetUnitDiceSides                         takes unit whichUnit, integer
 native BlzSetUnitDiceSides                         takes unit whichUnit, integer diceSides, integer weaponIndex returns nothing
 native BlzGetUnitAttackCooldown                    takes unit whichUnit, integer weaponIndex returns real
 native BlzSetUnitAttackCooldown                    takes unit whichUnit, real cooldown, integer weaponIndex returns nothing
+native BlzResetUnitAttack                          takes unit whichUnit, integer weaponIndex returns nothing
 native BlzSetSpecialEffectColorByPlayer            takes effect whichEffect, player whichPlayer returns nothing
 native BlzSetSpecialEffectColor                    takes effect whichEffect, integer r, integer g, integer b returns nothing
 native BlzSetSpecialEffectAlpha                    takes effect whichEffect, integer alpha returns nothing
@@ -3980,11 +4156,15 @@ native BlzSpecialEffectRemoveSubAnimation          takes effect whichEffect, sub
 native BlzSpecialEffectAddSubAnimation             takes effect whichEffect, subanimtype whichSubAnim returns nothing
 native BlzPlaySpecialEffect                        takes effect whichEffect, animtype whichAnim returns nothing
 native BlzPlaySpecialEffectWithTimeScale           takes effect whichEffect, animtype whichAnim, real timeScale returns nothing
+native BlzSetSpecialEffectAnimationBlendTime       takes effect whichEffect, real blendTime returns nothing
+native BlzQueueSpecialEffectAnimation              takes effect whichEffect, string whichAnimation returns nothing
+native BlzSetSpecialEffectAnimation                takes effect whichEffect, string whichAnimation returns nothing
 native BlzGetAnimName                              takes animtype whichAnim returns string
 native BlzGetUnitArmor                             takes unit whichUnit returns real
 native BlzSetUnitArmor                             takes unit whichUnit, real armorAmount returns nothing
 native BlzUnitHideAbility                          takes unit whichUnit, integer abilId, boolean flag returns nothing
 native BlzUnitDisableAbility                       takes unit whichUnit, integer abilId, boolean flag, boolean hideUI returns nothing
+native BlzUnitEnableAuras                          takes unit whichUnit, boolean enable, boolean affectsUI returns nothing
 native BlzUnitCancelTimedLife                      takes unit whichUnit returns nothing
 native BlzIsUnitSelectable                         takes unit whichUnit returns boolean
 native BlzIsUnitInvulnerable                       takes unit whichUnit returns boolean
@@ -3995,6 +4175,11 @@ native BlzGetAbilityCooldown                       takes integer abilId, integer
 native BlzSetUnitAbilityCooldown                   takes unit whichUnit, integer abilId, integer level, real cooldown returns nothing
 native BlzGetUnitAbilityCooldown                   takes unit whichUnit, integer abilId, integer level returns real
 native BlzGetUnitAbilityCooldownRemaining          takes unit whichUnit, integer abilId returns real
+native BlzGetUnitAbilityCooldownPercent            takes unit whichUnit, integer abilId returns real
+native BlzSetUnitAbilityCooldownRemaining          takes unit whichUnit, integer abilId, real duration returns nothing
+native BlzSetUnitAbilityCooldownPercent            takes unit whichUnit, integer abilId, real percent returns nothing
+native BlzAdjustUnitAbilityCooldownRemaining       takes unit whichUnit, integer abilId, real duration returns nothing
+native BlzAdjustUnitAbilityCooldownPercent         takes unit whichUnit, integer abilId, real percent returns nothing
 native BlzEndUnitAbilityCooldown                   takes unit whichUnit, integer abilCode returns nothing
 native BlzStartUnitAbilityCooldown                 takes unit whichUnit, integer abilCode, real cooldown returns nothing
 native BlzGetUnitAbilityManaCost                   takes unit whichUnit, integer abilId, integer level returns integer
@@ -4010,10 +4195,6 @@ native BlzSetEventAttackType                       takes attacktype attackType r
 native BlzSetEventDamageType                       takes damagetype damageType returns boolean
 native BlzSetEventWeaponType                       takes weapontype weaponType returns boolean
 native BlzGetEventIsAttack                         takes nothing returns boolean
-native RequestExtraIntegerData                     takes integer dataType, player whichPlayer, string param1, string param2, boolean param3, integer param4, integer param5, integer param6 returns integer
-native RequestExtraBooleanData                     takes integer dataType, player whichPlayer, string param1, string param2, boolean param3, integer param4, integer param5, integer param6 returns boolean
-native RequestExtraStringData                      takes integer dataType, player whichPlayer, string param1, string param2, boolean param3, integer param4, integer param5, integer param6 returns string
-native RequestExtraRealData                        takes integer dataType, player whichPlayer, string param1, string param2, boolean param3, integer param4, integer param5, integer param6 returns real
 // Add this function to follow the style of GetUnitX and GetUnitY, it has the same result as BlzGetLocalUnitZ
 native BlzGetUnitZ                                 takes unit whichUnit returns real
 native BlzEnableSelections                         takes boolean enableSelection, boolean enableSelectionCircle returns nothing
@@ -4065,6 +4246,7 @@ native BlzFrameSetTooltip                          takes framehandle frame, fram
 native BlzFrameCageMouse                           takes framehandle frame, boolean enable returns nothing
 native BlzFrameSetValue                            takes framehandle frame, real value returns nothing
 native BlzFrameGetValue                            takes framehandle frame returns real
+native BlzTextAreaFrameSetAutoScroll               takes framehandle frame, boolean value returns nothing
 native BlzFrameSetMinMaxValue                      takes framehandle frame, real minValue, real maxValue returns nothing
 native BlzFrameSetStepSize                         takes framehandle frame, real stepSize returns nothing
 native BlzFrameSetSize                             takes framehandle frame, real width, real height returns nothing
@@ -4091,12 +4273,21 @@ native BlzTriggerRegisterPlayerKeyEvent            takes trigger whichTrigger, p
 native BlzGetTriggerPlayerKey                      takes nothing returns oskeytype
 native BlzGetTriggerPlayerMetaKey                  takes nothing returns integer
 native BlzGetTriggerPlayerIsKeyDown                takes nothing returns boolean
+native BlzIsMetaKeyPressed                         takes integer metakey returns boolean
+native BlzIsKeyPressed                             takes oskeytype key returns boolean
+native BlzIsMouseButtonPressed                     takes mousebuttontype mouseButtonType returns boolean
+native BlzGetMouseScreenPosX                       takes nothing returns integer
+native BlzGetMouseScreenPosY                       takes nothing returns integer
 native BlzEnableCursor                             takes boolean enable returns nothing
 native BlzSetMousePos                              takes integer x, integer y returns nothing
 native BlzGetLocalClientWidth                      takes nothing returns integer
 native BlzGetLocalClientHeight                     takes nothing returns integer
 native BlzIsLocalClientActive                      takes nothing returns boolean
 native BlzGetMouseFocusUnit                        takes nothing returns unit
+native BlzPixelToFrameX                            takes integer pixelX returns real
+native BlzPixelToFrameY                            takes integer pixelY returns real
+native BlzFrameToPixelX                            takes real frameX returns integer
+native BlzFrameToPixelY                            takes real frameY returns integer
 native BlzChangeMinimapTerrainTex                  takes string texFile returns boolean
 native BlzGetLocale                                takes nothing returns string
 native BlzGetSpecialEffectScale                    takes effect whichEffect returns real
@@ -4222,3 +4413,31 @@ native BlzGetUnitOrderCount takes unit whichUnit returns integer
 native BlzUnitClearOrders takes unit whichUnit, boolean onlyQueued returns nothing
 // stops the current order and optionally clears the queue
 native BlzUnitForceStopOrder takes unit whichUnit, boolean clearQueue returns nothing
+
+native BlzCreateDestructablePitchRoll              takes integer objectid, real x, real y, real face, real roll, real pitch, real scale, integer variation returns destructable
+native BlzCreateDestructableZPitchRoll             takes integer objectid, real x, real y, real z, real face, real roll, real pitch, real scale, integer variation returns destructable
+native BlzCreateDeadDestructablePitchRoll          takes integer objectid, real x, real y, real face, real roll, real pitch, real scale, integer variation returns destructable
+native BlzCreateDeadDestructableZPitchRoll         takes integer objectid, real x, real y, real z, real face, real roll, real pitch, real scale, integer variation returns destructable
+native BlzCreateDestructableWithSkinPitchRoll      takes integer objectid, real x, real y, real face, real roll, real pitch, real scale, integer variation, integer skinId returns destructable
+native BlzCreateDestructableZWithSkinPitchRoll     takes integer objectid, real x, real y, real z, real face, real roll, real pitch, real scale, integer variation, integer skinId returns destructable
+native BlzCreateDeadDestructableWithSkinPitchRoll  takes integer objectid, real x, real y, real face, real roll, real pitch, real scale, integer variation, integer skinId returns destructable
+native BlzCreateDeadDestructableZWithSkinPitchRoll takes integer objectid, real x, real y, real z, real face, real roll, real pitch, real scale, integer variation, integer skinId returns destructable
+
+native BlzCreateDestructableWithColor                   takes integer objectid, real x, real y, real face, real scale, integer variation, playercolor color returns destructable
+native BlzCreateDestructableZWithColor                  takes integer objectid, real x, real y, real z, real face, real scale, integer variation, playercolor color returns destructable
+native BlzCreateDeadDestructableWithColor               takes integer objectid, real x, real y, real face, real scale, integer variation, playercolor color returns destructable
+native BlzCreateDeadDestructableZWithColor              takes integer objectid, real x, real y, real z, real face, real scale, integer variation, playercolor color returns destructable
+native BlzCreateDestructableWithSkinColor               takes integer objectid, real x, real y, real face, real scale, integer variation, integer skinId, playercolor color returns destructable
+native BlzCreateDestructableZWithSkinColor              takes integer objectid, real x, real y, real z, real face, real scale, integer variation, integer skinId, playercolor color returns destructable
+native BlzCreateDeadDestructableWithSkinColor           takes integer objectid, real x, real y, real face, real scale, integer variation, integer skinId, playercolor color returns destructable
+native BlzCreateDeadDestructableZWithSkinColor          takes integer objectid, real x, real y, real z, real face, real scale, integer variation, integer skinId, playercolor color returns destructable
+native BlzCreateDestructablePitchRollWithColor          takes integer objectid, real x, real y, real face, real roll, real pitch, real scale, integer variation, playercolor color returns destructable
+native BlzCreateDestructableZPitchRollWithColor         takes integer objectid, real x, real y, real z, real face, real roll, real pitch, real scale, integer variation, playercolor color returns destructable
+native BlzCreateDeadDestructablePitchRollWithColor      takes integer objectid, real x, real y, real face, real roll, real pitch, real scale, integer variation, playercolor color returns destructable
+native BlzCreateDeadDestructableZPitchRollWithColor     takes integer objectid, real x, real y, real z, real face, real roll, real pitch, real scale, integer variation, playercolor color returns destructable
+native BlzCreateDestructableWithSkinPitchRollColor      takes integer objectid, real x, real y, real face, real roll, real pitch, real scale, integer variation, integer skinId, playercolor color returns destructable
+native BlzCreateDestructableZWithSkinPitchRollColor     takes integer objectid, real x, real y, real z, real face, real roll, real pitch, real scale, integer variation, integer skinId, playercolor color returns destructable
+native BlzCreateDeadDestructableWithSkinPitchRollColor  takes integer objectid, real x, real y, real face, real roll, real pitch, real scale, integer variation, integer skinId, playercolor color returns destructable
+native BlzCreateDeadDestructableZWithSkinPitchRollColor takes integer objectid, real x, real y, real z, real face, real roll, real pitch, real scale, integer variation, integer skinId, playercolor color returns destructable
+
+native SetDestructableVertexColor			takes destructable whichDestructable, integer red, integer green, integer blue, integer alpha returns nothing
