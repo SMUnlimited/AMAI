@@ -5,12 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
-### Changed
+### Added
 
 - Added support for v3.0.0 Reforged (helped by jzy-chitong56)
   - Forsaken Paladin skill builds for all hero acquisition tiers.
   - New race colour option
   - Minimum supported version for reforged is now v3 due to the native changes
+
+### Changed
+
+- Reforged Orc third-hero build priority now matches the second hero at tier three.
 - Additional peons needed for an expansion will start to be trained early.
 - Added boots of speed to all strategies.
 - Undead will buy an orb of corruption if you have a lich.
