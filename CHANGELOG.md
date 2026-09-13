@@ -36,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Building upgrades no longer queue replacement tier-one halls or base towers while transforming.
 - Installer now reports missing AMAI scripts immediately instead of leaving installation stuck, and validates required files at startup.
 - Installer progress now counts only Warcraft III map files and displays the current map count.
 - Added a minimum installer window size to keep the interface usable when resized.
