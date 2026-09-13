@@ -14,10 +14,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Additional peons needed for an expansion will start to be trained early.
 - Added boots of speed to all strategies.
 - Undead will buy an orb of corruption if you have a lich.
+- Orc heroes will prioritize buying an Orb of Lightning at tier three. (Powerer)
+- Orcs prioritize Fortified Defenses and their weapon and armor upgrades more highly. (Powerer)
+- Undead dynamic builder prefers Gargoyles over Crypt Fiends for anti-air after tier one, while retaining Fiends as a secondary counter. (Powerer)
+
+### Removed
+
+- Automatic backpack research for all Reforged races, avoiding delays to workers and core upgrades. (Powerer)
 
 ### Fixed
 
 - Ensure all peons for pre-existing expansions are trained before expanding again.
+- Item duplicate checks no longer inspect the invalid seventh inventory slot. (Powerer)
 
 ## [3.6.0] - 2026-02-08
 
