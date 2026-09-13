@@ -6,6 +6,16 @@ const arrayOfFiles = [];
 
 const isMapFile = file => [`.w3m`, `.w3x`].includes(path.extname(file).toLowerCase());
 
+const requiredFiles = (ver, commander) => [
+  `Scripts\\${ver}\\common.ai`,
+  `MPQEditor.exe`,
+  ...(commander == 1 ? [`Scripts\\${ver}\\Blizzard.j`] : []),
+  ...(commander == 2 ? [`Scripts\\${ver}\\vsai\\Blizzard.j`] : [])
+];
+
+const missingFiles = (ver, commander, existsSync = fs.existsSync) =>
+  requiredFiles(ver, commander).filter(file => !existsSync(file));
+
 /** uncomment to debbug */
 // const ls = spawnSync(
 //   `ls`,
@@ -44,6 +54,13 @@ const installOnDirectory = async () => {
   const commonAIPath = `Scripts\\${ver}\\common.ai`
   const blizzardPath =`Scripts\\${ver}\\Blizzard.j`
 
+  const missing = missingFiles(ver, commander);
+  if (missing.length) {
+    process.send(`ERROR: Cannot find required installer files:\n${missing.map(file => `${process.cwd()}\\${file}`).join('\n')}`);
+    process.exitCode = 1;
+    return;
+  }
+
   process.send(`#### Installing AMAI for ${ver} Commander ${commander > 0 ? bj : 'None'} forcing ai language to ${language || 'default'} ####`);
 
   // TODO: change to receive array of maps
@@ -54,25 +71,6 @@ const installOnDirectory = async () => {
     // on single map
     arrayOfFiles.push(response);
   }
-
-  if (!fs.existsSync(commonAIPath)) {
-    process.send(`ERROR: Cannot find ${process.cwd()}\\${commonAIPath}`)
-    return
-  }
-  if (!fs.existsSync(`MPQEditor.exe`)) {
-    process.send(`ERROR: Cannot find ${process.cwd()}\\MPQEditor.exe`)
-    return
-  }
-  if (installCommander && !fs.existsSync(blizzardPath)) {
-    process.send(`ERROR: Cannot find ${process.cwd()}\\${blizzardPath}`)
-    return
-  }
-  if (vsAICommander && !fs.existsSync(`Scripts\\${ver}\\vsai\\Blizzard.j`)) {
-    process.send(`ERROR: Cannot find ${process.cwd()}\\Scripts\\${ver}\\vsai\\Blizzard.j`)
-    return
-  }
-
-
 
   if (language !== '-') {
     setLanguage(commonAIPath, language);
@@ -250,4 +248,4 @@ if (require.main === module) {
   installOnDirectory();
 }
 
-module.exports = { isMapFile };
+module.exports = { isMapFile, missingFiles };

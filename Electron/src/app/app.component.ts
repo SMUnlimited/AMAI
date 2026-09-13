@@ -110,6 +110,7 @@ export class AppComponent implements AfterViewChecked {
       // TODO: add 'push notification'/'notification'
       this.electronService.ipcRenderer.on('on-install-error', (_, args) => {
         console.log('args-install-error', args);
+        this.messages?.push(`ERROR: ${args}`);
         this.couldClose = true;
 
         this

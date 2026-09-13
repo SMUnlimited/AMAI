@@ -22,6 +22,29 @@ const isDev = () => {
   return require.main.filename.indexOf('app.asar') === -1;
 }
 
+const installerDirectory = () => path.resolve(__dirname, isDev() ? '../AMAI-release' : '../AMAI');
+const installerVersions = ['ROC', 'TFT', 'REFORGED', 'OPTROC', 'OPTTFT', 'OPTREFORGED'];
+const missingInstallerFiles = () => [
+  'install.js',
+  'MPQEditor.exe',
+  ...installerVersions.flatMap(version => [
+    path.join('Scripts', version, 'common.ai'),
+    path.join('Scripts', version, 'Blizzard.j'),
+    path.join('Scripts', version, 'vsai', 'Blizzard.j')
+  ])
+].filter(file => !fs.existsSync(path.join(installerDirectory(), file)));
+
+const reportMissingInstallerFiles = (): boolean => {
+  const missing = missingInstallerFiles();
+  if (!missing.length) return false;
+
+  dialog.showErrorBox(
+    'AMAI installer files missing',
+    `The installer is incomplete and cannot run. Missing required files:\n\n${missing.join('\n')}`
+  );
+  return true;
+}
+
 const createWindow = (): BrowserWindow => {
 
   const size = screen.getPrimaryDisplay().workAreaSize;
@@ -94,16 +117,7 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
   // passing reference to external call back
   signal = controller.signal;
 
-  let currentExecDir = `./AMAI-release/`,
-    currentScriptDir = './AMAI-release/';
-
-  if(!isDev()) {
-    currentExecDir = `./AMAI/`;
-    currentScriptDir = path.join(
-      __dirname,
-      `../${currentExecDir}`
-    );
-  }
+  const currentScriptDir = installerDirectory();
 
   /** uncomment to debbug */
   // const ls = cp.spawnSync(
@@ -135,10 +149,8 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
   try {
      process.chdir(currentScriptDir);
   } catch(err) {
-    console.log('error:', err.message);
-
-    /** uncomment to debbug */
-    // win.webContents.send('on-install-message', 'Error: ' + err.message);
+    win.webContents.send('on-install-error', err.message);
+    return;
   }
 
 
@@ -146,18 +158,15 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
   try {
     child = cp.fork(
       require.resolve(
-        path.join(
-          __dirname,
-          `../${currentExecDir}install.js`
-        )
+        path.join(currentScriptDir, 'install.js')
       ),
       [ response[0], commander, ver, forceLang ? currentLanguage : '-' ],
-      { signal },
-      (err) => {
-        win.webContents.send('on-install-error', err);
-      }
+      { signal }
     );
 
+    child.on('error', (err) => {
+      win.webContents.send('on-install-error', err.message);
+    });
 
     // send messages to modal on front
     child.on('message', (message) => {
@@ -170,8 +179,12 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
     });
 
     // close modal on process finishes
-    child.on('exit', () => {
-      win.webContents.send('on-install-exit');
+    child.on('exit', (code) => {
+      if (code) {
+        win.webContents.send('on-install-error', `Installer exited with code ${code}`);
+      } else {
+        win.webContents.send('on-install-exit');
+      }
     });
   } catch(err) {
     win.webContents.send('on-install-error', err.message);
@@ -198,6 +211,10 @@ const init = () => {
     // Some APIs can only be used after this event occurs.
     // Added 400 ms to fix the black background issue while using transparent window. More detais at https://github.com/electron/electron/issues/15947
     app.on('ready', () => {
+      if (reportMissingInstallerFiles()) {
+        app.quit();
+        return;
+      }
       setTimeout(() => {
         createWindow();
       }, 400)

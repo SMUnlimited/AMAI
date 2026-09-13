@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Orc heroes will prioritize buying an Orb of Lightning at tier three. (Powerer)
 - Orcs prioritize Fortified Defenses and their weapon and armor upgrades more highly. (Powerer)
 - Undead dynamic builder prefers Gargoyles over Crypt Fiends for anti-air after tier one, while retaining Fiends as a secondary counter. (Powerer)
+- Electron releases now package the compiled scripts and MPQEditor directly from the base AMAI directory. (devtools)
 
 ### Removed
 
@@ -24,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Installer now reports missing AMAI scripts immediately instead of leaving installation stuck, and validates required files at startup.
 - Installer progress now counts only Warcraft III map files and displays the current map count.
 - Added a minimum installer window size to keep the interface usable when resized.
 - Ensure all peons for pre-existing expansions are trained before expanding again.
