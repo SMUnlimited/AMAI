@@ -36,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Building upgrades now interlace each source building with its upgrade instead of finishing all base buildings first before starting to upgrade.
 - Fixed upgrades (hopefully this is final change) so defensive building upgrades now resolve Warcraft town IDs through the tracked-town mapping correctly before searching for their source building.
 - Building upgrades no longer queue replacement tier-one halls or base towers while transforming.
 - Installer now reports missing AMAI scripts immediately instead of leaving installation stuck, and validates required files at startup.
