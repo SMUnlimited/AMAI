@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Reforged expansion sites now prioritize additional existing racial defenses and their shop, without changing defense placement functions.
 - Reforged eebalanced core consumables, movement and survival items, and tier-three racial orbs.
 - Reforged increased priorities for composition-related upgrades including Human Defend/Masonry, Orc anti-air and siege support, and Undead Stone Form.
+- Dynamic unit production now continues to the custom map food cap instead of stopping at specific food selections.
 - Electron releases now package the compiled scripts and MPQEditor directly from the base AMAI directory. (devtools)
 - Refreshed Electron installer dependencies and test discovery while retaining Electron 22 and its OS compatibility baseline. (devtools)
 
