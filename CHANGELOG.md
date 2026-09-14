@@ -37,6 +37,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Zeppelins reserved for expansion workers are no longer reassigned to follow or unit rescue jobs.
+- Land expansions only use a nearby zeppelin when its pickup and delivery route is meaningfully faster than walking directly.
 - Building upgrades now interlace each source building with its upgrade instead of finishing all base buildings first before starting to upgrade.
 - Fixed upgrades (hopefully this is final change) so defensive building upgrades now resolve Warcraft town IDs through the tracked-town mapping correctly before searching for their source building.
 - Building upgrades no longer queue replacement tier-one halls or base towers while transforming.

@@ -11410,6 +11410,13 @@ function IsWaterExpansion takes unit u returns boolean
 endfunction
 
 //============================================================================
+function IsZeppelinExpansionShortcut takes unit peon, unit zep, unit target returns boolean
+  local real zeppelin_time = (DistanceBetweenUnits(peon, zep) + DistanceBetweenUnits(zep, target)) / RMax(GetUnitMoveSpeed(zep), 1)
+  local real walking_time = DistanceBetweenUnits(peon, target) / RMax(GetUnitMoveSpeed(peon), 1)
+  return zeppelin_time < 0.8 * walking_time
+endfunction
+
+//============================================================================
 function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
   if IsUnitInTransport(peon, build_zeppelin) then
     if DistanceBetweenUnits(build_zeppelin, target) > race_max_expa_mine_distance then
@@ -11419,6 +11426,7 @@ function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
       call IssueTargetOrder(build_zeppelin, "unload", peon)
       call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, build_zeppelin)
       call Sleep(0.5)
+      set build_zeppelin = null
       call IssueImmediateOrder(peon, "stop")
       return true
     endif
@@ -11426,6 +11434,7 @@ function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
     if DistanceBetweenUnits(peon, target) < race_max_expa_mine_distance then
       call RecycleGuardPosition(build_zeppelin)
       call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
+      set build_zeppelin = null
       call IssueImmediateOrder(peon, "stop")
       return true
     else
@@ -11565,10 +11574,19 @@ function StartExpansionAM takes integer qty, integer hall returns integer
         set build_zeppelin = GetUnusedZeppelinNearUnit(build_zeppelin, expansion_peon)
         if build_zeppelin == null then
           call Trace("AMAIStartexpa: No Zeppelin found for transporting peon")
+        elseif not w and (DistanceBetweenUnits(build_zeppelin, expansion_peon) > max_follow_dist * 5 or not IsZeppelinExpansionShortcut(expansion_peon, build_zeppelin, current_expansion)) then
+          call Trace("AMAIStartexpa: Zeppelin route not worthwhile, expanding by land")
+          set build_zeppelin = null
         else
           call GroupAddUnit(unit_zepplin_move, build_zeppelin)
           call RemoveGuardPosition(build_zeppelin)
         endif
+      endif
+      if build_zeppelin != null and not w and not IsUnitInTransport(expansion_peon, build_zeppelin) and (DistanceBetweenUnits(build_zeppelin, expansion_peon) > max_follow_dist * 5 or not IsZeppelinExpansionShortcut(expansion_peon, build_zeppelin, current_expansion)) then
+        call Trace("AMAIStartexpa: Zeppelin pickup route no longer worthwhile, expanding by land")
+        call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
+        call RecycleGuardPosition(build_zeppelin)
+        set build_zeppelin = null
       endif
       if (w and build_zeppelin == null) then
         call Trace("AMAIStartexpa: Water expansion required waiting to create a zeppelin")
