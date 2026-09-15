@@ -7980,6 +7980,88 @@ function CanBuildUnit takes integer unitid returns boolean
 endfunction
 
 //============================================================================
+// Formation helpers are declared before job scripts so retreat control can call them directly.
+//============================================================================
+function ConversionsAM takes integer desire, integer unitid returns nothing
+#INCLUDETABLE <$VER$\UnitConversions.txt> #EFR
+  if unitid == u%1 then
+    call MergeUnits(desire,o%2,o%3,o%1)
+  endif
+#ENDINCLUDE
+endfunction
+
+function FormGroupAM takes integer seconds returns nothing
+  local integer index = 0
+  local integer count = 0
+  local integer unitid = 0
+  local integer desire = 0
+  local group g = null
+  local unit u = null
+
+  call InitAssault()
+
+  loop
+    exitwhen index >= attack_length
+
+    set unitid = attack_units[index]
+
+  #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "UPGRADED_TO"
+    if unitid == u%1 and GetUpgradeLevel(o%4) >= %5 then
+      set unitid = u%3
+    endif
+  #ENDINCLUDE
+
+    set desire = attack_max[index]
+    set count  = TownCountDone(unitid)
+
+    if GetWood() > minimum_peon_wood then
+      set take_all_ghouls_along = true
+    elseif GetWood() < minimum_peon_wood then
+      set take_all_ghouls_along = false
+    endif
+
+    if unitid == racial_ghoul and not take_all_ghouls_along then
+      // Ghoul count needs to exclude units sent back to heal otherwise harvesting ghouls will be pulled off.
+      set count = 0
+      set g = CreateGroup()
+      call GroupEnumUnitsOfPlayer(g, ai_player, null)
+      loop
+        set u = FirstOfGroup(g)
+        exitwhen u == null
+        if GetUnitTypeId(u) == old_id[racial_ghoul] and UnitAlive(u) and IsStandardUnit(u) and not IsUnitBuying(u) then
+          set count = count + 1
+        endif
+        call GroupRemoveUnit(g, u)
+      endloop
+      call DestroyGroup(g)
+      set g = null
+      set desire = (count - harvesting_ghouls) // all spare ghouls should attack and join attack as built
+      if towerrush then
+        set desire = Min(Max(count - 2 , 0),desire)  // reserve
+      endif
+      set attacking_ghouls = Max(desire, 0)
+      call Trace("Attacking Ghouls Formed:" + Int2Str(attacking_ghouls))
+    elseif unitid == racial_ghoul and take_all_ghouls_along then
+      set attacking_ghouls = desire
+      call Trace("Attacking Ghouls Formed:" + Int2Str(attacking_ghouls))
+    endif
+
+    call ConversionsAM(desire,unitid)
+
+    if count >= desire then
+      call AddAssault(desire,old_id[unitid])
+    else
+      call AddAssault(count,old_id[unitid])
+    endif
+
+    set index = index + 1
+  endloop
+  if seconds > 0 then
+    call Sleep(seconds)
+  endif
+endfunction
+
+//============================================================================
 // (AMAI) Jobs Listing (Custom Job Scripts are placed here)
 //============================================================================
 
@@ -10543,24 +10625,11 @@ endfunction
 
 function AddHarassUnittype takes group g, group harasser, integer qty, integer uid, integer key returns group
   local group cg = CopyGroup(g)
-  local group fg = CreateGroup()
   local unit u = null
   local real player_sum = 0
   set cg = SelectNumberOfId(cg, qty, old_id[uid])
   set cg = SelectByUnitFree(cg, true)
   set cg = SelectByUnitStandard(cg, true) // Will ensure units are not already harassing somewhere else
-  // Do not allow units currently controlled by retreat control to be selected for harass
-  loop
-    set u = FirstOfGroup(cg)
-    exitwhen u == null
-    if not IsUnitInGroup(u, in_retreat_group) then
-      call GroupAddUnit(fg, u)
-    endif
-    call GroupRemoveUnit(cg, u)
-  endloop
-  call DestroyGroup(cg)
-  set cg = fg
-  set fg = null
   loop
     set u = FirstOfGroup(cg)
     exitwhen u == null
@@ -12369,15 +12438,6 @@ endfunction
 //============================================================================
 // AMAI Attack Functions
 //============================================================================
-function ConversionsAM takes integer desire, integer unitid returns nothing
-#INCLUDETABLE <$VER$\UnitConversions.txt> #EFR
-  if unitid == u%1 then
-    call MergeUnits(desire,o%2,o%3,o%1)
-  endif
-#ENDINCLUDE
-endfunction
-
-//============================================================================
 function SetAssaultGroupAM takes integer qty, integer max, integer unitid returns nothing
   call ConversionsAM(max,unitid)
 
@@ -12437,78 +12497,6 @@ function AttackGroupAddUnknown takes nothing returns nothing
   set g = null
 endfunction
 
-//============================================================================
-function FormGroupAM takes integer seconds returns nothing
-  local integer index = 0
-  local integer count = 0
-  local integer unitid = 0
-  local integer desire = 0
-  local group g = null
-  local unit u = null
-
-  call InitAssault()
-
-  loop
-    exitwhen index >= attack_length
-
-    set unitid = attack_units[index]
-
-  #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "UPGRADED_TO"
-    if unitid == u%1 and GetUpgradeLevel(o%4) >= %5 then
-      set unitid = u%3
-    endif
-  #ENDINCLUDE
-
-    set desire = attack_max[index]
-    set count  = TownCountDone(unitid)
-
-    if GetWood() > minimum_peon_wood then
-      set take_all_ghouls_along = true
-    elseif GetWood() < minimum_peon_wood then
-      set take_all_ghouls_along = false
-    endif
-
-    if unitid == racial_ghoul and not take_all_ghouls_along then
-      // Ghoul count needs to exclude units sent back to heal otherwise harvesting ghouls will be pulled off.
-      set count = 0
-      set g = CreateGroup()
-      call GroupEnumUnitsOfPlayer(g, ai_player, null)
-      loop
-        set u = FirstOfGroup(g)
-        exitwhen u == null
-        if GetUnitTypeId(u) == old_id[racial_ghoul] and UnitAlive(u) and IsStandardUnit(u) and not IsUnitBuying(u) then
-          set count = count + 1
-        endif
-        call GroupRemoveUnit(g, u)
-      endloop
-      call DestroyGroup(g)
-      set g = null
-      set desire = (count - harvesting_ghouls) // all spare ghouls should attack and join attack as built
-      if towerrush then
-        set desire = Min(Max(count - 2 , 0),desire)  // reserve
-      endif
-      set attacking_ghouls = Max(desire, 0)
-      call Trace("Attacking Ghouls Formed:" + Int2Str(attacking_ghouls))
-    elseif unitid == racial_ghoul and take_all_ghouls_along then
-      set attacking_ghouls = desire
-      call Trace("Attacking Ghouls Formed:" + Int2Str(attacking_ghouls))
-    endif
-
-    call ConversionsAM(desire,unitid)
-
-    if count >= desire then
-      call AddAssault(desire,old_id[unitid])
-    else
-      call AddAssault(count,old_id[unitid])
-    endif
-
-    set index = index + 1
-  endloop
-  if seconds > 0 then
-    call Sleep(seconds)
-  endif
-endfunction
-
 function FromGroupAndGhoulsAM takes integer seconds returns nothing
   if race_has_ghouls and race_ghouls_attack then
     call FormGroupAM(0)
@@ -12522,6 +12510,7 @@ function EnableRetreatControl takes nothing returns nothing
   if not retreat_controlled then
     call Trace("===Retreat control started===")
     set retreat_controlled = true
+    set retreat_group_refreshed = false
     call SetGroupsFlee(false)
     call SetTargetHeroes(false)
     call TQAddJob(2 * sleep_multiplier, RETREAT_CONTROL, 0)
