@@ -37,6 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Retreat control no longer interrupts lumber-harvesting ghouls or neutral zeppelin transport jobs.
 - Zeppelins reserved for expansion workers are no longer reassigned to follow or unit rescue jobs.
 - Land expansions only use a nearby zeppelin when its pickup and delivery route is meaningfully faster than walking directly.
 - Building upgrades now interlace each source building with its upgrade instead of finishing all base buildings first before starting to upgrade.
