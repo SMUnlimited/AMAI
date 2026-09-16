@@ -13350,36 +13350,39 @@ endfunction
 //============================================================================
 // (AMAI)  ChooseAttackTarget
 //============================================================================
-function GetRangePenalty takes unit target returns real
-  if major_hero == null or not UnitAlive(major_hero) or not UnitAlive(target) then
-    return DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(GetOwningPlayer(target)))
-  else
+function GetRangePenalty takes unit target, player target_player returns real
+  if target != null and UnitAlive(target) and not IsUnitHidden(target) then
+    if major_hero == null or not UnitAlive(major_hero) then
+      return DistanceBetweenPoints_kd(home_location, GetUnitLoc(target)) / 1400
+    endif
     return DistanceBetweenUnits(major_hero, target) / 1400
   endif
+  if target_player != null then
+    if major_hero != null and UnitAlive(major_hero) then
+      return DistanceBetweenPoints_dd(GetUnitLoc(major_hero), GetPlayerStartLocationLoc(target_player)) / 1400
+    endif
+    return DistanceBetweenPoints_kd(home_location, GetPlayerStartLocationLoc(target_player)) / 1400
+  endif
+  return 0.0
 endfunction
 
 //============================================================================
 function GetWeakestEnemy takes nothing returns player
   local integer i = 0
   local integer pmin = 30
-  local integer minstr = 1000
+  local integer minstr = 0
   local integer cstr = 0
-  local unit u = null
   loop
     exitwhen i >= c_enemy_total
     if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set cstr = GetUnexactPlayerStrength(enemy_force[i])
-      if cstr < minstr then
-        set u = GetBuilding(enemy_force[i])
-        if u != null and UnitAlive(u) then
-          set pmin = i
-          set minstr = cstr
-        endif
+      if pmin == 30 or cstr < minstr then
+        set pmin = i
+        set minstr = cstr
       endif
     endif
   set i = i + 1
   endloop
-  set u = null
   if pmin != 30 then
     return enemy_force[pmin]
   endif
@@ -13396,7 +13399,7 @@ function GetStrongestEnemy takes nothing returns player
     exitwhen i >= c_enemy_total
     if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set cstr = GetUnexactPlayerStrength(enemy_force[i])
-      if cstr > maxstr then
+      if pmax == 30 or cstr > maxstr then
         set pmax = i
         set maxstr = cstr
       endif
@@ -13413,19 +13416,17 @@ endfunction
 function GetWeakAndNearEnemy takes nothing returns player
   local integer i = 0
   local integer pmin = -1
-  local real minstr = 10000
+  local real minstr = 0
   local real cstr = 0
   local unit cbuilding = null
   loop
     exitwhen i >= c_enemy_total
     if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set cbuilding = GetBuilding(enemy_force[i])
-      if cbuilding != null and UnitAlive(cbuilding) then
-        set cstr = GetUnexactPlayerStrength(enemy_force[i]) + GetRangePenalty(cbuilding)
-        if cstr < minstr then
-          set pmin = i
-          set minstr = cstr
-        endif
+      set cstr = GetUnexactPlayerStrength(enemy_force[i]) + GetRangePenalty(cbuilding, enemy_force[i])
+      if pmin == -1 or cstr < minstr then
+        set pmin = i
+        set minstr = cstr
       endif
     endif
     set i = i + 1
@@ -13445,19 +13446,17 @@ endfunction
 function GetNearestThreatEnemy takes nothing returns player
   local integer i = 0
   local integer pmin = -1
-  local real minrange = 10000
+  local real minrange = 0
   local real crange = 0
   local unit cbuilding = null
   loop
     exitwhen i >= c_enemy_total
     if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetUnexactPlayerStrength(enemy_force[i]) <= own_strength then
       set cbuilding = GetBuilding(enemy_force[i])
-      if cbuilding != null and UnitAlive(cbuilding) then
-        set crange = GetRangePenalty(cbuilding)
-        if crange < minrange then
-          set pmin = i
-          set minrange = crange
-        endif
+      set crange = GetRangePenalty(cbuilding, enemy_force[i])
+      if pmin == -1 or crange < minrange then
+        set pmin = i
+        set minrange = crange
       endif
     endif
     set i = i + 1
@@ -13474,25 +13473,23 @@ function GetSecondNearestEnemy takes nothing returns player
   local integer i = 0
   local integer pmin = -1
   local integer spmin = -1
-  local real minstr = 10000
-  local real sminstr = 10000
+  local real minstr = 0
+  local real sminstr = 0
   local real cstr = 0
   local unit cbuilding = null
   loop
     exitwhen i >= c_enemy_total
     if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING then
       set cbuilding = GetBuilding(enemy_force[i])
-      if cbuilding != null and UnitAlive(cbuilding) then
-        set cstr = GetRangePenalty(cbuilding)
-        if cstr < minstr then
-          set spmin = pmin
-          set pmin = i
-          set sminstr = minstr
-          set minstr = cstr
-        elseif cstr < sminstr then
-          set spmin = i
-          set sminstr = cstr
-        endif
+      set cstr = GetRangePenalty(cbuilding, enemy_force[i])
+      if pmin == -1 or cstr < minstr then
+        set spmin = pmin
+        set pmin = i
+        set sminstr = minstr
+        set minstr = cstr
+      elseif spmin == -1 or cstr < sminstr then
+        set spmin = i
+        set sminstr = cstr
       endif
     endif
     set i = i + 1
@@ -13504,6 +13501,8 @@ function GetSecondNearestEnemy takes nothing returns player
   set cbuilding = null
   if spmin != -1 then
     return enemy_force[spmin]
+  elseif pmin != -1 then
+    return enemy_force[pmin]
   endif
   return null
 endfunction
@@ -13542,7 +13541,7 @@ endfunction
 function GetTargetStrength takes unit target returns integer
   local integer str = GetUnexactPlayerStrength(GetOwningPlayer(target))
   if str < 100 then
-    set str = Min(str + R2I(GetRangePenalty(target)), 100)
+    set str = Min(str + R2I(GetRangePenalty(target, null)), 100)
   endif
   return str
 endfunction
@@ -13573,13 +13572,12 @@ endfunction
 
 //============================================================================
 function IsTargetGood takes unit target, integer attacker_bonus returns boolean
-  if target != null then
+  if target != null and UnitAlive(target) and not IsUnitHidden(target) then
     set added_target_aggression = attacker_bonus
     set added_racial_aggression = GetRaceAggression(target)
     return GetTargetStrength(target) + GetTowerFactor(target) <= own_strength + attacking_aggression + added_aggression + added_racial_aggression + attacker_bonus
-  else
-    return false
   endif
+  return false
 endfunction
 
 //============================================================================
@@ -13616,10 +13614,41 @@ function ChooseEnemyBaseTarget takes unit u returns unit
 endfunction
 
 //============================================================================
+function GetPlayerAttackTarget takes player target_player returns unit
+  local unit u = null
+  local group g = CreateGroup()
+  local location attack_origin = home_location
+  local boolean remove_attack_origin = false
+  if major_hero != null and UnitAlive(major_hero) then
+    set attack_origin = GetUnitLoc(major_hero)
+    set remove_attack_origin = true
+  endif
+  if target_player != null then
+    call GroupEnumUnitsOfPlayer(g, target_player, null)
+    set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
+    set g = SelectByAlive(g, true)
+    set g = SelectByHidden(g, false)
+    set u = GetNearestOfGroup(u, g, attack_origin)
+    if u == null then
+      call GroupEnumUnitsOfPlayer(g, target_player, null)
+      set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
+      set g = SelectByAlive(g, true)
+      set g = SelectByHidden(g, false)
+      set u = GetNearestOfGroup(u, g, attack_origin)
+    endif
+  endif
+  if remove_attack_origin then
+    call RemoveLocation(attack_origin)
+  endif
+  call DestroyGroup(g)
+  set g = null
+  set attack_origin = null
+  return u
+endfunction
+
+//============================================================================
 function ChooseAnEnemyTarget takes unit u returns unit
   local player target_enemy = null
-  local group g = CreateGroup()
-  local location enemy_base = null
 
   if attacking_strategy == 1 or attacking_strategy == 3 then
     set target_enemy = GetWeakestEnemy()
@@ -13645,21 +13674,8 @@ function ChooseAnEnemyTarget takes unit u returns unit
   //call Trace("Choosing weakest closest Enemy")
   endif
   if target_enemy != null then
-    call GroupEnumUnitsOfPlayer(g, target_enemy, null)
-    set enemy_base = GetPlayerStartLocationLoc(target_enemy)
-    set g = SelectByLocation(g, enemy_base, 1000, false)
-    set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
-    set g = SelectByAlive(g, true)
-    set g = SelectByHidden(g, false)
-    set u = FirstOfGroup(g)
-    if u == null then
-      set u = GetBuilding(target_enemy)
-    endif
-    call RemoveLocation(enemy_base)
+    set u = GetPlayerAttackTarget(target_enemy)
   endif
-  call DestroyGroup(g)
-  set g = null
-  set enemy_base = null
   set target_enemy = null
   return u
 endfunction
@@ -13673,7 +13689,7 @@ function ChooseAnyEnemyTarget takes unit u returns unit
     if attacking_strategy == 3 then
       set p = GetStrongestEnemy()
       if p != null then
-        set alli_target = GetBuilding(p)
+        set alli_target = GetPlayerAttackTarget(p)
         set p = null
       endif
     endif
