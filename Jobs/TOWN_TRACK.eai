@@ -5,6 +5,8 @@
     real array town_value
     real array town_threat
     integer array town_count
+    boolean array town_has_expansion
+    real array town_destroyed_time
     integer array town_threat_army
     boolean array town_can_tp
     real array town_dist
@@ -26,6 +28,8 @@ function CopyTown takes integer from, integer to returns nothing
   set town_value[to] = town_value[from]
   set town_threat[to] = town_threat[from]
   set town_count[to] = town_count[from]
+  set town_has_expansion[to] = town_has_expansion[from]
+  set town_destroyed_time[to] = town_destroyed_time[from]
   set town_can_tp[to] = town_can_tp[from]
   set town_dist[to] = town_dist[from]
   set town_mine[to] = town_mine[from]
@@ -52,9 +56,11 @@ function TrackTown takes integer num returns boolean
   local unit u = null
   local location l = Location(0,0)
   local boolean found_expansion = false
+  local boolean previously_had_expansion = town_has_expansion[num]
   
   set town_value[num] = 0
   set town_count[num] = 0
+  set town_has_expansion[num] = false
   set town_can_tp[num] = false
   set town_dist[num] = -1
   call GroupEnumUnitsInRangeOfLoc(g, town_loc[num], town_radius, null)
@@ -66,12 +72,16 @@ function TrackTown takes integer num returns boolean
       set l = GetSumLoc_dd(l, GetUnitLoc(u))
       set town_count[num] = town_count[num] + 1
       if IsUnitType(u, UNIT_TYPE_TOWNHALL) then
+        set town_has_expansion[num] = true
         set town_can_tp[num] = true
         set town_value[num] = town_value[num] + 5
         set found_expansion = true
         call RemoveLocation(town_loc[num])
         set town_loc[num] = GetUnitLoc(u)
       elseif IsUnitGoldMine(u) then
+        if GetUnitTypeId(u) == old_id[racial_expansion] then
+          set town_has_expansion[num] = true
+        endif
         set found_expansion = true
         // don't set town value for mine here as get near mine will do that
         call RemoveLocation(town_loc[num])
@@ -84,6 +94,9 @@ function TrackTown takes integer num returns boolean
   endloop
   call DestroyGroup(g)
   set g = null
+  if previously_had_expansion and not town_has_expansion[num] and Player(town_owner[num]) == ai_player then
+    set town_destroyed_time[num] = TimerGetElapsed(tq_timer)
+  endif
   if town_count[num] == 0 then
     //call TraceAll("TOWNTRACK: ignoring town " + Int2Str(num) + " as no structures found")
     call RemoveLocation(l)

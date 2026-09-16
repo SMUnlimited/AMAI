@@ -680,6 +680,7 @@ globals
     integer exp_first_time = 30
     integer exp_second_time = 180
     real expansion_taken_radius = 1000  // the radius around a mine where enemy or allied buildings are considered as possessing that mine (it is considered taken then)
+    real expansion_rebuild_delay = 60
 
     integer creep_camp_radius = 550
     integer camp_scan_depth = 3
@@ -6997,6 +6998,24 @@ function GetRushFactor takes nothing returns integer
 endfunction
 
 //============================================================================
+// Returns true while a recently destroyed town at this expansion is cooling down
+function IsExpansionRebuildCoolingDown takes unit exp_u returns boolean
+  local integer i = 0
+  local integer town_idx = 0
+  loop
+    exitwhen i >= own_town_num
+    set town_idx = own_town[i]
+    if town_idx < town_num and town_destroyed_time[town_idx] > 0 and DistanceBetweenPoints_kd(GetUnitLoc(exp_u), town_loc[town_idx]) < expansion_taken_radius then
+      if TimerGetElapsed(tq_timer) - town_destroyed_time[town_idx] < expansion_rebuild_delay or GetLocationNonCreepStrength(GetUnitX(exp_u), GetUnitY(exp_u), expansion_taken_radius) > 0 or GetLocationTowerStrength(GetUnitX(exp_u), GetUnitY(exp_u), expansion_taken_radius) > 0 then
+        return true
+      endif
+    endif
+    set i = i + 1
+  endloop
+  return false
+endfunction
+
+//============================================================================
 // Returns true if we need to rebuild an expansion and no enemies are around
 function CheckExpansionRebuild takes nothing returns boolean
   local group g = CreateGroup()
@@ -7044,7 +7063,7 @@ function CheckExpansionRebuildAt takes unit exp_u returns boolean
   local integer creeps = 0
   
   // Do not consider rebuilds for expansions that are already taken
-  if CheckExpansionTaken(exp_u) then
+  if CheckExpansionTaken(exp_u) or IsExpansionRebuildCoolingDown(exp_u) then
     return false
   endif
   
@@ -7196,7 +7215,7 @@ function ChooseExpansion takes nothing returns nothing
   loop
     exitwhen i >= expansion_list_length
     // Normal new expansion candidate
-    if GetResourceAmount(expansion_list[i]) > gold and not CheckExpansionTaken(expansion_list[i]) and DistanceBetweenPoints_kd(home_location,GetUnitLoc(expansion_list[i])) > 1500 and bad_expansion_flag[i] == 0 then
+    if GetResourceAmount(expansion_list[i]) > gold and not CheckExpansionTaken(expansion_list[i]) and not IsExpansionRebuildCoolingDown(expansion_list[i]) and DistanceBetweenPoints_kd(home_location,GetUnitLoc(expansion_list[i])) > 1500 and bad_expansion_flag[i] == 0 then
       call add_exp(expansion_list[i], expansion_dist[i], expansion_ancient[i], i, false)
     endif
     set i = i + 1
@@ -7206,7 +7225,7 @@ function ChooseExpansion takes nothing returns nothing
     loop
       exitwhen i >= water_expansion_list_length
       // water expansions: normal
-      if GetResourceAmount(water_expansion_list[i]) > gold and not CheckExpansionTaken(water_expansion_list[i]) and bad_water_expansion_flag[i] == 0 then
+      if GetResourceAmount(water_expansion_list[i]) > gold and not CheckExpansionTaken(water_expansion_list[i]) and not IsExpansionRebuildCoolingDown(water_expansion_list[i]) and bad_water_expansion_flag[i] == 0 then
         call add_exp(water_expansion_list[i], water_expansion_dist[i] + 5120, null, i, true)
       endif
       set i = i + 1
@@ -11560,6 +11579,11 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     call Trace("AMAIStartexpa: Expansion Not Found")
     return CANNOT_BUILD
   endif
+  if IsExpansionRebuildCoolingDown(current_expansion) then
+    call Trace("AMAIStartexpa: Recently destroyed expansion is cooling down")
+    set current_expansion = null
+    return CANNOT_BUILD
+  endif
   if CheckExpansionTaken(current_expansion) then
     call Trace("AMAIStartexpa: Expansion Taken by someone else")
     set current_expansion = null
@@ -11978,6 +12002,9 @@ local boolean minetimeready = false
 if not first_expansion_chosen then
   call Trace("ExpansionBuilder: Expansions not evaluated yet")
   return
+endif
+if current_expansion != null and IsExpansionRebuildCoolingDown(current_expansion) then
+  set current_expansion = null
 endif
 if current_expansion == null or CheckExpansionTaken(current_expansion) then
   call ChooseExpansion()
