@@ -38,6 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Undead attacks now release required ghouls from the active assault, return them home, and restore AI control so they resume lumber harvesting.
 - Recently destroyed expansions now cool down for at least 60 seconds, and remain unavailable while enemies threaten the location; destruction is detected even while town tracking is paused during an attack.
 - Armies no longer defend a destroyed town hall's location when only incidental structures remain there.
 - Zeppelins reserved for expansion workers are no longer reassigned to follow or unit rescue jobs.
