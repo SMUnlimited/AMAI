@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+- Attack target selection now sometimes prioritizes the nearest enemy as long as its still a weaker player, with the aim to snipe expansions from real threats.
 - Reforged Orc third-hero build priority now matches the second hero at tier three.
 - Additional peons needed for an expansion will start to be trained early.
 - Added boots of speed to all strategies.
@@ -38,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Native expansion, base, and mega targets now use the configured hard-coded AI target percentage for profiles in the intended direction.
 - Undead attacks now release required ghouls from the active assault, return them home, and restore AI control so they resume lumber harvesting.
 - Recently destroyed expansions now cool down for at least 60 seconds, and remain unavailable while enemies threaten the location; destruction is detected even while town tracking is paused during an attack.
 - Armies no longer defend a destroyed town hall's location when only incidental structures remain there.
