@@ -15,6 +15,9 @@
     integer lastFreeNum = 0
     integer mode = 0
     integer most_threatened_player_town = -1
+    integer next_most_threatened_player_town = -1
+    integer next_most_threatened_town = -1
+    integer next_most_threatened_enemy_town = -1
     location captain_home = null
     boolean captain_tp = true
     integer tmpmainarmy = -1
@@ -233,13 +236,37 @@ function SeedNewArmies takes nothing returns nothing
   endif
 endfunction
 
+// Live evaluation required as town tracking stops during town threatened
+function GetLiveTownDefenseValue takes integer num returns integer
+  local group g = CreateGroup()
+  local unit u = null
+  local integer value = 0
+  call GroupEnumUnitsInRangeOfLoc(g, town_loc[num], town_radius, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if UnitAlive(u) and GetOwningPlayer(u) == Player(town_owner[num]) and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+      if IsUnitType(u, UNIT_TYPE_TOWNHALL) or GetUnitTypeId(u) == old_id[racial_expansion] then
+        set value = value + 5
+      else
+        set value = value + 1
+      endif
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+  return value
+endfunction
+
 function UpdateSpecificTownThreat takes integer num returns nothing
   local integer i = 0
   local real dist = 0
   local real threat = 0
   local real max_threat = 0
   local location loc = null
-  if town_count[num] <= 0 then
+  if town_count[num] <= 0 or (IsPlayerAlly(Player(town_owner[num]), ai_player) and GetLiveTownDefenseValue(num) < 2) then
     set town_threat[num] = 0
     return
   endif
@@ -277,21 +304,20 @@ function UpdateSpecificTownThreat takes integer num returns nothing
     set i = i + 1
   endloop
   if Player(town_owner[num]) == ai_player then
-    if (most_threatened_player_town == -1 or town_threat[most_threatened_player_town] < town_threat[num]) and town_count[num] > 0 then
-      set most_threatened_player_town = num
+    if (next_most_threatened_player_town == -1 or town_threat[next_most_threatened_player_town] < town_threat[num]) and town_count[num] > 0 then
+      set next_most_threatened_player_town = num
     endif
-    set most_threatened_player_town = num
   elseif IsPlayerAlly(Player(town_owner[num]), ai_player) then
-    if (most_threatened_town == -1 or town_threat[most_threatened_town] < town_threat[num]) and town_count[num] > 0 then
+    if (next_most_threatened_town == -1 or town_threat[next_most_threatened_town] < town_threat[num]) and town_count[num] > 0 then
       if (town_can_tp[num] == true) then
-        set most_threatened_town = num
+        set next_most_threatened_town = num
       endif
     endif
    // call DisplayToAll("Town threatened "+Int2Str(num)+" Threat: "+Int2Str(R2I(town_threat[num])))
    // call PingMinimapEx(GetLocationX(town_loc[num]), GetLocationY(town_loc[num]), 4, 255, 0, 0, true)
   elseif IsPlayerEnemy(Player(town_owner[num]), ai_player) and town_count[num] > 0 then
-    if most_threatened_enemy_town == -1 or town_threat[most_threatened_enemy_town] < town_threat[num] then
-      set most_threatened_enemy_town = num
+    if next_most_threatened_enemy_town == -1 or town_threat[next_most_threatened_enemy_town] < town_threat[num] then
+      set next_most_threatened_enemy_town = num
     endif
   endif
 endfunction
@@ -303,6 +329,11 @@ function UpdateTownThreat takes nothing returns nothing
   local integer enemy_army = -1
   local boolean has_player_town = false
   local boolean has_threat_town = false
+  if lastFreeNum == 0 then
+    set next_most_threatened_player_town = -1
+    set next_most_threatened_town = -1
+    set next_most_threatened_enemy_town = -1
+  endif
   loop
     exitwhen i >= town_num
     if i > 0 and ModuloInteger(i, 10) == 0 then 
@@ -316,6 +347,9 @@ function UpdateTownThreat takes nothing returns nothing
   if i >= town_num then
     set mode = 3
     set lastFreeNum = 0
+    set most_threatened_player_town = next_most_threatened_player_town
+    set most_threatened_town = next_most_threatened_town
+    set most_threatened_enemy_town = next_most_threatened_enemy_town
     
     set has_player_town = most_threatened_player_town >= 0 and town_count[most_threatened_player_town] > 0
     set has_threat_town = most_threatened_town >= 0 and town_count[most_threatened_town] > 0
