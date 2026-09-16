@@ -6365,6 +6365,7 @@ function CheckExpansionTaken takes unit expa returns boolean
   local unit a = null
   local group mg = null
   local unit nearest_mine = null
+  local location ally_loc = null
   local real da = 0
   local real de = 0
   if expa == null or not UnitAlive(expa)  then
@@ -6441,7 +6442,10 @@ function CheckExpansionTaken takes unit expa returns boolean
         set mg = SelectByPlayer(mg, Player(PLAYER_NEUTRAL_PASSIVE), true)
         set mg = SelectByAlive2(mg, true)
         // find the nearest neutral mine to the ally
-        set nearest_mine = GetNearestOfGroup(nearest_mine, mg, GetUnitLoc(a))
+        set ally_loc = GetUnitLoc(a)
+        set nearest_mine = GetNearestOfGroup(nearest_mine, mg, ally_loc)
+        call RemoveLocation(ally_loc)
+        set ally_loc = null
         if nearest_mine != null then
           // distance from ally to its nearest neutral mine
           set da = DistanceBetweenPoints_dd(GetUnitLoc(a), GetUnitLoc(nearest_mine))
@@ -6747,7 +6751,11 @@ function ChooseExp takes nothing returns integer
   local integer first = 0
   local integer second = 0
   local integer third = 0
-  local integer riskyexp = GetRandomInt(1, exp_number - 1)
+  local integer riskyexp = 0
+  if exp_number < 2 then
+    return 0
+  endif
+  set riskyexp = GetRandomInt(1, exp_number - 1)
   loop
     exitwhen i >= exp_number
     if exp_rp[i] < exp_rp[first] then
@@ -7006,7 +7014,7 @@ function IsExpansionRebuildCoolingDown takes unit exp_u returns boolean
   loop
     exitwhen i >= own_town_num
     set town_idx = own_town[i]
-    if town_idx < town_num and town_destroyed_time[town_idx] > 0 and DistanceBetweenPoints_kd(GetUnitLoc(exp_u), town_loc[town_idx]) < expansion_taken_radius then
+    if town_idx < town_num and town_destroyed_time[town_idx] > 0 and DistanceBetweenPoints_dk(GetUnitLoc(exp_u), town_loc[town_idx]) < expansion_taken_radius then
       if TimerGetElapsed(tq_timer) - town_destroyed_time[town_idx] < expansion_rebuild_delay or GetLocationNonCreepStrength(GetUnitX(exp_u), GetUnitY(exp_u), expansion_taken_radius) > 0 or GetLocationTowerStrength(GetUnitX(exp_u), GetUnitY(exp_u), expansion_taken_radius) > 0 then
         return true
       endif
@@ -7073,7 +7081,7 @@ function CheckExpansionRebuildAt takes unit exp_u returns boolean
     exitwhen i >= own_town_num
     set town_idx = own_town[i]
     if town_idx < town_num and town_count[town_idx] == 0 and town_loc[town_idx] != null then
-      if DistanceBetweenPoints_kd(GetUnitLoc(exp_u), town_loc[town_idx]) < expansion_taken_radius then
+      if DistanceBetweenPoints_dk(GetUnitLoc(exp_u), town_loc[town_idx]) < expansion_taken_radius then
         set has_destroyed_town = true
         exitwhen true
       endif
