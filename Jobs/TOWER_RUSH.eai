@@ -116,24 +116,7 @@ function TowerRushBuilderControl_k takes unit u, location t returns nothing
 
 	set dist = DistanceBetweenPoints(l, t)
 
-	// If prerequisites or resources for building are gone and the peon is far away,
-	// recycle the peon instead of sending it to the build location.
-	if (not CanBuildUnit(race_tower_id) or GetGold() < GetUnitGoldCost2(race_tower_id) or GetWood() < GetUnitWoodCost2(race_tower_id)) then
-		if dist > 800 then
-			call CreateDebugTag("TRush: prerequisites missing, recycling peon", 10, u, 4.00, 2.00)
-			call RemoveLocation(l)
-			set l = null
-			call RecycleGuardPosition(u)
-			return
-		else
-			call RemoveLocation(l)
-			set l = null
-			set loccheck = null
-			set unitloc = null
-			return
-		endif
-	endif
-	if dist >= 800 and (id == OrderId("stop") or id != OrderId("move")) and (id != old_id[race_tower_id] and id != old_id[racial_shop]) then
+	if dist >= 800 and id != OrderId("move") and (id != old_id[race_tower_id] and id != old_id[racial_shop]) then
 		call CreateDebugTag("TRush: builder moving", 10, u, 4.00, 2.00)
 		call IssuePointOrderLoc(u, "move", t)
 	elseif dist<= 800 then
@@ -167,7 +150,7 @@ function TowerRushBuilderControl_k takes unit u, location t returns nothing
 					call CreateDebugTag("TRush: cannot build tower", 10, u, 4.00, 2.00)
 					return  // HUMAN militia cannot build , ELF no need all peon build but need try give one repair
 				endif
-				if towers_built < 3 or (towers_built >= 3 and towers_built <= 6 and GetGold() >= (GetUnitGoldCost2(race_tower_id) + 100) and GetWood() >= (GetUnitWoodCost2(race_tower_id) + 60)) or (towers_built > 6 and (GetGold() >= GetUnitGoldCost2(race_tower_id) * 2) and (GetWood() >= GetUnitWoodCost2(race_tower_id) * 2)) then
+				if GetGold() >= GetUnitGoldCost2(race_tower_id) and GetWood() >= GetUnitWoodCost2(race_tower_id) then
 					if race_tower_id_replace == 0 then
 						set loccheck = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[race_tower_id], GetLocationX(t), GetLocationY(t), 270.0)
 					else
@@ -275,11 +258,8 @@ function TowerRushJob takes nothing returns nothing
     local integer extra_wood = 0
     local integer base_gold = 0
     local integer base_wood = 0
-	local integer scale_div = 0
 	local integer desired_gold = 0
 	local integer desired_wood = 0
-	local integer delta_gold = 0
-	local integer delta_wood = 0
 	local real bt = 0 // Non attacking towers built
 	local real time_next_try = 4
 	local real EnemyStrength = 0
@@ -310,20 +290,10 @@ function TowerRushJob takes nothing returns nothing
 			if id == old_id[race_tower_id] or id == old_id[race_tower_upgrade] or id == old_id[race_tower_upgrade2] then
 				if id == old_id[race_tower_id] then
 						// Prefer higher upgrade when appropriate and when requirements for doing so are met
-						if (randomnum == 4 or not CanBuildUnit(race_tower_id)) and race_tower_upgrade2 != 0 and TownCount(race_tower_upgrade2) < 2 then
-							if CanBuildUnit(race_tower_upgrade2) then
-								call IssueImmediateOrderById(u, old_id[race_tower_upgrade2])
-							else
-								call TQAddJob(4, TOWER_RUSH, 0)
-								return
-							endif
-						elseif race_tower_upgrade != 0 then
-							if CanBuildUnit(race_tower_upgrade) then
-								call IssueImmediateOrderById(u, old_id[race_tower_upgrade])
-							else
-								call TQAddJob(4, TOWER_RUSH, 0)
-								return
-							endif
+						if (randomnum == 4 or not CanBuildUnit(race_tower_id)) and race_tower_upgrade2 != 0 and TownCount(race_tower_upgrade2) < 2 and CanBuildUnit(race_tower_upgrade2) then
+							call IssueImmediateOrderById(u, old_id[race_tower_upgrade2])
+						elseif race_tower_upgrade != 0 and CanBuildUnit(race_tower_upgrade) then
+							call IssueImmediateOrderById(u, old_id[race_tower_upgrade])
 						endif
 					endif
 				if race_tower_move == true then
@@ -353,10 +323,6 @@ function TowerRushJob takes nothing returns nothing
 	endloop
 	set towers_built = i
 	set race_tower_shop = s
-	if tower_used_item == false then
-		set tower_used_item = towers_built > 0 or (IsPointBlighted(GetLocationX(t), GetLocationY(t)) == IsPointBlighted(GetLocationX(home_location), GetLocationY(home_location)))
-		//have tower , no need send hero used item or UD item used success
-	endif
 	if towers_built <= 3 then
 		if GetLocationCreepStrength(GetLocationX(tower_target_loc), GetLocationY(tower_target_loc), 500) > 0 then
 			set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, 600)
@@ -380,10 +346,14 @@ function TowerRushJob takes nothing returns nothing
 			set t = GetProjectedLoc(tower_target_loc, towerrushsubloc, -400)
 		endif
 	endif
+	if tower_used_item == false then
+		set tower_used_item = towers_built > 0 or (IsPointBlighted(GetLocationX(t), GetLocationY(t)) == IsPointBlighted(GetLocationX(home_location), GetLocationY(home_location)))
+		//have tower , no need send hero used item or UD item used success
+	endif
 	call CreateDebugTagLoc("build tower loc", 10, GetLocationX(t), GetLocationY(t), 60.00, 55.00)
 	//call Trace("Getting ready to tower rush")
 	if GetLocationX(t) != 0 and GetLocationY(t) != 0 and (hero_built[1] or hero_built[2] or hero_built[3]) then
-		set CloseJob = town_threatened and town_threat[most_threatened_town] >= teleport_low_threat * 1.5
+		set CloseJob = teleporting or (town_threatened and town_threat[most_threatened_town] >= teleport_low_threat * 1.5)
 		set CloseJob = CloseJob or (race_tower_item_must and not tower_used_item and hero_unit[2] != null and builder[0] == null)  //  too longer time not buy item , but item must
 		if not CloseJob then
 			// Delegate strength-based decision to common.eai helper
@@ -519,6 +489,7 @@ function TowerRushJob takes nothing returns nothing
 		call SetItemPawnable(it, false)  //prevent selling
 	endif
 	set it = null
+	set towermove = towermove - 1
 	loop
 		exitwhen towermove < 30
 		call TowerRushTowerMoveControl_k(builder[towermove], t)
@@ -539,33 +510,40 @@ function TowerRushJob takes nothing returns nothing
 	set i = 1
 	loop
 		exitwhen i > race_tower_peon
-		call GroupRemoveUnit(g,builder[i])
+		if builder[i] != null and UnitAlive(builder[i]) and (not CanBuildUnit(race_tower_id) or GetGold() < GetUnitGoldCost2(race_tower_id) or GetWood() < GetUnitWoodCost2(race_tower_id)) and DistanceBetweenPoints_kd(t, GetUnitLoc(builder[i])) > 800 then
+			call CreateDebugTag("TRush: cannot build, recycling peon", 10, builder[i], 4.00, 2.00)
+			call RecycleGuardPosition(builder[i])
+			set builder[i] = null
+		else
+			call GroupRemoveUnit(g,builder[i])
+		endif
 		set i = i + 1
 	endloop
 	set tempg = CopyGroup(g)
 	set g = GetNearestSubGroupOfGroup(g, tower_target_loc, 10)
 	set i = 1
-	loop
-		set u = FirstOfGroup(g)
-		exitwhen i > race_tower_peon or u == null
-		if builder[i] == null or not UnitAlive(builder[i]) or IsUnitType(builder[i], UNIT_TYPE_STRUCTURE) or IsUnitLoaded(builder[i]) then  // prevent WIPS build and harvest
-			if TowerRushSetBuilder(u) then
-				call CreateDebugTag("TRush: set peon", 10, u, 4.00, 2.00)
-				set builder[i] = u
-				call GroupRemoveUnit(tempg,u)  // Prevent cannot build tower
-				call GroupRemoveUnit(tower_rush_power,u)
+	if CanBuildUnit(race_tower_id) and GetGold() >= GetUnitGoldCost2(race_tower_id) and GetWood() >= GetUnitWoodCost2(race_tower_id) then
+		loop
+			set u = FirstOfGroup(g)
+			exitwhen i > race_tower_peon or u == null
+			if builder[i] == null or not UnitAlive(builder[i]) or IsUnitType(builder[i], UNIT_TYPE_STRUCTURE) or IsUnitLoaded(builder[i]) then  // prevent WIPS build and harvest
+				if TowerRushSetBuilder(u) then
+					call CreateDebugTag("TRush: set peon", 10, u, 4.00, 2.00)
+					set builder[i] = u
+					call GroupRemoveUnit(tempg,u)  // Prevent cannot build tower
+					call GroupRemoveUnit(tower_rush_power,u)
+				endif
 			endif
-		endif
-		set i = i + 1
-		call GroupRemoveUnit(g,u)
-	endloop
+			set i = i + 1
+			call GroupRemoveUnit(g,u)
+		endloop
+	endif
 
 	// Reserve resources for towers/upgrades when peons assigned so other build logic
 	// doesn't spend them during this build loop. Also keep a small extra for repairs.
-	// Always recompute desired buffers and apply diffs so other code
-	// that may modify `gold_buffer`/`wood_buffer` is respected.
+	// Always recompute the desired buffers as the number of active towers changes.
 	if true then
-
+		set ii = 1
 		loop
 			exitwhen ii > race_tower_peon
 			if builder[ii] != null and UnitAlive(builder[ii]) and not IsUnitType(builder[ii], UNIT_TYPE_STRUCTURE) then
@@ -576,32 +554,13 @@ function TowerRushJob takes nothing returns nothing
 
 		// Only set reservation buffers when an attack-style tower run is active.
 		if tower_attack_run == true then
-			// If we have assigned builders prefer reserving per-builder cost
-			// Choose the most expensive buildable tower variant (tower or upgrades)
+			// Reserve tower construction costs; completed towers reduce the reservation.
 			set tower_unit_id = race_tower_id
-			if race_tower_upgrade != 0 then
-				if GetUnitGoldCost2(race_tower_upgrade) > GetUnitGoldCost2(tower_unit_id) then
-					set tower_unit_id = race_tower_upgrade
-				endif
-			endif
-			if race_tower_upgrade2 != 0 then
-				if GetUnitGoldCost2(race_tower_upgrade2) > GetUnitGoldCost2(tower_unit_id) then
-					set tower_unit_id = race_tower_upgrade2
-				endif
-			endif
 			if assigned_count > 0 then
 				set gold_per = GetUnitGoldCost2(tower_unit_id)
 				set wood_per = GetUnitWoodCost2(tower_unit_id)
-				// Scale reserved amount down as more towers are built.
-				// scale_num / 10 reduces reservation: when towers_built=0 -> scale=10 (100%),
-				// when towers_built increases reservation decreases down to ~10%.
-				set scale_div = 10
-				set reserve_gold = assigned_count * gold_per * Max(1, scale_div - towers_built) / scale_div
-				set reserve_wood = assigned_count * wood_per * Max(1, scale_div - towers_built) / scale_div
-				set scale_div = 4
-				if towers_built > 0 then
-					set scale_div = scale_div + towers_built
-				endif
+				set reserve_gold = assigned_count * gold_per * Max(1, 10 - towers_built) / 10
+				set reserve_wood = assigned_count * wood_per * Max(1, 10 - towers_built) / 10
 				set extra_gold = reserve_gold / 7
 				if extra_gold < 1 then
 					set extra_gold = 1
@@ -612,10 +571,8 @@ function TowerRushJob takes nothing returns nothing
 				endif
 				set desired_gold = reserve_gold + extra_gold
 				set desired_wood = reserve_wood + extra_wood
-				set delta_gold = desired_gold - gold_buffer
-				set delta_wood = desired_wood - wood_buffer
-				set gold_buffer = Max(0, gold_buffer + delta_gold)
-				set wood_buffer = Max(0, wood_buffer + delta_wood)
+				set gold_buffer = desired_gold
+				set wood_buffer = desired_wood
 			else
 				// No peons assigned — fall back to conservative fixed buffers (commented rules)
 				set base_gold = 0
@@ -641,17 +598,11 @@ function TowerRushJob takes nothing returns nothing
 					endif
 					set desired_gold = base_gold + extra_gold
 					set desired_wood = base_wood + extra_wood
-					set delta_gold = desired_gold - gold_buffer
-					set delta_wood = desired_wood - wood_buffer
-					set gold_buffer = Max(0, gold_buffer + delta_gold)
-					set wood_buffer = Max(0, wood_buffer + delta_wood)
+					set gold_buffer = desired_gold
+					set wood_buffer = desired_wood
 				else
-					set desired_gold = 0
-					set desired_wood = 0
-					set delta_gold = desired_gold - gold_buffer
-					set delta_wood = desired_wood - wood_buffer
-					set gold_buffer = Max(0, gold_buffer + delta_gold)
-					set wood_buffer = Max(0, wood_buffer + delta_wood)
+					set gold_buffer = 0
+					set wood_buffer = 0
 				endif
 			endif
 		else
@@ -668,16 +619,17 @@ function TowerRushJob takes nothing returns nothing
 			exitwhen i > 46 or FirstOfGroup(tempg) == null  //prevent harvest gold peon more then 5 , so just control 3 peon
 			if builder[i] == null or not UnitAlive(builder[i]) then
 				set builder[i] = FirstOfGroup(tempg)
-				if i > 43 then
+				if i <= 43 then
+					call RecycleGuardPosition(builder[i])
+				endif
+			endif
+			if i > 43 then
+				call GroupAddUnit(goldgrp, builder[i])
+				if not IsUnitInGroup(builder[i], tower_rush_power) then
 					call RemoveGuardPosition(builder[i])
 					call GroupAddUnit(tower_rush_power,builder[i])
-					call GroupAddUnit(goldgrp, builder[i])
-					if GetUnitCurrentOrder(builder[i]) != OrderId("harvest") and GetUnitCurrentOrder(builder[i]) != OrderId("resumeharvesting") then
-						call IssueImmediateOrder(builder[i], "autoharvestgold")
-					endif
-				endif
-			elseif i > 43 then
-				if GetUnitCurrentOrder(builder[i]) != OrderId("harvest") and GetUnitCurrentOrder(builder[i]) != OrderId("resumeharvesting") then
+					call IssueImmediateOrder(builder[i], "autoharvestgold")
+				elseif GetUnitCurrentOrder(builder[i]) != OrderId("harvest") and GetUnitCurrentOrder(builder[i]) != OrderId("resumeharvesting") then
 					call CreateDebugTag("TRush: harvest gold peon", 10, u, 4.00, 2.00)
 					call IssueImmediateOrder(builder[i], "autoharvestgold")
 				endif
@@ -685,23 +637,18 @@ function TowerRushJob takes nothing returns nothing
 			call GroupRemoveUnit(tempg,builder[i])
 			set i = i + 1
 		endloop
-		call GroupRemoveUnit(tower_rush_power,builder[41])  // give AI 2 peon build other construct
+		call GroupRemoveUnit(tower_rush_power,builder[41])  // leave three peons under normal AI control for other construction
 		call GroupRemoveUnit(tower_rush_power,builder[42])
 		call GroupRemoveUnit(tower_rush_power,builder[43])
-		call RecycleGuardPosition(builder[41])
-		call RecycleGuardPosition(builder[42])
-		call RecycleGuardPosition(builder[43])
 		loop
 			set u = FirstOfGroup(tempg)
 			exitwhen u == null
 			// Skip peons already reserved for gold
 			if not IsUnitInGroup(u, tower_rush_power) and not IsUnitInGroup(u, goldgrp) then
-				if  GetUnitCurrentOrder(u) != OrderId("harvest") and GetUnitCurrentOrder(u) != OrderId("resumeharvesting") then
-					call CreateDebugTag("TRush: harvest lumber peon", 10, u, 4.00, 2.00)
-					call RemoveGuardPosition(u)
-					call GroupAddUnit(tower_rush_power,u)
-					call IssueImmediateOrder(u, "autoharvestlumber")
-				endif
+				call CreateDebugTag("TRush: harvest lumber peon", 10, u, 4.00, 2.00)
+				call RemoveGuardPosition(u)
+				call GroupAddUnit(tower_rush_power,u)
+				call IssueImmediateOrder(u, "autoharvestlumber")
 			endif
 			call GroupRemoveUnit(tempg,u)
 		endloop
@@ -720,38 +667,50 @@ function TowerRushJob takes nothing returns nothing
 		endif
 		set i = 1
 		if tower_peon_run != true then
+			set s = 0
 			call GroupClear(g)
 			call GroupEnumUnitsOfPlayer(g, ai_player, null)
 			set g = SelectUnittype(g, UNIT_TYPE_TOWNHALL, true)
 			set g = SelectByAlive(g, true)
 			loop
 				exitwhen i > race_tower_peon
-				call RemoveGuardPosition(builder[i])
-				call DestroyGroup(tempg)
-				set tempg = CopyGroup(g)
-				loop
-					set u = FirstOfGroup(tempg)
-					exitwhen u == null
-					exitwhen TowerRushBuilderFirstControl(builder[i], u) > 0
-					call GroupRemoveUnit(tempg,u)
-				endloop
+				if builder[i] != null and UnitAlive(builder[i]) then
+					call RemoveGuardPosition(builder[i])
+					call DestroyGroup(tempg)
+					set tempg = CopyGroup(g)
+					loop
+						set u = FirstOfGroup(tempg)
+						exitwhen u == null
+						exitwhen TowerRushBuilderFirstControl(builder[i], u) > 0
+						call GroupRemoveUnit(tempg,u)
+					endloop
+					set s = s + 1
+				endif
 				set i = i + 1
 			endloop
-			set tower_peon_run = true
+			set tower_peon_run = s > 0
 			set time_next_try = 2
 		elseif towers_built < buildtries and towers_built - towers_attck < 2 then  // here towers_built no change , so AI will build more tower , even if tower can move , but not a big problem
+			set x = 0
+			set y = 0
+			set s = 0
 			loop
 				exitwhen i > race_tower_peon
-				call TowerRushBuilderControl_k(builder[i], t)
-				set x = GetUnitX(builder[i])
-				set y = GetUnitY(builder[i])
+				if builder[i] != null and UnitAlive(builder[i]) then
+					call TowerRushBuilderControl_k(builder[i], t)
+					set x = x + GetUnitX(builder[i])
+					set y = y + GetUnitY(builder[i])
+					set s = s + 1
+				endif
 				set i = i + 1
 			endloop
 			if tower_peon_inplace then
 				set towers_built_count = towers_built_count + 1
 			endif
-			set tower_peon_point_x = x / Max(1, i - 1)
-			set tower_peon_point_y = y / Max(1, i - 1)
+			if s > 0 then
+				set tower_peon_point_x = x / s
+				set tower_peon_point_y = y / s
+			endif
 			set time_next_try = 1
 		endif
 	endif
