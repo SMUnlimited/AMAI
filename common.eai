@@ -813,6 +813,7 @@ globals
 
     integer attacking_ghouls = 0
     integer harvesting_ghouls = 0
+    boolean ghouls_in_attack = false
     hashtable returning_ghouls = InitHashtable()
 
     integer ai_time = 0
@@ -12535,6 +12536,7 @@ endfunction
 
 function FromGroupAndGhoulsAM takes integer seconds returns nothing
   if race_has_ghouls and race_ghouls_attack then
+    set ghouls_in_attack = true
     call FormGroupAM(0)
   endif
   call FormGroupAM(seconds)
@@ -13013,6 +13015,7 @@ function AttackMoveKillAAM takes unit target, boolean ally_override returns noth
     call Sleep(3 * sleep_multiplier)
     return
   endif
+  call FromGroupAndGhoulsAM(3)
   set attack_running = true
   call DoAttackJobs()
   if distraction_group != 0 and GetOwningPlayer(target) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and GetRandomInt(1,10) < 5 then
@@ -13051,6 +13054,7 @@ endfunction
 
 //============================================================================
 function AttackMoveKillXYAAM takes integer x, integer y returns nothing
+  call FromGroupAndGhoulsAM(3)
   set attack_running = true
   call DoAttackJobs()
   if zep_next_wave then
@@ -13147,7 +13151,7 @@ function CreepAttack takes integer str returns nothing
 // Creep camp medium is level 10 - 19
 // Creep camp strong is level 20 - 100
 
-  if target == null then
+  if target == null or not UnitAlive(target) then
     call Trace("No creep target found")
     call Sleep(3 * sleep_multiplier)
     return
@@ -13189,17 +13193,12 @@ function AttackMoveTowerRush takes nothing returns nothing
 		if tower_attack_run != true and (GetUnitCountDone(old_id[hero[1]]) + GetUnitCountDone(old_id[hero[2]]) + GetUnitCountDone(old_id[hero[3]])) > 0 and (race_tower_item_must != true or (race_tower_item_must == true and (builder[0] != null or tower_used_item))) then
 			set tower_attack_run = true
 			set attack_running = true
-			call FormGroupAM(0)
+			call FromGroupAndGhoulsAM(0)
 			set attack_length_counter = 0
 			if not town_threatened then
 				call SetAllianceTargetIfLead(builder[10])
 			endif
       call Trace("AttackMoveTowerRush: tower_attack_run enabled; forming attack group")
-    elseif tower_attack_run != true then
-      set attack_length_counter = attack_length_counter + 1
-      if ModuloInteger(attack_length_counter,attack_reform_length*2) == 0 then
-        call FormGroupAM(0)  // Form to be ready but do not attack
-      endif
 		elseif tower_attack_run then
 			//if take_exp and GetMinesOwned() < 2 and (mine == null or CheckExpansionTaken(mine)) then
 			//	loop
@@ -13328,6 +13327,7 @@ endfunction
 
 //============================================================================
 function QueueAttackMoveXY takes integer x, integer y returns nothing
+  call FromGroupAndGhoulsAM(3)
   set attack_running = true
   call DoAttackJobs()
   loop
@@ -13744,7 +13744,7 @@ function Militia_Expansion takes integer m returns nothing
   call AddAbilityToGroup(CopyGroup(g), race_militia_ability)
   call GroupImmediateOrder(g, race_militia_unitstring)
   call RemoveInjuries()
-  call FormGroupAM(4)
+  call FromGroupAndGhoulsAM(4)
   loop
     exitwhen AreUnitsOfType(g, race_militia_id)
     exitwhen t > 4
@@ -13922,7 +13922,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
         if common != null then
           call Trace("===Desperation Attack Alliance Target===")
           //call Chat(C_Ally)
-          call FromGroupAndGhoulsAM(3)
           call DesperationAssault()
           call AttackMoveKillAAM(common, true)
           call ClearAllianceTarget(common)
@@ -13936,7 +13935,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
     if (common != null) then
       call Trace("===Desperation Attack Random Enemy Target===")
       call SetAllianceTargetIfLeadAndChat(common, C_Ally)
-      call FromGroupAndGhoulsAM(3)
       call DesperationAssault()
       call AttackMoveKillAAM(common, true)
       call ClearAllianceTarget(common)
@@ -13974,7 +13972,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
 
     if queue_attack_p then
       call Trace("Attacking point "+Int2Str(queue_t_x)+","+Int2Str(queue_t_y) )
-      call FromGroupAndGhoulsAM(3)
       call QueueAttackMoveXY(queue_t_x, queue_t_y)
       call Trace("Point reached or aborted" )
       return
@@ -13988,7 +13985,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
         call QueueGetNextCommand()
       else
         call Trace("Attacking unit" )
-        call FromGroupAndGhoulsAM(3)
         call AttackMoveKillAAM(queue_t_u, false)
         call Trace("Attack complete" )
         return
@@ -14005,7 +14001,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
       set attack_player = false
       return
     endif
-    call FromGroupAndGhoulsAM(3)
     call AttackMoveKillAAM(hall, false)
     call Trace("Attack complete" )
     set hall = null
@@ -14014,7 +14009,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
 
   if attack_point then
     call Trace("Attacking point "+Int2Str(attack_target_x)+","+Int2Str(attack_target_y) )
-    call FromGroupAndGhoulsAM(3)
     call AttackMoveKillXYAAM(attack_target_x, attack_target_y)
     call Trace("Attack complete" )
     return
@@ -14029,7 +14023,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
       set attack_unit = false
     else
       call Trace("Attacking unit" )
-      call FromGroupAndGhoulsAM(3)
       call AttackMoveKillAAM(target_unit, false)
       call Trace("Attack complete" )
       return
@@ -14042,9 +14035,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
     //
     if militia_expanding then 
       call Trace("A Militia Expansion")
-      if race_has_ghouls and race_ghouls_attack then
-        call FormGroupAM(0)
-      endif
       call Militia_Expansion(6)
       set militia_expanding = false
       return
@@ -14054,7 +14044,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
     //
     if towerrush then
       call Trace("A Tower Rush Attack")
-      call FromGroupAndGhoulsAM(3)
       call AttackMoveTowerRush()
       return
     endif
@@ -14085,7 +14074,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
     if double_expansion_target != null and IsTargetGood(double_expansion_target, 10) then
       call Trace("Double Expansion Attack")
       call SetAllianceTargetIfLeadAndChat(double_expansion_target, C_Ally)
-      call FromGroupAndGhoulsAM(3)
       call AttackMoveKillAAM(double_expansion_target, false)
       call ClearAllianceTarget(double_expansion_target)
       if not UnitAlive(double_expansion_target) then
@@ -14132,7 +14120,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
         if common != null then
           call Trace("Attack Alliance Target")
           //call Chat(C_Ally)
-          call FromGroupAndGhoulsAM(3)
           call AttackMoveKillAAM(common, true)
           call Trace("Attack complete")
           call ClearAllianceTarget(common)
@@ -14153,7 +14140,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
           call SetAllianceTargetIfLeadAndChat(mega, C_Megatarget)
           //call SetChatVarsAttack(mega)
           call Chat(C_Mega) // This chat is to enemies not allies
-          call FromGroupAndGhoulsAM(3)
           call AttackMoveKillAAM(mega, true)
           call ClearAllianceTarget(mega)
           set mega = null
@@ -14166,7 +14152,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
         set hall = ChooseAttackTarget(hall)
         if hall != null and UnitAlive(hall) then
           call SetAllianceTargetIfLeadAndChat(alli_target, C_Attack)
-          call FromGroupAndGhoulsAM(3)
           call AttackMoveKillAAM(hall, true)
           set hall = null
           return
