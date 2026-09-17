@@ -668,26 +668,20 @@ endfunction
 function ReturnGhoulsToHarvest takes nothing returns nothing
   local group g = CreateGroup()
   local group returners = CreateGroup()
+  local group returning_group = CreateGroup()
+  local group add_returner = null
   local unit u = null
   local integer harvesting = 0
   local integer returning = 0
   local integer excess = 0
 
-  loop
-    set u = FirstOfGroup(returning_ghouls)
-    exitwhen u == null
-    if UnitAlive(u) then
-      set returning = returning + 1
-      call GroupRemoveUnit(returning_ghouls, u)
-      call GroupAddUnit(g, u)
-    else
-      call GroupRemoveUnit(returning_ghouls, u)
-    endif
-  endloop
+  call FlushUnitHashtable(returning_ghouls, 0, 0)
+  set returning_group = ReturnLivingUnitsOfHashtable(returning_ghouls, 0, 0, returning_group)
+  set g = CopyGroup(returning_group)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    call GroupAddUnit(returning_ghouls, u)
+    set returning = returning + 1
     call GroupRemoveUnit(g, u)
   endloop
 
@@ -695,9 +689,9 @@ function ReturnGhoulsToHarvest takes nothing returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if GetUnitTypeId(u) == old_id[racial_ghoul] and UnitAlive(u) and (GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == OrderId("resumeharvesting")) then
+    if GetUnitTypeId(u) == old_id[racial_ghoul] and UnitAlive(u) and not IsUnitInGroup(u, returning_group) and (GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == OrderId("resumeharvesting")) then
       set harvesting = harvesting + 1
-    elseif GetUnitTypeId(u) == old_id[racial_ghoul] and UnitAlive(u) and IsStandardUnit(u) and not IsUnitBuying(u) and not IsUnitInGroup(u, returning_ghouls) then
+    elseif GetUnitTypeId(u) == old_id[racial_ghoul] and UnitAlive(u) and IsStandardUnit(u) and not IsUnitBuying(u) and not IsUnitInGroup(u, returning_group) then
       call GroupAddUnit(returners, u)
     endif
     call GroupRemoveUnit(g, u)
@@ -706,9 +700,10 @@ function ReturnGhoulsToHarvest takes nothing returns nothing
   set g = null
   set excess = Min(Max(harvesting + returning - harvesting_ghouls, 0), returning)
   loop
-    set u = FirstOfGroup(returning_ghouls)
+    set u = FirstOfGroup(returning_group)
     exitwhen u == null or excess <= 0
-    call GroupRemoveUnit(returning_ghouls, u)
+    call GroupRemoveUnit(returning_group, u)
+    call RemoveUnitFromHashtable(returning_ghouls, 0, 0, u)
     call RecycleGuardPosition(u)
     set returning = returning - 1
     set excess = excess - 1
@@ -718,13 +713,19 @@ function ReturnGhoulsToHarvest takes nothing returns nothing
     set u = FirstOfGroup(returners)
     exitwhen u == null
     call RemoveGuardPosition(u)
-    call GroupAddUnit(returning_ghouls, u)
+    set add_returner = CreateGroup()
+    call GroupAddUnit(add_returner, u)
+    call AddUnitsToHashtable(returning_ghouls, 0, 0, add_returner)
+    call DestroyGroup(add_returner)
+    set add_returner = null
     call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
     call TQAddUnitJob(GetTimeToReachLoc(u, home_location) + 1, GHOUL_RETURN_HOME, 0, u)
     call GroupRemoveUnit(returners, u)
   endloop
   call DestroyGroup(returners)
+  call DestroyGroup(returning_group)
   set returners = null
+  set returning_group = null
   set u = null
 endfunction
 
