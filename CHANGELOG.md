@@ -3,11 +3,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## Unreleased
+## [3.7.0] - 2026-09-18
 
 ### Added
 
-- Added support for v3.0.0 Reforged (helped by jzy-chitong56)
+- Added support for v3.0.0 Reforged (thanks to jzy-chitong56)
   - Forsaken Paladin skill builds for all hero acquisition tiers.
   - New race colour option
   - Minimum supported version for reforged is now v3 due to the native changes
@@ -26,7 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Reforged raised low town-hall upgrade priorities so tier progression is less likely to stall behind routine production.
 - Reforged increased specialist counter weights without replacing normal mixed-army composition.
 - Reforged expansion sites now prioritize additional existing racial defenses and their shop, without changing defense placement functions.
-- Reforged eebalanced core consumables, movement and survival items, and tier-three racial orbs.
+- Reforged rebalanced core consumables, movement and survival items, and tier-three racial orbs.
 - Reforged increased priorities for composition-related upgrades including Human Defend/Masonry, Orc anti-air and siege support, and Undead Stone Form.
 - Dynamic unit production now continues to the food cap instead of stopping at specific food selections.
 - Electron releases now package the compiled scripts and MPQEditor directly from the base AMAI directory. (devtools)
