@@ -55,6 +55,8 @@ Unzip the contents of the installer to a folder of your choice.
 
 Double-click amai-installer.exe to open the installer.
 
+Keep the included `Scripts` folder beside the installer executable. These are the default compiled AI scripts used by the installer and can be customized before installing them into maps.
+
 Select whether to install to a map or whole directory.
 
 Select if Commander is enabled, or if you want to have AMAI play against the vanilla AI. Even teams are Vanilla AI, odd teams are AMAI.
@@ -197,14 +199,9 @@ Run this inside the Electron folder:
 npm run electron:build
 ```
 
-You must have a built or downloaded copy of AMAI and unzip it in the folder `<AMAI Installer>\resources\AMAI`.
-  - You only need to include the `Scripts` folder and `MPQEditor.exe` within the AMAI directory.
-
-Zip the contents of the release/win-unpacked folder and deploy this zipped file.
+On Windows this creates `release/amai-installer <version>.zip`, containing the portable executable and the compiled `Scripts` folder. Deploy this ZIP so the scripts remain editable outside the executable.
 
 ### Notes about the Electron Installer Build Process
-
-I'm working on doing the zip mentioned above in an automated way.
 
 The build process creates the executable for the current operating system only. To create other executables, the process must be run on the corresponding operating system.
 
@@ -221,7 +218,7 @@ Then install like normal by running this:
 .\InstallREFORGEDToMap.bat "C:\Documents\Warcraft III\Maps\AMAI\<Map>.w3m" <N>
 ```
 
-To use the installer, you must copy the `Scripts` folder and `MPQEditor.exe` to the folder `<AMAI Installer>\resources\AMAI`.
+To use the installer, keep the built `Scripts` folder beside the installer executable.
 
 Run up a custom game and select the map to play.
 

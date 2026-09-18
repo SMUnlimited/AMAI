@@ -1,4 +1,5 @@
 const assert = require('assert');
+const path = require('path');
 const { isMapFile, missingFiles } = require('../AMAI-release/install');
 
 assert.deepStrictEqual(
@@ -14,4 +15,13 @@ assert.deepStrictEqual(
 assert.deepStrictEqual(
   missingFiles('OPTREFORGED', 2, () => false),
   ['Scripts\\OPTREFORGED\\common.ai', 'MPQEditor.exe', 'Scripts\\OPTREFORGED\\vsai\\Blizzard.j']
+);
+
+const customScripts = path.resolve('custom scripts');
+assert.deepStrictEqual(
+  missingFiles('REFORGED', 1, file => file === 'MPQEditor.exe', customScripts),
+  [
+    path.join(customScripts, 'REFORGED', 'common.ai'),
+    path.join(customScripts, 'REFORGED', 'Blizzard.j')
+  ]
 );

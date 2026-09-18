@@ -23,16 +23,19 @@ const isDev = () => {
 }
 
 const installerDirectory = () => path.resolve(__dirname, isDev() ? '../AMAI-release' : '../AMAI');
+const scriptsDirectory = () => isDev()
+  ? path.resolve(__dirname, '../../Scripts')
+  : path.join(process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath), 'Scripts');
 const installerVersions = ['ROC', 'TFT', 'REFORGED', 'OPTROC', 'OPTTFT', 'OPTREFORGED'];
 const missingInstallerFiles = () => [
-  'install.js',
-  'MPQEditor.exe',
+  path.join(installerDirectory(), 'install.js'),
+  path.join(installerDirectory(), 'MPQEditor.exe'),
   ...installerVersions.flatMap(version => [
-    path.join('Scripts', version, 'common.ai'),
-    path.join('Scripts', version, 'Blizzard.j'),
-    path.join('Scripts', version, 'vsai', 'Blizzard.j')
+    path.join(scriptsDirectory(), version, 'common.ai'),
+    path.join(scriptsDirectory(), version, 'Blizzard.j'),
+    path.join(scriptsDirectory(), version, 'vsai', 'Blizzard.j')
   ])
-].filter(file => !fs.existsSync(path.join(installerDirectory(), file)));
+].filter(file => !fs.existsSync(file));
 
 const reportMissingInstallerFiles = (): boolean => {
   const missing = missingInstallerFiles();
@@ -160,7 +163,7 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
       require.resolve(
         path.join(currentScriptDir, 'install.js')
       ),
-      [ response[0], commander, ver, forceLang ? currentLanguage : '-' ],
+      [ response[0], commander, ver, forceLang ? currentLanguage : '-', scriptsDirectory() ],
       { signal }
     );
 

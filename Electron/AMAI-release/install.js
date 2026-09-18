@@ -6,15 +6,15 @@ const arrayOfFiles = [];
 
 const isMapFile = file => [`.w3m`, `.w3x`].includes(path.extname(file).toLowerCase());
 
-const requiredFiles = (ver, commander) => [
-  `Scripts\\${ver}\\common.ai`,
+const requiredFiles = (ver, commander, scriptsDirectory = 'Scripts') => [
+  path.join(scriptsDirectory, ver, 'common.ai'),
   `MPQEditor.exe`,
-  ...(commander == 1 ? [`Scripts\\${ver}\\Blizzard.j`] : []),
-  ...(commander == 2 ? [`Scripts\\${ver}\\vsai\\Blizzard.j`] : [])
+  ...(commander == 1 ? [path.join(scriptsDirectory, ver, 'Blizzard.j')] : []),
+  ...(commander == 2 ? [path.join(scriptsDirectory, ver, 'vsai', 'Blizzard.j')] : [])
 ];
 
-const missingFiles = (ver, commander, existsSync = fs.existsSync) =>
-  requiredFiles(ver, commander).filter(file => !existsSync(file));
+const missingFiles = (ver, commander, existsSync = fs.existsSync, scriptsDirectory = 'Scripts') =>
+  requiredFiles(ver, commander, scriptsDirectory).filter(file => !existsSync(file));
 
 /** uncomment to debbug */
 // const ls = spawnSync(
@@ -46,17 +46,18 @@ const installOnDirectory = async () => {
   const commander = args[1];
   const ver = args[2]
   const language =  args[3]
+  const scriptsDirectory = args[4] || 'Scripts'
   const installCommander = commander == 1
   const vsAICommander = commander == 2
   let bj = 'Blizzard.j' 
   if (vsAICommander) { bj = 'vsai\\Blizzard.j'}
 
-  const commonAIPath = `Scripts\\${ver}\\common.ai`
-  const blizzardPath =`Scripts\\${ver}\\Blizzard.j`
+  const commonAIPath = path.join(scriptsDirectory, ver, 'common.ai')
+  const blizzardPath = path.join(scriptsDirectory, ver, ...(vsAICommander ? ['vsai', 'Blizzard.j'] : ['Blizzard.j']))
 
-  const missing = missingFiles(ver, commander);
+  const missing = missingFiles(ver, commander, fs.existsSync, scriptsDirectory);
   if (missing.length) {
-    process.send(`ERROR: Cannot find required installer files:\n${missing.map(file => `${process.cwd()}\\${file}`).join('\n')}`);
+    process.send(`ERROR: Cannot find required installer files:\n${missing.map(file => path.resolve(file)).join('\n')}`);
     process.exitCode = 1;
     return;
   }
@@ -127,7 +128,7 @@ const installOnDirectory = async () => {
           [
             'a',
             file,
-            `Scripts\\${ver}\\*.ai`,
+            path.join(scriptsDirectory, ver, '*.ai'),
             `Scripts`
           ],
           { encoding : `utf8` }
@@ -157,7 +158,7 @@ const installOnDirectory = async () => {
                 [
                   'a',
                   file,
-                  `Scripts\\${ver}\\vsai\\*.ai`,
+                  path.join(scriptsDirectory, ver, 'vsai', '*.ai'),
                   `Scripts`
                 ],
                 { encoding : `utf8` }
@@ -180,7 +181,7 @@ const installOnDirectory = async () => {
             [
               'a',
               file,
-              `Scripts\\${ver}\\${bj}`,
+              blizzardPath,
               `Scripts\\Blizzard.j`,
             ],
             { encoding : `utf8` }
