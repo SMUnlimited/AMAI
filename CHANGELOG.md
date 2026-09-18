@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Explicit front and tower-rush construction orders are no longer relocated by the early-game local-harvesting safeguard.
 - Tower rushes now release distant builders when tower prerequisites or resources are unavailable, stop cleanly after teleporting home, keep Human gold and lumber workers in stable roles, and reduce their resource buffer as towers are completed.
 - Attack target selection no longer loses late-game enemies when the native building lookup fails, their original town is destroyed, every remaining player has zero measured strength, or map distances exceed a fixed score limit.
 - Expansion selection no longer destroys tracked town locations, leaks locations while checking allied mine claims, or requests an invalid random range when only one expansion is available.
