@@ -4,6 +4,8 @@ Advanced Melee Artificial Intelligence Mod For Warcraft III.
 
 Created by **AIAndy**, **Zalamander** and the **Strategy Master**.
 
+Installation, Commander, customization, and development documentation is available in the [AMAI wiki](https://github.com/SMUnlimited/AMAI/wiki).
+
 Official Release Links available from https://www.hiveworkshop.com/threads/advanced-melee-ai.62879/.
 
 AMAI was originally hosted on http://www.wc3campaigns.net/forumdisplay.php?f=601.
@@ -344,7 +346,7 @@ If your custom map has custom units you will need to make custom changes to AMAI
 
 ## Custom AI
 
-AMAI has built in support to be able to write new strategies and profiles using the **Strategy Manager UI Client** . The `Manual` folder contains more details.
+AMAI has built in support to be able to write new strategies and profiles using the **Strategy Manager UI Client** . See the [AMAI wiki](https://github.com/SMUnlimited/AMAI/wiki)
 
 # Credits
 
