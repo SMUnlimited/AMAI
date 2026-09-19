@@ -6275,8 +6275,12 @@ function MineSharePolicy takes boolean primaryMine, integer targetGold, integer 
   return not primaryMine and targetGold > 0 and remainingGold >= targetGold
 endfunction
 
+function NightElfRelocationPolicy takes race claimantRace, boolean hasActiveMine, real distance returns boolean
+  return claimantRace == RACE_NIGHTELF and not hasActiveMine and distance <= expansion_taken_radius
+endfunction
+
 function ValidateMineClaimPolicy takes nothing returns nothing
-  if not MineClaimPolicy(RACE_HUMAN, false, false, race_max_expa_mine_distance) or not MineClaimPolicy(RACE_ORC, false, false, race_max_expa_mine_distance) or MineClaimPolicy(RACE_NIGHTELF, false, false, race_max_expa_mine_distance) or not MineClaimPolicy(RACE_NIGHTELF, false, true, race_max_expa_mine_distance) or MineClaimPolicy(RACE_UNDEAD, false, true, race_max_expa_mine_distance + 1) or not MineClaimPolicy(RACE_UNDEAD, true, false, race_max_expa_mine_distance + 1) or MineSharePolicy(true, 10000, 10000) or not MineSharePolicy(false, 10000, 10000) or MineSharePolicy(false, 10001, 10000) then
+  if not MineClaimPolicy(RACE_HUMAN, false, false, race_max_expa_mine_distance) or not MineClaimPolicy(RACE_ORC, false, false, race_max_expa_mine_distance) or MineClaimPolicy(RACE_NIGHTELF, false, false, race_max_expa_mine_distance) or not MineClaimPolicy(RACE_NIGHTELF, false, true, race_max_expa_mine_distance) or MineClaimPolicy(RACE_UNDEAD, false, true, race_max_expa_mine_distance + 1) or not MineClaimPolicy(RACE_UNDEAD, true, false, race_max_expa_mine_distance + 1) or MineSharePolicy(true, 10000, 10000) or not MineSharePolicy(false, 10000, 10000) or MineSharePolicy(false, 10001, 10000) or not NightElfRelocationPolicy(RACE_NIGHTELF, false, expansion_taken_radius) or NightElfRelocationPolicy(RACE_NIGHTELF, true, expansion_taken_radius) or NightElfRelocationPolicy(RACE_UNDEAD, false, expansion_taken_radius) or NightElfRelocationPolicy(RACE_NIGHTELF, false, expansion_taken_radius + 1) then
     call TraceAll("ERROR: Mine claim policy self-check failed")
   endif
 endfunction
@@ -6363,6 +6367,35 @@ function GetMineClaimant takes unit mine returns unit
   return GetMineClaimantEx(mine, null)
 endfunction
 
+function NightElfHallHasActiveMine takes unit hall returns boolean
+  local group g = null
+  local unit mine = null
+  local player owner = null
+  if hall == null or GetPlayerRace(GetOwningPlayer(hall)) != RACE_NIGHTELF or not IsUnitType(hall, UNIT_TYPE_TOWNHALL) then
+    return false
+  endif
+  set owner = GetOwningPlayer(hall)
+  set g = CreateGroup()
+  call GroupEnumUnitsInRange(g, GetUnitX(hall), GetUnitY(hall), expansion_taken_radius, null)
+  loop
+    set mine = FirstOfGroup(g)
+    exitwhen mine == null
+    if UnitAlive(mine) and GetResourceAmount(mine) > 0 and IsUnitGoldMine(mine) and GetOwningPlayer(mine) == owner then
+      call DestroyGroup(g)
+      set g = null
+      set mine = null
+      set owner = null
+      return true
+    endif
+    call GroupRemoveUnit(g, mine)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set mine = null
+  set owner = null
+  return false
+endfunction
+
 function IsAlliedSharedMineHall takes unit claimant returns boolean
   local race claimantRace = null
   if claimant == null or not IsPlayerAlly(ai_player, GetOwningPlayer(claimant)) or GetOwningPlayer(claimant) == ai_player or not IsUnitType(claimant, UNIT_TYPE_TOWNHALL) then
@@ -6426,6 +6459,8 @@ endfunction
 function GetExpansionMineClaimantEx takes unit mine, unit ignored returns unit
   local unit claimant = GetMineClaimantEx(mine, ignored)
   if IsSharedExpansionMine(mine) and IsAlliedSharedMineHall(claimant) then
+    set claimant = null
+  elseif claimant != null and GetOwningPlayer(claimant) == ai_player and NightElfRelocationPolicy(GetPlayerRace(ai_player), NightElfHallHasActiveMine(claimant), DistanceBetweenUnits(claimant, mine)) then
     set claimant = null
   endif
   return claimant
@@ -11470,6 +11505,54 @@ function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
   return false
 endfunction
 
+function GetMovableNightElfHall takes unit target returns unit
+  local group g = null
+  local unit u = null
+  local unit nearest = null
+  local real distance = 0
+  local real nearestDistance = expansion_taken_radius + 1
+  if target == null or GetOwningPlayer(target) != Player(PLAYER_NEUTRAL_PASSIVE) or GetPlayerRace(ai_player) != RACE_NIGHTELF then
+    return null
+  endif
+  set g = CreateGroup()
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    set distance = DistanceBetweenUnits(u, target)
+    if UnitAlive(u) and IsRacialHall(u, 1) and GetUnitState(u, UNIT_STATE_LIFE) == GetUnitState(u, UNIT_STATE_MAX_LIFE) and NightElfRelocationPolicy(GetPlayerRace(ai_player), NightElfHallHasActiveMine(u), distance) then
+      if nearest == null or distance < nearestDistance or (distance == nearestDistance and GetHandleId(u) < GetHandleId(nearest)) then
+        set nearest = u
+        set nearestDistance = distance
+      endif
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+  return nearest
+endfunction
+
+function BeginNightElfMineRelocation takes unit target returns boolean
+  local unit hall = GetMovableNightElfHall(target)
+  if hall == null or ancient_expanding then
+    set hall = null
+    return false
+  endif
+  set ancient_exp_unit = hall
+  set ancient_exp_mine = target
+  set ancient_exp_creep = null
+  set ancient_exp_wisp = null
+  set ancient_exp_state = 5
+  set anc_retry = 0
+  set ancient_expanding = true
+  call Trace("Relocating mine-less Night Elf hall to expansion")
+  call TQAddJob(0, ANCIENT_EXPANSION, 0)
+  set hall = null
+  return true
+endfunction
+
 //============================================================================
 function StartExpansionAM takes integer qty, integer hall returns integer
   local integer count = TownCount(hall) // main hall (does not include alternates) + any done alternate/higher-tier halls
@@ -11543,6 +11626,12 @@ function StartExpansionAM takes integer qty, integer hall returns integer
   if ancient_expanding or militia_expanding then
     call Trace("AMAIStartexpa: Ancient or Militia expansion running")
     return BUILT_SOME // Just safety check to prevent normal expansion running while these are both running
+  endif
+
+  if not take_exp and BeginNightElfMineRelocation(current_expansion) then
+    set total_gold = total_gold + gold_cost
+    set total_wood = total_wood + wood_cost
+    return BUILT_SOME
   endif
   
   if take_exp then
