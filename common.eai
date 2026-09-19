@@ -1067,6 +1067,9 @@ globals
     integer current_expansion_creeps = 0
     boolean current_expansion_iswater = false
     unit current_expansion = null
+    unit shared_expansion_target = null
+    real shared_expansion_x = 0
+    real shared_expansion_y = 0
     boolean specialexpand = false
     integer fixharvest = 0
     group early_remote_builders = CreateGroup()
@@ -6268,8 +6271,12 @@ function MineClaimPolicy takes race claimantRace, boolean exactCapture, boolean 
   return nearestMine
 endfunction
 
+function MineSharePolicy takes boolean primaryMine, integer targetGold, integer remainingGold returns boolean
+  return not primaryMine and targetGold > 0 and remainingGold >= targetGold
+endfunction
+
 function ValidateMineClaimPolicy takes nothing returns nothing
-  if not MineClaimPolicy(RACE_HUMAN, false, false, race_max_expa_mine_distance) or not MineClaimPolicy(RACE_ORC, false, false, race_max_expa_mine_distance) or MineClaimPolicy(RACE_NIGHTELF, false, false, race_max_expa_mine_distance) or not MineClaimPolicy(RACE_NIGHTELF, false, true, race_max_expa_mine_distance) or MineClaimPolicy(RACE_UNDEAD, false, true, race_max_expa_mine_distance + 1) or not MineClaimPolicy(RACE_UNDEAD, true, false, race_max_expa_mine_distance + 1) then
+  if not MineClaimPolicy(RACE_HUMAN, false, false, race_max_expa_mine_distance) or not MineClaimPolicy(RACE_ORC, false, false, race_max_expa_mine_distance) or MineClaimPolicy(RACE_NIGHTELF, false, false, race_max_expa_mine_distance) or not MineClaimPolicy(RACE_NIGHTELF, false, true, race_max_expa_mine_distance) or MineClaimPolicy(RACE_UNDEAD, false, true, race_max_expa_mine_distance + 1) or not MineClaimPolicy(RACE_UNDEAD, true, false, race_max_expa_mine_distance + 1) or MineSharePolicy(true, 10000, 10000) or not MineSharePolicy(false, 10000, 10000) or MineSharePolicy(false, 10001, 10000) then
     call TraceAll("ERROR: Mine claim policy self-check failed")
   endif
 endfunction
@@ -6356,6 +6363,78 @@ function GetMineClaimant takes unit mine returns unit
   return GetMineClaimantEx(mine, null)
 endfunction
 
+function IsAlliedSharedMineHall takes unit claimant returns boolean
+  local race claimantRace = null
+  if claimant == null or not IsPlayerAlly(ai_player, GetOwningPlayer(claimant)) or GetOwningPlayer(claimant) == ai_player or not IsUnitType(claimant, UNIT_TYPE_TOWNHALL) then
+    return false
+  endif
+  set claimantRace = GetPlayerRace(GetOwningPlayer(claimant))
+  return claimantRace == RACE_HUMAN or claimantRace == RACE_ORC
+endfunction
+
+// Human and Orc may work several deposits from one hall, but their non-primary
+// deposits can be shared if the owner keeps at least as much gold elsewhere.
+function CanYieldAlliedMine takes unit mine, unit claimant returns boolean
+  local group g = null
+  local unit u = null
+  local unit otherClaimant = null
+  local unit primaryMine = null
+  local player claimantOwner = null
+  local integer remainingGold = 0
+  if mine == null or GetOwningPlayer(mine) != Player(PLAYER_NEUTRAL_PASSIVE) or not IsAlliedSharedMineHall(claimant) then
+    return false
+  endif
+  set primaryMine = GetNearestGoldMineToUnit(claimant)
+  if primaryMine == mine or (primaryMine != null and DistanceBetweenUnits(primaryMine, mine) <= 225) then
+    set primaryMine = null
+    return false
+  endif
+  set claimantOwner = GetOwningPlayer(claimant)
+  set g = CreateGroup()
+  call GroupEnumUnitsInRange(g, GetUnitX(claimant), GetUnitY(claimant), expansion_taken_radius, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if u != mine and UnitAlive(u) and GetResourceAmount(u) > 0 and IsUnitGoldMine(u) then
+      set otherClaimant = GetMineClaimant(u)
+      if otherClaimant != null and GetOwningPlayer(otherClaimant) == claimantOwner then
+        set remainingGold = remainingGold + GetResourceAmount(u)
+      endif
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+  set otherClaimant = null
+  set primaryMine = null
+  set claimantOwner = null
+  return MineSharePolicy(false, GetResourceAmount(mine), remainingGold)
+endfunction
+
+function IsSharedExpansionMine takes unit mine returns boolean
+  local real x = 0
+  local real y = 0
+  if mine == null or current_expansion == null or shared_expansion_target == null then
+    return false
+  endif
+  set x = GetUnitX(mine) - shared_expansion_x
+  set y = GetUnitY(mine) - shared_expansion_y
+  return mine == shared_expansion_target or x*x + y*y <= 50625
+endfunction
+
+function GetExpansionMineClaimantEx takes unit mine, unit ignored returns unit
+  local unit claimant = GetMineClaimantEx(mine, ignored)
+  if IsSharedExpansionMine(mine) and IsAlliedSharedMineHall(claimant) then
+    set claimant = null
+  endif
+  return claimant
+endfunction
+
+function GetExpansionMineClaimant takes unit mine returns unit
+  return GetExpansionMineClaimantEx(mine, null)
+endfunction
+
 //============================================================================
 function CheckExpansionTaken takes unit expa returns boolean
   local group g = null
@@ -6364,7 +6443,7 @@ function CheckExpansionTaken takes unit expa returns boolean
   if expa == null or not UnitAlive(expa) or GetResourceAmount(expa) <= 0 then
     return true
   endif
-  set claimant = GetMineClaimant(expa)
+  set claimant = GetExpansionMineClaimant(expa)
   if claimant != null then
     set claimant = null
     return true
@@ -6435,7 +6514,7 @@ function AddExpansion takes unit u, real d returns nothing
   call DestroyGroup(g)
   set g = null
   if first_expansion_chosen == false then
-    set first_expansion_chosen = not CheckExpansionTaken(u)
+    set first_expansion_chosen = not CheckExpansionTaken(u) or CanYieldAlliedMine(u, GetMineClaimant(u))
   endif
   if d > 6000 then
     call GroupAddUnit(far_expansion, u)
@@ -7131,7 +7210,9 @@ function ChooseExpansion takes nothing returns nothing
   local integer i = 0
   local integer exp_chosen = 0
   local integer gold = 2 * GetUnitGoldCost2(racial_expansion)
+  local unit claimant = null
   set exp_number = 0
+  set shared_expansion_target = null
   loop
     exitwhen i >= expansion_list_length
     // Normal new expansion candidate
@@ -7150,6 +7231,30 @@ function ChooseExpansion takes nothing returns nothing
       endif
       set i = i + 1
     endloop
+  endif
+  // If no ordinary mine is available, allow an ally to take a surplus mine
+  // serviced by a Human/Orc hall when the hall owner retains equal gold.
+  if exp_number == 0 then
+    set i = 0
+    loop
+      exitwhen i >= expansion_list_length
+      set claimant = GetMineClaimant(expansion_list[i])
+      if GetResourceAmount(expansion_list[i]) > gold and CanYieldAlliedMine(expansion_list[i], claimant) and not IsExpansionRebuildCoolingDown(expansion_list[i]) and bad_expansion_flag[i] == 0 then
+        call add_exp(expansion_list[i], expansion_dist[i], expansion_ancient[i], i, false)
+      endif
+      set i = i + 1
+    endloop
+    if TownCountDone(neutral_zeppelin) > 1 then
+      set i = 0
+      loop
+        exitwhen i >= water_expansion_list_length
+        set claimant = GetMineClaimant(water_expansion_list[i])
+        if GetResourceAmount(water_expansion_list[i]) > gold and CanYieldAlliedMine(water_expansion_list[i], claimant) and not IsExpansionRebuildCoolingDown(water_expansion_list[i]) and bad_water_expansion_flag[i] == 0 then
+          call add_exp(water_expansion_list[i], water_expansion_dist[i] + 5120, null, i, true)
+        endif
+        set i = i + 1
+      endloop
+    endif
   endif
   // compute rebuild expansion ratings
   set i = 0
@@ -7186,11 +7291,19 @@ function ChooseExpansion takes nothing returns nothing
   else
     set exp_chosen = ChooseExp()
     set current_expansion = exp_unit[exp_chosen]
+    set claimant = GetMineClaimant(current_expansion)
+    if CanYieldAlliedMine(current_expansion, claimant) then
+      set shared_expansion_target = current_expansion
+      set shared_expansion_x = GetUnitX(current_expansion)
+      set shared_expansion_y = GetUnitY(current_expansion)
+      call Trace("Sharing surplus allied mine")
+    endif
     //set ancient_exp_loc = exp_ancient[exp_chosen]
     set current_expansion_creeps = exp_creeps[exp_chosen]
     set current_expansion_iswater = exp_iswater[exp_chosen]
 //    call PingMinimap(GetUnitX(current_expansion), GetUnitY(current_expansion), 20)
   endif
+  set claimant = null
 endfunction
 
 //============================================================================

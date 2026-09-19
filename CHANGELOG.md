@@ -39,7 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
-- Reworked multi-mine handling around individual mine claims, allowing all races to harvest or expand at clustered mines without blocking later expansions.
+- Reworked multi-mine handling around individual mine claims, allowing all races to harvest or expand at clustered mines without blocking later expansions, including sharing surplus Human/Orc deposits with allies that have no free mine.
 - Explicit front and tower-rush construction orders are no longer relocated by the early-game local-harvesting safeguard.
 - Tower rushes now release distant builders when tower prerequisites or resources are unavailable, stop cleanly after teleporting home, keep Human gold and lumber workers in stable roles, and reduce their resource buffer as towers are completed.
 - Attack target selection no longer loses late-game enemies when the native building lookup fails, their original town is destroyed, every remaining player has zero measured strength, or map distances exceed a fixed score limit.
