@@ -1,81 +1,35 @@
 #IFDEF GLOBAL
     unit double_expansion_target = null
-    boolean double_expansion_ally_present = false
-    boolean double_expansion_allyhuman_present = false
-    boolean double_own_present = false
-    boolean double_expansion_enemy_present = false
 #ELSE
 //============================================================================
-// Detect double expansion
+// Detect multiple structures trying to claim the same mine.
 //============================================================================
-
-function GetOtherExpansionNearby takes unit ru, real tx, real ty returns unit
+function CheckDoubleExpansion takes nothing returns nothing
   local group g = CreateGroup()
   local unit u = null
-  //local integer id = 0
-  set ru = null
-  call GroupEnumUnitsInRange(g, tx, ty, expansion_taken_radius, null)
-  set g = SelectByPlayer(g, ai_player, false)
-  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
-  set g = SelectByAlive2(g, true)
+  local unit mine = null
+  local unit claimant = null
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  set g = SelectNumberOfId(g, 100, old_id[racial_expansion])
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    //set id = GetUnitTypeId(u)
-    if IsUnitType(u, UNIT_TYPE_TOWNHALL) == true or IsUnitGoldMine(u) then //or id == oUNDEAD_MINE then//id == oTOWN_HALL or id == oKEEP or id == oCASTLE or id == oUNDEAD_MINE or id == oGREAT_HALL or id == oSTRONGHOLD or id == oFORTRESS or id == oTREE_LIFE or id == oTREE_AGES or id == oTREE_ETERNITY then
-      call DestroyGroup(g)
-      set g = null
-      set ru = u
-      set u = null
-      return ru
-    elseif IsPlayerEnemy(GetOwningPlayer(u), ai_player) and IsUnitType(u, UNIT_TYPE_STRUCTURE) == true then
-      set ru = u
-    endif
-    call GroupRemoveUnit(g,u)
-  endloop
-  call DestroyGroup(g)
-  set g = null
-  return ru
-endfunction
-
-function CheckDoubleExpansionsClaimedInArea takes real tx, real ty, boolean isBuildCommand returns boolean
-  local group g = CreateGroup()
-  local unit u = null
-  local integer minecount = 0
-  local integer claimedMines = 0
-  set double_expansion_ally_present = false
-  set double_expansion_enemy_present = false
-  set double_expansion_allyhuman_present = false
-  set double_own_present = false
-  call GroupEnumUnitsInRange(g, tx, ty, expansion_taken_radius, null)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  set g = SelectByAlive2(g, true)
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    if IsPlayerEnemy(GetOwningPlayer(u), ai_player) and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
-      set double_expansion_target = u
-      set double_expansion_enemy_present = true
-    endif
-    if IsUnitGoldMine(u) or IsUnitType(u, UNIT_TYPE_TOWNHALL) then
-      if IsValidMineClaimed(u) then
-        set claimedMines = claimedMines + 1
-      endif
-      if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) then
-        if GetOwningPlayer(u) == ai_player then
-          set double_own_present = true
-        elseif IsPlayerAlly(ai_player, GetOwningPlayer(u)) then
-          set double_expansion_ally_present = true
-          if GetPlayerController(GetOwningPlayer(u)) == MAP_CONTROL_USER then
-            set double_expansion_allyhuman_present = true
+    set mine = GetNearestGoldMineToUnit(u)
+    if mine != null then
+      set claimant = GetMineClaimantEx(mine, u)
+      if claimant != null and GetOwningPlayer(claimant) != ai_player then
+        if IsPlayerAlly(ai_player, GetOwningPlayer(claimant)) then
+          if GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) then
+            call IssueImmediateOrderById(u, order_cancel)
           endif
+          call Trace("Ally claim detected on the same mine")
         else
-          set double_expansion_target = u
-          set double_expansion_enemy_present = true
+          set double_expansion_target = claimant
+          call Trace("Enemy claim detected on the same mine")
         endif
-      endif
-      if not IsUnitType(u, UNIT_TYPE_TOWNHALL) then
-        set minecount = minecount + 1
+      elseif claimant != null and GetOwningPlayer(claimant) == ai_player and GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) then
+        call IssueImmediateOrderById(u, order_cancel)
+        call Trace("Own duplicate claim detected on the same mine")
       endif
     endif
     call GroupRemoveUnit(g,u)
@@ -83,88 +37,8 @@ function CheckDoubleExpansionsClaimedInArea takes real tx, real ty, boolean isBu
   call DestroyGroup(g)
   set g = null
   set u = null
-  call Trace("Total Mines:" + Int2Str(minecount) + " Claimed Mines:" + Int2Str(claimedMines))
-  if isBuildCommand then
-    set claimedMines = claimedMines + 1 // I'm on the way to build an expansion so include in count
-  endif  
-  return minecount > 0 and claimedMines > minecount
-endfunction
-
-// Beware Does not include own halls and mines in this check
-function GetTotalClaimedMinesNearby takes unit ru, real tx, real ty returns integer
-  local group g = CreateGroup()
-  local unit u = null
-  local integer count = 0
-  set ru = null
-  call GroupEnumUnitsInRange(g, tx, ty, expansion_taken_radius, null)
-  set g = SelectByPlayer(g, ai_player, false)
-  set g = SelectByPlayer(g, Player(PLAYER_NEUTRAL_PASSIVE), false)
-  set g = SelectByAlive2(g, true)
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    if IsUnitType(u, UNIT_TYPE_TOWNHALL) == true or IsUnitGoldMine(u) then //or id == oUNDEAD_MINE then//id == oTOWN_HALL or id == oKEEP or id == oCASTLE or id == oUNDEAD_MINE or id == oGREAT_HALL or id == oSTRONGHOLD or id == oFORTRESS or id == oTREE_LIFE or id == oTREE_AGES or id == oTREE_ETERNITY then
-      set count = count + 1
-    endif
-    call GroupRemoveUnit(g,u)
-  endloop
-  call DestroyGroup(g)
-  set g = null
-  call Trace("Total Claimed Mines by other players:" + Int2Str(count))
-  return count
-endfunction
-
-function GetTotalMinesNearby takes unit ru, real tx, real ty returns integer
-  local group g = CreateGroup()
-  local unit u = null
-  local integer count = 0
-  set ru = null
-  call GroupEnumUnitsInRange(g, tx, ty, expansion_taken_radius, null)
-  set g = SelectByAlive2(g, true)
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    if IsUnitGoldMine(u) then
-      set count = count + 1
-    endif
-    call GroupRemoveUnit(g,u)
-  endloop
-  call DestroyGroup(g)
-  set g = null
-  call Trace("Total Mines:" + Int2Str(count))
-  return count
-endfunction
-
-function CheckDoubleExpansion takes nothing returns nothing
-  local group g = CreateGroup()
-  local unit u = null
-  call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  set g = SelectNumberOfId(g, 100, old_id[racial_expansion])
-  
-  loop
-    set u = FirstOfGroup(g)
-    exitwhen u == null
-    if CheckDoubleExpansionsClaimedInArea(GetUnitX(u), GetUnitY(u), false) then
-      if double_expansion_ally_present then
-        if GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) then
-          call IssueImmediateOrderById(u, order_cancel)
-          if UnitAlive(u) and double_expansion_allyhuman_present then
-            // Simulated cancel as real cancel failed as it is actually successfully built at this point.
-            // Human probrably wants your expansion gone and attacked it
-            call KillUnit(u)
-          endif
-        endif
-        call Trace("Ally double expansion detected")
-      endif
-    endif
-    if double_expansion_enemy_present then
-      call Trace("Enemy double expansion detected")
-    endif
-    call GroupRemoveUnit(g,u)
-  endloop
-  
-  call DestroyGroup(g)
-  set g = null
+  set mine = null
+  set claimant = null
 endfunction
 
 function DetectDoubleExpJob takes nothing returns nothing

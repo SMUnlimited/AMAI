@@ -5,10 +5,11 @@
 // Extra prevention against AMAI building two townhalls at the same location
 function BuildExpansionJob takes unit u, unit expansion returns nothing
   local unit v = null
-  local player p = null
+  local unit claimant = null
   local real d = 0
   local real x = 0
   local real y = 0
+  local real placement_distance = 0
   local real peon_threat = 0
   local real exp_threat = 0
   local real atexpadistance = 190 * 30
@@ -54,48 +55,58 @@ function BuildExpansionJob takes unit u, unit expansion returns nothing
     endif
   endif
   if GetUnitCurrentOrder(u) == old_id[racial_expansion] then
-    //call Trace("Build Expansion JOB has order")
-    if CheckDoubleExpansionsClaimedInArea(GetUnitX(expansion), GetUnitY(expansion), true) then
-      call Trace("Double expansion check triggered: ally=" + B2S(double_expansion_ally_present) + " enemy=" + B2S(double_expansion_enemy_present) + " own=" + B2S(double_own_present))
-      if double_expansion_ally_present then
-        //call Trace("Cancelling Expansion - ally expansion detected")
+    set claimant = GetMineClaimant(expansion)
+    if claimant != null then
+      if GetOwningPlayer(claimant) == ai_player then
+        // Our foundation now reserves the mine. Let the worker finish its order.
+        set claimant = null
+        return
+      elseif IsPlayerAlly(ai_player, GetOwningPlayer(claimant)) then
         call IssueImmediateOrder(u, "stop")
         set current_expansion = null
+        set claimant = null
         return
-      endif
-      if double_expansion_enemy_present then
-        if d > (190 * 30) then // movement speed of peasant * seconds away. If way too far give up as enemy will be built first.
-          //call Trace("Cancelling Expansion - Enemy double expansion detected")
+      else
+        set double_expansion_target = claimant
+        if d > atexpadistance then // If way too far give up as the enemy will finish first.
           call IssueImmediateOrder(u, "stop")
           set current_expansion = null
+          set claimant = null
           return
         endif
       endif
     endif
     call TQAddUnit2Job(2, BUILD_EXPANSION, 0, u, expansion)
   elseif not race_uses_mine_expansion and GetUnitCurrentOrder(u) != old_id[racial_expansion] and d < atexpadistance then
-    //call Trace("Build Expansion JOB Retry Check")
-    call CheckDoubleExpansionsClaimedInArea(GetUnitX(expansion), GetUnitY(expansion), d > race_max_expa_mine_distance) // Result doesn't matter as long as its only enemies in the proximity
-    call Trace("Double expansion check 2 triggered: ally=" + B2S(double_expansion_ally_present) + " enemy=" + B2S(double_expansion_enemy_present) + " own=" + B2S(double_own_present))
-    if (not double_own_present and not double_expansion_ally_present and double_expansion_enemy_present and GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), race_max_expa_mine_distance) == 0) then
+    set claimant = GetMineClaimant(expansion)
+    if claimant != null then
+      if IsPlayerEnemy(GetOwningPlayer(claimant), ai_player) then
+        set double_expansion_target = claimant
+      endif
+      set current_expansion = null
+      set claimant = null
+      return
+    endif
+    if GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), race_max_expa_mine_distance) == 0 then
       set v = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), old_id[racial_expansion], GetUnitX(expansion), GetUnitY(expansion), 270.0)
       set x = GetUnitX(v)
       set y = GetUnitY(v)
+      set placement_distance = DistanceBetweenUnits(v, expansion)
       call RemoveUnit(v)
-      if DistanceBetweenPoints_dd(Location(x,y), GetUnitLoc(expansion)) <= race_max_expa_mine_distance then
+      if placement_distance <= race_max_expa_mine_distance then
         call IssuePointOrderById(u, old_id[racial_expansion], x, y)
         call CreateDebugTagLoc("Expand Fix JOB", 10, x, y, 5.00, 1.50)
         call TQAddUnit2Job(2, BUILD_EXPANSION, 0, u, expansion)
-        //call Trace("Build Expansion JOB Retry Threat")
       else
         call MarkBadExpansion(current_expansion) // Can't place the mine in a good place so add to bad expansions to avoid for rest of the game
         set current_expansion = null // Force expansion to re-evaluate as could not build here as build location is too far, avoids infinite loop of trying to build at expansion
       endif
       set v = null
-    elseif (double_own_present or double_expansion_ally_present or double_expansion_enemy_present) then
-        set current_expansion = null // Force expansion to re-evaluate as could not build here
+    else
+      call TQAddUnit2Job(10, BUILD_EXPANSION, 0, u, expansion)
     endif
   endif
+  set claimant = null
 
 endfunction
 

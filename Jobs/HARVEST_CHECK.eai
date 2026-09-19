@@ -1,5 +1,6 @@
 #IFDEF GLOBAL
-  unit secondmine = null
+  group harvest_mines = CreateGroup()
+  integer harvest_mine_count = 0
   group harvestgrp = CreateGroup() // Used to ensure we don't give harvest orders to peons multiple times
   integer harvestnum = 0
 #ELSE
@@ -148,52 +149,60 @@ function PeonMineCheck takes unit mine returns boolean
   return i < delaywisps
 endfunction
 
-function SelectSecondMine takes group g returns group
+function RefreshHarvestMines takes nothing returns nothing
+  local group g = CreateGroup()
   local unit u = null
+  local unit claimant = null
   local integer i = 0
-  if race_manual_loading then
-    call GroupEnumUnitsOfPlayer(g, ai_player, null)
-    set g = SelectByAlive(g, true)
-    set g = SelectNumberOfId(g, 100,  old_id[race_manual_loading_mine])
-  elseif not TownThreatened() then
-    if race_uses_mine_expansion then
-      call GroupEnumUnitsInRangeOfLoc(g, home_location, expansion_taken_radius, null)
-      set g = SelectByPlayer(g, ai_player, true)
-      set g = SelectByAlive(g, true)
-      set g = SelectById(g, old_id[racial_expansion], true)
-    elseif GetResourceAmount(secondmine) <= 0 and TownCountDone(racial_peon) > 10 then  //human and orc
-      call GroupEnumUnitsInRangeOfLoc(g, home_location, expansion_taken_radius, null)
-      if home_town >= 0 and town_mine[home_town] != null then
-        call GroupRemoveUnit(g, town_mine[home_town])
-      endif
-      set g = SelectByAlive(g, true)
-      set g = SelectById(g, old_id[uGOLD_MINE], true)
+  local integer town = 0
+  local race playerRace = GetPlayerRace(ai_player)
+  call GroupClear(harvest_mines)
+  set harvest_mine_count = 0
+  loop
+    exitwhen town >= own_town_num
+    set i = own_town[town]
+    if town_loc[i] != null then
+      call GroupEnumUnitsInRangeOfLoc(g, town_loc[i], expansion_taken_radius, null)
       loop
         set u = FirstOfGroup(g)
         exitwhen u == null
-        if GetResourceAmount(u) > i then  // find Resource max mine
-          set i = GetResourceAmount(u)
-          set secondmine = u
+        if UnitAlive(u) and GetResourceAmount(u) > 0 and IsUnitGoldMine(u) and not IsUnitInGroup(u, harvest_mines) then
+          if playerRace == RACE_HUMAN or playerRace == RACE_ORC then
+            set claimant = GetMineClaimant(u)
+            if claimant != null and GetOwningPlayer(claimant) == ai_player and IsUnitType(claimant, UNIT_TYPE_TOWNHALL) and DistanceBetweenUnits(claimant, u) <= race_max_expa_mine_distance then
+              call GroupAddUnit(harvest_mines, u)
+              set harvest_mine_count = harvest_mine_count + 1
+            endif
+          elseif GetOwningPlayer(u) == ai_player then
+            call GroupAddUnit(harvest_mines, u)
+            set harvest_mine_count = harvest_mine_count + 1
+          endif
         endif
         call GroupRemoveUnit(g, u)
       endloop
-      call GroupAddUnit(g, secondmine)  // only first take secondmine run PeonMineCheck , Prevention have more peon harvest
     endif
-  endif
-  return g
+    set town = town + 1
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+  set claimant = null
 endfunction
 
-function HarvestSecondMine takes nothing returns boolean
-  local group g = null
+function HarvestTrackedMines takes nothing returns boolean
+  local group g = CreateGroup()
   local unit u = null
   local boolean mines_not_full = true
-  //  call DisplayToAll("Harvest Start")
-  set g = CreateGroup()
-  set g = SelectSecondMine(g)
+  call RefreshHarvestMines()
+  if TownThreatened() and home_town >= 0 and town_mine[home_town] != null and UnitAlive(town_mine[home_town]) then
+    set mines_not_full = PeonMineCheck(town_mine[home_town])
+    call DestroyGroup(g)
+    set g = null
+    return mines_not_full
+  endif
+  set g = CopyGroup(harvest_mines)
   if debugging == 1 then
-    if BlzGroupGetSize(g) > 0 then
-      call Trace("Harvest: Second Mine")
-    endif
+    call Trace("Harvestable mines: " + Int2Str(harvest_mine_count))
   endif
   loop
     set u = FirstOfGroup(g)
@@ -207,38 +216,21 @@ function HarvestSecondMine takes nothing returns boolean
 endfunction
 
 function ForcedHarvest takes nothing returns nothing
-  //local integer T = 0
-  //local integer i = 0
-  //local integer c = Min(TownCountDone(racial_expansion), GetMinesOwned())
   local boolean mines_not_full = true
   call GroupClear(harvestgrp)
-  //and townwithmine < 1 then // and first_town_mine < 1 and (c > 1 or GetGoldOwned() < 3000) and (FoodUsed() < 26 or GetGold() < (1000 + tier * 200)) then  // later stages of the game, AI may not be harvest
-    //loop
-    //  exitwhen i >= max_towns or T > c
-    //  if own_town_mine[i] != null and UnitAlive(own_town_mine[i]) and GetResourceAmount(own_town_mine[i]) > 0 then
-        
-    //    set T = T + 1
-    //    call CreateDebugTag("Forced Harvest mine " + Int2Str(i), 10, own_town_mine[i], 3.00, 1.50)
-    //  endif
-    //  set i = i + 1
-    //endloop
-  if harvestnum == 0 and not race_manual_loading and home_town >= 0 and town_mine[home_town] != null and UnitAlive(town_mine[home_town]) then //and not race_uses_mine_expansion then running on elf breaks gold harvesting for all other mines for some reason
-    set mines_not_full = PeonMineCheck(town_mine[home_town])
-  endif
-  if harvestnum == 0 and first_town_mine >= 0 and (race_manual_loading or ( not race_manual_loading and not race_uses_mine_expansion and first_town_mine == 3) or (race_uses_mine_expansion and first_town_mine != 0)) then
-    set mines_not_full = mines_not_full and HarvestSecondMine()
+  if harvestnum == 0 then
+    set mines_not_full = HarvestTrackedMines()
   endif
   if (harvestnum > 3 and mines_not_full) or harvestnum > 6 then
     set harvestnum = 0 
   else
     set harvestnum = harvestnum + 1
   endif
-  //call Trace("ForcedHarvest mine total : " + Int2Str(T))
   return
 endfunction
 
 function HarvestCheckJob takes nothing returns nothing
-  if HarvestSecondMine() then
+  if HarvestTrackedMines() then
     call TQAddJob(4, HARVEST_CHECK, 0)
   else
     call TQAddJob(40, HARVEST_CHECK, 0)
