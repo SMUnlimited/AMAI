@@ -7,14 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
-- Updated the Electron lint configuration to supported Angular ESLint presets and explicit application and end-to-end project coverage, and added lint, installer, unit, and end-to-end checks to pull-request CI.
 - Dynamic strategy upgrades are attempted more frequently when the AI has large gold and lumber surpluses.
 - Reforged Human and Orc expansions now request racial shops earlier, while Undead requests an early main-base Tomb of Relics and gives expansion Tombs a slightly higher priority. (Powerer)
+- (Installer) Updated the Electron lint configuration to supported Angular ESLint presets and explicit application and end-to-end project coverage, and added lint, installer, unit, and end-to-end checks to pull-request CI.
 
 ### Fixed
 
-- The Electron installer now terminates its full worker process tree when stopped, replaced, closed, or disconnected, without reporting late worker errors after its window has closed.
 - Reworked and renabled multi-mine handling around individual mine claims, allowing all races to harvest or expand at clustered mines without blocking later expansions, including bounded per-worker gold rosters that avoid lumber-worker churn or militia defense control, a three-mine worker-production cap, hall-based harvesting that bypasses broken town bookkeeping, surplus Human/Orc-style mine handling, movable entangling halls, and configurable mine styles for custom races.
+- (Installer) The Electron installer now terminates its full worker process tree when stopped, replaced, closed, or disconnected, without reporting late worker errors after its window has closed.
 
 ## [3.7.0] - 2026-09-18
 
