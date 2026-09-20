@@ -29,6 +29,7 @@ module.exports = function (config) {
       AngularElectron: {
         base: 'Electron',
         flags: [
+          '--no-sandbox',
           '--remote-debugging-port=9222'
         ],
         browserWindowOptions: {
