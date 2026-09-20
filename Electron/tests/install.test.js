@@ -9,12 +9,16 @@ assert.deepStrictEqual(
 
 assert.deepStrictEqual(
   missingFiles('REFORGED', 1, file => file === 'MPQEditor.exe'),
-  ['Scripts\\REFORGED\\common.ai', 'Scripts\\REFORGED\\Blizzard.j']
+  [path.join('Scripts', 'REFORGED', 'common.ai'), path.join('Scripts', 'REFORGED', 'Blizzard.j')]
 );
 
 assert.deepStrictEqual(
   missingFiles('OPTREFORGED', 2, () => false),
-  ['Scripts\\OPTREFORGED\\common.ai', 'MPQEditor.exe', 'Scripts\\OPTREFORGED\\vsai\\Blizzard.j']
+  [
+    path.join('Scripts', 'OPTREFORGED', 'common.ai'),
+    'MPQEditor.exe',
+    path.join('Scripts', 'OPTREFORGED', 'vsai', 'Blizzard.j')
+  ]
 );
 
 const customScripts = path.resolve('custom scripts');
