@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Attempts to open Commander using shortcuts or chat commands now explain when Commander is disabled for the game or the player has no allied computer to command.
 - Reworked and renabled multi-mine handling around individual mine claims, allowing all races to harvest or expand at clustered mines without blocking later expansions, including bounded per-worker gold rosters that avoid lumber-worker churn or militia defense control, a three-mine worker-production cap, hall-based harvesting that bypasses broken town bookkeeping, surplus Human/Orc-style mine handling, movable entangling halls, and configurable mine styles for custom races.
 - (Installer) The Electron installer now terminates its full worker process tree when stopped, replaced, closed, or disconnected, without reporting late worker errors after its window has closed.
 

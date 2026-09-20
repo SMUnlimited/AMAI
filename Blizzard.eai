@@ -108,6 +108,8 @@
 #ENDINCLUDE
 
     string chat_no_ally = ""
+    string commander_disabled = ""
+    string commander_no_ally = ""
     string you_no_gold = ""
     string i_no_gold = ""
     string tribute_of_gold = ""
@@ -1576,8 +1578,36 @@ function BuildCommandDialogs takes nothing returns nothing
   set root_dialog = FindDialog("")
 endfunction
 
+function CheckAllyToControl takes player p returns boolean
+  local integer q = 0
+  loop
+    exitwhen q >= GetBJMaxPlayers()
+    if IsPlayerAlly(Player(q), p) and GetPlayerController(Player(q)) == MAP_CONTROL_COMPUTER then
+      return true
+    endif
+    set q = q + 1
+  endloop
+  return false
+endfunction
+
+function CanUseCommander takes player p returns boolean
+  if game_mode == "ai_only" then
+    call DisplayTimedTextToPlayer(p, 0, 0, 7, commander_disabled)
+    return false
+  elseif not CheckAllyToControl(p) then
+    call DisplayTimedTextToPlayer(p, 0, 0, 7, commander_no_ally)
+    return false
+  endif
+  return true
+endfunction
+
 function DialogCommander takes nothing returns nothing
   local trigger t = CreateTrigger()
+  if not CanUseCommander(GetTriggerPlayer()) then
+    call DestroyTrigger(t)
+    set t = null
+    return
+  endif
   set commanded_player[GetPlayerId(GetTriggerPlayer())] = null
   set start_dialog = BuildStartDialog(GetTriggerPlayer(), 0)
   call TriggerRegisterDialogEvent(t, start_dialog )
@@ -1611,6 +1641,10 @@ function Commander takes nothing returns nothing
   local player Comp = null
   local string ChatMsg = GetEventPlayerChatString()
   local integer cn = 0
+
+  if not CanUseCommander(GetTriggerPlayer()) then
+    return
+  endif
 
   call Parser(ChatMsg)
   set ChatMsg = null
@@ -1779,18 +1813,6 @@ function GetFirstHuman takes nothing returns integer
   return -1
 endfunction
 
-function CheckAllyToControl takes player p returns boolean
-  local integer q = 0
-  loop
-    exitwhen q >= GetBJMaxPlayers()
-    if IsPlayerAlly(Player(q), p) and GetPlayerController(Player(q)) == MAP_CONTROL_COMPUTER then
-      return true
-    endif
-    set q = q + 1
-  endloop
-  return false
-endfunction
-
 function EnumKillUnit takes nothing returns nothing
   call KillUnit(GetEnumUnit())
 endfunction
@@ -1836,9 +1858,9 @@ function MapInitTimer takes nothing returns nothing
 endfunction
 
 function GameStartDefault takes nothing returns nothing
+  call InitCommanderPart()
   if game_mode != "ai_only" then
     call SendToAllAIs(73,0)
-    call InitCommanderPart()
     if game_mode == "no_human" or game_mode == "shared" then
       call ForForce(GetPlayersAll(), function RemoveHumanUnitsAndRes)
       if (game_mode == "shared") then
@@ -1872,6 +1894,7 @@ function GameStartDlg takes nothing returns nothing
   local integer p = host
   loop
     if p == -1 or IsPlayerObserver(Player(p)) then
+      call InitCommanderPart()
       call MapInitTimer()
       return
     endif
