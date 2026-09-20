@@ -2,11 +2,14 @@ import {app, BrowserWindow, dialog, Menu, screen } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as remote from '@electron/remote/main';
+import { ChildProcess } from 'child_process';
 import { InstallModel } from '../commons/models';
 const ipcMain = require('electron').ipcMain;
 const cp = require('child_process');
+const { stopProcessTree } = require('./install-process');
 
 let win: BrowserWindow = null;
+let activeInstaller: ChildProcess | null = null;
 let translations : { [key: string]: string } = {};
 let currentLanguage: string = "English";
 const args = process.argv.slice(1),
@@ -36,6 +39,12 @@ const missingInstallerFiles = () => [
     path.join(scriptsDirectory(), version, 'vsai', 'Blizzard.j')
   ])
 ].filter(file => !fs.existsSync(file));
+
+const sendToWindow = (channel: string, ...message: unknown[]) => {
+  if (win && !win.isDestroyed()) {
+    win.webContents.send(channel, ...message);
+  }
+};
 
 const reportMissingInstallerFiles = (): boolean => {
   const missing = missingInstallerFiles();
@@ -102,8 +111,7 @@ const createWindow = (): BrowserWindow => {
   return win;
 }
 
-const execInstall = async (signal, commander: number = 1, isMap: boolean = false, ver: string = "REFORGED", forceLang: boolean) => {
-  const controller = new AbortController();
+const execInstall = async (commander: number = 1, isMap: boolean = false, ver: string = "REFORGED", forceLang: boolean) => {
   const response = dialog.showOpenDialogSync(win, {
     // TODO: add i18n here
     title : isMap ? translations["PAGES.ELECTRON.OPEN_MAP"] || '': translations["PAGES.ELECTRON.OPEN_DIR"] || '',
@@ -115,10 +123,7 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
     ] : null,
   });
 
-  let child;
-
-  // passing reference to external call back
-  signal = controller.signal;
+  let child: ChildProcess;
 
   const currentScriptDir = installerDirectory();
 
@@ -136,12 +141,12 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
   // win.webContents.send('on-install-message', `install js path: ../${currentExecDir}install.js`);
 
   if(!response || (response?.length === 0)) {
-    win.webContents.send('on-install-empty');
+    sendToWindow('on-install-empty');
     return;
   }
 
   // open modal on front
-  win.webContents.send('on-install-init', <InstallModel>{
+  sendToWindow('on-install-init', <InstallModel>{
     response: response[0],
     commander,
     isMap
@@ -152,29 +157,31 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
   try {
      process.chdir(currentScriptDir);
   } catch(err) {
-    win.webContents.send('on-install-error', err.message);
+    sendToWindow('on-install-error', err.message);
     return;
   }
 
 
   // init install proccess
   try {
+    stopProcessTree(activeInstaller);
     child = cp.fork(
       require.resolve(
         path.join(currentScriptDir, 'install.js')
       ),
-      [ response[0], commander, ver, forceLang ? currentLanguage : '-', scriptsDirectory() ],
-      { signal }
+      [ response[0], commander, ver, forceLang ? currentLanguage : '-', scriptsDirectory() ]
     );
+    activeInstaller = child;
 
     child.on('error', (err) => {
-      win.webContents.send('on-install-error', err.message);
+      stopProcessTree(child);
+      sendToWindow('on-install-error', err.message);
     });
 
     // send messages to modal on front
     child.on('message', (message) => {
-      win.webContents.send(
-        message && typeof message === 'object' && message.type === 'progress'
+      sendToWindow(
+        message && typeof message === 'object' && 'type' in message && message.type === 'progress'
           ? 'on-install-progress'
           : 'on-install-message',
         message
@@ -183,27 +190,27 @@ const execInstall = async (signal, commander: number = 1, isMap: boolean = false
 
     // close modal on process finishes
     child.on('exit', (code) => {
+      if (activeInstaller === child) {
+        activeInstaller = null;
+      }
       if (code) {
-        win.webContents.send('on-install-error', `Installer exited with code ${code}`);
+        sendToWindow('on-install-error', `Installer exited with code ${code}`);
       } else {
-        win.webContents.send('on-install-exit');
+        sendToWindow('on-install-exit');
       }
     });
   } catch(err) {
-    win.webContents.send('on-install-error', err.message);
+    sendToWindow('on-install-error', err.message);
   }
 }
 
 const installProcess = () => {
-  let signal = {};
-
   ipcMain?.on('install', async (_event, ver: string, toFolder: boolean, commander: number, optimize: boolean, forceLang : boolean) => {
-    execInstall(signal, commander, !toFolder, optimize ? `OPT${ver}` : ver, forceLang);
+    execInstall(commander, !toFolder, optimize ? `OPT${ver}` : ver, forceLang);
   });
 
-  // TODO: stop process with signal
   ipcMain?.on('on-stop-process', async () => {
-    // stop process here
+    stopProcessTree(activeInstaller);
   });
 }
 
@@ -226,12 +233,15 @@ const init = () => {
 
     // Quit when all windows are closed.
     app.on('window-all-closed', () => {
+      stopProcessTree(activeInstaller);
       // On OS X it is common for applications and their menu bar
       // to stay active until the user quits explicitly with Cmd + Q
       if (process.platform !== 'darwin') {
         app.quit();
       }
     });
+
+    app.on('before-quit', () => stopProcessTree(activeInstaller));
 
     app.on('activate', () => {
       // On OS X it's common to re-create a window in the app when the
