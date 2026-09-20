@@ -3,6 +3,8 @@ import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 import { HomeComponent } from './home.component';
 import { TranslateModule } from '@codeandweb/ngx-translate';
 import { RouterTestingModule } from '@angular/router/testing';
+import { ElectronService } from '../core/services/electron/electron.service';
+import { electronServiceStub } from '../../testing/electron-service.stub';
 
 describe('HomeComponent', () => {
   let component: HomeComponent;
@@ -11,6 +13,7 @@ describe('HomeComponent', () => {
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       declarations: [HomeComponent],
+      providers: [{ provide: ElectronService, useValue: electronServiceStub }],
       imports: [TranslateModule.forRoot(), RouterTestingModule]
     }).compileComponents();
 

@@ -12,6 +12,7 @@ let translations : { [key: string]: string } = {};
 let currentLanguage = "English";
 const args = process.argv.slice(1),
   serve = args.some(val => val === '--serve');
+const isE2E = process.env.AMAI_E2E === 'true';
 
 // needed to call remote inside app
 remote.initialize();
@@ -222,7 +223,7 @@ const init = () => {
     // Some APIs can only be used after this event occurs.
     // Added 400 ms to fix the black background issue while using transparent window. More detais at https://github.com/electron/electron/issues/15947
     app.on('ready', () => {
-      if (reportMissingInstallerFiles()) {
+      if (!isE2E && reportMissingInstallerFiles()) {
         app.quit();
         return;
       }

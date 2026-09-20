@@ -2,6 +2,9 @@
 // https://karma-runner.github.io/0.13/config/configuration-file.html
 
 module.exports = function (config) {
+  // Karma must launch the Electron main process even when the parent shell runs Electron as Node.
+  delete process.env.ELECTRON_RUN_AS_NODE;
+
   config.set({
     basePath: '',
     frameworks: ['jasmine', '@angular-devkit/build-angular'],

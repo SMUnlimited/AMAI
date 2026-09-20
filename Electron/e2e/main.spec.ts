@@ -2,6 +2,9 @@ import { BrowserContext, ElectronApplication, Page, _electron as electron } from
 import { test, expect } from '@playwright/test';
 import * as path from 'path';
 
+delete process.env.ELECTRON_RUN_AS_NODE;
+process.env.AMAI_E2E = 'true';
+
 test.describe('Check Home Page', async () => {
   let app: ElectronApplication;
   let firstWindow: Page;
@@ -51,7 +54,7 @@ test.describe('Check Home Page', async () => {
   test('Check title', async () => {
     const elem = await firstWindow.$('app-home h1');
     const text = await elem.innerText();
-    expect(text).toBe('App works !');
+    expect(text).toBe('AMAI Installer');
   });
 
   test.afterAll( async () => {
