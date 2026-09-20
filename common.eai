@@ -156,6 +156,11 @@ globals
     constant integer SR_ORC = 3
     constant integer SR_UNDEAD = 4
 
+    constant integer MINE_STYLE_EXCLUSIVE = 0
+    constant integer MINE_STYLE_SHARED = 1
+    constant integer MINE_STYLE_ENTANGLE = 2
+    constant integer MAX_WORKER_TARGET_MINES = 3
+
     constant integer R_RANDOM = 0
 #DEFINE $RACENUM$ 0
 #INCLUDETABLE <$VER$\Races.txt>
@@ -485,6 +490,7 @@ globals
     integer array player_race
     integer array player_race_pref
     string array race_name
+    integer array race_mine_style
     
     boolean game_is_ffa = false
     boolean game_is_1on1 = false
@@ -6255,17 +6261,40 @@ function IsUnitGoldMine takes unit u returns boolean
     return false
 endfunction
 
-// Pure policy used by the live-unit classifier and its debug self-check.
-// Human and Orc halls service every mine in range. Other races claim only
-// an exact captured mine or the nearest mine to their hall.
-function MineClaimPolicy takes race claimantRace, boolean exactCapture, boolean nearestMine, real distance returns boolean
+// Resolve AMAI race metadata first. Native race is only a compatibility
+// fallback for players that are not registered in the shared race table.
+function GetPlayerMineStyle takes player p returns integer
+  local integer raceId = 0
+  local race nativeRace = null
+  if p == null then
+    return MINE_STYLE_EXCLUSIVE
+  endif
+  if p == ai_player and own_race > R_RANDOM and own_race <= RACE_NUMBER then
+    return race_mine_style[own_race]
+  endif
+  set raceId = player_race[GetPlayerId(p)]
+  if raceId > R_RANDOM and raceId <= RACE_NUMBER then
+    return race_mine_style[raceId]
+  endif
+  set nativeRace = GetPlayerRace(p)
+  if nativeRace == RACE_HUMAN or nativeRace == RACE_ORC then
+    return MINE_STYLE_SHARED
+  elseif nativeRace == RACE_NIGHTELF then
+    return MINE_STYLE_ENTANGLE
+  endif
+  return MINE_STYLE_EXCLUSIVE
+endfunction
+
+// Shared halls service every mine in range. Exclusive and entangling halls
+// claim only an exact captured mine or the nearest mine to their hall.
+function MineClaimPolicy takes integer mineStyle, boolean exactCapture, boolean nearestMine, real distance returns boolean
   if exactCapture then
     return true
   endif
   if distance > race_max_expa_mine_distance then
     return false
   endif
-  if claimantRace == RACE_HUMAN or claimantRace == RACE_ORC then
+  if mineStyle == MINE_STYLE_SHARED then
     return true
   endif
   return nearestMine
@@ -6275,12 +6304,16 @@ function MineSharePolicy takes boolean primaryMine, integer targetGold, integer 
   return not primaryMine and targetGold > 0 and remainingGold >= targetGold
 endfunction
 
-function NightElfRelocationPolicy takes race claimantRace, boolean hasActiveMine, real distance returns boolean
-  return claimantRace == RACE_NIGHTELF and not hasActiveMine and distance <= expansion_taken_radius
+function MineHallRelocationPolicy takes integer mineStyle, boolean hasActiveMine, real distance returns boolean
+  return mineStyle == MINE_STYLE_ENTANGLE and not hasActiveMine and distance <= expansion_taken_radius
+endfunction
+
+function MineWorkerTargetCount takes integer mineCount returns integer
+  return Min(Max(mineCount, 0), MAX_WORKER_TARGET_MINES)
 endfunction
 
 function ValidateMineClaimPolicy takes nothing returns nothing
-  if not MineClaimPolicy(RACE_HUMAN, false, false, race_max_expa_mine_distance) or not MineClaimPolicy(RACE_ORC, false, false, race_max_expa_mine_distance) or MineClaimPolicy(RACE_NIGHTELF, false, false, race_max_expa_mine_distance) or not MineClaimPolicy(RACE_NIGHTELF, false, true, race_max_expa_mine_distance) or MineClaimPolicy(RACE_UNDEAD, false, true, race_max_expa_mine_distance + 1) or not MineClaimPolicy(RACE_UNDEAD, true, false, race_max_expa_mine_distance + 1) or MineSharePolicy(true, 10000, 10000) or not MineSharePolicy(false, 10000, 10000) or MineSharePolicy(false, 10001, 10000) or not NightElfRelocationPolicy(RACE_NIGHTELF, false, expansion_taken_radius) or NightElfRelocationPolicy(RACE_NIGHTELF, true, expansion_taken_radius) or NightElfRelocationPolicy(RACE_UNDEAD, false, expansion_taken_radius) or NightElfRelocationPolicy(RACE_NIGHTELF, false, expansion_taken_radius + 1) then
+  if race_mine_style[R_HUMAN] != MINE_STYLE_SHARED or race_mine_style[R_ORC] != MINE_STYLE_SHARED or race_mine_style[R_ELF] != MINE_STYLE_ENTANGLE or race_mine_style[R_UNDEAD] != MINE_STYLE_EXCLUSIVE or not MineClaimPolicy(MINE_STYLE_SHARED, false, false, race_max_expa_mine_distance) or MineClaimPolicy(MINE_STYLE_EXCLUSIVE, false, false, race_max_expa_mine_distance) or not MineClaimPolicy(MINE_STYLE_EXCLUSIVE, false, true, race_max_expa_mine_distance) or MineClaimPolicy(MINE_STYLE_ENTANGLE, false, true, race_max_expa_mine_distance + 1) or not MineClaimPolicy(MINE_STYLE_EXCLUSIVE, true, false, race_max_expa_mine_distance + 1) or MineSharePolicy(true, 10000, 10000) or not MineSharePolicy(false, 10000, 10000) or MineSharePolicy(false, 10001, 10000) or not MineHallRelocationPolicy(MINE_STYLE_ENTANGLE, false, expansion_taken_radius) or MineHallRelocationPolicy(MINE_STYLE_ENTANGLE, true, expansion_taken_radius) or MineHallRelocationPolicy(MINE_STYLE_EXCLUSIVE, false, expansion_taken_radius) or MineHallRelocationPolicy(MINE_STYLE_ENTANGLE, false, expansion_taken_radius + 1) or MineWorkerTargetCount(3) != 3 or MineWorkerTargetCount(4) != 3 then
     call TraceAll("ERROR: Mine claim policy self-check failed")
   endif
 endfunction
@@ -6347,7 +6380,7 @@ function GetMineClaimantEx takes unit mine, unit ignored returns unit
         set nearestMine = GetNearestGoldMineToUnit(u)
         set nearestTarget = nearestMine == mine or (nearestMine != null and DistanceBetweenUnits(nearestMine, mine) <= 225)
       endif
-      set claimsTarget = (exactCapture or IsUnitType(u, UNIT_TYPE_TOWNHALL)) and MineClaimPolicy(GetPlayerRace(owner), exactCapture, nearestTarget, distance)
+      set claimsTarget = (exactCapture or IsUnitType(u, UNIT_TYPE_TOWNHALL)) and MineClaimPolicy(GetPlayerMineStyle(owner), exactCapture, nearestTarget, distance)
       if claimsTarget and (claimant == null or distance < claimantDistance or (distance == claimantDistance and (GetPlayerId(owner) < GetPlayerId(GetOwningPlayer(claimant)) or (GetPlayerId(owner) == GetPlayerId(GetOwningPlayer(claimant)) and GetHandleId(u) < GetHandleId(claimant))))) then
         set claimant = u
         set claimantDistance = distance
@@ -6367,11 +6400,11 @@ function GetMineClaimant takes unit mine returns unit
   return GetMineClaimantEx(mine, null)
 endfunction
 
-function NightElfHallHasActiveMine takes unit hall returns boolean
+function MineHallHasActiveMine takes unit hall returns boolean
   local group g = null
   local unit mine = null
   local player owner = null
-  if hall == null or GetPlayerRace(GetOwningPlayer(hall)) != RACE_NIGHTELF or not IsUnitType(hall, UNIT_TYPE_TOWNHALL) then
+  if hall == null or GetPlayerMineStyle(GetOwningPlayer(hall)) != MINE_STYLE_ENTANGLE or not IsUnitType(hall, UNIT_TYPE_TOWNHALL) then
     return false
   endif
   set owner = GetOwningPlayer(hall)
@@ -6397,16 +6430,14 @@ function NightElfHallHasActiveMine takes unit hall returns boolean
 endfunction
 
 function IsAlliedSharedMineHall takes unit claimant returns boolean
-  local race claimantRace = null
   if claimant == null or not IsPlayerAlly(ai_player, GetOwningPlayer(claimant)) or GetOwningPlayer(claimant) == ai_player or not IsUnitType(claimant, UNIT_TYPE_TOWNHALL) then
     return false
   endif
-  set claimantRace = GetPlayerRace(GetOwningPlayer(claimant))
-  return claimantRace == RACE_HUMAN or claimantRace == RACE_ORC
+  return GetPlayerMineStyle(GetOwningPlayer(claimant)) == MINE_STYLE_SHARED
 endfunction
 
-// Human and Orc may work several deposits from one hall, but their non-primary
-// deposits can be shared if the owner keeps at least as much gold elsewhere.
+// Shared-service races may work several deposits from one hall, but their
+// non-primary deposits can be yielded if the owner retains equal gold.
 function CanYieldAlliedMine takes unit mine, unit claimant returns boolean
   local group g = null
   local unit u = null
@@ -6460,7 +6491,7 @@ function GetExpansionMineClaimantEx takes unit mine, unit ignored returns unit
   local unit claimant = GetMineClaimantEx(mine, ignored)
   if IsSharedExpansionMine(mine) and IsAlliedSharedMineHall(claimant) then
     set claimant = null
-  elseif claimant != null and GetOwningPlayer(claimant) == ai_player and NightElfRelocationPolicy(GetPlayerRace(ai_player), NightElfHallHasActiveMine(claimant), DistanceBetweenUnits(claimant, mine)) then
+  elseif claimant != null and GetOwningPlayer(claimant) == ai_player and MineHallRelocationPolicy(GetPlayerMineStyle(ai_player), MineHallHasActiveMine(claimant), DistanceBetweenUnits(claimant, mine)) then
     set claimant = null
   endif
   return claimant
@@ -7268,7 +7299,7 @@ function ChooseExpansion takes nothing returns nothing
     endloop
   endif
   // If no ordinary mine is available, allow an ally to take a surplus mine
-  // serviced by a Human/Orc hall when the hall owner retains equal gold.
+  // serviced by a shared-style hall when the hall owner retains equal gold.
   if exp_number == 0 then
     set i = 0
     loop
@@ -9145,6 +9176,7 @@ endfunction
 function InitRaceNames takes nothing returns nothing
 #INCLUDETABLE <$VER$\Races.txt>
   set race_name[%row] = "%1"
+  set race_mine_style[%row] = %4
 #ENDINCLUDE
 endfunction
 
@@ -9890,6 +9922,7 @@ endfunction
 
 //============================================================================
 function GetPeonTargetForMines takes integer mo, real w, integer sc returns integer
+  set mo = MineWorkerTargetCount(mo)
   if race_has_ghouls then
     if mo <= 1 then
       return min_peon_number_single_mine
@@ -11512,13 +11545,13 @@ function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
   return false
 endfunction
 
-function GetMovableNightElfHall takes unit target returns unit
+function GetMovableMineHall takes unit target returns unit
   local group g = null
   local unit u = null
   local unit nearest = null
   local real distance = 0
   local real nearestDistance = expansion_taken_radius + 1
-  if target == null or GetOwningPlayer(target) != Player(PLAYER_NEUTRAL_PASSIVE) or GetPlayerRace(ai_player) != RACE_NIGHTELF then
+  if target == null or GetOwningPlayer(target) != Player(PLAYER_NEUTRAL_PASSIVE) or GetPlayerMineStyle(ai_player) != MINE_STYLE_ENTANGLE then
     return null
   endif
   set g = CreateGroup()
@@ -11527,7 +11560,7 @@ function GetMovableNightElfHall takes unit target returns unit
     set u = FirstOfGroup(g)
     exitwhen u == null
     set distance = DistanceBetweenUnits(u, target)
-    if UnitAlive(u) and IsRacialHall(u, 1) and GetUnitState(u, UNIT_STATE_LIFE) == GetUnitState(u, UNIT_STATE_MAX_LIFE) and NightElfRelocationPolicy(GetPlayerRace(ai_player), NightElfHallHasActiveMine(u), distance) then
+    if UnitAlive(u) and IsRacialHall(u, 1) and GetUnitState(u, UNIT_STATE_LIFE) == GetUnitState(u, UNIT_STATE_MAX_LIFE) and MineHallRelocationPolicy(GetPlayerMineStyle(ai_player), MineHallHasActiveMine(u), distance) then
       if nearest == null or distance < nearestDistance or (distance == nearestDistance and GetHandleId(u) < GetHandleId(nearest)) then
         set nearest = u
         set nearestDistance = distance
@@ -11541,8 +11574,8 @@ function GetMovableNightElfHall takes unit target returns unit
   return nearest
 endfunction
 
-function BeginNightElfMineRelocation takes unit target returns boolean
-  local unit hall = GetMovableNightElfHall(target)
+function BeginMineHallRelocation takes unit target returns boolean
+  local unit hall = GetMovableMineHall(target)
   if hall == null or ancient_expanding then
     set hall = null
     return false
@@ -11554,7 +11587,7 @@ function BeginNightElfMineRelocation takes unit target returns boolean
   set ancient_exp_state = 5
   set anc_retry = 0
   set ancient_expanding = true
-  call Trace("Relocating mine-less Night Elf hall to expansion")
+  call Trace("Relocating mine-less entangling hall to expansion")
   call TQAddJob(0, ANCIENT_EXPANSION, 0)
   set hall = null
   return true
@@ -11635,7 +11668,7 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     return BUILT_SOME // Just safety check to prevent normal expansion running while these are both running
   endif
 
-  if not take_exp and BeginNightElfMineRelocation(current_expansion) then
+  if not take_exp and BeginMineHallRelocation(current_expansion) then
     set total_gold = total_gold + gold_cost
     set total_wood = total_wood + wood_cost
     return BUILT_SOME

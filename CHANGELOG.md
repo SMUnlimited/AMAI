@@ -11,7 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
-- Reworked multi-mine handling around individual mine claims, allowing all races to harvest or expand at clustered mines without blocking later expansions, including sharing surplus Human/Orc deposits with allies that have no free mine and relocating mine-less Night Elf halls to nearby empty deposits.
+- Reworked and renabled multi-mine handling around individual mine claims, allowing all races to harvest or expand at clustered mines without blocking later expansions, including bounded per-worker gold rosters that avoid lumber-worker churn or militia defense control, a three-mine worker-production cap, hall-based harvesting that bypasses broken town bookkeeping, surplus Human/Orc-style mine handling, movable entangling halls, and configurable mine styles for custom races.
 
 ## [3.7.0] - 2026-09-18
 
