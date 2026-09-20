@@ -1,10 +1,5 @@
-import { Component, OnInit, ViewChild, ElementRef, HostListener, Injectable } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, OnInit, HostListener } from '@angular/core';
 import { ElectronService } from '../core/services/electron/electron.service';
-
-@Injectable({
-  providedIn: 'root'
-})
 
 @Component({
   selector: 'app-home',
@@ -13,21 +8,21 @@ import { ElectronService } from '../core/services/electron/electron.service';
 })
 export class HomeComponent implements OnInit {
 
-  Images_ROC_Shown: boolean = false;
-  Images_TFT_Shown: boolean = false; 
-  Images_REF_Shown: boolean = false; 
-  ROCInstall: boolean = false; 
-  TFTInstall: boolean = false; 
-  REFInstall: boolean = false; 
-  Mode_State: boolean = true;
-  BJ_State: number = 1;
-  isInteractive: boolean = true;
-  modeState: string = '-folder';
-  bjState: string = '';
-  message: string = '';
-  optimize: boolean = true;
-  forcelang: boolean = false;
-  installEvent: string = 'install'
+  Images_ROC_Shown = false;
+  Images_TFT_Shown = false;
+  Images_REF_Shown = false;
+  ROCInstall = false;
+  TFTInstall = false;
+  REFInstall = false;
+  Mode_State = true;
+  BJ_State = 1;
+  isInteractive = true;
+  modeState = '-folder';
+  bjState = '';
+  message = '';
+  optimize = true;
+  forcelang = false;
+  installEvent = 'install'
 
   ngOnInit(): void {
     console.log('HomeComponent INIT');
@@ -53,7 +48,7 @@ export class HomeComponent implements OnInit {
           }
           break;
       }
-    };
+    }
   }
 
 
@@ -77,7 +72,7 @@ export class HomeComponent implements OnInit {
           }
           break;
       }
-    };
+    }
   }
   
 
@@ -117,7 +112,7 @@ export class HomeComponent implements OnInit {
           }
           break;
       }
-    };
+    }
     this.Images_ROC_Shown = false;
     this.Images_TFT_Shown = false;
     this.Images_REF_Shown = false;
@@ -162,11 +157,10 @@ export class HomeComponent implements OnInit {
           }
           break;      
       }
-    };
+    }
   }
 
   constructor(
-    private router: Router,
     private electronService: ElectronService,
   ) { }
 }

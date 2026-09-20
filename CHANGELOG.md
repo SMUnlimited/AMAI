@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+- Updated the Electron lint configuration to supported Angular ESLint presets and explicit application and end-to-end project coverage, and added lint, installer, unit, and end-to-end checks to pull-request CI.
 - Dynamic strategy upgrades are attempted more frequently when the AI has large gold and lumber surpluses.
 - Reforged Human and Orc expansions now request racial shops earlier, while Undead requests an early main-base Tomb of Relics and gives expansion Tombs a slightly higher priority. (Powerer)
 

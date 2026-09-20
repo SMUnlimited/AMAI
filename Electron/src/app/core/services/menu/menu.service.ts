@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ElectronService } from '../electron/electron.service';
-import { TranslateService, TranslatePipe, TranslateDirective, _ } from "@codeandweb/ngx-translate";
-import type { LangChangeEvent } from "@codeandweb/ngx-translate";
+import { TranslateService, _ } from "@codeandweb/ngx-translate";
 
 
 @Injectable({
@@ -13,8 +12,8 @@ export class MenuService {
     private readonly translate: TranslateService
     ) { }
 
-    private getTemplate(translate : TranslateService) : Array<(Electron.MenuItemConstructorOptions) | (Electron.MenuItem)> { 
-      let template : Array<(Electron.MenuItemConstructorOptions) | (Electron.MenuItem)> = [
+    private getTemplate() : Array<(Electron.MenuItemConstructorOptions) | (Electron.MenuItem)> {
+      const template : Array<(Electron.MenuItemConstructorOptions) | (Electron.MenuItem)> = [
       {
         label: 'Install',
         submenu: [
@@ -186,14 +185,14 @@ export class MenuService {
   public createMenu() {
     if(this.electronService.isElectron) {
       const { Menu } = this.electronService;
-      const menu = Menu.buildFromTemplate(this.getTemplate(this.translate));
+      const menu = Menu.buildFromTemplate(this.getTemplate());
       Menu.setApplicationMenu(menu);
-      this.translate.onLangChange.subscribe((event: LangChangeEvent) => {
-        const menu = Menu.buildFromTemplate(this.getTemplate(this.translate));
+      this.translate.onLangChange.subscribe(() => {
+        const menu = Menu.buildFromTemplate(this.getTemplate());
         Menu.setApplicationMenu(menu);
       });
-      this.translate.onDefaultLangChange.subscribe((event: LangChangeEvent) => {
-        const menu = Menu.buildFromTemplate(this.getTemplate(this.translate));
+      this.translate.onDefaultLangChange.subscribe(() => {
+        const menu = Menu.buildFromTemplate(this.getTemplate());
         Menu.setApplicationMenu(menu);
       });
     }

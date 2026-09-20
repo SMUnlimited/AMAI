@@ -1,6 +1,6 @@
 import { AfterViewChecked, ChangeDetectorRef, Component, ElementRef, ViewChild } from '@angular/core';
 import { ElectronService, MenuService } from './core/services';
-import { TranslateService, TranslatePipe, TranslateDirective, _ as t_ } from "@codeandweb/ngx-translate";
+import { TranslateService, _ as t_ } from "@codeandweb/ngx-translate";
 import type { LangChangeEvent } from "@codeandweb/ngx-translate";
 import { APP_CONFIG } from '../environments/environment';
 import { InstallModel } from '../../commons/models';
@@ -89,7 +89,7 @@ export class AppComponent implements AfterViewChecked {
       });
 
       // TODO: add 'push notification'/'notification'
-      this.electronService.ipcRenderer.on('on-install-exit', (_, args) => {
+      this.electronService.ipcRenderer.on('on-install-exit', () => {
         this.translate.get(t_('PAGES.APP.INSTALL_DONE')).subscribe((res: string) => {
           this.title = res;
         });

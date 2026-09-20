@@ -1,6 +1,6 @@
 import { BrowserContext, ElectronApplication, Page, _electron as electron } from 'playwright';
 import { test, expect } from '@playwright/test';
-const PATH = require('path');
+import * as path from 'path';
 
 test.describe('Check Home Page', async () => {
   let app: ElectronApplication;
@@ -8,7 +8,7 @@ test.describe('Check Home Page', async () => {
   let context: BrowserContext;
 
   test.beforeAll( async () => {
-    app = await electron.launch({ args: [PATH.join(__dirname, '../app/main.js'), PATH.join(__dirname, '../app/package.json')] });
+    app = await electron.launch({ args: [path.join(__dirname, '../app/main.js'), path.join(__dirname, '../app/package.json')] });
     context = app.context();
     await context.tracing.start({ screenshots: true, snapshots: true });
     firstWindow = await app.firstWindow();

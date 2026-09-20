@@ -1,17 +1,15 @@
-import {app, BrowserWindow, dialog, Menu, screen } from 'electron';
+import {app, BrowserWindow, dialog, ipcMain, Menu, screen } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as remote from '@electron/remote/main';
-import { ChildProcess } from 'child_process';
+import * as cp from 'child_process';
 import { InstallModel } from '../commons/models';
-const ipcMain = require('electron').ipcMain;
-const cp = require('child_process');
-const { stopProcessTree } = require('./install-process');
+import { stopProcessTree } from './install-process';
 
 let win: BrowserWindow = null;
-let activeInstaller: ChildProcess | null = null;
+let activeInstaller: cp.ChildProcess | null = null;
 let translations : { [key: string]: string } = {};
-let currentLanguage: string = "English";
+let currentLanguage = "English";
 const args = process.argv.slice(1),
   serve = args.some(val => val === '--serve');
 
@@ -81,10 +79,13 @@ const createWindow = (): BrowserWindow => {
   remote.enable(win.webContents);
 
   if (serve) {
+    // Loaded only by the development server.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const debug = require('electron-debug');
     debug();
 
     // hot reload frontend
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     require('electron-reloader')(module);
     win.loadURL('http://localhost:4200');
   } else {
@@ -111,7 +112,7 @@ const createWindow = (): BrowserWindow => {
   return win;
 }
 
-const execInstall = async (commander: number = 1, isMap: boolean = false, ver: string = "REFORGED", forceLang: boolean) => {
+const execInstall = async (commander = 1, isMap = false, ver = "REFORGED", forceLang: boolean) => {
   const response = dialog.showOpenDialogSync(win, {
     // TODO: add i18n here
     title : isMap ? translations["PAGES.ELECTRON.OPEN_MAP"] || '': translations["PAGES.ELECTRON.OPEN_DIR"] || '',
@@ -123,7 +124,7 @@ const execInstall = async (commander: number = 1, isMap: boolean = false, ver: s
     ] : null,
   });
 
-  let child: ChildProcess;
+  let child: cp.ChildProcess;
 
   const currentScriptDir = installerDirectory();
 
@@ -169,7 +170,7 @@ const execInstall = async (commander: number = 1, isMap: boolean = false, ver: s
       require.resolve(
         path.join(currentScriptDir, 'install.js')
       ),
-      [ response[0], commander, ver, forceLang ? currentLanguage : '-', scriptsDirectory() ]
+      [ response[0], String(commander), ver, forceLang ? currentLanguage : '-', scriptsDirectory() ]
     );
     activeInstaller = child;
 
