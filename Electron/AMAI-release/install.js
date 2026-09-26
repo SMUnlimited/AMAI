@@ -246,9 +246,10 @@ const installOnDirectory = async () => {
 }
 
 if (require.main === module) {
-  // Do not outlive Electron if it is terminated before it can clean up the process tree.
-  process.on('disconnect', () => process.exit(1));
-  installOnDirectory();
+  installOnDirectory().finally(() => {
+    // Close the fork IPC channel after queued progress/log messages have been delivered.
+    if (process.connected) process.disconnect();
+  });
 }
 
 module.exports = { isMapFile, missingFiles };

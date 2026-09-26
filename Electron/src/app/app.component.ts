@@ -1,9 +1,16 @@
 import { AfterViewChecked, ChangeDetectorRef, Component, ElementRef, ViewChild } from '@angular/core';
-import { ElectronService, MenuService } from './core/services';
-import { TranslateService, _ as t_ } from "@codeandweb/ngx-translate";
-import type { LangChangeEvent } from "@codeandweb/ngx-translate";
+import { TranslateService, _ as t_ } from '@codeandweb/ngx-translate';
+import type { LangChangeEvent } from '@codeandweb/ngx-translate';
+import { ElectronService } from './core/services';
 import { APP_CONFIG } from '../environments/environment';
 import { InstallModel } from '../../commons/models';
+
+type InstallStatus = 'running' | 'success' | 'error';
+
+interface LanguageOption {
+  code: string;
+  label: string;
+}
 
 @Component({
   selector: 'app-root',
@@ -11,124 +18,151 @@ import { InstallModel } from '../../commons/models';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements AfterViewChecked {
-  public title = '';
-  public active = false;
-  public couldClose = false;
-  public messages = [];
-  private installingTitle = '';
+  readonly languages: readonly LanguageOption[] = [
+    { code: 'en', label: 'PAGES.MENU.ENGLISH' },
+    { code: 'zh', label: 'PAGES.MENU.CHINESE' },
+    { code: 'fr', label: 'PAGES.MENU.FRENCH' },
+    { code: 'de', label: 'PAGES.MENU.GERMAN' },
+    { code: 'no', label: 'PAGES.MENU.NORWEGIAN' },
+    { code: 'pt', label: 'PAGES.MENU.PORTUGUESE' },
+    { code: 'ro', label: 'PAGES.MENU.ROMANIAN' },
+    { code: 'ru', label: 'PAGES.MENU.RUSSIAN' },
+    { code: 'es', label: 'PAGES.MENU.SPANISH' },
+    { code: 'sv', label: 'PAGES.MENU.SWEDISH' }
+  ];
 
-  @ViewChild('logareawrapper') private readonly logContainer: ElementRef; 
-    
-  ngAfterViewChecked() { this.scrollToBottom(); } 
-    
-  private scrollToBottom(): void { this.logContainer.nativeElement.scrollTop = this.logContainer.nativeElement.scrollHeight; } 
+  title = '';
+  destination = '';
+  active = false;
+  couldClose = false;
+  messages: string[] = [];
+  status: InstallStatus = 'running';
+  progressCurrent = 0;
+  progressTotal = 0;
+  currentLanguage = 'en';
+
+  @ViewChild('logareawrapper') private logContainer?: ElementRef<HTMLElement>;
+  @ViewChild('dialogPanel') private dialogPanel?: ElementRef<HTMLElement>;
+
+  private installingTitle = '';
+  private focusDialog = false;
+  private previousFocus: HTMLElement | null = null;
 
   constructor(
     private readonly electronService: ElectronService,
     private readonly translate: TranslateService,
-    private readonly menuService: MenuService,
-    private readonly cdr: ChangeDetectorRef,
+    private readonly cdr: ChangeDetectorRef
   ) {
-    const lang = this.translate.getBrowserLang();
-    this.translate.use(lang)
+    const browserLanguage = this.translate.getBrowserLang();
+    this.currentLanguage = this.languages.some(language => language.code === browserLanguage) ? browserLanguage : 'en';
+    this.translate.onDefaultLangChange.subscribe(event => this.syncLanguage(event));
+    this.translate.onLangChange.subscribe(event => this.syncLanguage(event));
+    this.translate.use(this.currentLanguage);
     console.log('APP_CONFIG', APP_CONFIG);
 
-    // Refresh app when language changes
-    this.translate.onDefaultLangChange.subscribe((event: LangChangeEvent) => {
-      this.translate.get([t_('PAGES.HOME.TITLE'),t_('PAGES.ELECTRON.OPEN_MAP'), t_('PAGES.ELECTRON.OPEN_DIR'), t_('PAGES.ELECTRON.MAPFILE')]).subscribe((translations: { [key: string]: string } ) => {
-        this.electronService.ipcRenderer.send('Trans', event.lang, translations);
-      })
-      this.cdr.detectChanges();
-    });
-    this.translate.onLangChange.subscribe((event: LangChangeEvent) => {
-      this.translate.get([t_('PAGES.HOME.TITLE'),t_('PAGES.ELECTRON.OPEN_MAP'), t_('PAGES.ELECTRON.OPEN_DIR'), t_('PAGES.ELECTRON.MAPFILE')]).subscribe((translations: { [key: string]: string } ) => {
-        this.electronService.ipcRenderer.send('Trans', event.lang, translations);
-      })
-      this.cdr.detectChanges();
-    });
-    
+    if (electronService.isElectron) this.registerInstallerEvents();
+  }
 
-    if (electronService.isElectron) {
-      this.menuService.createMenu();
+  get progressPercent(): number {
+    if (!this.progressTotal) return 0;
+    return Math.min(100, Math.round((this.progressCurrent / this.progressTotal) * 100));
+  }
 
-      this.electronService.ipcRenderer.on('on-install-progress', (_, progress: { current: number, total: number }) => {
-        this.title = `(${progress.current}/${progress.total}) ${this.installingTitle}`;
-        this.cdr.detectChanges();
-      });
+  ngAfterViewChecked(): void {
+    if (this.logContainer) {
+      const element = this.logContainer.nativeElement;
+      element.scrollTop = element.scrollHeight;
+    }
 
-      // TODO: add 'push notification'/'notification'
-      this.electronService.ipcRenderer.on('on-install-init', (_, args: InstallModel) => {
-        console.log('args-install-init', args)
-        this.translate.get(t_('PAGES.APP.INSTALLING'), {path: args.response}).subscribe((res: string) => {
-          this.installingTitle = res;
-          this.title = res;
-        });
-        this.active = true;
-        this.couldClose = false;
-        this.messages = [];
-        this.translate.get(t_('PAGES.APP.INSTALLING_DIR'), {path: args.response}).subscribe((res: string) => {
-          !args.isMap && this.messages?.push(res);
-        });
-
-        // disable the menu while the script is running
-        this
-          .menuService
-          .changeEnabledMenuState(false);
-
-        // force update in angular view after update any variable
-        // because we are in a IPC async
-        this.cdr.detectChanges();
-      });
-
-      // TODO: add 'push notification'/'notification'
-      this.electronService.ipcRenderer.on('on-install-empty', (_, args) => {
-        console.log('args-install-empty', args);
-        this.active = false;
-        this.couldClose = true;
-        this.cdr.detectChanges();
-      });
-
-      // TODO: add 'push notification'/'notification'
-      this.electronService.ipcRenderer.on('on-install-exit', () => {
-        this.translate.get(t_('PAGES.APP.INSTALL_DONE')).subscribe((res: string) => {
-          this.title = res;
-        });
-        this.couldClose = true;
-
-        this
-          .menuService
-          .changeEnabledMenuState(true);
-
-        this.cdr.detectChanges();
-      });
-
-      this.electronService.ipcRenderer.on('on-install-message', (_, args) => {
-        console.log('args-install-message', args);
-        this.messages?.push(args);
-        this.cdr.detectChanges();
-      });
-
-      // TODO: add 'push notification'/'notification'
-      this.electronService.ipcRenderer.on('on-install-error', (_, args) => {
-        console.log('args-install-error', args);
-        this.messages?.push(`ERROR: ${args}`);
-        this.couldClose = true;
-
-        this
-          .menuService
-          .changeEnabledMenuState(true);
-
-        this.cdr.detectChanges();
-      });
-
-    } else {
-      console.log('Run in browser');
+    if (this.focusDialog && this.dialogPanel) {
+      this.focusDialog = false;
+      this.dialogPanel.nativeElement.focus();
     }
   }
 
-  public closeCmd() {
-    if (this.couldClose) { 
+  changeLanguage(event: Event): void {
+    this.translate.use((event.target as HTMLSelectElement).value);
+  }
+
+  openAbout(): void {
+    this.electronService.openExternal('https://github.com/SMUnlimited/AMAI');
+  }
+
+  closeInstall(): void {
+    if (!this.couldClose) return;
+    this.active = false;
+    this.cdr.detectChanges();
+    this.previousFocus?.focus();
+    this.previousFocus = null;
+  }
+
+  private syncLanguage(event: LangChangeEvent): void {
+    this.currentLanguage = event.lang;
+    this.translate.get([
+      t_('PAGES.HOME.TITLE'),
+      t_('PAGES.ELECTRON.OPEN_MAP'),
+      t_('PAGES.ELECTRON.OPEN_DIR'),
+      t_('PAGES.ELECTRON.MAPFILE')
+    ]).subscribe((translations: { [key: string]: string }) => {
+      if (this.electronService.isElectron) {
+        this.electronService.ipcRenderer.send('Trans', event.lang, translations);
+      }
+    });
+  }
+
+  private registerInstallerEvents(): void {
+    this.electronService.ipcRenderer.on('on-install-progress', (_, progress: { current: number; total: number }) => {
+      this.progressCurrent = progress.current;
+      this.progressTotal = progress.total;
+      this.title = `(${progress.current}/${progress.total}) ${this.installingTitle}`;
+      this.cdr.detectChanges();
+    });
+
+    this.electronService.ipcRenderer.on('on-install-init', (_, args: InstallModel) => {
+      this.previousFocus = document.activeElement as HTMLElement;
+      this.destination = args.response;
+      this.active = true;
+      this.couldClose = false;
+      this.status = 'running';
+      this.messages = [];
+      this.progressCurrent = 0;
+      this.progressTotal = 0;
+      this.focusDialog = true;
+
+      this.translate.get(t_('PAGES.APP.INSTALLING'), { path: args.response }).subscribe((result: string) => {
+        this.installingTitle = result;
+        this.title = result;
+      });
+      this.translate.get(t_('PAGES.APP.INSTALLING_DIR'), { path: args.response }).subscribe((result: string) => {
+        if (!args.isMap) this.messages.push(result);
+      });
+      this.cdr.detectChanges();
+    });
+
+    this.electronService.ipcRenderer.on('on-install-empty', () => {
       this.active = false;
-    }
+      this.couldClose = true;
+      this.cdr.detectChanges();
+    });
+
+    this.electronService.ipcRenderer.on('on-install-exit', () => {
+      this.translate.get(t_('PAGES.APP.INSTALL_DONE')).subscribe((result: string) => this.title = result);
+      this.status = 'success';
+      this.couldClose = true;
+      this.cdr.detectChanges();
+    });
+
+    this.electronService.ipcRenderer.on('on-install-message', (_, message: unknown) => {
+      this.messages.push(String(message));
+      this.cdr.detectChanges();
+    });
+
+    this.electronService.ipcRenderer.on('on-install-error', (_, error: unknown) => {
+      this.translate.get(t_('PAGES.APP.INSTALL_FAILED')).subscribe((result: string) => this.title = result);
+      this.messages.push(`ERROR: ${String(error)}`);
+      this.status = 'error';
+      this.couldClose = true;
+      this.cdr.detectChanges();
+    });
   }
 }

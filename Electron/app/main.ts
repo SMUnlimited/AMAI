@@ -1,4 +1,4 @@
-import {app, BrowserWindow, dialog, ipcMain, Menu, screen } from 'electron';
+import {app, BrowserWindow, dialog, ipcMain, Menu } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as remote from '@electron/remote/main';
@@ -58,16 +58,13 @@ const reportMissingInstallerFiles = (): boolean => {
 
 const createWindow = (): BrowserWindow => {
 
-  const size = screen.getPrimaryDisplay().workAreaSize;
-
   // Create the browser window.
   win = new BrowserWindow({
-    x: 0,
-    y: 0,
-    width: size.width,
-    height: size.height,
-    minWidth: 1280,
-    minHeight: 940,
+    width: 1200,
+    height: 820,
+    minWidth: 900,
+    minHeight: 650,
+    center: true,
     webPreferences: {
       devTools: true,
       nodeIntegration: true,

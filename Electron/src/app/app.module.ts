@@ -1,6 +1,7 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { A11yModule } from '@angular/cdk/a11y';
 import { HttpClientModule, HttpClient } from '@angular/common/http';
 import { CoreModule } from './core/core.module';
 import { SharedModule } from './shared/shared.module';
@@ -24,6 +25,7 @@ const httpLoaderFactory = (http: HttpClient): TranslateHttpLoader =>  new Transl
   imports: [
     BrowserModule,
     FormsModule,
+    A11yModule,
     HttpClientModule,
     CoreModule,
     SharedModule,

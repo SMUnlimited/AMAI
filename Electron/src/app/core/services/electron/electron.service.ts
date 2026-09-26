@@ -20,6 +20,14 @@ export class ElectronService {
   childProcess: typeof childProcess;
   fs: typeof fs;
 
+  openExternal(url: string): void {
+    if (this.isElectron) {
+      this.electron.shell.openExternal(url);
+      return;
+    }
+    window.open(url, '_blank', 'noopener');
+  }
+
   constructor() {
     // Conditional imports
     if (this.isElectron) {
