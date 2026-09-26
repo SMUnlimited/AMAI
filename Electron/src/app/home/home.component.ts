@@ -20,7 +20,7 @@ interface GameEdition {
 })
 export class HomeComponent {
   readonly editions: readonly GameEdition[] = [
-    { id: 'REFORGED', asset: 'REF', version: '1.33+', optimal: '3.0.0', alt: 'Warcraft III Reforged' },
+    { id: 'REFORGED', asset: 'REF', version: '3.0.0+', optimal: '3.0.0', alt: 'Warcraft III Reforged' },
     { id: 'TFT', asset: 'TFT', version: '1.24+', optimal: '1.24–1.28', alt: 'Warcraft III The Frozen Throne' },
     { id: 'ROC', asset: 'ROC', version: '1.24–1.31', optimal: '1.24–1.28', alt: 'Warcraft III Reign of Chaos' }
   ];
