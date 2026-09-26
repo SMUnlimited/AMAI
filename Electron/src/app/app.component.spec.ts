@@ -27,9 +27,8 @@ describe('AppComponent', () => {
     };
 
     TestBed.configureTestingModule({
-      declarations: [AppComponent],
       providers: [{ provide: ElectronService, useValue: electronService }],
-      imports: [A11yModule, RouterTestingModule, TranslateModule.forRoot()]
+      imports: [AppComponent, A11yModule, RouterTestingModule, TranslateModule.forRoot()]
     }).compileComponents();
 
     fixture = TestBed.createComponent(AppComponent);

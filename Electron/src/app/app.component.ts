@@ -1,6 +1,10 @@
+import { NgClass } from '@angular/common';
+import { A11yModule } from '@angular/cdk/a11y';
 import { AfterViewChecked, ChangeDetectorRef, Component, ElementRef, ViewChild, ChangeDetectionStrategy } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
 import { TranslateService, _ as t_ } from '@codeandweb/ngx-translate';
 import type { LangChangeEvent } from '@codeandweb/ngx-translate';
+import { TranslatePipe } from '@codeandweb/ngx-translate';
 import { ElectronService } from './core/services';
 import { APP_CONFIG } from '../environments/environment';
 import { InstallModel } from '../../commons/models';
@@ -17,8 +21,8 @@ interface LanguageOption {
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
-  changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [A11yModule, NgClass, RouterOutlet, TranslatePipe]
 })
 export class AppComponent implements AfterViewChecked {
   readonly installerVersion = packageJson.version;

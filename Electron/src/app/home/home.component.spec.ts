@@ -14,9 +14,8 @@ describe('HomeComponent', () => {
   beforeEach(waitForAsync(() => {
     send = vi.spyOn(electronServiceStub.ipcRenderer, 'send');
     TestBed.configureTestingModule({
-      declarations: [HomeComponent],
       providers: [{ provide: ElectronService, useValue: electronServiceStub }],
-      imports: [FormsModule, TranslateModule.forRoot()]
+      imports: [HomeComponent, FormsModule, TranslateModule.forRoot()]
     }).compileComponents();
 
     fixture = TestBed.createComponent(HomeComponent);

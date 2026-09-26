@@ -1,4 +1,6 @@
 import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { TranslatePipe } from '@codeandweb/ngx-translate';
 import { ElectronService } from '../core/services/electron/electron.service';
 
 export type GameVersion = 'REFORGED' | 'TFT' | 'ROC';
@@ -15,8 +17,8 @@ interface GameEdition {
   selector: 'app-home',
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
-  changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [FormsModule, TranslatePipe]
 })
 export class HomeComponent {
   readonly editions: readonly GameEdition[] = [
