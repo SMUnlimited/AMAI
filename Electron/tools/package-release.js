@@ -15,6 +15,7 @@ const scriptsDirectory = path.resolve(__dirname, '../../Scripts');
 const artifactName = `${packageJson.name} ${packageJson.version}`;
 const executable = path.join(releaseDirectory, `${artifactName}.exe`);
 const archive = path.join(releaseDirectory, `${artifactName}.zip`);
+const releaseScriptsDirectory = path.join(releaseDirectory, 'Scripts');
 
 if (!fs.existsSync(executable)) throw new Error(`Portable executable not found: ${executable}`);
 if (!fs.existsSync(scriptsDirectory)) throw new Error(`Compiled scripts not found: ${scriptsDirectory}`);
@@ -24,6 +25,8 @@ const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'amai-installer
 try {
   fs.copyFileSync(executable, path.join(temporaryDirectory, path.basename(executable)));
   fs.cpSync(scriptsDirectory, path.join(temporaryDirectory, 'Scripts'), { recursive: true });
+  fs.rmSync(releaseScriptsDirectory, { recursive: true, force: true });
+  fs.cpSync(scriptsDirectory, releaseScriptsDirectory, { recursive: true });
   fs.rmSync(archive, { force: true });
 
   const result = spawnSync(path7za, ['a', '-tzip', '-mx=9', archive, '.'], {
