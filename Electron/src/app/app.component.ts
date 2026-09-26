@@ -4,6 +4,7 @@ import type { LangChangeEvent } from '@codeandweb/ngx-translate';
 import { ElectronService } from './core/services';
 import { APP_CONFIG } from '../environments/environment';
 import { InstallModel } from '../../commons/models';
+import packageJson from '../../package.json';
 
 type InstallStatus = 'running' | 'success' | 'error';
 
@@ -18,6 +19,7 @@ interface LanguageOption {
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements AfterViewChecked {
+  readonly installerVersion = packageJson.version;
   readonly languages: readonly LanguageOption[] = [
     { code: 'en', label: 'PAGES.MENU.ENGLISH' },
     { code: 'zh', label: 'PAGES.MENU.CHINESE' },

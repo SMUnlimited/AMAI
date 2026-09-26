@@ -50,6 +50,13 @@ describe('AppComponent', () => {
     expect(openExternal).toHaveBeenCalledOnceWith('https://github.com/SMUnlimited/AMAI');
   });
 
+  it('shows the installer version and website in the About dropdown', () => {
+    const dropdown = fixture.nativeElement.querySelector('.about-dropdown') as HTMLElement;
+
+    expect(dropdown.textContent).toContain(`v${component.installerVersion}`);
+    expect(dropdown.textContent).toContain('github.com/SMUnlimited/AMAI');
+  });
+
   it('shows progress, messages, success, and restores the close action', () => {
     callbacks['on-install-init']({}, { response: 'C:\\Maps', commander: 1, isMap: false });
     callbacks['on-install-progress']({}, { current: 2, total: 4 });
