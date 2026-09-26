@@ -1,8 +1,5 @@
-import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
-
-const require = createRequire(import.meta.url);
-const { stopProcessTree } = require('../app/install-process');
+import { stopProcessTree } from '../app/install-process.ts';
 
 describe('stopProcessTree', () => {
   it('uses taskkill for a running Windows child', () => {

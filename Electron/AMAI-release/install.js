@@ -1,6 +1,5 @@
 const fs = require("fs");
 const path = require("path");
-const { takeHeapSnapshot } = require("process");
 const spawnSync = require("child_process").spawnSync;
 const arrayOfFiles = [];
 
@@ -97,7 +96,7 @@ const installOnDirectory = async () => {
 
       try {
         fs.accessSync(file, fs.constants.W_OK)
-      } catch (e) {
+      } catch {
         process.send(`WARN: ${file} does not have write permissions so unable to install`);
         continue;
       }

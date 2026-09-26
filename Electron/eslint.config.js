@@ -26,6 +26,17 @@ module.exports = tseslint.config(
     },
   },
   {
+    files: ['AMAI-release/**/*.js'],
+    extends: [eslint.configs.recommended],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
+  },
+  {
     files: ['src/**/*.html'],
     extends: [
       ...angular.configs.templateRecommended,
