@@ -72,7 +72,7 @@ test.describe('Check Home Page', async () => {
     await expect(firstWindow.locator('#optimise')).toBeChecked();
     await expect(firstWindow.locator('#install-button')).toBeVisible();
     expect(state.menu).toBeNull();
-    expect(state.size).toEqual([1200, 820]);
+    expect(state.size).toEqual([1200, 900]);
     expect((await firstWindow.screenshot()).length).toBeGreaterThan(1000);
   });
 

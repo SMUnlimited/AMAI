@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { ElectronService } from '../core/services/electron/electron.service';
 
 export type GameVersion = 'REFORGED' | 'TFT' | 'ROC';
@@ -14,7 +14,9 @@ interface GameEdition {
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
-  styleUrls: ['./home.component.scss']
+  styleUrls: ['./home.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false
 })
 export class HomeComponent {
   readonly editions: readonly GameEdition[] = [

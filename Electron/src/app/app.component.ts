@@ -1,4 +1,4 @@
-import { AfterViewChecked, ChangeDetectorRef, Component, ElementRef, ViewChild } from '@angular/core';
+import { AfterViewChecked, ChangeDetectorRef, Component, ElementRef, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { TranslateService, _ as t_ } from '@codeandweb/ngx-translate';
 import type { LangChangeEvent } from '@codeandweb/ngx-translate';
 import { ElectronService } from './core/services';
@@ -16,7 +16,9 @@ interface LanguageOption {
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
+  styleUrls: ['./app.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false
 })
 export class AppComponent implements AfterViewChecked {
   readonly installerVersion = packageJson.version;

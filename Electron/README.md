@@ -14,12 +14,13 @@
 
 # Introduction
 
-Bootstrap and package your project with Angular 14 and Electron 19 (Typescript + SASS + Hot Reload) for creating Desktop applications.
+Build and package the AMAI installer with Angular, Electron, TypeScript, SASS, and hot reload.
 
 Currently runs with:
 
-- Angular v14.0.6
-- Electron v19.0.8
+- Angular v22.2.0
+- Electron v22.3.27
+- Node.js v24 LTS
 
 With this sample, you can:
 
@@ -29,7 +30,7 @@ With this sample, you can:
 
 /!\ Hot reload only pertains to the renderer process. The main electron process is not able to be hot reloaded, only restarted.
 
-/!\ Angular CLI & Electron Builder needs Node 14 or later to work correctly.
+/!\ Use Node.js 24 LTS (24.15.0 or later) for Angular CLI and Electron Builder.
 
 ## Getting Started
 

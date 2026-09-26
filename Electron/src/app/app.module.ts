@@ -2,7 +2,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { A11yModule } from '@angular/cdk/a11y';
-import { HttpClientModule, HttpClient } from '@angular/common/http';
+import { HttpClient, provideHttpClient, withInterceptorsFromDi, withXhr } from '@angular/common/http';
 import { CoreModule } from './core/core.module';
 import { SharedModule } from './shared/shared.module';
 
@@ -26,22 +26,21 @@ const httpLoaderFactory = (http: HttpClient): TranslateHttpLoader =>  new Transl
     BrowserModule,
     FormsModule,
     A11yModule,
-    HttpClientModule,
     CoreModule,
     SharedModule,
     HomeModule,
     DetailModule,
-    AppRoutingModule,
-
+    AppRoutingModule
   ],
-  providers: [   
+  providers: [
     provideTranslateService({
       loader: {
         provide: TranslateLoader,
         useFactory: httpLoaderFactory,
         deps: [HttpClient]
       }
-    })
+    }),
+    provideHttpClient(withXhr(), withInterceptorsFromDi())
   ],
   bootstrap: [AppComponent]
 })

@@ -61,7 +61,7 @@ const createWindow = (): BrowserWindow => {
   // Create the browser window.
   win = new BrowserWindow({
     width: 1200,
-    height: 820,
+    height: 900,
     minWidth: 900,
     minHeight: 650,
     center: true,
@@ -78,12 +78,8 @@ const createWindow = (): BrowserWindow => {
 
   if (serve) {
     // Loaded only by the development server.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const debug = require('electron-debug');
-    debug();
-
     // hot reload frontend
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     require('electron-reloader')(module);
     win.loadURL('http://localhost:4200');
   } else {
@@ -250,7 +246,7 @@ const init = () => {
       }
     });
 
-  } catch (e) {
+  } catch {
     // Catch Error
     // throw e;
   }

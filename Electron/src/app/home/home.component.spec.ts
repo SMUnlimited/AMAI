@@ -47,7 +47,6 @@ describe('HomeComponent', () => {
     component.commander = 2;
     component.optimize = false;
     component.forceLanguage = true;
-    fixture.detectChanges();
 
     (fixture.nativeElement.querySelector('#install-button') as HTMLButtonElement).click();
 

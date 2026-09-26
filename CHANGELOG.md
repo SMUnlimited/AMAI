@@ -11,13 +11,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (Installer) Modernised the Electron interface with a responsive Warcraft-themed layout, explicit version selection and install action, accessible settings, in-app language and About controls, and a focused installation progress dialog.
 - Dynamic strategy upgrades are attempted more frequently when the AI has large gold and lumber surpluses.
 - Reforged Human and Orc expansions now request racial shops earlier, while Undead requests an early main-base Tomb of Relics and gives expansion Tombs a slightly higher priority. (Powerer)
+- (Installer) Upgraded the build toolchain from Angular 16 to Angular 22 and Node.js 16 to Node.js 24 LTS, refreshed the supporting dependencies and lint configuration, and retained Electron 22.3.27 compatibility.
 - (Installer) Updated the Electron lint configuration to supported Angular ESLint presets and explicit application and end-to-end project coverage, and added lint, installer, unit, and end-to-end checks to pull-request CI.
+- (Installer) Replaced the default Electron executable, portable installer, and header branding with a panda-focused AMAI icon adapted from the project artwork.
 
 ### Fixed
 
-- (Installer) The installation dialog now receives worker completion and enables Close after installation finishes.
 - Attempts to open Commander using shortcuts or chat commands now explain when Commander is disabled for the game or the player has no allied computer to command.
 - Reworked and renabled multi-mine handling around individual mine claims, allowing all races to harvest or expand at clustered mines without blocking later expansions, including bounded per-worker gold rosters that avoid lumber-worker churn or militia defense control, a three-mine worker-production cap, hall-based harvesting that bypasses broken town bookkeeping, surplus Human/Orc-style mine handling, movable entangling halls, and configurable mine styles for custom races.
+- (Installer) The installation dialog now receives worker completion and enables Close after installation finishes.
 - (Installer) The Electron installer now terminates its full worker process tree when stopped, replaced, closed, or disconnected, without reporting late worker errors after its window has closed.
 
 ## [3.7.0] - 2026-09-18
