@@ -4,18 +4,19 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { TranslateModule, TranslateService } from '@codeandweb/ngx-translate';
 import { AppComponent } from './app.component';
 import { ElectronService } from './core/services';
+import { Mock, vi } from 'vitest';
 
 describe('AppComponent', () => {
   let fixture: ComponentFixture<AppComponent>;
   let component: AppComponent;
   let callbacks: Record<string, (...args: unknown[]) => void>;
-  let openExternal: jasmine.Spy;
-  let send: jasmine.Spy;
+  let openExternal: Mock;
+  let send: Mock;
 
   beforeEach(waitForAsync(() => {
     callbacks = {};
-    openExternal = jasmine.createSpy('openExternal');
-    send = jasmine.createSpy('send');
+    openExternal = vi.fn();
+    send = vi.fn();
     const electronService = {
       isElectron: true,
       openExternal,
@@ -46,8 +47,8 @@ describe('AppComponent', () => {
     component.openAbout();
 
     expect(translate.currentLang).toBe('fr');
-    expect(send).toHaveBeenCalledWith('Trans', 'fr', jasmine.any(Object));
-    expect(openExternal).toHaveBeenCalledOnceWith('https://github.com/SMUnlimited/AMAI');
+    expect(send).toHaveBeenCalledWith('Trans', 'fr', expect.any(Object));
+    expect(openExternal).toHaveBeenCalledExactlyOnceWith('https://github.com/SMUnlimited/AMAI');
   });
 
   it('shows the installer version and website in the About dropdown', () => {
@@ -63,8 +64,8 @@ describe('AppComponent', () => {
     callbacks['on-install-message']({}, 'Installing map');
     fixture.detectChanges();
 
-    expect(component.active).toBeTrue();
-    expect(component.couldClose).toBeFalse();
+    expect(component.active).toBe(true);
+    expect(component.couldClose).toBe(false);
     expect(component.destination).toBe('C:\\Maps');
     expect(component.progressPercent).toBe(50);
     expect(component.messages).toContain('Installing map');
@@ -72,10 +73,10 @@ describe('AppComponent', () => {
     callbacks['on-install-exit']();
     fixture.detectChanges();
     expect(component.status).toBe('success');
-    expect(component.couldClose).toBeTrue();
+    expect(component.couldClose).toBe(true);
 
     component.closeInstall();
-    expect(component.active).toBeFalse();
+    expect(component.active).toBe(false);
   });
 
   it('shows installation errors and ignores a cancelled picker', () => {
@@ -85,9 +86,9 @@ describe('AppComponent', () => {
 
     expect(component.status).toBe('error');
     expect(component.messages).toContain('ERROR: MPQ failed');
-    expect(component.couldClose).toBeTrue();
+    expect(component.couldClose).toBe(true);
 
     callbacks['on-install-empty']();
-    expect(component.active).toBeFalse();
+    expect(component.active).toBe(false);
   });
 });

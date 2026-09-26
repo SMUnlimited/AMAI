@@ -4,14 +4,15 @@ import { TranslateModule } from '@codeandweb/ngx-translate';
 import { HomeComponent } from './home.component';
 import { ElectronService } from '../core/services/electron/electron.service';
 import { electronServiceStub } from '../../testing/electron-service.stub';
+import { MockInstance, vi } from 'vitest';
 
 describe('HomeComponent', () => {
   let component: HomeComponent;
   let fixture: ComponentFixture<HomeComponent>;
-  let send: jasmine.Spy;
+  let send: MockInstance;
 
   beforeEach(waitForAsync(() => {
-    send = spyOn(electronServiceStub.ipcRenderer, 'send');
+    send = vi.spyOn(electronServiceStub.ipcRenderer, 'send');
     TestBed.configureTestingModule({
       declarations: [HomeComponent],
       providers: [{ provide: ElectronService, useValue: electronServiceStub }],
@@ -25,11 +26,11 @@ describe('HomeComponent', () => {
 
   it('defaults to the recommended Reforged directory configuration', () => {
     expect(component.selectedVersion).toBe('REFORGED');
-    expect(component.toFolder).toBeTrue();
+    expect(component.toFolder).toBe(true);
     expect(component.commander).toBe(1);
-    expect(component.optimize).toBeTrue();
-    expect(component.forceLanguage).toBeFalse();
-    expect((fixture.nativeElement.querySelector('#edition-REFORGED') as HTMLInputElement).checked).toBeTrue();
+    expect(component.optimize).toBe(true);
+    expect(component.forceLanguage).toBe(false);
+    expect((fixture.nativeElement.querySelector('#edition-REFORGED') as HTMLInputElement).checked).toBe(true);
   });
 
   it('selects an edition without starting installation', () => {
@@ -50,16 +51,16 @@ describe('HomeComponent', () => {
 
     (fixture.nativeElement.querySelector('#install-button') as HTMLButtonElement).click();
 
-    expect(send).toHaveBeenCalledOnceWith('install', 'ROC', false, 2, false, true);
+    expect(send).toHaveBeenCalledExactlyOnceWith('install', 'ROC', false, 2, false, true);
   });
 
   it('keeps optimised scripts and forced chat language mutually exclusive', () => {
     component.setForceLanguage(true);
-    expect(component.forceLanguage).toBeTrue();
-    expect(component.optimize).toBeFalse();
+    expect(component.forceLanguage).toBe(true);
+    expect(component.optimize).toBe(false);
 
     component.setOptimize(true);
-    expect(component.optimize).toBeTrue();
-    expect(component.forceLanguage).toBeFalse();
+    expect(component.optimize).toBe(true);
+    expect(component.forceLanguage).toBe(false);
   });
 });

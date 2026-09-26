@@ -7,10 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
-- (Installer) The About control now opens a dropdown showing the installer version and a separate link to the AMAI website.
-- (Installer) Modernised the Electron interface with a responsive Warcraft-themed layout, explicit version selection and install action, accessible settings, in-app language and About controls, and a focused installation progress dialog.
 - Dynamic strategy upgrades are attempted more frequently when the AI has large gold and lumber surpluses.
 - Reforged Human and Orc expansions now request racial shops earlier, while Undead requests an early main-base Tomb of Relics and gives expansion Tombs a slightly higher priority. (Powerer)
+- (Installer) Modernised the Electron interface with a responsive Warcraft-themed layout, explicit version selection and install action, accessible settings, in-app language and About controls, and a focused installation progress dialog.
+- (Installer) Replaced the Jasmine and Karma unit-test setup with Vitest for both Angular and installer process tests.
+- (Installer) The About control now opens a dropdown showing the installer version and a separate link to the AMAI website.
 - (Installer) Upgraded the build toolchain from Angular 16 to Angular 22 and Node.js 16 to Node.js 24 LTS, refreshed the supporting dependencies and lint configuration, and retained Electron 22.3.27 compatibility.
 - (Installer) Updated the Electron lint configuration to supported Angular ESLint presets and explicit application and end-to-end project coverage, and added lint, installer, unit, and end-to-end checks to pull-request CI.
 - (Installer) Replaced the default Electron executable, portable installer, and header branding with a panda-focused AMAI icon adapted from the project artwork.
