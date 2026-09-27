@@ -46,6 +46,7 @@ describe('AppComponent', () => {
     component.openAbout();
 
     expect(translate.currentLang).toBe('fr');
+    expect(document.documentElement.lang).toBe('fr');
     expect(send).toHaveBeenCalledWith('Trans', 'fr', expect.any(Object));
     expect(openExternal).toHaveBeenCalledExactlyOnceWith('https://github.com/SMUnlimited/AMAI');
   });

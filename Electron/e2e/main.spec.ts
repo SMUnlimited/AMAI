@@ -1,9 +1,19 @@
 import { BrowserContext, ElectronApplication, Page, _electron as electron } from 'playwright';
 import { test, expect } from '@playwright/test';
+import axe from 'axe-core';
 import * as path from 'path';
 
 delete process.env.ELECTRON_RUN_AS_NODE;
 process.env.AMAI_E2E = 'true';
+
+const expectNoAccessibilityViolations = async (page: Page, state: string): Promise<void> => {
+  if (!await page.evaluate(() => 'axe' in window)) await page.addScriptTag({ content: axe.source });
+  const results = await page.evaluate(() =>
+    (window as typeof window & { axe: typeof axe }).axe.run()
+  );
+
+  expect(results.violations, `${state}: ${JSON.stringify(results.violations, null, 2)}`).toEqual([]);
+};
 
 test.describe('Check Home Page', async () => {
   let app: ElectronApplication;
@@ -55,6 +65,35 @@ test.describe('Check Home Page', async () => {
     const elem = await firstWindow.$('.app-header h1');
     const text = await elem.innerText();
     expect(text).toBe('AMAI Installer');
+  });
+
+  test('Has no automatically detectable accessibility violations on every page', async () => {
+    await expect(firstWindow.locator('#install-button')).toBeVisible();
+    await expectNoAccessibilityViolations(firstWindow, 'Home page');
+
+    await firstWindow.locator('.about-menu summary').click();
+    await expectNoAccessibilityViolations(firstWindow, 'Open About menu');
+    await firstWindow.locator('.about-menu summary').click();
+
+    await firstWindow.evaluate(() => {
+      history.pushState(null, '', 'detail');
+      dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await expect(firstWindow.locator('app-detail')).toBeVisible();
+    await expectNoAccessibilityViolations(firstWindow, 'Detail page');
+
+    await firstWindow.evaluate(() => {
+      history.pushState(null, '', 'missing-page');
+      dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await expect(firstWindow.locator('app-page-not-found')).toBeVisible();
+    await expectNoAccessibilityViolations(firstWindow, 'Not-found page');
+
+    await firstWindow.evaluate(() => {
+      history.pushState(null, '', 'home');
+      dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await expect(firstWindow.locator('#install-button')).toBeVisible();
   });
 
   test('Show the modern installer defaults without a native menu', async () => {
@@ -110,6 +149,7 @@ test.describe('Check Home Page', async () => {
     });
 
     await expect(firstWindow.locator('.install-modal')).toBeVisible();
+    await expectNoAccessibilityViolations(firstWindow, 'Installation dialog');
     await expect(firstWindow.locator('.modal-status .status-icon')).toHaveText('sync');
     const statusTitle = await firstWindow.locator('#install-status-title').boundingBox();
     expect(statusTitle).not.toBeNull();

@@ -118,6 +118,7 @@ export class AppComponent implements AfterViewChecked {
 
   private syncLanguage(event: LangChangeEvent): void {
     this.currentLanguage = event.lang;
+    document.documentElement.lang = event.lang;
     this.translate.get([
       t_('PAGES.HOME.TITLE'),
       t_('PAGES.ELECTRON.OPEN_MAP'),
