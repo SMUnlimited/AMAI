@@ -21,6 +21,8 @@ bootstrapApplication(AppComponent, {
     provideRouter(routes),
     provideHttpClient(withXhr(), withInterceptorsFromDi()),
     provideTranslateService({
+      defaultLanguage: 'en',
+      useDefaultLang: true,
       loader: {
         provide: TranslateLoader,
         useFactory: httpLoaderFactory,

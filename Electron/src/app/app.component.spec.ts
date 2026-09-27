@@ -103,6 +103,25 @@ describe('AppComponent', () => {
     expect(fixture.nativeElement.querySelector('.modal-status.warning .status-icon').textContent).toContain('warning');
   });
 
+  it('translates structured installer logs and uses their explicit severity', () => {
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('en', {
+      PAGES: { APP: { INSTALL_LOG: { NO_WRITE_PERMISSION: '{{file}} is not writable' } } }
+    }, true);
+    callbacks['on-install-init']({}, { response: 'map.w3x', commander: 0, isMap: true });
+    callbacks['on-install-progress']({}, { current: 1, total: 1 });
+    callbacks['on-install-message']({}, {
+      type: 'log',
+      level: 'warning',
+      key: 'PAGES.APP.INSTALL_LOG.NO_WRITE_PERMISSION',
+      params: { file: 'map.w3x' }
+    });
+    fixture.detectChanges();
+
+    expect(component.messages).toContain('map.w3x is not writable');
+    expect(fixture.nativeElement.querySelector('.log-row.problem').textContent).toContain('map.w3x is not writable');
+  });
+
   it('shows installation errors and ignores a cancelled picker', () => {
     callbacks['on-install-init']({}, { response: 'map.w3x', commander: 0, isMap: true });
     callbacks['on-install-error']({}, 'MPQ failed');

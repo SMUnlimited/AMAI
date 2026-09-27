@@ -14,6 +14,7 @@ describe('installer', () => {
   });
 
   it('exits after a failed preflight', async () => {
+    const messages = [];
     const worker = fork(
       path.resolve(__dirname, '../AMAI-release/install.js'),
       ['unused-map-path', '1', 'REFORGED', '-', 'missing-scripts'],
@@ -25,12 +26,18 @@ describe('installer', () => {
         worker.kill();
         reject(new Error('Installer worker did not exit after completing its failed preflight'));
       }, 5000);
+      worker.on('message', message => messages.push(message));
       worker.once('error', reject);
       worker.once('exit', code => {
         clearTimeout(timeout);
         resolve(code);
       });
     })).resolves.toBe(1);
+    expect(messages).toContainEqual(expect.objectContaining({
+      type: 'log',
+      level: 'error',
+      key: 'PAGES.APP.INSTALL_LOG.MISSING_FILES'
+    }));
   });
 
   it('reports missing default script files', () => {

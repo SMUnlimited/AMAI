@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (Installer) Upgraded the build toolchain from Angular 16 to Angular 22 and Node.js 16 to Node.js 24 LTS, refreshed the supporting dependencies and lint configuration, and retained Electron 22.3.27 compatibility.
 - (Installer) Updated the Electron lint configuration to supported Angular ESLint presets and explicit application and end-to-end project coverage, and added lint, installer, unit, and end-to-end checks to pull-request CI.
 - (Installer) Replaced the default Electron executable, portable installer, and header branding with a panda-focused AMAI icon adapted from the project artwork.
+- (Installer) Rest of installer is now translated
 
 ### Fixed
 

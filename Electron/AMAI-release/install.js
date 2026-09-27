@@ -3,6 +3,8 @@ const path = require("path");
 const spawnSync = require("child_process").spawnSync;
 const arrayOfFiles = [];
 
+const sendLog = (level, key, params = {}) => process.send({ type: 'log', level, key, params });
+
 const isMapFile = file => [`.w3m`, `.w3x`].includes(path.extname(file).toLowerCase());
 
 const requiredFiles = (ver, commander, scriptsDirectory = 'Scripts') => [
@@ -56,12 +58,16 @@ const installOnDirectory = async () => {
 
   const missing = missingFiles(ver, commander, fs.existsSync, scriptsDirectory);
   if (missing.length) {
-    process.send(`ERROR: Cannot find required installer files:\n${missing.map(file => path.resolve(file)).join('\n')}`);
+    sendLog('error', 'PAGES.APP.INSTALL_LOG.MISSING_FILES', { files: missing.map(file => path.resolve(file)).join('\n') });
     process.exitCode = 1;
     return;
   }
 
-  process.send(`#### Installing AMAI for ${ver} Commander ${commander > 0 ? bj : 'None'} forcing ai language to ${language || 'default'} ####`);
+  sendLog('info', 'PAGES.APP.INSTALL_LOG.START', {
+    version: ver,
+    commander: commander > 0 ? bj : 'None',
+    language: language || 'default'
+  });
 
   // TODO: change to receive array of maps
   if (fs.statSync(response).isDirectory()) {
@@ -92,12 +98,12 @@ const installOnDirectory = async () => {
       // process.send(`path.extname(file): ${path.extname(file)}`);
 
       process.send({ type: 'progress', current: index + 1, total: mapFiles.length });
-      process.send(`#### Installing ${ver} into file: ${file} ####`);
+      sendLog('info', 'PAGES.APP.INSTALL_LOG.MAP_START', { version: ver, file });
 
       try {
         fs.accessSync(file, fs.constants.W_OK)
       } catch {
-        process.send(`WARN: ${file} does not have write permissions so unable to install`);
+        sendLog('warning', 'PAGES.APP.INSTALL_LOG.NO_WRITE_PERMISSION', { file });
         continue;
       }
 
@@ -115,12 +121,12 @@ const installOnDirectory = async () => {
 
         // spawnSync(`echo`, [`running execuMPQEditor ${file}`]);
         if (mpqEditor.status == 5) {
-          process.send(`WARN: ${file} Failed to run mpqeditor htsize, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+          sendLog('warning', 'PAGES.APP.INSTALL_LOG.PERMISSION_FAILURE', { file, operation: 'MPQEditor htsize' })
           continue;
         }
         mpqEditor.error ?
-          process.send(mpqEditor.error.message)
-            : process.send(`Resize map hashtable size ${file}`);
+          sendLog('error', 'PAGES.APP.INSTALL_LOG.SYSTEM_ERROR', { detail: mpqEditor.error.message })
+            : sendLog('info', 'PAGES.APP.INSTALL_LOG.RESIZE_SUCCESS', { file });
 
         const f1AddToMPQ =  spawnSync(
           `MPQEditor.exe`,
@@ -139,15 +145,15 @@ const installOnDirectory = async () => {
         // spawnSync(`echo`, [`running AddToMPQ 1 ${file}`]);
         // process.send(`running AddToMPQ 1 ${file}`);
         if (f1AddToMPQ.status == 5) {
-          process.send(`WARN: ${file} Failed to add ai scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+          sendLog('warning', 'PAGES.APP.INSTALL_LOG.PERMISSION_FAILURE', { file, operation: 'AI scripts' })
           continue;
         } else if (f1AddToMPQ.status > 0) {
-          process.send(`WARN: ${file} Possibly failed to add ai scripts, Unknown error occurred: ${f1AddToMPQ.status}`)
+          sendLog('warning', 'PAGES.APP.INSTALL_LOG.UNKNOWN_FAILURE', { file, operation: 'AI scripts', status: f1AddToMPQ.status })
           continue;
         }
         f1AddToMPQ.error ?
-          process.send(f1AddToMPQ.error.message)
-            : process.send(`Add ai scripts ${file}`);
+          sendLog('error', 'PAGES.APP.INSTALL_LOG.SYSTEM_ERROR', { detail: f1AddToMPQ.error.message })
+            : sendLog('info', 'PAGES.APP.INSTALL_LOG.AI_SUCCESS', { file });
  
         if (commander > 0) {
           
@@ -163,15 +169,15 @@ const installOnDirectory = async () => {
                 { encoding : `utf8` }
               );
               if (f1AddVSAIToMPQ.status == 5) {
-                process.send(`WARN: ${file} Failed to add vsai scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+                sendLog('warning', 'PAGES.APP.INSTALL_LOG.PERMISSION_FAILURE', { file, operation: 'VS AI scripts' })
                 continue;
               } else if (f1AddVSAIToMPQ.status > 0) {
-                process.send(`WARN: ${file} Possibly failed to add vsai scripts, Unknown error occurred: ${f1AddVSAIToMPQ.status}`)
+                sendLog('warning', 'PAGES.APP.INSTALL_LOG.UNKNOWN_FAILURE', { file, operation: 'VS AI scripts', status: f1AddVSAIToMPQ.status })
                 continue;
               }
               f1AddVSAIToMPQ.error ?
-                process.send(f1AddVSAIToMPQ.error.message)
-                  : process.send(`Installing VS Vanilla AI Scripts ${file}`);
+                sendLog('error', 'PAGES.APP.INSTALL_LOG.SYSTEM_ERROR', { detail: f1AddVSAIToMPQ.error.message })
+                  : sendLog('info', 'PAGES.APP.INSTALL_LOG.VSAI_SUCCESS', { file });
             
           }
 
@@ -191,15 +197,17 @@ const installOnDirectory = async () => {
 
           // spawnSync(`echo`, [`running AddToMPQ 2 ${file}`]);
           if (f2AddToMPQ.status == 5) {
-            process.send(`WARN: ${file} Failed to add ${bj} script, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+            sendLog('warning', 'PAGES.APP.INSTALL_LOG.PERMISSION_FAILURE', { file, operation: bj })
             continue;
           } else if (f2AddToMPQ.status > 0) {
-            process.send(`WARN: ${file} Possibly failed to add ${bj} script, Unknown error occurred: ${f2AddToMPQ.status}`)
+            sendLog('warning', 'PAGES.APP.INSTALL_LOG.UNKNOWN_FAILURE', { file, operation: bj, status: f2AddToMPQ.status })
             continue;
           }
           f2AddToMPQ.error ?
-            process.send(f2AddToMPQ.error.message)
-              : process.send(installCommander ? `Installing commander ${file}` : `Installing VS Vanilla AI commander ${file}`);
+            sendLog('error', 'PAGES.APP.INSTALL_LOG.SYSTEM_ERROR', { detail: f2AddToMPQ.error.message })
+              : sendLog('info', installCommander
+                ? 'PAGES.APP.INSTALL_LOG.COMMANDER_SUCCESS'
+                : 'PAGES.APP.INSTALL_LOG.VSAI_COMMANDER_SUCCESS', { file });
 
         }
 
@@ -217,18 +225,18 @@ const installOnDirectory = async () => {
 
         // spawnSync(`echo`, [`running AddToMPQ 3 ${file}`]);
         if (f3AddToMPQ.status == 5) {
-          process.send(`WARN: ${file} Failed to flush scripts, you may not have valid permissions or are blocked by windows UAC. Ensure map files are not in a UAC protected location`)
+          sendLog('warning', 'PAGES.APP.INSTALL_LOG.PERMISSION_FAILURE', { file, operation: 'MPQ flush' })
           continue;
         } else if (f3AddToMPQ.status > 0) {
-            process.send(`WARN: ${file} Possibly failed to flush scripts, Unknown error occurred: ${f3AddToMPQ.status}`)
+            sendLog('warning', 'PAGES.APP.INSTALL_LOG.UNKNOWN_FAILURE', { file, operation: 'MPQ flush', status: f3AddToMPQ.status })
             continue;
           }
         f3AddToMPQ.error ?
-          process.send(f3AddToMPQ.error.message)
-            : process.send(`Optimize map MPQ ${file}`);
+          sendLog('error', 'PAGES.APP.INSTALL_LOG.SYSTEM_ERROR', { detail: f3AddToMPQ.error.message })
+            : sendLog('info', 'PAGES.APP.INSTALL_LOG.OPTIMIZE_SUCCESS', { file });
       } catch(error) {
         console.log(error);
-        process.send(`Install failed with error: ${error}`);
+        sendLog('error', 'PAGES.APP.INSTALL_LOG.INSTALL_FAILURE', { error: String(error) });
       }
     }
   }

@@ -17,6 +17,13 @@ interface LanguageOption {
   label: string;
 }
 
+interface InstallLogEvent {
+  type: 'log';
+  level: 'info' | 'warning' | 'error';
+  key: string;
+  params?: Record<string, unknown>;
+}
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -178,13 +185,14 @@ export class AppComponent implements AfterViewChecked {
     });
 
     this.electronService.ipcRenderer.on('on-install-message', (_, message: unknown) => {
-      const text = String(message);
-      if (/\b(?:warn(?:ing)?|error|fail(?:ed|ure)?)\b/i.test(text)) {
-        this.problemMessageIndexes.add(this.messages.length);
-        this.currentMapFailed = true;
+      if (this.isInstallLogEvent(message)) {
+        this.translate.get(message.key, message.params).subscribe((text: string) => {
+          this.appendLog(text, message.level !== 'info');
+        });
+      } else {
+        const text = String(message);
+        this.appendLog(text, /\b(?:warn(?:ing)?|error|fail(?:ed|ure)?)\b/i.test(text));
       }
-      this.messages.push(text);
-      this.cdr.detectChanges();
     });
 
     this.electronService.ipcRenderer.on('on-install-error', (_, error: unknown) => {
@@ -201,5 +209,22 @@ export class AppComponent implements AfterViewChecked {
   private finishCurrentMap(): void {
     if (this.currentMapActive && !this.currentMapFailed) this.successfulCount++;
     this.currentMapActive = false;
+  }
+
+  private appendLog(text: string, isProblem: boolean): void {
+    if (isProblem) {
+      this.problemMessageIndexes.add(this.messages.length);
+      this.currentMapFailed = true;
+    }
+    this.messages.push(text);
+    this.cdr.detectChanges();
+  }
+
+  private isInstallLogEvent(message: unknown): message is InstallLogEvent {
+    if (!message || typeof message !== 'object') return false;
+    const candidate = message as Partial<InstallLogEvent>;
+    return candidate.type === 'log'
+      && ['info', 'warning', 'error'].includes(candidate.level ?? '')
+      && typeof candidate.key === 'string';
   }
 }
