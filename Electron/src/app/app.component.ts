@@ -10,7 +10,7 @@ import { APP_CONFIG } from '../environments/environment';
 import { InstallModel } from '../../commons/models';
 import packageJson from '../../package.json';
 
-type InstallStatus = 'running' | 'success' | 'error';
+type InstallStatus = 'running' | 'success' | 'warning' | 'error';
 
 interface LanguageOption {
   code: string;
@@ -47,6 +47,9 @@ export class AppComponent implements AfterViewChecked {
   status: InstallStatus = 'running';
   progressCurrent = 0;
   progressTotal = 0;
+  successfulCount = 0;
+  problemMessageIndexes = new Set<number>();
+  mapStartMessageIndexes = new Set<number>();
   currentLanguage = 'en';
 
   @ViewChild('logareawrapper') private logContainer?: ElementRef<HTMLElement>;
@@ -55,6 +58,8 @@ export class AppComponent implements AfterViewChecked {
   private installingTitle = '';
   private focusDialog = false;
   private previousFocus: HTMLElement | null = null;
+  private currentMapActive = false;
+  private currentMapFailed = false;
 
   constructor(
     private readonly electronService: ElectronService,
@@ -120,9 +125,13 @@ export class AppComponent implements AfterViewChecked {
 
   private registerInstallerEvents(): void {
     this.electronService.ipcRenderer.on('on-install-progress', (_, progress: { current: number; total: number }) => {
+      this.finishCurrentMap();
       this.progressCurrent = progress.current;
       this.progressTotal = progress.total;
-      this.title = `(${progress.current}/${progress.total}) ${this.installingTitle}`;
+      this.currentMapActive = true;
+      this.currentMapFailed = false;
+      this.mapStartMessageIndexes.add(this.messages.length);
+      this.title = `(${this.successfulCount}/${progress.total}) ${this.installingTitle}`;
       this.cdr.detectChanges();
     });
 
@@ -133,8 +142,13 @@ export class AppComponent implements AfterViewChecked {
       this.couldClose = false;
       this.status = 'running';
       this.messages = [];
+      this.problemMessageIndexes.clear();
+      this.mapStartMessageIndexes.clear();
       this.progressCurrent = 0;
       this.progressTotal = 0;
+      this.successfulCount = 0;
+      this.currentMapActive = false;
+      this.currentMapFailed = false;
       this.focusDialog = true;
 
       this.translate.get(t_('PAGES.APP.INSTALLING'), { path: args.response }).subscribe((result: string) => {
@@ -154,23 +168,38 @@ export class AppComponent implements AfterViewChecked {
     });
 
     this.electronService.ipcRenderer.on('on-install-exit', () => {
-      this.translate.get(t_('PAGES.APP.INSTALL_DONE')).subscribe((result: string) => this.title = result);
-      this.status = 'success';
+      this.finishCurrentMap();
+      this.translate.get(t_('PAGES.APP.INSTALL_DONE')).subscribe((result: string) => {
+        this.title = this.progressTotal ? `(${this.successfulCount}/${this.progressTotal}) ${result}` : result;
+      });
+      this.status = this.successfulCount < this.progressTotal ? 'warning' : 'success';
       this.couldClose = true;
       this.cdr.detectChanges();
     });
 
     this.electronService.ipcRenderer.on('on-install-message', (_, message: unknown) => {
-      this.messages.push(String(message));
+      const text = String(message);
+      if (/\b(?:warn(?:ing)?|error|fail(?:ed|ure)?)\b/i.test(text)) {
+        this.problemMessageIndexes.add(this.messages.length);
+        this.currentMapFailed = true;
+      }
+      this.messages.push(text);
       this.cdr.detectChanges();
     });
 
     this.electronService.ipcRenderer.on('on-install-error', (_, error: unknown) => {
       this.translate.get(t_('PAGES.APP.INSTALL_FAILED')).subscribe((result: string) => this.title = result);
+      this.problemMessageIndexes.add(this.messages.length);
       this.messages.push(`ERROR: ${String(error)}`);
+      this.currentMapFailed = true;
       this.status = 'error';
       this.couldClose = true;
       this.cdr.detectChanges();
     });
+  }
+
+  private finishCurrentMap(): void {
+    if (this.currentMapActive && !this.currentMapFailed) this.successfulCount++;
+    this.currentMapActive = false;
   }
 }

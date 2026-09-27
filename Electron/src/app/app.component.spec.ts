@@ -59,6 +59,7 @@ describe('AppComponent', () => {
 
   it('shows progress, messages, success, and restores the close action', () => {
     callbacks['on-install-init']({}, { response: 'C:\\Maps', commander: 1, isMap: false });
+    callbacks['on-install-progress']({}, { current: 1, total: 4 });
     callbacks['on-install-progress']({}, { current: 2, total: 4 });
     callbacks['on-install-message']({}, 'Installing map');
     fixture.detectChanges();
@@ -69,6 +70,8 @@ describe('AppComponent', () => {
     expect(component.progressPercent).toBe(50);
     expect(component.messages).toContain('Installing map');
 
+    callbacks['on-install-progress']({}, { current: 3, total: 4 });
+    callbacks['on-install-progress']({}, { current: 4, total: 4 });
     callbacks['on-install-exit']();
     fixture.detectChanges();
     expect(component.status).toBe('success');
@@ -76,6 +79,28 @@ describe('AppComponent', () => {
 
     component.closeInstall();
     expect(component.active).toBe(false);
+  });
+
+  it('marks warning and error logs red and counts only successful maps', () => {
+    callbacks['on-install-init']({}, { response: 'C:\\Maps', commander: 1, isMap: false });
+    callbacks['on-install-progress']({}, { current: 1, total: 2 });
+    callbacks['on-install-message']({}, 'WARN: first map failed');
+    callbacks['on-install-message']({}, 'Error flushing first map');
+    callbacks['on-install-progress']({}, { current: 2, total: 2 });
+    callbacks['on-install-message']({}, 'Second map installed');
+    callbacks['on-install-exit']();
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('.log-row') as NodeListOf<HTMLElement>;
+    expect(rows[1].classList).toContain('map-start');
+    expect(rows[1].classList).toContain('problem');
+    expect(rows[2].classList).toContain('problem');
+    expect(rows[3].classList).toContain('map-start');
+    expect(rows[3].classList).not.toContain('problem');
+    expect(component.successfulCount).toBe(1);
+    expect(component.title).toContain('(1/2)');
+    expect(component.status).toBe('warning');
+    expect(fixture.nativeElement.querySelector('.modal-status.warning .status-icon').textContent).toContain('warning');
   });
 
   it('shows installation errors and ignores a cancelled picker', () => {
