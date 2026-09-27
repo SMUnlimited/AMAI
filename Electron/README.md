@@ -66,7 +66,19 @@ Why two package.json ? This project follow [Electron Builder two package.json st
 
 ## To build for development
 
-- **in a terminal window** -> npm start
+From the `Electron` directory, run:
+
+```bash
+npm start
+```
+
+This starts the Angular development server in the background for renderer hot reload, compiles the Electron main process, and launches the real installer without creating a portable executable. Use the Electron window: the installer depends on Electron APIs, so opening `http://localhost:4200` directly in a browser does not provide working install controls. In development the installer uses:
+
+- `Electron/AMAI-release/install.js`
+- `MPQEditor.exe` from the AMAI repository root
+- compiled AI files from the repository's `Scripts` directory
+
+Run the appropriate AMAI build script from the repository root first if `Scripts` is missing or its compiled AI is stale. Restart `npm start` after changing Electron main-process code or `install.js`; renderer changes reload automatically.
 
 Voila! You can use your Angular + Electron app in a local development environment with hot reload!
 
@@ -101,13 +113,14 @@ For example you can find [here](HOW_TO.md) how to install Angular-Material with 
 
 ## Browser mode
 
-Maybe you only want to execute the application in the browser with hot reload? Just run `npm run ng:serve:web`.
+To preview only the Angular renderer with hot reload, run `npm run ng:serve` and open `http://localhost:4200`. Native installer actions are unavailable in this browser-only mode.
 
 ## Included Commands
 
 | Command                  | Description                                                                                           |
 |--------------------------|-------------------------------------------------------------------------------------------------------|
-| `npm run ng:serve`       | Execute the app in the web browser (DEV mode)                                                         |
+| `npm run ng:serve`       | Serve a browser-only renderer preview; native installer actions are unavailable                       |
+| `npm start`              | Run the complete installer in development using root `MPQEditor.exe` and `Scripts`, without packaging |
 | `npm run web:build`      | Build the app that can be used directly in the web browser. Your built files are in the /dist folder. |
 | `npm run electron:local` | Builds your application and start electron locally                                                    |
 | `npm run electron:build` | Builds your application and creates an app consumable based on your operating system                  |

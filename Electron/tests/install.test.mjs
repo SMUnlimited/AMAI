@@ -59,4 +59,11 @@ describe('installer', () => {
       path.join(customScripts, 'REFORGED', 'Blizzard.j')
     ]);
   });
+
+  it('accepts a custom MPQEditor path for development', () => {
+    const mpqEditor = path.resolve('../MPQEditor.exe');
+    expect(missingFiles('REFORGED', 0, file => file === mpqEditor, 'missing-scripts', mpqEditor)).toEqual([
+      path.join('missing-scripts', 'REFORGED', 'common.ai')
+    ]);
+  });
 });

@@ -7,15 +7,15 @@ const sendLog = (level, key, params = {}) => process.send({ type: 'log', level, 
 
 const isMapFile = file => [`.w3m`, `.w3x`].includes(path.extname(file).toLowerCase());
 
-const requiredFiles = (ver, commander, scriptsDirectory = 'Scripts') => [
+const requiredFiles = (ver, commander, scriptsDirectory = 'Scripts', mpqEditor = 'MPQEditor.exe') => [
   path.join(scriptsDirectory, ver, 'common.ai'),
-  `MPQEditor.exe`,
+  mpqEditor,
   ...(commander == 1 ? [path.join(scriptsDirectory, ver, 'Blizzard.j')] : []),
   ...(commander == 2 ? [path.join(scriptsDirectory, ver, 'vsai', 'Blizzard.j')] : [])
 ];
 
-const missingFiles = (ver, commander, existsSync = fs.existsSync, scriptsDirectory = 'Scripts') =>
-  requiredFiles(ver, commander, scriptsDirectory).filter(file => !existsSync(file));
+const missingFiles = (ver, commander, existsSync = fs.existsSync, scriptsDirectory = 'Scripts', mpqEditor = 'MPQEditor.exe') =>
+  requiredFiles(ver, commander, scriptsDirectory, mpqEditor).filter(file => !existsSync(file));
 
 /** uncomment to debbug */
 // const ls = spawnSync(
@@ -48,6 +48,7 @@ const installOnDirectory = async () => {
   const ver = args[2]
   const language =  args[3]
   const scriptsDirectory = args[4] || 'Scripts'
+  const mpqEditorExecutable = args[5] || 'MPQEditor.exe'
   const installCommander = commander == 1
   const vsAICommander = commander == 2
   let bj = 'Blizzard.j' 
@@ -56,7 +57,7 @@ const installOnDirectory = async () => {
   const commonAIPath = path.join(scriptsDirectory, ver, 'common.ai')
   const blizzardPath = path.join(scriptsDirectory, ver, ...(vsAICommander ? ['vsai', 'Blizzard.j'] : ['Blizzard.j']))
 
-  const missing = missingFiles(ver, commander, fs.existsSync, scriptsDirectory);
+  const missing = missingFiles(ver, commander, fs.existsSync, scriptsDirectory, mpqEditorExecutable);
   if (missing.length) {
     sendLog('error', 'PAGES.APP.INSTALL_LOG.MISSING_FILES', { files: missing.map(file => path.resolve(file)).join('\n') });
     process.exitCode = 1;
@@ -111,7 +112,7 @@ const installOnDirectory = async () => {
         // execute same way how InstallTFTtoDir.pl
 
         const mpqEditor = spawnSync(
-          `MPQEditor.exe`,
+          mpqEditorExecutable,
           [`htsize`, file, `128`],
           { encoding : `utf8` }
         );
@@ -129,7 +130,7 @@ const installOnDirectory = async () => {
             : sendLog('info', 'PAGES.APP.INSTALL_LOG.RESIZE_SUCCESS', { file });
 
         const f1AddToMPQ =  spawnSync(
-          `MPQEditor.exe`,
+          mpqEditorExecutable,
           [
             'a',
             file,
@@ -159,7 +160,7 @@ const installOnDirectory = async () => {
           
           if (vsAICommander) {
                 const f1AddVSAIToMPQ =  spawnSync(
-                `MPQEditor.exe`,
+                mpqEditorExecutable,
                 [
                   'a',
                   file,
@@ -182,7 +183,7 @@ const installOnDirectory = async () => {
           }
 
           const f2AddToMPQ =  spawnSync(
-            `MPQEditor.exe`,
+            mpqEditorExecutable,
             [
               'a',
               file,
@@ -212,7 +213,7 @@ const installOnDirectory = async () => {
         }
 
         const f3AddToMPQ =  spawnSync(
-          `MPQEditor.exe`,
+          mpqEditorExecutable,
           [
             'f',
             file

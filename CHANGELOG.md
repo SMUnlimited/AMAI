@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Reworked and renabled multi-mine handling around individual mine claims, allowing all races to harvest or expand at clustered mines without blocking later expansions, including bounded per-worker gold rosters that avoid lumber-worker churn or militia defense control, a three-mine worker-production cap, hall-based harvesting that bypasses broken town bookkeeping, surplus Human/Orc-style mine handling, movable entangling halls, and configurable mine styles for custom races.
 - (Installer) The installation dialog now receives worker completion and enables Close after installation finishes.
 - (Installer) The Electron installer now terminates its full worker process tree when stopped, replaced, closed, or disconnected, without reporting late worker errors after its window has closed.
+- (Installer) Development mode now runs only the Electron window against the repository's root `MPQEditor.exe` and compiled `Scripts`, without requiring a production package layout or opening a non-functional browser copy.
 
 ## [3.7.0] - 2026-09-18
 

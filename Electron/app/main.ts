@@ -25,13 +25,16 @@ const isDev = () => {
 }
 
 const installerDirectory = () => path.resolve(__dirname, isDev() ? '../AMAI-release' : '../AMAI');
+const mpqEditorPath = () => isDev()
+  ? path.resolve(__dirname, '../../MPQEditor.exe')
+  : path.join(installerDirectory(), 'MPQEditor.exe');
 const scriptsDirectory = () => isDev()
   ? path.resolve(__dirname, '../../Scripts')
   : path.join(process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath), 'Scripts');
 const installerVersions = ['ROC', 'TFT', 'REFORGED', 'OPTROC', 'OPTTFT', 'OPTREFORGED'];
 const missingInstallerFiles = () => [
   path.join(installerDirectory(), 'install.js'),
-  path.join(installerDirectory(), 'MPQEditor.exe'),
+  mpqEditorPath(),
   ...installerVersions.flatMap(version => [
     path.join(scriptsDirectory(), version, 'common.ai'),
     path.join(scriptsDirectory(), version, 'Blizzard.j'),
@@ -164,7 +167,7 @@ const execInstall = async (commander = 1, isMap = false, ver = "REFORGED", force
       require.resolve(
         path.join(currentScriptDir, 'install.js')
       ),
-      [ response[0], String(commander), ver, forceLang ? currentLanguage : '-', scriptsDirectory() ]
+      [ response[0], String(commander), ver, forceLang ? currentLanguage : '-', scriptsDirectory(), mpqEditorPath() ]
     );
     activeInstaller = child;
 
