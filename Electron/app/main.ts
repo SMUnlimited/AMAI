@@ -1,4 +1,4 @@
-import {app, BrowserWindow, dialog, ipcMain, Menu } from 'electron';
+import {app, BrowserWindow, dialog, ipcMain, Menu, screen } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as remote from '@electron/remote/main';
@@ -59,14 +59,32 @@ const reportMissingInstallerFiles = (): boolean => {
   return true;
 }
 
+const fitWindowToContent = async (window: BrowserWindow): Promise<void> => {
+  const contentHeight = await window.webContents.executeJavaScript('document.documentElement.scrollHeight') as number;
+  if (window.isDestroyed()) return;
+
+  const bounds = window.getBounds();
+  const frameHeight = bounds.height - window.getContentBounds().height;
+  const workArea = screen.getDisplayMatching(bounds).workArea;
+  const height = Math.min(Math.ceil(contentHeight) + frameHeight, workArea.height);
+
+  window.setBounds({
+    ...bounds,
+    y: workArea.y + Math.max(0, Math.floor((workArea.height - height) / 2)),
+    height
+  });
+};
+
 const createWindow = (): BrowserWindow => {
+
+  const workArea = screen.getPrimaryDisplay().workAreaSize;
 
   // Create the browser window.
   win = new BrowserWindow({
-    width: 1200,
-    height: 900,
-    minWidth: 900,
-    minHeight: 650,
+    width: Math.min(1200, workArea.width),
+    height: Math.min(900, workArea.height),
+    minWidth: Math.min(900, workArea.width),
+    minHeight: Math.min(650, workArea.height),
     center: true,
     webPreferences: {
       devTools: true,
@@ -97,6 +115,8 @@ const createWindow = (): BrowserWindow => {
     const url = new URL(path.join('file:', __dirname, pathIndex));
     win.loadURL(url.href);
   }
+
+  win.webContents.once('did-finish-load', () => void fitWindowToContent(win));
 
   // Emitted when the window is closed.
   win.on('closed', () => {

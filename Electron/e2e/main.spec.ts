@@ -58,11 +58,18 @@ test.describe('Check Home Page', async () => {
   });
 
   test('Show the modern installer defaults without a native menu', async () => {
+    await expect.poll(() => firstWindow.locator('#install-button').evaluate(element => {
+      const bounds = element.getBoundingClientRect();
+      return bounds.bottom <= window.innerHeight;
+    })).toBeTruthy();
+
     const state = await app.evaluate((process) => {
       const mainWindow = process.BrowserWindow.getAllWindows()[0];
+      const bounds = mainWindow.getBounds();
       return {
         menu: process.Menu.getApplicationMenu(),
-        size: mainWindow.getSize()
+        bounds,
+        workArea: process.screen.getDisplayMatching(bounds).workArea
       };
     });
 
@@ -72,7 +79,8 @@ test.describe('Check Home Page', async () => {
     await expect(firstWindow.locator('#optimise')).toBeChecked();
     await expect(firstWindow.locator('#install-button')).toBeVisible();
     expect(state.menu).toBeNull();
-    expect(state.size).toEqual([1200, 900]);
+    expect(state.bounds.width).toBeLessThanOrEqual(state.workArea.width);
+    expect(state.bounds.height).toBeLessThanOrEqual(state.workArea.height);
     expect((await firstWindow.screenshot()).length).toBeGreaterThan(1000);
   });
 
@@ -87,6 +95,10 @@ test.describe('Check Home Page', async () => {
     expect(hasHorizontalOverflow).toBeFalsy();
     expect((await firstWindow.screenshot()).length).toBeGreaterThan(1000);
     await app.evaluate((process) => process.BrowserWindow.getAllWindows()[0].setSize(1200, 820));
+    await expect.poll(() => firstWindow.locator('#install-button').evaluate(element => {
+      const bounds = element.getBoundingClientRect();
+      return bounds.top >= 0 && bounds.bottom <= window.innerHeight;
+    })).toBeTruthy();
   });
 
   test('Show determinate installation progress and completion', async () => {
