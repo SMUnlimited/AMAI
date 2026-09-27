@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Rebalanced Reforged Undead strategy counter ratings. (Powerer)
 - Dynamic strategy upgrades are attempted more frequently when the AI has large gold and lumber surpluses.
 - Reforged Human and Orc expansions now request racial shops earlier, while Undead requests an early main-base Tomb of Relics and gives expansion Tombs a slightly higher priority. (Powerer)
+- Chinese language updates (jzy-chitong56)
 - (Installer) Modernised the Electron interface with a responsive Warcraft-themed layout, explicit version selection and install action, accessible settings, in-app language and About controls, and a focused installation progress dialog.
 - (Installer) Replaced the Jasmine and Karma unit-test setup with Vitest for both Angular and installer process tests.
 - (Installer) The About control now opens a dropdown showing the installer version and a separate link to the AMAI website.
