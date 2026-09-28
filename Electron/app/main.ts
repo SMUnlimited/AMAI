@@ -129,7 +129,16 @@ const createWindow = (): BrowserWindow => {
   return win;
 }
 
-const execInstall = async (commander = 1, isMap = false, ver = "REFORGED", forceLang: boolean) => {
+type InstallerOperation = 'install' | 'uninstall-commander' | 'uninstall-all';
+
+const execInstall = async (
+  commander = 1,
+  isMap = false,
+  ver = "REFORGED",
+  forceLang = false,
+  disableChat = false,
+  operation: InstallerOperation = 'install'
+) => {
   const response = dialog.showOpenDialogSync(win, {
     // TODO: add i18n here
     title : isMap ? translations["PAGES.ELECTRON.OPEN_MAP"] || '': translations["PAGES.ELECTRON.OPEN_DIR"] || '',
@@ -163,11 +172,34 @@ const execInstall = async (commander = 1, isMap = false, ver = "REFORGED", force
     return;
   }
 
+  if (operation !== 'install') {
+    const confirmKey = operation === 'uninstall-commander'
+      ? 'PAGES.ELECTRON.CONFIRM_UNINSTALL_COMMANDER'
+      : 'PAGES.ELECTRON.CONFIRM_UNINSTALL_ALL';
+    const confirmed = dialog.showMessageBoxSync(win, {
+      type: 'warning',
+      title: translations['PAGES.ELECTRON.CONFIRM_TITLE'] || 'Confirm uninstall',
+      message: translations[confirmKey] || 'Remove AMAI files from the selected map or directory?',
+      buttons: [
+        translations['PAGES.ELECTRON.CANCEL'] || 'Cancel',
+        translations['PAGES.ELECTRON.UNINSTALL'] || 'Uninstall'
+      ],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true
+    }) === 1;
+    if (!confirmed) {
+      sendToWindow('on-install-empty');
+      return;
+    }
+  }
+
   // open modal on front
   sendToWindow('on-install-init', <InstallModel>{
     response: response[0],
     commander,
-    isMap
+    isMap,
+    operation
   });
 
   // Change the relative path from where the script will be executed
@@ -187,7 +219,16 @@ const execInstall = async (commander = 1, isMap = false, ver = "REFORGED", force
       require.resolve(
         path.join(currentScriptDir, 'install.js')
       ),
-      [ response[0], String(commander), ver, forceLang ? currentLanguage : '-', scriptsDirectory(), mpqEditorPath() ]
+      [
+        response[0],
+        String(commander),
+        ver,
+        forceLang ? currentLanguage : '-',
+        scriptsDirectory(),
+        mpqEditorPath(),
+        String(disableChat),
+        operation
+      ]
     );
     activeInstaller = child;
 
@@ -223,8 +264,12 @@ const execInstall = async (commander = 1, isMap = false, ver = "REFORGED", force
 }
 
 const installProcess = () => {
-  ipcMain?.on('install', async (_event, ver: string, toFolder: boolean, commander: number, optimize: boolean, forceLang : boolean) => {
-    execInstall(commander, !toFolder, optimize ? `OPT${ver}` : ver, forceLang);
+  ipcMain?.on('install', async (_event, ver: string, toFolder: boolean, commander: number, optimize: boolean, forceLang: boolean, disableChat: boolean) => {
+    execInstall(commander, !toFolder, optimize ? `OPT${ver}` : ver, forceLang, disableChat);
+  });
+
+  ipcMain?.on('uninstall', async (_event, toFolder: boolean, scope: 'commander' | 'all') => {
+    execInstall(0, !toFolder, 'REFORGED', false, false, scope === 'commander' ? 'uninstall-commander' : 'uninstall-all');
   });
 
   ipcMain?.on('on-stop-process', async () => {

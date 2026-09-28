@@ -29,6 +29,7 @@ describe('HomeComponent', () => {
     expect(component.commander).toBe(1);
     expect(component.optimize).toBe(true);
     expect(component.forceLanguage).toBe(false);
+    expect(component.disableChat).toBe(false);
     expect((fixture.nativeElement.querySelector('#edition-REFORGED') as HTMLInputElement).checked).toBe(true);
   });
 
@@ -50,7 +51,7 @@ describe('HomeComponent', () => {
 
     (fixture.nativeElement.querySelector('#install-button') as HTMLButtonElement).click();
 
-    expect(send).toHaveBeenCalledExactlyOnceWith('install', 'ROC', false, 2, false, true);
+    expect(send).toHaveBeenCalledExactlyOnceWith('install', 'ROC', false, 2, false, true, false);
   });
 
   it('keeps optimised scripts and forced chat language mutually exclusive', () => {
@@ -61,5 +62,21 @@ describe('HomeComponent', () => {
     component.setOptimize(true);
     expect(component.optimize).toBe(true);
     expect(component.forceLanguage).toBe(false);
+
+    component.setDisableChat(true);
+    expect(component.disableChat).toBe(true);
+    expect(component.optimize).toBe(false);
+
+    component.setOptimize(true);
+    expect(component.disableChat).toBe(false);
+  });
+
+  it('requests commander and full uninstalls for the selected destination', () => {
+    component.toFolder = false;
+    (fixture.nativeElement.querySelector('#uninstall-commander-button') as HTMLButtonElement).click();
+    (fixture.nativeElement.querySelector('#uninstall-all-button') as HTMLButtonElement).click();
+
+    expect(send).toHaveBeenNthCalledWith(1, 'uninstall', false, 'commander');
+    expect(send).toHaveBeenNthCalledWith(2, 'uninstall', false, 'all');
   });
 });

@@ -69,6 +69,8 @@ test.describe('Check Home Page', async () => {
 
   test('Has no automatically detectable accessibility violations on every page', async () => {
     await expect(firstWindow.locator('#install-button')).toBeVisible();
+    await expect(firstWindow.locator('#uninstall-commander-button')).toBeVisible();
+    await expect(firstWindow.locator('#uninstall-all-button')).toBeVisible();
     await expectNoAccessibilityViolations(firstWindow, 'Home page');
 
     await firstWindow.locator('.about-menu summary').click();

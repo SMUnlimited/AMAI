@@ -32,16 +32,25 @@ export class HomeComponent {
   commander = 1;
   optimize = true;
   forceLanguage = false;
+  disableChat = false;
 
   constructor(private readonly electronService: ElectronService) {}
 
   setOptimize(enabled: boolean): void {
     this.optimize = enabled;
-    if (enabled) this.forceLanguage = false;
+    if (enabled) {
+      this.forceLanguage = false;
+      this.disableChat = false;
+    }
   }
 
   setForceLanguage(enabled: boolean): void {
     this.forceLanguage = enabled;
+    if (enabled) this.optimize = false;
+  }
+
+  setDisableChat(enabled: boolean): void {
+    this.disableChat = enabled;
     if (enabled) this.optimize = false;
   }
 
@@ -52,7 +61,12 @@ export class HomeComponent {
       this.toFolder,
       this.commander,
       this.optimize,
-      this.forceLanguage
+      this.forceLanguage,
+      this.disableChat
     );
+  }
+
+  uninstall(operation: 'commander' | 'all'): void {
+    this.electronService.ipcRenderer.send('uninstall', this.toFolder, operation);
   }
 }

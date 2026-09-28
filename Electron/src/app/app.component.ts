@@ -63,6 +63,7 @@ export class AppComponent implements AfterViewChecked {
   @ViewChild('dialogPanel') private dialogPanel?: ElementRef<HTMLElement>;
 
   private installingTitle = '';
+  private operation: InstallModel['operation'] = 'install';
   private focusDialog = false;
   private previousFocus: HTMLElement | null = null;
   private currentMapActive = false;
@@ -123,7 +124,12 @@ export class AppComponent implements AfterViewChecked {
       t_('PAGES.HOME.TITLE'),
       t_('PAGES.ELECTRON.OPEN_MAP'),
       t_('PAGES.ELECTRON.OPEN_DIR'),
-      t_('PAGES.ELECTRON.MAPFILE')
+      t_('PAGES.ELECTRON.MAPFILE'),
+      t_('PAGES.ELECTRON.CONFIRM_TITLE'),
+      t_('PAGES.ELECTRON.CONFIRM_UNINSTALL_COMMANDER'),
+      t_('PAGES.ELECTRON.CONFIRM_UNINSTALL_ALL'),
+      t_('PAGES.ELECTRON.CANCEL'),
+      t_('PAGES.ELECTRON.UNINSTALL')
     ]).subscribe((translations: { [key: string]: string }) => {
       if (this.electronService.isElectron) {
         this.electronService.ipcRenderer.send('Trans', event.lang, translations);
@@ -146,6 +152,7 @@ export class AppComponent implements AfterViewChecked {
     this.electronService.ipcRenderer.on('on-install-init', (_, args: InstallModel) => {
       this.previousFocus = document.activeElement as HTMLElement;
       this.destination = args.response;
+      this.operation = args.operation || 'install';
       this.active = true;
       this.couldClose = false;
       this.status = 'running';
@@ -159,11 +166,13 @@ export class AppComponent implements AfterViewChecked {
       this.currentMapFailed = false;
       this.focusDialog = true;
 
-      this.translate.get(t_('PAGES.APP.INSTALLING'), { path: args.response }).subscribe((result: string) => {
+      const activeKey = this.operation === 'install' ? 'PAGES.APP.INSTALLING' : 'PAGES.APP.UNINSTALLING';
+      this.translate.get(t_(activeKey), { path: args.response }).subscribe((result: string) => {
         this.installingTitle = result;
         this.title = result;
       });
-      this.translate.get(t_('PAGES.APP.INSTALLING_DIR'), { path: args.response }).subscribe((result: string) => {
+      const directoryKey = this.operation === 'install' ? 'PAGES.APP.INSTALLING_DIR' : 'PAGES.APP.UNINSTALLING_DIR';
+      this.translate.get(t_(directoryKey), { path: args.response }).subscribe((result: string) => {
         if (!args.isMap) this.messages.push(result);
       });
       this.cdr.detectChanges();
@@ -177,7 +186,8 @@ export class AppComponent implements AfterViewChecked {
 
     this.electronService.ipcRenderer.on('on-install-exit', () => {
       this.finishCurrentMap();
-      this.translate.get(t_('PAGES.APP.INSTALL_DONE')).subscribe((result: string) => {
+      const doneKey = this.operation === 'install' ? 'PAGES.APP.INSTALL_DONE' : 'PAGES.APP.UNINSTALL_DONE';
+      this.translate.get(t_(doneKey)).subscribe((result: string) => {
         this.title = this.progressTotal ? `(${this.successfulCount}/${this.progressTotal}) ${result}` : result;
       });
       this.status = this.successfulCount < this.progressTotal ? 'warning' : 'success';

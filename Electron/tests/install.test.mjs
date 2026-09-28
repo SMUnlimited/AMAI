@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const { isMapFile, missingFiles } = require('../AMAI-release/install');
+const { isMapFile, missingFiles, setChatting, successfulDeleteStatus, uninstallFiles } = require('../AMAI-release/install');
 
 describe('installer', () => {
   it('recognises Warcraft map files case-insensitively', () => {
@@ -65,5 +65,39 @@ describe('installer', () => {
     expect(missingFiles('REFORGED', 0, file => file === mpqEditor, 'missing-scripts', mpqEditor)).toEqual([
       path.join('missing-scripts', 'REFORGED', 'common.ai')
     ]);
+  });
+
+  it('changes only the authoritative chat initialization assignment', () => {
+    const enabled = `boolean chatting = true\nfunction cmd_misc takes nothing returns nothing\n  set chatting = not chatting\nendfunction\nfunction InitGlobalSettings takes nothing returns nothing\n  set chatting = true\nendfunction`;
+    const disabled = setChatting(enabled, false);
+
+    expect(disabled).toContain('boolean chatting = true');
+    expect(disabled).toContain('set chatting = not chatting');
+    expect(disabled).toContain('set chatting = false');
+    expect(setChatting(disabled, true)).toBe(enabled);
+  });
+
+  it('rejects missing or duplicate chat initialization settings', () => {
+    expect(() => setChatting('set chatting = not chatting', false)).toThrow(/found 0/);
+    expect(() => setChatting('set chatting = true\nset chatting = false', false)).toThrow(/found 2/);
+  });
+
+  it('selects the correct files for each uninstall operation', () => {
+    expect(uninstallFiles('uninstall-commander')).toEqual(['Scripts\\Blizzard.j']);
+    expect(uninstallFiles('uninstall-all')).toEqual([
+      'Scripts\\common.ai',
+      'Scripts\\elf.ai',
+      'Scripts\\human.ai',
+      'Scripts\\orc.ai',
+      'Scripts\\undead.ai',
+      'Scripts\\elf2.ai',
+      'Scripts\\human2.ai',
+      'Scripts\\orc2.ai',
+      'Scripts\\undead2.ai',
+      'Scripts\\Blizzard.j'
+    ]);
+    expect(successfulDeleteStatus(0)).toBe(true);
+    expect(successfulDeleteStatus(2)).toBe(true);
+    expect(successfulDeleteStatus(5)).toBe(false);
   });
 });

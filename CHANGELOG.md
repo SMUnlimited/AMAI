@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (Installer) Updated the Electron lint configuration to supported Angular ESLint presets and explicit application and end-to-end project coverage, and added lint, installer, unit, and end-to-end checks to pull-request CI.
 - (Installer) Replaced the default Electron executable, portable installer, and header branding with a panda-focused AMAI icon adapted from the project artwork.
 - (Installer) Rest of installer is now translated
+- (Installer) Added an option to disable AI chatting, plus remove Commander or all AMAI scripts from a map or directory.
 
 ### Fixed
 

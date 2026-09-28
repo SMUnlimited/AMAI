@@ -2,6 +2,18 @@ const fs = require("fs");
 const path = require("path");
 const spawnSync = require("child_process").spawnSync;
 const arrayOfFiles = [];
+const uninstallAllFiles = [
+  'Scripts\\common.ai',
+  'Scripts\\elf.ai',
+  'Scripts\\human.ai',
+  'Scripts\\orc.ai',
+  'Scripts\\undead.ai',
+  'Scripts\\elf2.ai',
+  'Scripts\\human2.ai',
+  'Scripts\\orc2.ai',
+  'Scripts\\undead2.ai',
+  'Scripts\\Blizzard.j'
+];
 
 const sendLog = (level, key, params = {}) => process.send({ type: 'log', level, key, params });
 
@@ -16,6 +28,26 @@ const requiredFiles = (ver, commander, scriptsDirectory = 'Scripts', mpqEditor =
 
 const missingFiles = (ver, commander, existsSync = fs.existsSync, scriptsDirectory = 'Scripts', mpqEditor = 'MPQEditor.exe') =>
   requiredFiles(ver, commander, scriptsDirectory, mpqEditor).filter(file => !existsSync(file));
+
+const uninstallFiles = operation => operation === 'uninstall-commander'
+  ? ['Scripts\\Blizzard.j']
+  : uninstallAllFiles;
+
+const successfulDeleteStatus = status => status === 0 || status === 2;
+
+const setChatting = (data, enabled) => {
+  const searchFor = /(^\s*set\s+chatting\s*=\s*)(true|false)(\s*$)/gm;
+  const matches = [...data.matchAll(searchFor)];
+  if (matches.length !== 1) {
+    throw new Error(`Expected one chat initialization setting, found ${matches.length}`);
+  }
+  return data.replace(searchFor, `$1${enabled ? 'true' : 'false'}$3`);
+};
+
+const configureChatting = (file, enabled) => {
+  const data = fs.readFileSync(file, 'utf8');
+  fs.writeFileSync(file, setChatting(data, enabled), 'utf8');
+};
 
 /** uncomment to debbug */
 // const ls = spawnSync(
@@ -49,6 +81,8 @@ const installOnDirectory = async () => {
   const language =  args[3]
   const scriptsDirectory = args[4] || 'Scripts'
   const mpqEditorExecutable = args[5] || 'MPQEditor.exe'
+  const disableChat = args[6] === 'true'
+  const operation = args[7] || 'install'
   const installCommander = commander == 1
   const vsAICommander = commander == 2
   let bj = 'Blizzard.j' 
@@ -57,10 +91,71 @@ const installOnDirectory = async () => {
   const commonAIPath = path.join(scriptsDirectory, ver, 'common.ai')
   const blizzardPath = path.join(scriptsDirectory, ver, ...(vsAICommander ? ['vsai', 'Blizzard.j'] : ['Blizzard.j']))
 
-  const missing = missingFiles(ver, commander, fs.existsSync, scriptsDirectory, mpqEditorExecutable);
+  const missing = operation === 'install'
+    ? missingFiles(ver, commander, fs.existsSync, scriptsDirectory, mpqEditorExecutable)
+    : [mpqEditorExecutable].filter(file => !fs.existsSync(file));
   if (missing.length) {
     sendLog('error', 'PAGES.APP.INSTALL_LOG.MISSING_FILES', { files: missing.map(file => path.resolve(file)).join('\n') });
     process.exitCode = 1;
+    return;
+  }
+
+  // TODO: change to receive array of maps
+  if (fs.statSync(response).isDirectory()) {
+    // on directory
+    getAllFiles(response, arrayOfFiles);
+  } else {
+    // on single map
+    arrayOfFiles.push(response);
+  }
+
+  const mapFiles = arrayOfFiles.filter(isMapFile);
+  if (operation !== 'install') {
+    sendLog('info', 'PAGES.APP.INSTALL_LOG.UNINSTALL_START', { count: mapFiles.length });
+    for (const [index, file] of mapFiles.entries()) {
+      process.send({ type: 'progress', current: index + 1, total: mapFiles.length });
+      sendLog('info', 'PAGES.APP.INSTALL_LOG.UNINSTALL_MAP_START', { file });
+      try {
+        fs.accessSync(file, fs.constants.W_OK);
+      } catch {
+        sendLog('warning', 'PAGES.APP.INSTALL_LOG.NO_WRITE_PERMISSION', { file });
+        continue;
+      }
+
+      let failed = false;
+      for (const archiveFile of uninstallFiles(operation)) {
+        const result = spawnSync(mpqEditorExecutable, ['d', file, archiveFile], { encoding: 'utf8' });
+        if (result.error) {
+          sendLog('error', 'PAGES.APP.INSTALL_LOG.SYSTEM_ERROR', { detail: result.error.message });
+          failed = true;
+          break;
+        }
+        if (result.status === 5) {
+          sendLog('warning', 'PAGES.APP.INSTALL_LOG.PERMISSION_FAILURE', { file, operation: archiveFile });
+          failed = true;
+          break;
+        }
+        if (!successfulDeleteStatus(result.status)) {
+          sendLog('warning', 'PAGES.APP.INSTALL_LOG.UNKNOWN_FAILURE', { file, operation: archiveFile, status: result.status });
+          failed = true;
+          break;
+        }
+      }
+      if (failed) continue;
+
+      const flush = spawnSync(mpqEditorExecutable, ['f', file], { encoding: 'utf8' });
+      if (flush.error) {
+        sendLog('error', 'PAGES.APP.INSTALL_LOG.SYSTEM_ERROR', { detail: flush.error.message });
+      } else if (flush.status === 5) {
+        sendLog('warning', 'PAGES.APP.INSTALL_LOG.PERMISSION_FAILURE', { file, operation: 'MPQ flush' });
+      } else if (flush.status !== 0) {
+        sendLog('warning', 'PAGES.APP.INSTALL_LOG.UNKNOWN_FAILURE', { file, operation: 'MPQ flush', status: flush.status });
+      } else {
+        sendLog('info', operation === 'uninstall-commander'
+          ? 'PAGES.APP.INSTALL_LOG.COMMANDER_REMOVED'
+          : 'PAGES.APP.INSTALL_LOG.ALL_REMOVED', { file });
+      }
+    }
     return;
   }
 
@@ -70,13 +165,12 @@ const installOnDirectory = async () => {
     language: language || 'default'
   });
 
-  // TODO: change to receive array of maps
-  if (fs.statSync(response).isDirectory()) {
-    // on directory
-    getAllFiles(response, arrayOfFiles);
-  } else {
-    // on single map
-    arrayOfFiles.push(response);
+  try {
+    configureChatting(commonAIPath, !disableChat);
+  } catch (error) {
+    sendLog('error', 'PAGES.APP.INSTALL_LOG.CHAT_SETTING_FAILURE', { error: String(error) });
+    process.exitCode = 1;
+    return;
   }
 
   if (language !== '-') {
@@ -93,7 +187,6 @@ const installOnDirectory = async () => {
 
 
   if(arrayOfFiles) {
-    const mapFiles = arrayOfFiles.filter(isMapFile);
     for (const [index, file] of mapFiles.entries()) {
       /** uncomment to debbug */
       // process.send(`path.extname(file): ${path.extname(file)}`);
@@ -260,4 +353,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { isMapFile, missingFiles };
+module.exports = { isMapFile, missingFiles, setChatting, successfulDeleteStatus, uninstallFiles };
