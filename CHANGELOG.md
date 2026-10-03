@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+- Automatic repairs now account for gold, lumber, and each race's worker economy, using smaller emergency reserves under threat and returning to harvesting as resources run low.
 - Rebalanced Reforged Undead strategy counter ratings. (Powerer)
 - Dynamic strategy upgrades are attempted more frequently when the AI has large gold and lumber surpluses.
 - Reforged Human and Orc expansions now request racial shops earlier, while Undead requests an early main-base Tomb of Relics and gives expansion Tombs a slightly higher priority. (Powerer)
@@ -26,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Harvest checks no longer redirect Undead acolytes restoring buildings or Night Elf wisps renewing buildings back to gold mining.
 - Campaign AI compatibility names for identical units now share their canonical AMAI unit metadata instead of creating duplicate unit records.
 - Attempts to open Commander using shortcuts or chat commands now explain when Commander is disabled for the game or the player has no allied computer to command.
 - Reworked and renabled multi-mine handling around individual mine claims, allowing all races to harvest or expand at clustered mines without blocking later expansions, including bounded per-worker gold rosters that avoid lumber-worker churn or militia defense control, a three-mine worker-production cap, hall-based harvesting that bypasses broken town bookkeeping, surplus Human/Orc-style mine handling, movable entangling halls, and configurable mine styles for custom races.

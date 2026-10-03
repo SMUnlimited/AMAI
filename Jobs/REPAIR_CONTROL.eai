@@ -1,16 +1,48 @@
 #IFDEF GLOBAL
+  boolean repair_enabled = false
 
 #ELSE
-function RepairControlJob takes nothing returns nothing
+function UpdateRepairControl takes nothing returns nothing
   local integer peons = TownCountDone(racial_peon)
-  call DisplayToAllJobDebug("REPAIR_CONTROL JOB START")
-  if towerrush then
-    call SetPeonsRepair(false)
-  elseif peons <= repair_threshold or (peons <= repair_threshold_threatened and town_threatened) then
-    call SetPeonsRepair(false)
-  else
-    call SetPeonsRepair(true)
+  local boolean threatened = town_threatened or TownThreatened()
+  local integer workers = repair_threshold
+  local integer gold = Max(GetGold() - gold_buffer, 0)
+  local integer wood = Max(GetWood() - wood_buffer, 0)
+  local integer gold_required = repair_gold_threshold
+  local integer wood_required = repair_wood_threshold
+  if threatened then
+    set workers = repair_threshold_threatened
+    set gold = GetGold()
+    set wood = GetWood()
+    set gold_required = repair_gold_threshold_threatened
+    set wood_required = repair_wood_threshold_threatened
+  elseif race_has_ghouls then
+    set workers = Min(workers, ver_optimal_gold)
   endif
-  call TQAddJob(15, REPAIR_CONTROL, 0)
+  if race_manual_loading then
+    set workers = Max(workers, ver_optimal_gold + 1)
+  endif
+  if repair_enabled then
+    if threatened then
+      set gold_required = gold_required / 2
+      set wood_required = wood_required / 2
+    else
+      set gold_required = gold_required * 2 / 3
+      set wood_required = wood_required * 2 / 3
+    endif
+  endif
+  if towerrush or peons < workers then
+    set repair_enabled = false
+  else
+    set repair_enabled = gold >= gold_required and wood >= wood_required
+  endif
+  // ponytail: this global switch cannot reserve harvesters; explicit repair crews are the upgrade path.
+  call SetPeonsRepair(repair_enabled)
+endfunction
+
+function RepairControlJob takes nothing returns nothing
+  call DisplayToAllJobDebug("REPAIR_CONTROL JOB START")
+  call UpdateRepairControl()
+  call TQAddJob(5, REPAIR_CONTROL, 0)
 endfunction
 #ENDIF
