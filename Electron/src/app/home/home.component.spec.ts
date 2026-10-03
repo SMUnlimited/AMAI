@@ -54,21 +54,27 @@ describe('HomeComponent', () => {
     expect(send).toHaveBeenCalledExactlyOnceWith('install', 'ROC', false, 2, false, true, false);
   });
 
-  it('keeps optimised scripts and forced chat language mutually exclusive', () => {
-    component.setForceLanguage(true);
+  it('allows chat and language settings with optimised scripts in either selection order', () => {
+    const toggle = (id: string) => {
+      (fixture.nativeElement.querySelector(`#${id}`) as HTMLInputElement).click();
+      fixture.detectChanges();
+    };
+
+    toggle('force-language');
+    toggle('disable-chat');
     expect(component.forceLanguage).toBe(true);
-    expect(component.optimize).toBe(false);
-
-    component.setOptimize(true);
-    expect(component.optimize).toBe(true);
-    expect(component.forceLanguage).toBe(false);
-
-    component.setDisableChat(true);
     expect(component.disableChat).toBe(true);
-    expect(component.optimize).toBe(false);
+    expect(component.optimize).toBe(true);
 
-    component.setOptimize(true);
-    expect(component.disableChat).toBe(false);
+    toggle('optimise');
+    expect(component.optimize).toBe(false);
+    toggle('optimise');
+    expect(component.optimize).toBe(true);
+    expect(component.forceLanguage).toBe(true);
+    expect(component.disableChat).toBe(true);
+
+    component.install();
+    expect(send).toHaveBeenCalledExactlyOnceWith('install', 'REFORGED', true, 1, true, true, true);
   });
 
   it('requests commander and full uninstalls for the selected destination', () => {

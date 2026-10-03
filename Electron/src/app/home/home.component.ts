@@ -36,24 +36,6 @@ export class HomeComponent {
 
   constructor(private readonly electronService: ElectronService) {}
 
-  setOptimize(enabled: boolean): void {
-    this.optimize = enabled;
-    if (enabled) {
-      this.forceLanguage = false;
-      this.disableChat = false;
-    }
-  }
-
-  setForceLanguage(enabled: boolean): void {
-    this.forceLanguage = enabled;
-    if (enabled) this.optimize = false;
-  }
-
-  setDisableChat(enabled: boolean): void {
-    this.disableChat = enabled;
-    if (enabled) this.optimize = false;
-  }
-
   install(): void {
     this.electronService.ipcRenderer.send(
       'install',

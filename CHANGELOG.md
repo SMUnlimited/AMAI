@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+### Added
+
+- (Installer) Optimized scripts preserve the `chatting` and `language` variable names, allowing the installer to customize AI chat and language while using optimization.
+
 ### Changed
 
 - Rebalanced Reforged Undead strategy counter ratings. (Powerer)

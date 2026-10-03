@@ -1,5 +1,7 @@
-import { fork } from 'node:child_process';
+import { execFileSync, fork } from 'node:child_process';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -9,6 +11,75 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const { isMapFile, missingFiles, setChatting, successfulDeleteStatus, uninstallFiles } = require('../AMAI-release/install');
 
 describe('installer', () => {
+  it('customizes chat and language after optimization without renaming their references', async () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'amai-optimizer-'));
+    try {
+      const root = path.resolve(__dirname, '../..');
+      const scripts = path.join(directory, 'OPTREFORGED');
+      const maps = path.join(directory, 'maps');
+      mkdirSync(scripts);
+      mkdirSync(maps);
+      const common = path.join(directory, 'common.j');
+      const library = path.join(scripts, 'common.ai');
+      const race = path.join(scripts, 'human.ai');
+      const commander = path.join(scripts, 'Blizzard.j');
+      const editor = path.join(directory, 'MPQEditor.exe');
+      writeFileSync(common, '');
+      writeFileSync(editor, ''); // No maps: exercise settings without invoking MPQEditor.
+      writeFileSync(library, `globals
+boolean chatting = true
+string language = "English"
+endglobals
+function ReadSettings takes nothing returns string
+  set chatting = true
+  if chatting then
+    return language
+  endif
+  return language
+endfunction
+`);
+      writeFileSync(race, `function main takes nothing returns nothing
+  local string temporary_language = ReadSettings()
+  set language = temporary_language
+  if chatting then
+    set chatting = not chatting
+  endif
+endfunction
+`);
+      writeFileSync(commander, 'globals\nstring language = ""\nendglobals\n');
+      execFileSync('perl', ['Optimize.pl', common, library, race], { cwd: root });
+      execFileSync('perl', ['Optimize.pl', '-b', commander], { cwd: root });
+      const optimized = readFileSync(library, 'utf8');
+      expect(optimized).toContain('boolean chatting=true');
+      expect(optimized).toContain('string language="English"');
+      expect(optimized).toContain('if chatting then');
+      expect(optimized).toContain('return language');
+      expect(readFileSync(race, 'utf8')).toMatch(/set language=v[0-9a-f]+/);
+      expect(readFileSync(race, 'utf8')).toContain('set chatting=not chatting');
+
+      for (const [language, disableChat] of [['French', 'true'], ['-', 'false']]) {
+        const worker = fork(path.resolve(__dirname, '../AMAI-release/install.js'),
+          [maps, '1', 'OPTREFORGED', language, directory, editor, disableChat], { silent: true });
+        await expect(new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            worker.kill();
+            reject(new Error('Installer did not finish configuring optimized scripts'));
+          }, 5000);
+          worker.once('error', reject);
+          worker.once('exit', code => {
+            clearTimeout(timeout);
+            resolve(code);
+          });
+        })).resolves.toBe(0);
+        expect(readFileSync(library, 'utf8')).toContain(`set chatting=${disableChat === 'true' ? 'false' : 'true'}`);
+        expect(readFileSync(library, 'utf8')).toContain(`string language = "${language === '-' ? 'English' : language}"`);
+        expect(readFileSync(commander, 'utf8')).toContain(`string language = "${language === '-' ? '' : language}"`);
+      }
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('recognises Warcraft map files case-insensitively', () => {
     expect(['one.w3m', 'two.W3X', 'notes.txt'].filter(isMapFile)).toEqual(['one.w3m', 'two.W3X']);
   });

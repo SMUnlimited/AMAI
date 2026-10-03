@@ -338,7 +338,7 @@ const installOnDirectory = async () => {
 
   function setLanguage(file, language) {
     let data = fs.readFileSync(file, 'utf8');
-    const searchFor = /string language = "([^"]*)"/;
+    const searchFor = /\bstring\s+language\s*=\s*"([^"]*)"/;
     const replaceWith = `string language = "${language}"`;
     data = data.replace(searchFor, replaceWith);
     fs.writeFileSync(file, data, 'utf8');
