@@ -14,7 +14,8 @@
 - Function order is important, functions cannot be called unless it is imported or available higher up in the file.
 - Do not edit generated artifacts in `Scripts/` directly — change source `.eai` files and re-run the project build to regenerate compiled output.
 - `Common.j`, `Natives.j` and `Blizzard.j` are built-in war3 code do not make changes to them, they are for reference to hardcoded functions and building.
-- Update the CHANGELOG.md when changes are made.
+- Some natives behave differently in AI code so cannot be used e.g anything that spawns threads as AI only allowed a fixed number.
+- Update the CHANGELOG.md when changes are made but should be understandable to my users. Distinguish between internal, dev tools, installer and AI improvements for each change. And keep changes to AMAI code higher up the lists
 
 ## Useful file locations
 

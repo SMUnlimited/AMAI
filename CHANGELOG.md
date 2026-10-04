@@ -7,10 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- (devtools) Added a Keep a Changelog skill to help contributors write clear, consistent changelog entries and prepare release sections.
+- (devtools) Added the Ponytail coding skill for contributors, that favor simple solutions and fewer dependencies.
 - (Installer) Optimized scripts preserve the `chatting` and `language` variable names, allowing the installer to customize AI chat and language while using optimization.
 
 ### Changed
 
+- Shortened build, combat and background polling intervals to keep recurring staggered waits below ten seconds with the shipped AI-count settings. Healing effects wait in game seconds and check for attacks every two seconds instead of stretching their duration with AI-count throttling.
 - Automatic repairs now account for gold, lumber, and each race's worker economy, using smaller emergency reserves under threat and returning to harvesting as resources run low.
 - Rebalanced Reforged Undead strategy counter ratings. (Powerer)
 - Dynamic strategy upgrades are attempted more frequently when the AI has large gold and lumber surpluses.
@@ -27,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Current build requests now maintain missing prerequisites even when already satisfied or blocked by resources, with queue capacity checked under the build lock and transformation sources protected from overbuilding.
+- Staggered AI checks now use bounded random delays instead of repeatedly slowing higher player slots, while retaining AI-count performance throttling.
 - Harvest checks no longer redirect Undead acolytes restoring buildings or Night Elf wisps renewing buildings back to gold mining.
 - Campaign AI compatibility names for identical units now share their canonical AMAI unit metadata instead of creating duplicate unit records.
 - Attempts to open Commander using shortcuts or chat commands now explain when Commander is disabled for the game or the player has no allied computer to command.
