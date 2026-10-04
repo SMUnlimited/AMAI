@@ -2714,7 +2714,7 @@ endfunction
 
 //============================================================================
 function StaggerSleep takes real base, real spread returns nothing
-  call Sleep(base + spread * I2R(GetAiPlayer()) / I2R(GetPlayers()) + GetRandomReal(-0.1, 0.1))
+  call Sleep(RMax(0.05, base + GetRandomReal(0, spread)))
 endfunction
 
 //============================================================================
@@ -8526,7 +8526,7 @@ function PathingThread takes nothing returns nothing
   call CheckAllNeutrals() // The more advanced new system check
   set pathing_done = true
   loop // no need repeated run
-    call StaggerSleep(4 * sleep_multiplier, 6 * sleep_multiplier)
+    call StaggerSleep(2 * sleep_multiplier, sleep_multiplier)
     if t == 5 then
       loop
         exitwhen i >= NEUTRAL_COUNT
@@ -10152,7 +10152,8 @@ endfunction
 //AMAI Build Code
 //============================================================================
 
-// Returns false if already built or invalid so no need to build its prerequisites
+// Returns true for accepted or satisfied requests so their prerequisites stay maintained.
+// Ensures the strategy self heals when pre-requisites are destroyed
 function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns boolean
   local integer i = 0
   local integer j = 0
@@ -10161,20 +10162,19 @@ function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer
   endif
   if t == BUILD_UPGRADE then
     if GetUpgradeLevel(old_id[unitid]) >= qty then
-      return false
+      return true
     endif
   elseif t == BUILD_ITEM then
     if GetItemNumber(unitid) >= qty then
-      return false
+      return true
     endif
-  elseif TownCountTown(unitid, town) >= qty or (buy_type[unitid] > BT_RACIAL_ITEM and not neutral_available[GetNeutralNumber(unitid)]) then
-    return false  
+  elseif buy_type[unitid] > BT_RACIAL_ITEM and not neutral_available[GetNeutralNumber(unitid)] then
+    return false
+  elseif TownCountTown(unitid, town) >= qty then
+    return true
   endif
-  if build_length >= JASS_MAX_ARRAY_SIZE then
-    return false // Build queue full
-  endif  
   call GetBuildLock()
-  set j = Max(build_length - 1,0)
+  set j = build_length - 1
   loop
     exitwhen i >= build_length
     exitwhen build_prio[i] < prio
@@ -10184,6 +10184,10 @@ function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer
     endif
     set i = i + 1
   endloop
+  if build_length >= JASS_MAX_ARRAY_SIZE then
+    call ReleaseBuildLock()
+    return false // Build queue full
+  endif
   loop
     exitwhen j < i
     set build_qty[j+1] = build_qty[j]
@@ -10250,7 +10254,7 @@ function RefreshNeeded takes integer t, integer qty, integer unitid, integer tow
       if needed3[unitid] == UPGRADED then
         // Number needed is on top of the already upgraded as cannot upgrade the already upgraded. Remove existing desired upgrade from count to avoid it infinitely increasing.
         // The source building temporarily disappears from counts while transforming.
-        if ai_time >= available_time[unitid] then
+        if ai_time >= available_time[unitid] and TownCountTown(unitid, town) < qty then
           // A transform has one build dependency. Keep its source one priority point
           // ahead so source/upgrade pairs interlace instead of exhausting all sources.
           call SetBuildAllAMCore(BUILD_UNIT, Max(0,qty + GetUnitCountAlt(needed1[unitid], unitid, true, town)), needed1[unitid], town, bloc, prio + Max(prio_n_inc - 1, 1))
@@ -12396,12 +12400,14 @@ function OneBuildLoopAM takes nothing returns nothing
             set max_order[id + town*OBJECT_NUM] = qty
           endif
           
+          if ret == CANNOT_BUILD or ret == NOT_ENOUGH_RES then
+            call AddRefresh(tp, qty, id, build_town[index], build_loc[index], build_prio[index])
+          endif
           if ret == CANNOT_BUILD then
             if (traced == 0) then
               //call Trace("CANNOT BUILD " + logtype + unitNames[id] + " " + Int2Str(id))
               set traced = id
             endif
-            call AddRefresh(tp, qty, id, build_town[index], build_loc[index], build_prio[index])
           elseif ret == BUILT_SOME and tracedsome == 0 then
             //call Trace("BUILT SOME " + logtype + unitNames[id] + " " + Int2Str(id))
             set tracedsome = id
@@ -12492,7 +12498,7 @@ function BuildLoopAM takes nothing returns nothing
       call InitBuildArrayAM()
       set blc = 0
     endif
-    call StaggerSleep(5 * sleep_multiplier,6 * sleep_multiplier)
+    call StaggerSleep(2 * sleep_multiplier, sleep_multiplier)
     //call Trace("Build Loop total seconds:" + Int2Str((ai_time - timing) * 5))
   endloop
 //    call DisplayToAll("Shutting down BuildLoopAM")
@@ -12888,7 +12894,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       set ally_target = null
     endif
 
-    call StaggerSleep(1 * sleep_multiplier, (1 * sleep_multiplier) + 2)
+    call StaggerSleep(sleep_multiplier, 0.5 * sleep_multiplier)
 
     if desperation_assault and attack_length_counter > attack_reform_length * 10 then
       call DesperationAssault()
@@ -12942,7 +12948,7 @@ function SleepUntilAtGoalAM takes nothing returns nothing
     endif
     exitwhen CaptainIsEmpty()       // all units died
     //call Trace("Sleeping until target reached")
-    call StaggerSleep(2 * sleep_multiplier, 3 * sleep_multiplier)
+    call StaggerSleep(sleep_multiplier, 0.5 * sleep_multiplier)
   endloop
   call Trace("SleepUntilGoal exit")
 endfunction
@@ -13873,7 +13879,7 @@ function SleepUntilTownDefended takes integer ai_strength returns nothing
     //    call TeleportCaptain(GetLocationX(captain_home), GetLocationY(captain_home))
     //  endif
     //endif
-    call StaggerSleep(2 * sleep_multiplier, (2 * sleep_multiplier) + 2)
+    call StaggerSleep(sleep_multiplier, 0.5 * sleep_multiplier)
   endloop
   call CaptainGoHome()
   call Trace("==exit Sleep Defend Town==")
@@ -14469,6 +14475,7 @@ function HealArmy takes nothing returns nothing
   local integer sleepLength = 2
   local real healthTrigger = 0.75
   local integer sleepFrequency = 0
+  local real heal_wait = 0
   loop
     set hs = GetArmyHealthState()
     exitwhen sleepFrequency >= 3 and hs > healthTrigger // Tried to heal but overall still strong so exit loop
@@ -14527,7 +14534,13 @@ function HealArmy takes nothing returns nothing
       endif
     endif
     set sleepFrequency = sleepFrequency + 1
-    call StaggerSleep(sleepLength * sleep_multiplier, sleepLength * sleep_multiplier + 1) // Wait some time for item effects to work
+    // Item effects use game seconds, not AI-count throttling. Check for attacks while waiting.
+    set heal_wait = I2R(sleepLength)
+    loop
+      exitwhen heal_wait <= 0 or player_defeated or town_threatened
+      call Sleep(RMin(2, heal_wait))
+      set heal_wait = heal_wait - RMin(2, heal_wait)
+    endloop
   endloop
   set mh_i = null
   set u = null
