@@ -13,11 +13,16 @@ function BuildExpansionJob takes unit u, unit expansion returns nothing
   local real peon_threat = 0
   local real exp_threat = 0
   local real atexpadistance = 190 * 30
+  local integer worker_key = GetHandleId(u)
   if u == null or not UnitAlive(u) then
+    call FlushChildHashtable(expansion_retry_state, worker_key)
     return
   endif
-  if expansion == null then
-    call IssueImmediateOrder(u, "stop")
+  // Old callbacks must not interrupt a worker or invalidate a newer target.
+  if expansion == null or expansion != current_expansion or not UnitAlive(expansion) or GetResourceAmount(expansion) <= 0 then
+    if LoadUnitHandle(expansion_retry_state, worker_key, 0) == expansion then
+      call FlushChildHashtable(expansion_retry_state, worker_key)
+    endif
     return
   endif
   if IsExpansionRebuildCoolingDown(expansion) then
@@ -28,6 +33,19 @@ function BuildExpansionJob takes unit u, unit expansion returns nothing
     return
   endif
   set d = DistanceBetweenUnits(u, expansion)
+  set claimant = GetExpansionMineClaimant(expansion)
+  if claimant != null and GetOwningPlayer(claimant) == ai_player then
+    call FlushChildHashtable(expansion_retry_state, worker_key)
+    set claimant = null
+    return // A foundation has started; stop polling and let construction finish.
+  endif
+  if ExpansionAttemptStalled(u, expansion, d, 2) then
+    call IssueImmediateOrder(u, "stop")
+    set current_expansion = null
+    set claimant = null
+    call Trace("Expansion made no progress; retry after cooldown")
+    return
+  endif
   //call Trace("Build Expansion JOB start" + Real2Str(d))
   call CreateDebugTagLoc("Expand JOB", 10, GetUnitX(expansion), GetUnitY(expansion), 5.00, 1.50)
   // --- New: check for nearby enemies around the peon or expansion site ---
@@ -55,7 +73,6 @@ function BuildExpansionJob takes unit u, unit expansion returns nothing
     endif
   endif
   if GetUnitCurrentOrder(u) == old_id[racial_expansion] then
-    set claimant = GetExpansionMineClaimant(expansion)
     if claimant != null then
       if GetOwningPlayer(claimant) == ai_player then
         // Our foundation now reserves the mine. Let the worker finish its order.
@@ -78,7 +95,6 @@ function BuildExpansionJob takes unit u, unit expansion returns nothing
     endif
     call TQAddUnit2Job(2, BUILD_EXPANSION, 0, u, expansion)
   elseif not race_uses_mine_expansion and GetUnitCurrentOrder(u) != old_id[racial_expansion] and d < atexpadistance then
-    set claimant = GetExpansionMineClaimant(expansion)
     if claimant != null then
       if IsPlayerEnemy(GetOwningPlayer(claimant), ai_player) then
         set double_expansion_target = claimant
@@ -98,8 +114,11 @@ function BuildExpansionJob takes unit u, unit expansion returns nothing
         call CreateDebugTagLoc("Expand Fix JOB", 10, x, y, 5.00, 1.50)
         call TQAddUnit2Job(2, BUILD_EXPANSION, 0, u, expansion)
       else
-        call MarkBadExpansion(current_expansion) // Can't place the mine in a good place so add to bad expansions to avoid for rest of the game
-        set current_expansion = null // Force expansion to re-evaluate as could not build here as build location is too far, avoids infinite loop of trying to build at expansion
+        call MarkBadExpansion(expansion)
+        call FlushChildHashtable(expansion_retry_state, worker_key)
+        if current_expansion == expansion then
+          set current_expansion = null
+        endif
       endif
       set v = null
     else

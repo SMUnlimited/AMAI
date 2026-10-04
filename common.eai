@@ -1053,6 +1053,11 @@ globals
     unit build_zeppelin = null
     location exp_loc_cache = Location(0,0)
     integer exp_loc_cache_timeout = 0
+    unit exp_loc_cache_mine = null
+    integer exp_loc_cache_id = 0
+    hashtable expansion_job_pending = InitHashtable()
+    hashtable expansion_retry_state = InitHashtable()
+    hashtable expansion_retry_cooldowns = InitHashtable()
 
     integer exp_number = 0
     integer array exp_rp
@@ -5942,6 +5947,13 @@ function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, gr
     return
   endif  
   call GetTQLock()
+  if jid == BUILD_EXPANSION then
+    if unit_par == null or unit_par_2 == null or LoadBoolean(expansion_job_pending, GetHandleId(unit_par), GetHandleId(unit_par_2)) then
+      call ReleaseTQLock()
+      return
+    endif
+    call SaveBoolean(expansion_job_pending, GetHandleId(unit_par), GetHandleId(unit_par_2), true)
+  endif
   set tq_length = tq_length + 1
   //call SaveReal(tq_hashtable, time, tq_length, time)
   //call SaveInteger(tq_hashtable, jid, tq_length, jid)
@@ -6327,17 +6339,25 @@ function GetNearestGoldMineToUnit takes unit source returns unit
   local unit u = null
   local unit nearest = null
   local real distance = 0
-  local real nearestDistance = expansion_taken_radius + 1
+  local real nearestDistance = (expansion_taken_radius + 1) * (expansion_taken_radius + 1)
+  local real x = 0
+  local real y = 0
+  local real dx = 0
+  local real dy = 0
   if source == null then
     return null
   endif
   set g = CreateGroup()
-  call GroupEnumUnitsInRange(g, GetUnitX(source), GetUnitY(source), expansion_taken_radius, null)
+  set x = GetUnitX(source)
+  set y = GetUnitY(source)
+  call GroupEnumUnitsInRange(g, x, y, expansion_taken_radius, null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
     if UnitAlive(u) and GetResourceAmount(u) > 0 and IsUnitGoldMine(u) then
-      set distance = DistanceBetweenUnits(source, u)
+      set dx = x - GetUnitX(u)
+      set dy = y - GetUnitY(u)
+      set distance = dx * dx + dy * dy
       if nearest == null or distance < nearestDistance or (distance == nearestDistance and GetHandleId(u) < GetHandleId(nearest)) then
         set nearest = u
         set nearestDistance = distance
@@ -6354,7 +6374,7 @@ endfunction
 // Returns the structure that owns or reserves this exact mine. ignored is used
 // by double-expansion cleanup to look past the structure being inspected.
 function GetMineClaimantEx takes unit mine, unit ignored returns unit
-  local group g = CreateGroup()
+  local group g = null
   local unit u = null
   local unit nearestMine = null
   local unit claimant = null
@@ -6364,27 +6384,26 @@ function GetMineClaimantEx takes unit mine, unit ignored returns unit
   local boolean exactCapture = false
   local boolean nearestTarget = false
   local boolean claimsTarget = false
+  local integer mineStyle = 0
   if mine == null then
-    call DestroyGroup(g)
-    set g = null
     return null
   endif
+  set g = CreateGroup()
   call GroupEnumUnitsInRange(g, GetUnitX(mine), GetUnitY(mine), expansion_taken_radius, null)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  set g = SelectByAlive2(g, true)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if u != ignored and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then
+    if u != ignored and IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and (IsUnitType(u, UNIT_TYPE_TOWNHALL) or IsUnitGoldMine(u)) then
       set owner = GetOwningPlayer(u)
+      set mineStyle = GetPlayerMineStyle(owner)
       set distance = DistanceBetweenUnits(u, mine)
       set exactCapture = IsUnitGoldMine(u) and (u == mine or distance <= 225)
       set nearestTarget = false
-      if IsUnitType(u, UNIT_TYPE_TOWNHALL) then
+      if not exactCapture and mineStyle != MINE_STYLE_SHARED and distance <= race_max_expa_mine_distance and IsUnitType(u, UNIT_TYPE_TOWNHALL) then
         set nearestMine = GetNearestGoldMineToUnit(u)
         set nearestTarget = nearestMine == mine or (nearestMine != null and DistanceBetweenUnits(nearestMine, mine) <= 225)
       endif
-      set claimsTarget = (exactCapture or IsUnitType(u, UNIT_TYPE_TOWNHALL)) and MineClaimPolicy(GetPlayerMineStyle(owner), exactCapture, nearestTarget, distance)
+      set claimsTarget = (exactCapture or IsUnitType(u, UNIT_TYPE_TOWNHALL)) and MineClaimPolicy(mineStyle, exactCapture, nearestTarget, distance)
       if claimsTarget and (claimant == null or distance < claimantDistance or (distance == claimantDistance and (GetPlayerId(owner) < GetPlayerId(GetOwningPlayer(claimant)) or (GetPlayerId(owner) == GetPlayerId(GetOwningPlayer(claimant)) and GetHandleId(u) < GetHandleId(claimant))))) then
         set claimant = u
         set claimantDistance = distance
@@ -7068,9 +7087,33 @@ endfunction
 
 //============================================================================
 // Returns true while a recently destroyed town at this expansion is cooling down
+// Reset the timeout only after measurable progress or a new transport/build phase.
+function ExpansionAttemptStalled takes unit worker, unit mine, real distance, integer phase returns boolean
+  local integer key = GetHandleId(worker)
+  local real now = TimerGetElapsed(tq_timer)
+  if LoadUnitHandle(expansion_retry_state, key, 0) != mine or LoadInteger(expansion_retry_state, key, 3) != phase then
+    call FlushChildHashtable(expansion_retry_state, key)
+    call SaveUnitHandle(expansion_retry_state, key, 0, mine)
+    call SaveInteger(expansion_retry_state, key, 3, phase)
+    call SaveReal(expansion_retry_state, key, 1, distance)
+    call SaveReal(expansion_retry_state, key, 2, now)
+  elseif distance < LoadReal(expansion_retry_state, key, 1) - 32 then
+    call SaveReal(expansion_retry_state, key, 1, distance)
+    call SaveReal(expansion_retry_state, key, 2, now)
+  elseif now - LoadReal(expansion_retry_state, key, 2) >= 120 then
+    call SaveReal(expansion_retry_cooldowns, GetHandleId(mine), 0, now + 60)
+    call FlushChildHashtable(expansion_retry_state, key)
+    return true
+  endif
+  return false
+endfunction
+
 function IsExpansionRebuildCoolingDown takes unit exp_u returns boolean
   local integer i = 0
   local integer town_idx = 0
+  if exp_u == null or TimerGetElapsed(tq_timer) < LoadReal(expansion_retry_cooldowns, GetHandleId(exp_u), 0) then
+    return true
+  endif
   loop
     exitwhen i >= own_town_num
     set town_idx = own_town[i]
@@ -7123,60 +7166,61 @@ endfunction
 // Returns true if the given expansion unit appears to be a rebuild candidate
 // (no own town present, resource present and no nearby enemy creeps)
 function CheckExpansionRebuildAt takes unit exp_u returns boolean
-  local group g = CreateGroup()
+  local group g = null
   local unit u = null
   local integer i = 0
   local integer town_idx = 0
   local boolean has_destroyed_town = false
   local boolean old_units = false
-  local integer creeps = 0
-  
-  // Do not consider rebuilds for expansions that are already taken
-  if CheckExpansionTaken(exp_u) or IsExpansionRebuildCoolingDown(exp_u) then
+  local real x = 0
+  local real y = 0
+  local real dx = 0
+  local real dy = 0
+  if exp_u == null or not UnitAlive(exp_u) or GetResourceAmount(exp_u) <= 2 * GetUnitGoldCost2(racial_expansion) then
     return false
   endif
-  
-  // Check if this expansion location has a destroyed town in our town tracking system
+  set x = GetUnitX(exp_u)
+  set y = GetUnitY(exp_u)
   loop
     exitwhen i >= own_town_num
     set town_idx = own_town[i]
     if town_idx < town_num and town_count[town_idx] == 0 and town_loc[town_idx] != null then
-      if DistanceBetweenPoints_dk(GetUnitLoc(exp_u), town_loc[town_idx]) < expansion_taken_radius then
+      set dx = x - GetLocationX(town_loc[town_idx])
+      set dy = y - GetLocationY(town_loc[town_idx])
+      if dx * dx + dy * dy < expansion_taken_radius * expansion_taken_radius then
         set has_destroyed_town = true
         exitwhen true
       endif
     endif
     set i = i + 1
   endloop
-  
-  call GroupEnumUnitsInRange(g, GetUnitX(exp_u), GetUnitY(exp_u), expansion_taken_radius, null)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, true)
-  set g = SelectByPlayer(g, ai_player, true)
-  set g = SelectByAlive(g, true)
-
-  if FirstOfGroup(g) != null then
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null
+  set g = CreateGroup()
+  call GroupEnumUnitsInRange(g, x, y, expansion_taken_radius, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if GetOwningPlayer(u) == ai_player and IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) then
       if GetUnitTypeId(u) == old_id[racial_expansion] then
         call DestroyGroup(g)
         set g = null
         set u = null
         return false
       endif
-      call GroupRemoveUnit(g, u)
-    endloop
-    set old_units = true
-  endif
-  set creeps = GetLocationCreepStrength(GetUnitX(exp_u), GetUnitY(exp_u), expansion_radius)
-  if (has_destroyed_town or old_units) and (GetResourceAmount(exp_u) > 2 * GetUnitGoldCost2(racial_expansion)) and GetLocationNonCreepStrength(GetUnitX(exp_u), GetUnitY(exp_u), expansion_taken_radius) <= 0 and creeps <= 0 then
-    call DestroyGroup(g)
-    set g = null
-    return true
-  endif
+      set old_units = true
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
   call DestroyGroup(g)
   set g = null
-  return false
+  set u = null
+  // Untouched mines cannot be rebuilds. Avoid claim and combat scans for them.
+  if not has_destroyed_town and not old_units then
+    return false
+  endif
+  if IsExpansionRebuildCoolingDown(exp_u) or CheckExpansionTaken(exp_u) then
+    return false
+  endif
+  return GetLocationNonCreepStrength(x, y, expansion_taken_radius) <= 0 and GetLocationCreepStrength(x, y, expansion_radius) <= 0
 endfunction
 
 //============================================================================
@@ -7286,7 +7330,7 @@ function ChooseExpansion takes nothing returns nothing
   loop
     exitwhen i >= expansion_list_length
     // Normal new expansion candidate
-    if GetResourceAmount(expansion_list[i]) > gold and not CheckExpansionTaken(expansion_list[i]) and not IsExpansionRebuildCoolingDown(expansion_list[i]) and bad_expansion_flag[i] == 0 then
+    if bad_expansion_flag[i] == 0 and GetResourceAmount(expansion_list[i]) > gold and not CheckExpansionTaken(expansion_list[i]) and not IsExpansionRebuildCoolingDown(expansion_list[i]) then
       call add_exp(expansion_list[i], expansion_dist[i], expansion_ancient[i], i, false)
     endif
     set i = i + 1
@@ -7296,7 +7340,7 @@ function ChooseExpansion takes nothing returns nothing
     loop
       exitwhen i >= water_expansion_list_length
       // water expansions: normal
-      if GetResourceAmount(water_expansion_list[i]) > gold and not CheckExpansionTaken(water_expansion_list[i]) and not IsExpansionRebuildCoolingDown(water_expansion_list[i]) and bad_water_expansion_flag[i] == 0 then
+      if bad_water_expansion_flag[i] == 0 and GetResourceAmount(water_expansion_list[i]) > gold and not CheckExpansionTaken(water_expansion_list[i]) and not IsExpansionRebuildCoolingDown(water_expansion_list[i]) then
         call add_exp(water_expansion_list[i], water_expansion_dist[i] + 5120, null, i, true)
       endif
       set i = i + 1
@@ -7308,9 +7352,11 @@ function ChooseExpansion takes nothing returns nothing
     set i = 0
     loop
       exitwhen i >= expansion_list_length
-      set claimant = GetMineClaimant(expansion_list[i])
-      if GetResourceAmount(expansion_list[i]) > gold and CanYieldAlliedMine(expansion_list[i], claimant) and not IsExpansionRebuildCoolingDown(expansion_list[i]) and bad_expansion_flag[i] == 0 then
-        call add_exp(expansion_list[i], expansion_dist[i], expansion_ancient[i], i, false)
+      if bad_expansion_flag[i] == 0 and GetResourceAmount(expansion_list[i]) > gold and not IsExpansionRebuildCoolingDown(expansion_list[i]) then
+        set claimant = GetMineClaimant(expansion_list[i])
+        if CanYieldAlliedMine(expansion_list[i], claimant) then
+          call add_exp(expansion_list[i], expansion_dist[i], expansion_ancient[i], i, false)
+        endif
       endif
       set i = i + 1
     endloop
@@ -7318,9 +7364,11 @@ function ChooseExpansion takes nothing returns nothing
       set i = 0
       loop
         exitwhen i >= water_expansion_list_length
-        set claimant = GetMineClaimant(water_expansion_list[i])
-        if GetResourceAmount(water_expansion_list[i]) > gold and CanYieldAlliedMine(water_expansion_list[i], claimant) and not IsExpansionRebuildCoolingDown(water_expansion_list[i]) and bad_water_expansion_flag[i] == 0 then
-          call add_exp(water_expansion_list[i], water_expansion_dist[i] + 5120, null, i, true)
+        if bad_water_expansion_flag[i] == 0 and GetResourceAmount(water_expansion_list[i]) > gold and not IsExpansionRebuildCoolingDown(water_expansion_list[i]) then
+          set claimant = GetMineClaimant(water_expansion_list[i])
+          if CanYieldAlliedMine(water_expansion_list[i], claimant) then
+            call add_exp(water_expansion_list[i], water_expansion_dist[i] + 5120, null, i, true)
+          endif
         endif
         set i = i + 1
       endloop
@@ -8207,12 +8255,16 @@ function TQHandleOnce takes nothing returns boolean
   if TimerGetElapsed(tq_timer) >= tq_time[1] then
     set jobtimings = TimerGetElapsed(tq_timer)
     call TQRemoveRoot()
+    if jid == BUILD_EXPANSION then
+      call RemoveSavedBoolean(expansion_job_pending, GetHandleId(unit_par), GetHandleId(unit_par2))
+    endif
     if debugging > 0 then
       call UpdateDebugTextTag(debugjobtag, Int2Str(jid), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
     endif
     call TQDoJob(jid, par, unit_par, group_par, unit_par2)
-    if jobtimings - TimerGetElapsed(tq_timer) >= 1 then
-      call Trace("WARN: Job " + Int2Str(jid) + " took a long time " + Real2Str(jobtimings - TimerGetElapsed(tq_timer)) + "s")
+    set jobtimings = TimerGetElapsed(tq_timer) - jobtimings
+    if jobtimings >= 1 then
+      call TraceAll("WARN: Job " + Int2Str(jid) + " took a long time " + Real2Str(jobtimings) + "s")
     endif
     set b = true
   endif
@@ -11482,7 +11534,13 @@ endfunction
 //============================================================================
 function ConstructExpansion takes unit peon, integer unitid returns boolean
   local unit u = null
-  if ai_time > exp_loc_cache_timeout then
+  if peon == null or current_expansion == null then
+    return false
+  endif
+  if LoadBoolean(expansion_job_pending, GetHandleId(peon), GetHandleId(current_expansion)) then
+    return true
+  endif
+  if current_expansion != exp_loc_cache_mine or unitid != exp_loc_cache_id or ai_time > exp_loc_cache_timeout then
 	set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), unitid, GetUnitX(current_expansion), GetUnitY(current_expansion), 270.0)
     if DistanceBetweenUnits(u, current_expansion) > race_max_expa_mine_distance then
       call RemoveUnit(u)
@@ -11496,6 +11554,8 @@ function ConstructExpansion takes unit peon, integer unitid returns boolean
     call RemoveLocation(exp_loc_cache)
     set exp_loc_cache = GetUnitLoc(u)
     set exp_loc_cache_timeout = ai_time + 4
+    set exp_loc_cache_mine = current_expansion
+    set exp_loc_cache_id = unitid
   //  call SetUnitExploded(u, true)
   //  call KillUnit(u)
     call RemoveUnit(u)
@@ -11527,6 +11587,25 @@ endfunction
 
 //============================================================================
 function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
+  local boolean loaded = IsUnitInTransport(peon, build_zeppelin)
+  local real distance = DistanceBetweenUnits(peon, build_zeppelin)
+  local integer phase = 0
+  if loaded then
+    set distance = DistanceBetweenUnits(build_zeppelin, target)
+    set phase = 1
+  endif
+  if ExpansionAttemptStalled(peon, target, distance, phase) then
+    call IssueTargetOrder(build_zeppelin, "unload", peon)
+    call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
+    call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, build_zeppelin)
+    call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, peon)
+    set build_zeppelin = null
+    if current_expansion == target then
+      set current_expansion = null
+    endif
+    call Trace("Expansion transport stalled; retry after cooldown")
+    return false
+  endif
   if IsUnitInTransport(peon, build_zeppelin) then
     if DistanceBetweenUnits(build_zeppelin, target) > race_max_expa_mine_distance then
       call IssuePointOrder(build_zeppelin, "move", GetUnitX(target) + GetRandomReal(-200,200), GetUnitY(target) + GetRandomReal(-200,200))
@@ -11535,6 +11614,10 @@ function BuildMovePeonZeppelin takes unit peon, unit target returns boolean
       call IssueTargetOrder(build_zeppelin, "unload", peon)
       call TQAddUnitJob(0.5, RESET_GUARD_POSITION, 80, build_zeppelin)
       call Sleep(0.5)
+      if IsUnitInTransport(peon, build_zeppelin) then
+        return false // Unloading failed; keep transport state and its progress timeout.
+      endif
+      call GroupRemoveUnit(unit_zepplin_move, build_zeppelin)
       set build_zeppelin = null
       call IssueImmediateOrder(peon, "stop")
       return true
@@ -11750,6 +11833,9 @@ function StartExpansionAM takes integer qty, integer hall returns integer
       endif
     endif
     if race_uses_mine_expansion then
+      if LoadBoolean(expansion_job_pending, GetHandleId(expansion_peon), GetHandleId(current_expansion)) then
+        return BUILT_SOME
+      endif
       call TQAddUnit2Job(2 * sleep_multiplier, BUILD_EXPANSION, 0, expansion_peon, current_expansion)
       call IssueTargetOrderById(expansion_peon, old_id[hall], current_expansion)
     else
@@ -12100,7 +12186,7 @@ endif
   set rebuild_exp_number = 0
   loop
     exitwhen rebi >= expansion_list_length
-    if CheckExpansionRebuildAt(expansion_list[rebi]) then
+    if bad_expansion_flag[rebi] == 0 and CheckExpansionRebuildAt(expansion_list[rebi]) then
       call add_rebuild_exp(expansion_list[rebi], expansion_dist[rebi], expansion_ancient[rebi], rebi, false)
     endif
     set rebi = rebi + 1
@@ -12108,7 +12194,7 @@ endif
   set rebi = 0
   loop
     exitwhen rebi >= water_expansion_list_length
-    if CheckExpansionRebuildAt(water_expansion_list[rebi]) then
+    if bad_water_expansion_flag[rebi] == 0 and CheckExpansionRebuildAt(water_expansion_list[rebi]) then
       call add_rebuild_exp(water_expansion_list[rebi], water_expansion_dist[rebi] + 5120, null, rebi, true)
     endif
     set rebi = rebi + 1

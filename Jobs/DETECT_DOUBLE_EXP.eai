@@ -4,6 +4,20 @@
 //============================================================================
 // Detect multiple structures trying to claim the same mine.
 //============================================================================
+// Keep a full-health hall, otherwise use stable player/handle ordering so
+// two unfinished foundations cannot each cancel the other.
+function PreferExpansionClaimant takes unit candidate, unit existing returns boolean
+  local boolean candidate_full = GetUnitState(candidate, UNIT_STATE_LIFE) >= GetUnitState(candidate, UNIT_STATE_MAX_LIFE)
+  local boolean existing_full = GetUnitState(existing, UNIT_STATE_LIFE) >= GetUnitState(existing, UNIT_STATE_MAX_LIFE)
+  if candidate_full != existing_full then
+    return candidate_full
+  endif
+  if GetOwningPlayer(candidate) != GetOwningPlayer(existing) then
+    return GetPlayerId(GetOwningPlayer(candidate)) < GetPlayerId(GetOwningPlayer(existing))
+  endif
+  return GetHandleId(candidate) < GetHandleId(existing)
+endfunction
+
 function CheckDoubleExpansion takes nothing returns nothing
   local group g = CreateGroup()
   local unit u = null
@@ -19,7 +33,7 @@ function CheckDoubleExpansion takes nothing returns nothing
       set claimant = GetExpansionMineClaimantEx(mine, u)
       if claimant != null and GetOwningPlayer(claimant) != ai_player then
         if IsPlayerAlly(ai_player, GetOwningPlayer(claimant)) then
-          if GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) then
+          if GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) and PreferExpansionClaimant(claimant, u) then
             call IssueImmediateOrderById(u, order_cancel)
           endif
           call Trace("Ally claim detected on the same mine")
@@ -27,7 +41,7 @@ function CheckDoubleExpansion takes nothing returns nothing
           set double_expansion_target = claimant
           call Trace("Enemy claim detected on the same mine")
         endif
-      elseif claimant != null and GetOwningPlayer(claimant) == ai_player and GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) then
+      elseif claimant != null and GetOwningPlayer(claimant) == ai_player and GetUnitState(u, UNIT_STATE_LIFE) < GetUnitState(u, UNIT_STATE_MAX_LIFE) and PreferExpansionClaimant(claimant, u) then
         call IssueImmediateOrderById(u, order_cancel)
         call Trace("Own duplicate claim detected on the same mine")
       endif

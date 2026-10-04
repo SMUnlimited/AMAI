@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+- Expansion checks now skip untouched rebuild sites and rejected mines earlier, and shared-style mine claims avoid unnecessary nearest-mine searches.
+- Army tracking now filters unsuitable units before searching for new armies, reduces temporary location creation, and spreads large unit and threat scans across short waits.
+- Focus-fire kiting now searches only nearby melee threats, skips units already handled in overlapping battle areas, and spreads large searches across short waits. Channeling protection also uses fewer unit scans.
 - Shortened build, combat and background polling intervals to keep recurring staggered waits below ten seconds with the shipped AI-count settings. Healing effects wait in game seconds and check for attacks every two seconds instead of stretching their duration with AI-count throttling.
 - Automatic repairs now account for gold, lumber, and each race's worker economy, using smaller emergency reserves under threat and returning to harvesting as resources run low.
 - Rebalanced Reforged Undead strategy counter ratings. (Powerer)
@@ -30,12 +33,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Expansion construction no longer accumulates duplicate worker/mine checks resulting in mid/late game lag when 12 or more players involved, although could occur on smaller players in some cases.
+- Construction or transport attempts that make no progress for two minutes wait one minute before reconsideration. Old checks cannot reject a newer target, and build-position caching follows the selected mine and hall type.
+- Failed unloading no longer starts construction with a worker still aboard.
+- Duplicate expansion cleanup now keeps a consistent winning foundation instead of allowing unfinished allied or owned foundations to cancel each other.
+- Town threat checks now compare armies against the owner of the town being evaluated, avoiding missed threats when army and town lists have different ordering.
 - Current build requests now maintain missing prerequisites even when already satisfied or blocked by resources, with queue capacity checked under the build lock and transformation sources protected from overbuilding.
 - Staggered AI checks now use bounded random delays instead of repeatedly slowing higher player slots, while retaining AI-count performance throttling.
 - Harvest checks no longer redirect Undead acolytes restoring buildings or Night Elf wisps renewing buildings back to gold mining.
 - Campaign AI compatibility names for identical units now share their canonical AMAI unit metadata instead of creating duplicate unit records.
 - Attempts to open Commander using shortcuts or chat commands now explain when Commander is disabled for the game or the player has no allied computer to command.
 - Reworked and renabled multi-mine handling around individual mine claims, allowing all races to harvest or expand at clustered mines without blocking later expansions, including bounded per-worker gold rosters that avoid lumber-worker churn or militia defense control, a three-mine worker-production cap, hall-based harvesting that bypasses broken town bookkeeping, surplus Human/Orc-style mine handling, movable entangling halls, and configurable mine styles for custom races.
+- (internal) Long-running AI jobs now report their elapsed time correctly in diagnostic warnings.
 - (Installer) The installation dialog now receives worker completion and enables Close after installation finishes.
 - (Installer) The Electron installer now terminates its full worker process tree when stopped, replaced, closed, or disconnected, without reporting late worker errors after its window has closed.
 - (Installer) Development mode now runs only the Electron window against the repository's root `MPQEditor.exe` and compiled `Scripts`, without requiring a production package layout or opening a non-functional browser copy.
