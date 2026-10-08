@@ -32,6 +32,15 @@
 4. Verify compiled output in `Scripts/` and run a map/test to exercise the change.
 5. Add or update tests or small reproducible map scenarios when possible.
 
+## Test readability
+
+- Follow `TestingScenarios/harvest-startup.test.mjs` for AI regression tests: use Node's built-in `describe` and `it` with names that explain the setup, action, and expected behavior.
+- Start each test with a fresh game. Separate setup, action, and assertions with blank lines; avoid long scripts that mutate shared state across several scenarios.
+- Keep JASS translation, Warcraft native mocks, and game setup in `TestingScenarios/helpers/`. The test file should read as gameplay scenarios, without requiring readers to understand the harness first.
+- Use plain action names such as `buyItem`, `sendHome`, and `checkHero`. Keep meaningful setup and expected outcomes visible in each test; avoid generic abstractions or dense scenario matrices.
+- Preserve coverage of the actual source functions. Do not replace production logic with a hand-written version of the behavior under test.
+- Include the exact run command and keep the matching in-game scenario document current. Automated checks should state where mocks cannot verify Warcraft behavior.
+
 ## PowerShell examples (run from repository root)
 
 Note: these are example commands for a developer. The exact batch script you should run depends on the target platform (REFORGED, ROC, TFT, VER, etc.).
