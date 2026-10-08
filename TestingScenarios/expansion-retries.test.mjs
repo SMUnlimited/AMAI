@@ -169,4 +169,59 @@ env.CheckExpansionTaken = () => assert.fail('Untouched rebuild site performed cl
 env.GetLocationCreepStrength = () => assert.fail('Untouched rebuild site performed creep scans');
 assert.equal(env.CheckExpansionRebuildAt(mine), false);
 assert.equal(scans, 1, 'Untouched rebuild site needs only one range scan');
-console.log('Expansion queue, timeouts, duplicate priority, stale callbacks, placement cache, and rebuild scans passed.');
+// Early worker demand must follow an eligible expansion order, not site selection.
+const expansion = {
+  BUILT_ALL: 1, BUILT_SOME: 2, CANNOT_BUILD: 3, NOT_ENOUGH_RES: 4,
+  racial_peon: 1, race_manual_loading: false, race_manual_loading_mine: 2,
+  race_item_expansion_item_id: 0, ITEM_EXPANSION: 1,
+  count: 1, done: 10, mines: 1, foe: null, cooldown: false, taken: false,
+  relocating: false, town_threatened: false, current_expansion: mine,
+  item_expanding: false, item_job_running: false,
+  ancient_expanding: false, militia_expanding: false,
+  expansion_peon: null, build_zeppelin: null, take_exp: false,
+  pendingExpansionPeons: 0, total_gold: 100, total_wood: 100,
+  TownCount: () => expansion.count, TownCountDone: () => expansion.done,
+  GetMinesHarvested: () => expansion.mines, GetWood: () => 100,
+  GetPeonBuilderShredderCount: () => 0,
+  GetPeonTargetForMines: mines => mines * 10,
+  GetUnitGoldCost2: () => 400, GetUnitWoodCost2: () => 200,
+  IsExpansionRebuildCoolingDown: () => expansion.cooldown,
+  CheckExpansionTaken: () => expansion.taken,
+  GetExpFoe: () => expansion.foe,
+  GetOwnStrength: () => 0, GetExpansionStrength: () => 100,
+  BeginMineHallRelocation: () => expansion.relocating,
+  far_expansion: null, race_uses_mine_expansion: false, old_id: { 3: 123 },
+  GetExpansionPeon: () => worker, UnitAlive: u => Boolean(u?.alive),
+  IsUnitInGroup: () => false, IsWaterExpansion: () => false,
+  constructions: 0, ConstructExpansion() { expansion.constructions++; },
+  Max: Math.max, Int2Str: String, Trace() {},
+};
+const expansionContext = vm.createContext(expansion);
+for (const name of ['QueueExpansionPeonsIfNeeded', 'StartExpansionAM']) {
+  vm.runInContext(compile(common, name), expansionContext);
+}
+for (const overrides of [
+  { count: 2 }, { town_threatened: true }, { current_expansion: null },
+  { cooldown: true }, { taken: true }, { foe: {} },
+  { ancient_expanding: true }, { militia_expanding: true }, { relocating: true },
+]) {
+  const previous = Object.fromEntries(Object.keys(overrides).map(k => [k, expansion[k]]));
+  Object.assign(expansion, overrides, { pendingExpansionPeons: 0, total_gold: 100, total_wood: 100 });
+  expansion.StartExpansionAM(2, 3);
+  assert.equal(expansion.pendingExpansionPeons, 0, `Blocked expansion queued peons: ${JSON.stringify(overrides)}`);
+  Object.assign(expansion, previous, { current_expansion: mine });
+}
+expansion.total_gold = 100;
+expansion.total_wood = 100;
+assert.equal(expansion.StartExpansionAM(2, 3), expansion.NOT_ENOUGH_RES);
+assert.equal(expansion.pendingExpansionPeons, 20, 'Cleared requested expansion pre-trains workers before hall resources are ready');
+expansion.done = 5;
+expansion.total_gold = 1000;
+expansion.total_wood = 1000;
+expansion.pendingExpansionPeons = 0;
+assert.equal(expansion.StartExpansionAM(2, 3), expansion.BUILT_SOME);
+assert.equal(expansion.pendingExpansionPeons, 20, 'Request extra workers while the expansion proceeds');
+assert.equal(expansion.constructions, 1, 'An understaffed current mine must not block the expansion worker');
+const expansionBuilder = common.match(/function ExpansionBuilder takes[\s\S]*?endfunction/)[0];
+assert.ok(!expansionBuilder.includes('QueueExpansionPeonsIfNeeded'), 'Site selection must leave worker requests to eligible construction orders');
+console.log('Expansion queue, timeouts, duplicate priority, stale callbacks, placement cache, rebuild scans, and early worker intent passed.');

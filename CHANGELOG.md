@@ -33,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Human peasants no longer skip gold mining at game start while waiting for the first militia check. Only workers explicitly selected for defense or militia missions are reserved, so other peasants can keep mining even when they have Call to Arms.
 - Extra expansion workers are now trained early only for a requested expansion with a cleared mine, and expansion workers can start building without waiting for other workers to finish training.
 - Expansion construction no longer accumulates duplicate worker/mine checks resulting in mid/late game lag when 12 or more players involved, although could occur on smaller players in some cases.
 - Construction or transport attempts that make no progress for two minutes wait one minute before reconsideration. Old checks cannot reject a newer target, and build-position caching follows the selected mine and hall type.
