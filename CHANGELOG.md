@@ -33,6 +33,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Injured heroes can still buy items while healing, but shopping completion, cancellation, or timeout no longer sends them back into battle before their healing job releases them.
+- Heroes sent home now keep healing after buying or receiving a healing item, and shopping movement and hero recovery checks cooperate with the healing job instead of interrupting it.
 - Human peasants no longer skip gold mining at game start while waiting for the first militia check. Only workers explicitly selected for defense or militia missions are reserved, so other peasants can keep mining even when they have Call to Arms.
 - Extra expansion workers are now trained early only for a requested expansion with a cleared mine, and expansion workers can start building without waiting for other workers to finish training.
 - Expansion construction no longer accumulates duplicate worker/mine checks resulting in mid/late game lag when 12 or more players involved, although could occur on smaller players in some cases.

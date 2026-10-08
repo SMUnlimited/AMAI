@@ -41,6 +41,22 @@ function DropNonHealingItem takes unit u returns nothing
   set t = null
 endfunction
 
+function EndBuyItemJob takes boolean rejoin_assault returns nothing
+  call GroupRemoveUnit(unit_buying_item, shop_sent)
+  // Shopping must not release a hero still controlled by healing or rescue.
+  if IsStandardUnit(shop_sent) then
+    call RecycleGuardPosition(shop_sent)
+    if rejoin_assault then
+      call AddAssault(1, GetUnitTypeId(shop_sent))
+    endif
+  endif
+  set shop_sent = null
+  set retreat_home = false
+  set shop_ordered = false
+  set shop_buy_time_large = -1
+  set shop_buy_time_small = -1
+endfunction
+
 function BuyItemJob takes integer id returns nothing
   local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
   local real current_time = TimerGetElapsed(tq_timer)
@@ -91,13 +107,7 @@ local integer detectedenemies = GetLocationNonCreepStrength(GetUnitX(shop_sent),
   else
     if town_threatened or attack_running then
 		call CreateDebugTag("BUY_ITEM:in attack so dont get item", 10, shop_sent, 3.00, 1.50) 
-    	call RecycleGuardPosition(shop_sent)
-		call GroupRemoveUnit(unit_buying_item, shop_sent)
-		call AddAssault(1, GetUnitTypeId(shop_sent))
-    	set shop_sent = null
-    	set shop_ordered = false
-    	set shop_buy_time_large = -1
-    	set shop_buy_time_small = -1
+      call EndBuyItemJob(true)
     	return
     endif
   endif
@@ -112,14 +122,8 @@ local integer detectedenemies = GetLocationNonCreepStrength(GetUnitX(shop_sent),
 		endif
 		call TQAddJob(5, BUY_ITEM, id)
 	else
-		call GroupRemoveUnit(unit_buying_item, shop_sent)
-		call RecycleGuardPosition(shop_sent)
 		call CreateDebugTag("BUY_ITEM: Retreated", 10, shop_sent, 3.00, 1.50)
-	    set shop_sent = null
-		set retreat_home = false
-		set shop_ordered = false
-		set shop_buy_time_large = -1
-		set shop_buy_time_small = -1
+		call EndBuyItemJob(false)
 	endif
 	call RemoveLocation(l)
 	set l = null
@@ -130,12 +134,7 @@ local integer detectedenemies = GetLocationNonCreepStrength(GetUnitX(shop_sent),
   if (shop_buy_time_large >= 0 and shop_buy_time_large + buy_timeout_large < current_time) or (shop_buy_time_small >= 0 and shop_buy_time_small + buy_timeout_small < current_time) then
     set available_time[id] = ai_time + regenerate_time[id] / 2
 	call CreateDebugTag("Buy item timeout reached", 10, shop_sent, 3.00, 1.50) 	
-    call RecycleGuardPosition(shop_sent)
-	call GroupRemoveUnit(unit_buying_item, shop_sent)
-    set shop_sent = null
-    set shop_ordered = false
-    set shop_buy_time_large = -1
-    set shop_buy_time_small = -1
+    call EndBuyItemJob(false)
     return
   endif
 
@@ -143,14 +142,8 @@ local integer detectedenemies = GetLocationNonCreepStrength(GetUnitX(shop_sent),
 
   
   if GetItemNumber(id) >= shop_wanted or shop_unit == null or (not UnitAlive(shop_unit)) or (shop_sent != null and GetSlotsFreeOnUnit(shop_sent) <= 0 and not healing) then
-    call RecycleGuardPosition(shop_sent)
-	call GroupRemoveUnit(unit_buying_item, shop_sent)
-	call CreateDebugTag("BUT_ITEM: Items have been brought", 10, shop_sent, 3.00, 1.50) 
-	call AddAssault(1, GetUnitTypeId(shop_sent))
-    set shop_sent = null
-    set shop_ordered = false
-    set shop_buy_time_large = -1
-    set shop_buy_time_small = -1
+	call CreateDebugTag("BUT_ITEM: Items have been brought", 10, shop_sent, 3.00, 1.50)
+    call EndBuyItemJob(true)
     return
   endif
 
@@ -176,7 +169,8 @@ local integer detectedenemies = GetLocationNonCreepStrength(GetUnitX(shop_sent),
     set time_next_try = 0.5
   else
     call CreateDebugTag("move to item shop", 10, shop_sent, 3.00, 1.50) 
-    if GetUnitCurrentOrder(shop_sent) != OrderId("move") or GetUnitCurrentOrder(shop_sent) == OrderId("stop") then
+    // The healing job owns movement; shopping may still buy when it reaches this shop.
+    if not IsUnitInGroup(shop_sent, unit_healing) and (GetUnitCurrentOrder(shop_sent) != OrderId("move") or GetUnitCurrentOrder(shop_sent) == OrderId("stop")) then
       call IssuePointOrder(shop_sent, "move", GetUnitX(shop_unit), GetUnitY(shop_unit))
     endif
     set time_next_try = 4

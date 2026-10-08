@@ -63,6 +63,10 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
   if IsUnitType(u, UNIT_TYPE_HERO) then
     set racial_healing_item = GetHeroHealingItem()
     set racial_mana_item = GetHeroManaItem()
+    // Finish shopping before using the item, so later buy checks cannot interrupt healing.
+    if shop_ordered and shop_sent == u and racial_healing_item != 0 and GetItemNumberOnUnit(racial_healing_item, u) > 0 then
+      call EndBuyItemJob(false)
+    endif
     if racial_healing_item != 0 then
       set otherhero = SomeUnitHasHealingItem(otherhero, u, racial_healing_item)
       if buy_type[racial_healing_item] == BT_RACIAL_ITEM then
@@ -86,7 +90,10 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
 
   if GetUnitState(u, UNIT_STATE_LIFE) >= GetUnitState(u, UNIT_STATE_MAX_LIFE) * (I2R(60)/100) and GetUnitCurrentOrder(u) != OrderId("cannibalize") then
     call CreateDebugTag("SEND_HOME Healed", 10, u, 3.00, 1.50)	
-    call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
+    if shop_ordered and shop_sent == u then
+      call EndBuyItemJob(false)
+    endif
+    call ResetGuardPositionJob(u)
   elseif racial_healing_item != 0 and GetItemNumberOnUnit(racial_healing_item, u) > 0 then
     call CreateDebugTag("Hero: Use healing item", 10, u, 3.00, 2.00)
     if GetItemInstantType(racial_healing_item) == ITEMTYPE_CONTINUOUS and DistanceBetweenPoints_dk(GetUnitLoc(u), captain_home) >= 1200 then
@@ -106,7 +113,7 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
   elseif otherhero != null and IsUnitType(u, UNIT_TYPE_HERO) then
       if GetSlotsFreeOnUnit(u) > 0 then  // prevent create on the ground
         call UnitAddItem(u, GetItemOfTypeOnUnit(racial_healing_item, otherhero))
-        call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)
+        call TQAddUnitJob(2, SEND_HOME, p, u)
       else
         call TQAddUnitJob(4, SEND_HOME, p, u)
       endif
@@ -118,13 +125,19 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
         set l = null
         call TQAddUnitJob(4, SEND_HOME, p, u)
       else
-        call CreateDebugTag("SEND_HOME Stop at Shop", 10, u, 3.00, 2.00)	
-        call IssueImmediateOrder(u, "holdposition") // use hold position as stop will cancel panda clones for the hero (and possibly other special abilities)
-        call IssueNeutralImmediateOrderById(ai_player, nearshopunit, old_id[racial_healing_item])
-        if GetUnitState(u, UNIT_STATE_MANA) < 100 and racial_mana_item != 0 and GetItemNumberOnUnit(racial_mana_item, u) <= 0 then
-          call IssueNeutralImmediateOrderById(ai_player, nearshopunit, old_id[racial_mana_item])
+        call CreateDebugTag("SEND_HOME Stop at Shop", 10, u, 3.00, 2.00)
+        // An active shopping job handles the purchase; SendHome keeps its healing checks.
+        if not shop_ordered or shop_sent != u then
+          call IssueImmediateOrder(u, "holdposition") // use hold position as stop will cancel panda clones for the hero (and possibly other special abilities)
+          if GetUnitTypeId(nearshopunit) == old_id[racial_shop] then
+            call IssueTargetOrderById(nearshopunit, 'Aall', u)
+          endif
+          call IssueNeutralImmediateOrderById(ai_player, nearshopunit, old_id[racial_healing_item])
+          if GetUnitState(u, UNIT_STATE_MANA) < 100 and racial_mana_item != 0 and GetItemNumberOnUnit(racial_mana_item, u) <= 0 then
+            call IssueNeutralImmediateOrderById(ai_player, nearshopunit, old_id[racial_mana_item])
+          endif
         endif
-        call TQAddUnitJob(2, RESET_GUARD_POSITION, 0, u)  // end job
+        call TQAddUnitJob(2, SEND_HOME, p, u)
       endif
   else
       if DistanceBetweenPoints_dk(GetUnitLoc(u), captain_home) >= 1200 then
