@@ -9998,33 +9998,23 @@ function GetPeonTargetForMines takes integer mo, real w, integer sc returns inte
 endfunction
 
 //============================================================================
-// Ensure existing mines are fully staffed before starting another expansion.
-// Also pre-queue peons for the upcoming mine so expansion worker demand starts early.
-function QueueExpansionPeonsIfNeeded takes integer currentMines returns boolean
+// Pre-queue workers for a cleared, requested expansion without delaying construction.
+function QueueExpansionPeonsIfNeeded takes integer currentMines returns nothing
   local integer done = TownCountDone(racial_peon)
   local integer sc = 0
-  local integer currentTarget = 0
   local integer nextTarget = 0
   local real w = GetWood()
 
   if currentMines <= 0 then
-    return true
+    return
   endif
 
   set sc = GetPeonBuilderShredderCount()
-  set currentTarget = GetPeonTargetForMines(currentMines, w, sc)
   set nextTarget = GetPeonTargetForMines(currentMines + 1, w, sc)
 
   if done < nextTarget then
     set pendingExpansionPeons = Max(pendingExpansionPeons, nextTarget)
   endif
-
-  if done < currentTarget then
-    call Trace("ExpansionBuilder: Waiting workers " + Int2Str(done) + "/" + Int2Str(currentTarget))
-    return false
-  endif
-
-  return true
 endfunction
 
 //============================================================================
@@ -11743,11 +11733,6 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     call TQAddJob(1, ITEM_EXPANSION, 0)
   endif
   
-  // Do not start a new expansion until previous mines are worker-saturated.
-  if not QueueExpansionPeonsIfNeeded(GetMinesHarvested()) then
-    return CANNOT_BUILD
-  endif
-
   set total_gold = total_gold - gold_cost
   set total_wood = total_wood - wood_cost
   
@@ -11774,6 +11759,9 @@ function StartExpansionAM takes integer qty, integer hall returns integer
     call Trace("AMAIStartexpa: Need to remove creeps from expansion")
     return CANNOT_BUILD // If creeps need clearing save the gold but don't block building at the moment as may need troops
   endif
+
+  // Queue extra workers only once this expansion is ready to proceed.
+  call QueueExpansionPeonsIfNeeded(GetMinesHarvested())
 
   if total_gold < 0 and gold_cost > 0 then
     call Trace("AMAIStartexpa: Need More Resources gold")
@@ -12312,9 +12300,6 @@ endloop
 if mines < 1 or gold_left < 2500 or exp_prepared then
   //call Trace("ExpansionBuilder: Putting mine on build list")
   call CreateDebugTagLoc("Expand Here", 10, GetUnitX(current_expansion), GetUnitY(current_expansion), 1.00, 0.80)
-  if not QueueExpansionPeonsIfNeeded(mines) then
-    return
-  endif
   if mines < 1 or gold_left < 2500 then
     call BuildExpa(TownCountDone(racial_expansion) + 1, racial_expansion, expa_emergency_prio)
   elseif prefer_rebuild_now or upkeepboost then
