@@ -44,15 +44,92 @@
 
 //============================================================================
 function StatueControl takes unit u returns nothing
-  local location loc = GetSubtractionLoc(last_ally_loc, last_enemy_loc)
-  local location statue_loc = GetProjectedLoc(last_ally_loc, loc, statue_distance)
-  if DistanceBetweenPoints_dk(GetUnitLoc(u), statue_loc) > 200 then
-    call IssuePointOrderLoc(u, "move", statue_loc)
+  local group g = null
+  local unit candidate = null
+  local unit ally = null
+  local unit support = null
+  local unit enemy = null
+  local real ally_distance = battle_radius + 1
+  local real support_distance = battle_radius + 1
+  local real enemy_distance = battle_radius + 1
+  local real distance = 0
+  local boolean useful = false
+  local integer order = GetUnitCurrentOrder(u)
+  local integer scanned = 0
+  local location anchor = null
+  local location direction = null
+  local location target = null
+  if isfleeing or not CaptainInCombat(true) or DistanceBetweenPoints_dk(GetUnitLoc(u), last_ally_loc) > battle_radius then
+    return
   endif
-  call RemoveLocation(loc)
-  set loc = null
-  call RemoveLocation(statue_loc)
-  set statue_loc = null
+  // Leave casts and native conversions alone; only replace ordinary combat/movement orders.
+  if order != 0 and order != OrderId("attack") and order != OrderId("move") and order != OrderId("smart") and order != OrderId("stop") and order != OrderId("holdposition") then
+    return
+  endif
+  set g = CreateGroup()
+  call GroupEnumUnitsInRange(g, GetUnitX(u), GetUnitY(u), battle_radius, null)
+  loop
+    set candidate = FirstOfGroup(g)
+    exitwhen candidate == null
+    if UnitAlive(candidate) and not IsUnitHidden(candidate) then
+      set distance = DistanceBetweenUnits(u, candidate)
+      if IsPlayerAlly(GetOwningPlayer(candidate), ai_player) then
+        // Statues and other mechanical units cannot anchor their own support movement.
+        if not IsUnitType(candidate, UNIT_TYPE_MECHANICAL) and not IsUnitType(candidate, UNIT_TYPE_PEON) and not IsUnitType(candidate, UNIT_TYPE_STRUCTURE) and IsStandardUnit(candidate) and not IsUnitBuying(candidate) then
+          if distance < ally_distance then
+            set ally = candidate
+            set ally_distance = distance
+          endif
+          if GetUnitState(candidate, UNIT_STATE_LIFE) < GetUnitState(candidate, UNIT_STATE_MAX_LIFE) or GetUnitState(candidate, UNIT_STATE_MANA) < GetUnitState(candidate, UNIT_STATE_MAX_MANA) then
+            if distance <= 600 then
+              set useful = true
+            endif
+            if distance < support_distance then
+              set support = candidate
+              set support_distance = distance
+            endif
+          endif
+        endif
+      elseif IsPlayerEnemy(GetOwningPlayer(candidate), ai_player) and IsUnitVisible(candidate, ai_player) and not IsUnitInvisibleAM(candidate, ai_player) and not UnitIsSleeping(candidate) and IsUnitType(candidate, UNIT_TYPE_ATTACKS_GROUND) and distance < enemy_distance then
+        set enemy = candidate
+        set enemy_distance = distance
+      endif
+    endif
+    call GroupRemoveUnit(g, candidate)
+    set scanned = scanned + 1
+    if ModuloInteger(scanned, 64) == 0 then
+      call Sleep(0.01)
+    endif
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  if support != null and not useful then
+    set ally = support
+  endif
+  // Keep useful, safe statues still. A statue-only army has no support anchor.
+  if ally != null and UnitAlive(ally) and (enemy_distance < 600 or (support != null and not useful)) then
+    set anchor = GetUnitLoc(ally)
+    if enemy != null then
+      set direction = GetSubtractionLoc_kd(anchor, GetUnitLoc(enemy))
+      set target = GetProjectedLoc(anchor, direction, statue_distance)
+      call RemoveLocation(direction)
+    else
+      set target = Location(GetLocationX(anchor), GetLocationY(anchor))
+    endif
+    // A scan can yield while another job starts healing, retreating or converting this unit.
+    if UnitAlive(u) and not isfleeing and CaptainInCombat(true) and IsStandardUnit(u) and not IsUnitBuying(u) and GetUnitCurrentOrder(u) == order and DistanceBetweenPoints_dk(GetUnitLoc(u), target) > 200 then
+      call IssuePointOrderLoc(u, "move", target)
+    endif
+    call RemoveLocation(anchor)
+    call RemoveLocation(target)
+  endif
+  set candidate = null
+  set ally = null
+  set support = null
+  set enemy = null
+  set anchor = null
+  set direction = null
+  set target = null
 endfunction
 
 //============================================================================
@@ -222,7 +299,7 @@ function MicroUnitsJob takes nothing returns nothing
         #INCLUDETABLE <$VER$\StandardUnits.txt> #COND "%4" =~ /\bstatue\b/
         if id == o%1 then
           //call DisplayToAllJobDebug("MICRO_UNITS: Statue Control")
-          if attack_running and GetLocationX(last_enemy_loc) != 0 and GetLocationY(last_enemy_loc) != 0 then
+          if attack_running then
             call StatueControl(u)
           endif
           //call DisplayToAllJobDebug("MICRO_UNITS: Statue Control end")
