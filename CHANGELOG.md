@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
-- Reforged and TFT armies now adapt up to two counter unit types to mixed enemy threats, account for existing and training troops, and reserve a bounded share of combat food for missing counters, including replacements after losses at high population.
+- Reforged and TFT armies now adjust to several enemy threats while keeping their usual strategy. Previously, dynamic counters focused on one threat at a time. The AI now checks the troops it already has or is training and can add two suitable unit types. For example, a Human army facing flying enemies and spellcasters can add Riflemen to shoot down flyers and Spell Breakers to deal with casters. It sets aside a limited amount of population space for missing counters. If the army is full, it waits for losses and gives those counters first use of the freed space, without removing existing troops. Once its strategy and counter needs are met, it keeps building reinforcements with spare population.
 - Reforged Shadow Hunters now learn Healing Wave first and focus on healing and Serpent Wards before Hex. Death Knights learn Death Pact at level four while retaining rank-three Death Coil at level five. (messi-818)
 - Reforged Human, Orc and Undead strategy preferences incorporate reviewed counter-rating adjustments from messi-818, while retaining the strengths of riflemen, mortars, fiends and Frost Wyrms.
 - All Reforged Undead strategies can now research Ghoul Frenzy at tier three when completed ghouls are present, with a lower priority for supporting ghouls than for ghoul-focused armies. (messi-818)
