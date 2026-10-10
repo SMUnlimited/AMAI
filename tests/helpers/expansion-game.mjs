@@ -32,6 +32,8 @@ function compile(source, name) {
 export function expansionGame(race = 'undead') {
   const units = [];
   const orders = [];
+  const activeGroups = new Set();
+  const checkedMines = [];
   const races = { elf: 1, human: 2, orc: 3, undead: 4 };
   const state = {
     ai_player: 0, own_race: races[race], R_RANDOM: 0, RACE_NUMBER: 4,
@@ -54,7 +56,9 @@ export function expansionGame(race = 'undead') {
     DistanceBetweenUnits: (a, b) => Math.hypot(a.x - b.x, a.y - b.y),
     IsPlayerAlly: (a, b) => a === b || b === 3,
     IsPlayerEnemy: (a, b) => a !== b && a !== 3 && b !== 3 && a !== 15 && b !== 15,
-    CreateGroup: () => new Set(), DestroyGroup() {}, GroupClear: g => g.clear(),
+    CreateGroup: () => { const group = new Set(); activeGroups.add(group); return group; },
+    DestroyGroup: g => activeGroups.delete(g), GroupClear: g => g.clear(),
+    BlzGroupAddGroupFast: (source, target) => source.forEach(u => target.add(u)),
     GroupAddUnit: (g, u) => g.add(u), GroupRemoveUnit: (g, u) => g.delete(u),
     FirstOfGroup: g => g.values().next().value ?? null, IsUnitInGroup: (u, g) => g.has(u),
     GroupEnumUnitsOfPlayer: (g, p) => units.filter(u => u.owner === p).forEach(u => g.add(u)),
@@ -68,16 +72,21 @@ export function expansionGame(race = 'undead') {
     IsExpansionRebuildCoolingDown: () => false, FlushChildHashtable: t => t.clear(), Trace() {},
     ExpansionAttemptStalled: () => false, GetUnitCurrentOrder: () => 0,
     CreateDebugTagLoc() {}, GetLocationNonCreepStrength: () => 0,
+    debugging: 0, town_threatened: false, home_town: 0, town_mine: [],
+    TownThreatened: () => state.town_threatened,
+    // Worker assignment is outside the group-lifetime scenarios.
+    RefreshHarvestPeons() {},
+    PeonMineCheck: mine => { checkedMines.push(mine); return false; },
   };
   const context = vm.createContext(state);
   for (const name of [
-    'IsUnitGoldMine', 'GetPlayerMineStyle', 'MineClaimPolicy', 'MineHallRelocationPolicy',
+    'CopyGroup', 'IsUnitGoldMine', 'GetPlayerMineStyle', 'MineClaimPolicy', 'MineHallRelocationPolicy',
     'GetNearestGoldMineToUnit', 'GetMineClaimantEx', 'GetMineClaimant', 'MineHallHasActiveMine',
     'IsAlliedSharedMineHall', 'IsSharedExpansionMine', 'GetExpansionMineClaimantEx',
     'GetExpansionMineClaimant', 'CheckExpansionTaken',
   ]) vm.runInContext(compile(common, name), context);
   for (const [source, names] of [[doubles, ['PreferExpansionClaimant', 'CheckDoubleExpansion']],
-    [harvest, ['RefreshHarvestMines']], [build, ['BuildExpansionJob']]]) {
+    [harvest, ['RefreshHarvestMines', 'HarvestTrackedMines']], [build, ['BuildExpansionJob']]]) {
     for (const name of names) vm.runInContext(compile(source, name), context);
   }
 
@@ -88,12 +97,14 @@ export function expansionGame(race = 'undead') {
     return unit;
   }
   return {
-    state, orders,
+    state, orders, checkedMines,
+    activeGroupCount: () => activeGroups.size,
     addMine: (type = 'ngol', properties = {}) => addUnit(type, { owner: 15, gold: 10000, ...properties }),
     addHall: (properties = {}) => addUnit(race === 'elf' ? 'tree' : 'hall', { hall: true, x: 400, ...properties }),
     checkDuplicates: () => state.CheckDoubleExpansion(),
     isTaken: mine => state.CheckExpansionTaken(mine),
     checkBuilder: (worker, mine) => { state.current_expansion = mine; state.BuildExpansionJob(worker, mine); },
     checkHarvest: () => { state.RefreshHarvestMines(); return [...state.harvest_mines]; },
+    assignGold: () => state.HarvestTrackedMines(),
   };
 }
