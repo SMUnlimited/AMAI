@@ -6393,7 +6393,7 @@ function GetMineClaimantEx takes unit mine, unit ignored returns unit
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if u != ignored and IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and (IsUnitType(u, UNIT_TYPE_TOWNHALL) or IsUnitGoldMine(u)) then
+    if u != ignored and IsUnitType(u, UNIT_TYPE_STRUCTURE) and UnitAlive(u) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_PASSIVE) and GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) and (IsUnitType(u, UNIT_TYPE_TOWNHALL) or IsUnitGoldMine(u)) then
       set owner = GetOwningPlayer(u)
       set mineStyle = GetPlayerMineStyle(owner)
       set distance = DistanceBetweenUnits(u, mine)
@@ -6514,8 +6514,12 @@ function GetExpansionMineClaimantEx takes unit mine, unit ignored returns unit
   local unit claimant = GetMineClaimantEx(mine, ignored)
   if IsSharedExpansionMine(mine) and IsAlliedSharedMineHall(claimant) then
     set claimant = null
-  elseif claimant != null and GetOwningPlayer(claimant) == ai_player and MineHallRelocationPolicy(GetPlayerMineStyle(ai_player), MineHallHasActiveMine(claimant), DistanceBetweenUnits(claimant, mine)) then
-    set claimant = null
+  elseif claimant != null and GetOwningPlayer(claimant) == ai_player and IsUnitType(claimant, UNIT_TYPE_TOWNHALL) and not IsUnitGoldMine(claimant) then
+    // Mine-building races need their captured mine as well as their town hall.
+    // Only a hall can relocate; an owned entangled mine always reserves its site.
+    if race_uses_mine_expansion or MineHallRelocationPolicy(GetPlayerMineStyle(ai_player), MineHallHasActiveMine(claimant), DistanceBetweenUnits(claimant, mine)) then
+      set claimant = null
+    endif
   endif
   return claimant
 endfunction

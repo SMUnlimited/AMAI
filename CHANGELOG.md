@@ -33,6 +33,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Undead can haunt or rebuild a mine beside their own Necropolis without treating the hall as a competing expansion. Night Elf owned Entangled Gold Mines remain claimed, preventing duplicate Trees of Life and allowing later expansion targets to be considered.
+- Human and Orc harvesting now selects exposed neutral deposits and ignores dead mine claims, allowing released mines to be worked after Haunted or Entangled Gold Mine buildings are destroyed.
 - Obsidian Statues now follow nearby combat units that need health or mana instead of an old allied regroup point. Useful, safe statues stay still, statue-heavy armies no longer pull themselves backward, and positioning leaves retreats, spell casts and Destroyer transformations alone.
 - Injured heroes can still buy items while healing, but shopping completion, cancellation, or timeout no longer sends them back into battle before their healing job releases them.
 - Heroes sent home now keep healing after buying or receiving a healing item, and shopping movement and hero recovery checks cooperate with the healing job instead of interrupting it.

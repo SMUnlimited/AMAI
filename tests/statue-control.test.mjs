@@ -1,7 +1,7 @@
-// Run: node --test --test-reporter=spec TestingScenarios/statue-control.test.mjs
+// Run: node --test --test-reporter=spec tests/statue-control.test.mjs
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { undeadGame } from './helpers/statue-game.mjs';
+import { undeadGame } from '../tests/helpers/statue-game.mjs';
 
 describe('Obsidian Statue battle positioning', () => {
   it('Given a solo Undead army, when battle checks run, then statues move behind that army without counting its strength twice', () => {

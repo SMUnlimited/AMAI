@@ -1,4 +1,4 @@
-// Run: node TestingScenarios/expansion-retries.test.mjs
+// Run: node tests/expansion-retries.test.mjs
 // Exercise the actual JASS control flow with mocked Warcraft natives.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
