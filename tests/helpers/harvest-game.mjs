@@ -9,7 +9,7 @@ const harvest = readFileSync(new URL('Jobs/HARVEST_CHECK.eai', root), 'utf8');
 const militia = readFileSync(new URL('Jobs/MILITIA_CHECK.eai', root), 'utf8');
 const common = readFileSync(new URL('common.eai', root), 'utf8');
 
-function compile(source, name) {
+export function compile(source, name) {
   const match = source.match(new RegExp(`function ${name} takes (.*?) returns \\w+([\\s\\S]*?)endfunction`));
   assert.ok(match, `Missing ${name}`);
   const parameters = match[1] === 'nothing' ? '' : match[1].split(',').map(p => p.trim().split(/\s+/)[1]).join(',');

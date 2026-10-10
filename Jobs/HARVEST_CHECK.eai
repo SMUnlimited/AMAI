@@ -53,6 +53,14 @@ function SelectByPeons takes group rg returns group
   return rg
 endfunction
 
+// Only races whose gold workers can also gather lumber can trade mine slots.
+function GetHarvestGoldTarget takes nothing returns integer
+  if not race_has_ghouls and not race_uses_mine_expansion and not race_no_wood_harvest and GetWood() < maximum_peon_wood and GetGold() > 300 then
+    return Max(2, ver_optimal_gold - 2)
+  endif
+  return ver_optimal_gold
+endfunction
+
 function SetPeonHarvestMine takes unit peon, unit mine returns nothing
   call SaveUnitHandle(harvest_assignments, 0, GetHandleId(peon), mine)
 endfunction
@@ -86,6 +94,7 @@ function RefreshHarvestPeons takes nothing returns nothing
   local unit assignedMine = null
   local integer order = 0
   local integer count = 0
+  local integer goldTarget = GetHarvestGoldTarget()
   local group g = CreateGroup()
   call FlushChildHashtable(harvest_assignments, 1)
   call GroupClear(harvestgrp)
@@ -120,6 +129,13 @@ function RefreshHarvestPeons takes nothing returns nothing
         endif
         if assignedMine != null then
           set count = LoadInteger(harvest_assignments, 1, GetHandleId(assignedMine)) + 1
+          if count > goldTarget and goldTarget < ver_optimal_gold then
+            call RemoveSavedHandle(harvest_assignments, 0, GetHandleId(u))
+            call IssueImmediateOrder(u, "stop")
+            set assignedMine = null
+          endif
+        endif
+        if assignedMine != null then
           call SaveInteger(harvest_assignments, 1, GetHandleId(assignedMine), count)
           call GroupAddUnit(harvestgrp, u)
           // HarvestWood uses the same order id. Reassert only commuting Human/
@@ -184,6 +200,7 @@ function PeonMineCheck takes unit mine returns boolean
   if peond > 5 then
     set delaywisps = ver_optimal_gold
   endif
+  set delaywisps = Min(delaywisps, GetHarvestGoldTarget())
 
   if race_manual_loading then
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
@@ -209,9 +226,25 @@ function PeonMineCheck takes unit mine returns boolean
         call IssueTargetOrder(mine, "unload", savewisp)
         call GroupRemoveUnit(harvestgrp, savewisp)
         call RemoveSavedHandle(harvest_assignments, 0, GetHandleId(savewisp))
+        set i = i - 1
       endif
     elseif peond < 7 and not hero_built[1] then
       set delaywisps = ver_optimal_gold - 2
+    endif
+    if i > delaywisps and GetHarvestGoldTarget() < ver_optimal_gold then
+      call DestroyGroup(g)
+      set g = CopyGroup(harvestgrp)
+      loop
+        set u = FirstOfGroup(g)
+        exitwhen u == null or i <= delaywisps
+        if IsUnitInTransport(u, mine) then
+          call IssueTargetOrder(mine, "unload", u)
+          call GroupRemoveUnit(harvestgrp, u)
+          call RemoveSavedHandle(harvest_assignments, 0, GetHandleId(u))
+          set i = i - 1
+        endif
+        call GroupRemoveUnit(g, u)
+      endloop
     endif
     if i < delaywisps then
       call Trace("Correcting Harvest:" + Int2Str(delaywisps))

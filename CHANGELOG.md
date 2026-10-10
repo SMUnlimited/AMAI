@@ -37,6 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Night Elf, Orc and Human harvest controls now release two gold workers for lumber when lumber is below 200 and gold is above 300, and restore full mining when resources recover. Undead keeps its separate acolyte and ghoul workforces.
 - Adaptive counter debug messages now use AMAI's number-to-text helpers for compatibility with the AI runtime.
 - Reforged and TFT armies keep training reinforcements after completing their strategy and counter targets, using spare population without taking food reserved for missing counters.
 - Dynamic counter requests in Reforged and TFT now use total unit targets correctly and remove obsolete counter orders and their prerequisites without clearing the strategy's core build requests.
