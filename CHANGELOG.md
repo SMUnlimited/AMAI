@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+- Reforged Shadow Hunters now learn Healing Wave first and focus on healing and Serpent Wards before Hex. Death Knights learn Death Pact at level four while retaining rank-three Death Coil at level five. (messi-818)
+- Reforged Human, Orc and Undead strategy preferences incorporate reviewed counter-rating adjustments from messi-818, while retaining the strengths of riflemen, mortars, fiends and Frost Wyrms.
+- All Reforged Undead strategies can now research Ghoul Frenzy at tier three when completed ghouls are present, with a lower priority for supporting ghouls than for ghoul-focused armies. (messi-818)
 - Expansion checks now skip untouched rebuild sites and rejected mines earlier, and shared-style mine claims avoid unnecessary nearest-mine searches.
 - Army tracking now filters unsuitable units before searching for new armies, reduces temporary location creation, and spreads large unit and threat scans across short waits.
 - Focus-fire kiting now searches only nearby melee threats, skips units already handled in overlapping battle areas, and spreads large searches across short waits. Channeling protection also uses fewer unit scans.
