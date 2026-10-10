@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+- Reforged and TFT armies now adapt up to two counter unit types to mixed enemy threats, account for existing and training troops, and reserve a bounded share of combat food for missing counters, including replacements after losses at high population.
 - Reforged Shadow Hunters now learn Healing Wave first and focus on healing and Serpent Wards before Hex. Death Knights learn Death Pact at level four while retaining rank-three Death Coil at level five. (messi-818)
 - Reforged Human, Orc and Undead strategy preferences incorporate reviewed counter-rating adjustments from messi-818, while retaining the strengths of riflemen, mortars, fiends and Frost Wyrms.
 - All Reforged Undead strategies can now research Ghoul Frenzy at tier three when completed ghouls are present, with a lower priority for supporting ghouls than for ghoul-focused armies. (messi-818)
@@ -36,6 +37,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Adaptive counter debug messages now use AMAI's number-to-text helpers for compatibility with the AI runtime.
+- Reforged and TFT armies keep training reinforcements after completing their strategy and counter targets, using spare population without taking food reserved for missing counters.
+- Dynamic counter requests in Reforged and TFT now use total unit targets correctly and remove obsolete counter orders and their prerequisites without clearing the strategy's core build requests.
 - Undead can haunt or rebuild a mine beside their own Necropolis without treating the hall as a competing expansion. Night Elf owned Entangled Gold Mines remain claimed, preventing duplicate Trees of Life and allowing later expansion targets to be considered.
 - Human and Orc harvesting now selects exposed neutral deposits and ignores dead mine claims, allowing released mines to be worked after Haunted or Entangled Gold Mine buildings are destroyed.
 - Obsidian Statues now follow nearby combat units that need health or mana instead of an old allied regroup point. Useful, safe statues stay still, statue-heavy armies no longer pull themselves backward, and positioning leaves retreats, spell casts and Destroyer transformations alone.

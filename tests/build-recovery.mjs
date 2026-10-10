@@ -7,7 +7,7 @@ import vm from 'node:vm';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const source = read('common.eai');
-const names = ['SetBuildAllAMCore', 'RefreshNeeded', 'SetBuildAllAM', 'AddRefresh',
+const names = ['SetBuildAllAMCore', 'SetBuildDependency', 'RefreshNeeded', 'SetBuildAllAM', 'AddRefresh',
   'RefreshAllNeeded', 'OneBuildLoopAM', 'BuildLoopAM', 'StaggerSleep', 'HealArmy'];
 const extra = read('TFT/NeededExtra.txt').trim().split(/\r?\n/).slice(1)
   .map(row => row.split('\t'));
@@ -244,7 +244,7 @@ function zeros(capacity = Infinity) {
 
 function state(capacity = 32) {
   const s = {
-    ...extraIds, BUILD_UNIT: 1, BUILD_UPGRADE: 2, BUILD_ITEM: 3, BUILD_EXPAND: 4,
+    ...extraIds, BUILD_UNIT: 1, BUILD_ADAPTIVE: 5, BUILD_ADAPTIVE_UPGRADE: 6, BUILD_UPGRADE: 2, BUILD_ITEM: 3, BUILD_EXPAND: 4,
     BUILT_ALL: 0, NOT_ENOUGH_RES: 1, CANNOT_BUILD: 2, BUILT_SOME: 3,
     BT_RACIAL_ITEM: 5, BT_ML_UPGRADE: 6, BT_HERO: 3, BT_NEUTRAL_HERO: 7,
     UPGRADED: -1, BLOC_STD: 0, JASS_MAX_ARRAY_SIZE: capacity,
@@ -256,7 +256,7 @@ function state(capacity = 32) {
     counts: zeros(), upgrades: zeros(), items: zeros(), results: zeros(),
     zeros, Max: Math.max, Min: Math.min, RMax: Math.max, RMin: Math.min,
     Int2Str: String, Real2Str: String, I2R: Number,
-    BlockListCheck: qty => qty, RBlockListCheck: qty => qty,
+    BlockListCheck: qty => qty, RBlockListCheck: qty => qty, RefreshAdaptiveReservation() {}, BuildAdaptiveReinforcements() {},
     Get_f_qty: () => 1, GetUnitCountAlt: () => 0, GetNeutralNumber: id => id,
     GetGold: () => 100, GetWood: () => 100, FoodUsed: () => 0,
     IsRacialHallId: () => false, IsUnitIdType: () => false,
@@ -303,7 +303,7 @@ function compile(name) {
   assert.ok(match, `Missing function ${name}`);
   const params = match[1] === 'nothing' ? '' : match[1].split(',').map(p => p.trim().split(' ')[1]).join(',');
   const body = match[2].replace(/#INCLUDETABLE[^\n]+NeededExtra[^\n]*\n[\s\S]*?#ENDINCLUDE/, extra.map(([id, type, qty, needed]) =>
-    `if unitid == u${id} then\ncall SetBuildAllAMCore(BUILD_${type}, ${qty}, u${needed}, -1, BLOC_STD, prio + prio_n_inc)\nendif`).join('\n'));
+    `if unitid == u${id} then\ncall SetBuildDependency(t, BUILD_${type}, ${qty}, u${needed}, -1, BLOC_STD, prio + prio_n_inc)\nendif`).join('\n'));
   const translated = body.split(/\r?\n/).map(raw => {
     const line = raw.replace(/\/\/.*$/, '').trim();
     if (!line) return '';

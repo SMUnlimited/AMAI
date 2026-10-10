@@ -12,6 +12,7 @@
 
 - Language rule: local variables must always be declared at the start of a function. Any edits to JASS-style code must respect this rule.
 - Function order is important, functions cannot be called unless it is imported or available higher up in the file.
+- Do not use `R2S` or `I2S` in AI code. Use AMAI's `Real2Str` and `Int2Str` helpers instead; they work around native string-conversion issues in the AI runtime.
 - Do not edit generated artifacts in `Scripts/` directly — change source `.eai` files and re-run the project build to regenerate compiled output.
 - `Common.j`, `Natives.j` and `Blizzard.j` are built-in war3 code do not make changes to them, they are for reference to hardcoded functions and building.
 - Some natives behave differently in AI code so cannot be used e.g anything that spawns threads as AI only allowed a fixed number.

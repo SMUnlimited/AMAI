@@ -44,6 +44,8 @@ globals
     constant integer BOTH_CAPTAINS      = 3
 
     constant integer BUILD_UNIT         = 1
+    constant integer BUILD_ADAPTIVE     = 5 // Counter requests can be removed without clearing core builds.
+    constant integer BUILD_ADAPTIVE_UPGRADE = 6
     constant integer BUILD_UPGRADE      = 2
     constant integer BUILD_EXPAND       = 3
 
@@ -1120,11 +1122,38 @@ globals
     integer reset_counter_unit = 0
     boolean no_counter = true
     string array strengthtext
+    boolean adaptive_counters = false
+    boolean adaptive_active = false
+    boolean adaptive_force_refresh = true
+    real adaptive_next_refresh = 0
+    integer adaptive_unit_count = 0
+    integer array adaptive_units
+    boolean array adaptive_registered
+    integer array adaptive_canonical
+    integer array adaptive_tech_tier
+    integer array adaptive_have
+    integer array adaptive_target
+    integer array adaptive_loop_have
+    integer array adaptive_started
+    real array adaptive_factor
+    integer array adaptive_selected
+    integer adaptive_selected_count = 0
+    integer adaptive_budget = 0
+    integer adaptive_reserved_food = 0
+    integer adaptive_reinforcement_unit = 0
+    string adaptive_report = ""
     #INCLUDETABLE <$VER$\Strengths.txt>
     integer array dyanti_%1
     integer totalanti_%1 = 0
     integer array dychance_%1
     integer totalchance_%1 = 0
+    real array adaptive_weight_%1
+    real adaptive_max_%1 = 0
+    real adaptive_need_%1 = 0
+    real adaptive_cover_%1 = 0
+    #ENDINCLUDE
+    #INCLUDETABLE <$VER$\Strengths.txt> #COND "%1" =~ /armor|unarmored/
+    real array adaptive_type_%1
     #ENDINCLUDE
     
     #DEFINE GLOBAL
@@ -3212,9 +3241,35 @@ function InitArrays takes nothing returns nothing
   set gold_price[u%1] = %14
   set wood_price[u%1] = %15
   set hero_rush_bonus[u%1] = %16
+  set adaptive_canonical[u%1] = u%1
 
 #ENDINCLUDE
   //    call RLHashSet(o%1, %1)
+  #INCLUDETABLE <$VER$\Strengths.txt>
+  #DEFINE $ADAPTIVESTRENGTH$ %1
+  #DEFINE $ADAPTIVECOLUMN$ #EVAL{16+%row}
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "$ADAPTIVESTRENGTH$" =~ /armor|unarmored/
+  set adaptive_type_$ADAPTIVESTRENGTH$[u%1] = %$ADAPTIVECOLUMN$
+  #ENDINCLUDE
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bmutated\b/ and "%9" ne "0"
+  set adaptive_canonical[u%1] = u%9
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bmutated\b/ and "%10" ne "0"
+  set adaptive_canonical[u%1] = u%10
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "UPGRADED_TO"
+  set adaptive_canonical[u%3] = u%1
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bhall1\b/
+  set adaptive_tech_tier[u%1] = 1
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bhall2\b/
+  set adaptive_tech_tier[u%1] = 2
+  #ENDINCLUDE
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%4" =~ /\bhall3\b/
+  set adaptive_tech_tier[u%1] = 3
+  #ENDINCLUDE
 endfunction
 
 //============================================================================
@@ -3350,7 +3405,72 @@ function GetCurrentStrategyReport takes nothing returns string
   return GetStrategyReport(strategy)
 endfunction
 
+function AdaptiveCountersEnabled takes nothing returns boolean
+  return adaptive_counters and IsAMAI and not campaign_ai and not towerrush and not custom_data_set and strategy <= 49
+endfunction
+
+function FormatAdaptiveCounterReport takes nothing returns string
+  local integer i = 0
+  local integer u = 0
+  local string report = ApplyTrans("Adaptive counters")
+  local string name = ""
+  if not adaptive_active then
+    return ApplyTrans("Adaptive planning")
+  endif
+  if adaptive_selected_count == 0 then
+    #INCLUDETABLE <$VER$\Strengths.txt>
+    if adaptive_need_%1 > 0 then
+      return ApplyTrans("Adaptive unavailable")
+    endif
+    #ENDINCLUDE
+    if adaptive_reinforcement_unit > 0 then
+      set u = adaptive_reinforcement_unit
+      set report = ApplyTrans("Adaptive reinforcements")
+    else
+      return ApplyTrans("Adaptive covered")
+    endif
+  endif
+  loop
+    if adaptive_selected_count > 0 then
+      set u = adaptive_selected[i]
+    endif
+    set name = GetObjectName(old_id[u])
+    if name == null or name == "" then
+      set name = ApplyTrans(unitNames[u])
+    endif
+    if i == 0 then
+      set report = report + ": "
+    else
+      set report = report + ", "
+    endif
+    set report = report + name
+    if adaptive_selected_count > 0 then
+      set report = report + " x" + Int2Str(adaptive_target[u])
+    endif
+    set i = i + 1
+    exitwhen i >= adaptive_selected_count
+  endloop
+  set name = null
+  return report
+endfunction
+
+function GetCounterDebugReport takes nothing returns string
+  if AdaptiveCountersEnabled() then
+    if adaptive_report == "" then
+      return "Counter:" + ApplyTrans("Adaptive planning")
+    endif
+    return "Counter:" + adaptive_report
+  endif
+  return "Counter:" + strengthtext[chosen_counter]
+endfunction
+
 function GetCurrentDynamicReport takes nothing returns string
+  if AdaptiveCountersEnabled() then
+    if adaptive_report == "" then
+      return " " + ApplyTrans("Adaptive planning")
+    endif
+    return " " + adaptive_report
+  endif
   if strengthtext[chosen_counter] != null and no_counter == false then 
     return " " + chat_dynamic_counter + " " + ApplyTrans(strengthtext[chosen_counter])
   endif
@@ -3432,6 +3552,18 @@ endfunction
 function QueueStrategy takes string text returns nothing
   set chat_strategy = text
 endfunction 
+
+// Cache only published plans, so chat readers cannot observe a partially allocated army.
+function RefreshAdaptiveReport takes nothing returns nothing
+  local string report = FormatAdaptiveCounterReport()
+  if report != adaptive_report then
+    set adaptive_report = report
+    if chatting then
+      call QueueStrategy(GetCurrentStrategyReport() + GetCurrentDynamicReport())
+    endif
+  endif
+  set report = null
+endfunction
 
 //============================================================================
 function Chat takes integer c returns nothing
@@ -10206,7 +10338,7 @@ function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer
   if unitid == 0 or qty == 0 then
     return false
   endif
-  if t == BUILD_UPGRADE then
+  if t == BUILD_UPGRADE or t == BUILD_ADAPTIVE_UPGRADE then
     if GetUpgradeLevel(old_id[unitid]) >= qty then
       return true
     endif
@@ -10224,7 +10356,7 @@ function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer
   loop
     exitwhen i >= build_length
     exitwhen build_prio[i] < prio
-    if build_item[i] == unitid and build_qty[i] >= qty and build_town[i] == town then
+    if build_item[i] == unitid and build_qty[i] >= qty and build_town[i] == town and (build_type[i] == t or (t < BUILD_ADAPTIVE and build_type[i] < BUILD_ADAPTIVE)) then
       call ReleaseBuildLock()
       return true
     endif
@@ -10261,38 +10393,49 @@ function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer
 
 endfunction
 
+function SetBuildDependency takes integer parent_type, integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns nothing
+  if parent_type >= BUILD_ADAPTIVE then
+    if t == BUILD_UPGRADE then
+      set t = BUILD_ADAPTIVE_UPGRADE
+    elseif t == BUILD_UNIT then
+      set t = BUILD_ADAPTIVE
+    endif
+  endif
+  call SetBuildAllAMCore(t, qty, unitid, town, bloc, prio)
+endfunction
+
 function RefreshNeeded takes integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns nothing
   if buy_type[unitid] == BT_ML_UPGRADE then
     if qty == 1 then
       if needed1[unitid] != 0 then
-        call SetBuildAllAMCore(BUILD_UNIT, Get_f_qty(qty, unitid, town), needed1[unitid], -1, BLOC_STD, prio + prio_n_inc*3)
+        call SetBuildDependency(t, BUILD_UNIT, Get_f_qty(qty, unitid, town), needed1[unitid], -1, BLOC_STD, prio + prio_n_inc*3)
       endif
     elseif qty == 2 then
-      call SetBuildAllAMCore(BUILD_UPGRADE, 1, unitid, town, BLOC_STD, prio + prio_n_inc*2)
+      call SetBuildDependency(t, BUILD_UPGRADE, 1, unitid, town, BLOC_STD, prio + prio_n_inc*2)
       if needed2[unitid] != 0 then
-        call SetBuildAllAMCore(BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc*2)
+        call SetBuildDependency(t, BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc*2)
       endif
     else
-      call SetBuildAllAMCore(BUILD_UPGRADE, 1, unitid, town, BLOC_STD, prio + prio_n_inc*2)
-      call SetBuildAllAMCore(BUILD_UPGRADE, 2, unitid, town, BLOC_STD, prio + prio_n_inc)
+      call SetBuildDependency(t, BUILD_UPGRADE, 1, unitid, town, BLOC_STD, prio + prio_n_inc*2)
+      call SetBuildDependency(t, BUILD_UPGRADE, 2, unitid, town, BLOC_STD, prio + prio_n_inc)
       if needed3[unitid] != 0 then
-        call SetBuildAllAMCore(BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc)
+        call SetBuildDependency(t, BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc)
       endif
     endif
   elseif buy_type[unitid] == BT_HERO or buy_type[unitid] == BT_NEUTRAL_HERO then
     if unitid == hero[1] or unitid == hero[2] or unitid == hero[3] then
       if needed1[unitid] != 0 then
-        call SetBuildAllAMCore(BUILD_UNIT, 1, needed1[unitid], -1, BLOC_STD, prio + prio_n_inc*2)
+        call SetBuildDependency(t, BUILD_UNIT, 1, needed1[unitid], -1, BLOC_STD, prio + prio_n_inc*2)
       endif
     endif
     if (unitid == hero[2] and not hero_built[2]) or (unitid == hero[3] and not hero_built[3]) then
       if needed2[unitid] != 0 then
-        call SetBuildAllAMCore(BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc*2)
+        call SetBuildDependency(t, BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc*2)
       endif
     endif
     if unitid == hero[3] and not hero_built[3] then
       if needed3[unitid] != 0 then
-        call SetBuildAllAMCore(BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc*2)
+        call SetBuildDependency(t, BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc*2)
       endif
     endif
   else
@@ -10303,22 +10446,22 @@ function RefreshNeeded takes integer t, integer qty, integer unitid, integer tow
         if ai_time >= available_time[unitid] and TownCountTown(unitid, town) < qty then
           // A transform has one build dependency. Keep its source one priority point
           // ahead so source/upgrade pairs interlace instead of exhausting all sources.
-          call SetBuildAllAMCore(BUILD_UNIT, Max(0,qty + GetUnitCountAlt(needed1[unitid], unitid, true, town)), needed1[unitid], town, bloc, prio + Max(prio_n_inc - 1, 1))
+          call SetBuildDependency(t, BUILD_UNIT, Max(0,qty + GetUnitCountAlt(needed1[unitid], unitid, true, town)), needed1[unitid], town, bloc, prio + Max(prio_n_inc - 1, 1))
         endif
       else
-        call SetBuildAllAMCore(BUILD_UNIT, Get_f_qty(qty, unitid, town), needed1[unitid], -1, BLOC_STD, prio + prio_n_inc*3)
+        call SetBuildDependency(t, BUILD_UNIT, Get_f_qty(qty, unitid, town), needed1[unitid], -1, BLOC_STD, prio + prio_n_inc*3)
       endif
     endif
     if needed2[unitid] != 0 then
-      call SetBuildAllAMCore(BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc*2)
+      call SetBuildDependency(t, BUILD_UNIT, 1, needed2[unitid], -1, BLOC_STD, prio + prio_n_inc*2)
     endif
     if needed3[unitid] != 0 and needed3[unitid] != UPGRADED then
-      call SetBuildAllAMCore(BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc)
+      call SetBuildDependency(t, BUILD_UNIT, 1, needed3[unitid], -1, BLOC_STD, prio + prio_n_inc)
     endif
   endif
   #INCLUDETABLE <$VER$\NeededExtra.txt> #EFR
   if unitid == u%1 then
-    call SetBuildAllAMCore(BUILD_%2, %3, u%4, -1, BLOC_STD, prio + prio_n_inc)
+    call SetBuildDependency(t, BUILD_%2, %3, u%4, -1, BLOC_STD, prio + prio_n_inc)
   endif
   #ENDINCLUDE
 endfunction
@@ -10578,8 +10721,371 @@ function DetermineCounterForce takes nothing returns integer
   return j
 endfunction
 
-// Resets variables to 0
+function AdaptiveCombatUnit takes integer u returns boolean
+  return u > 0 and (buy_type[u] == BT_UNIT or (buy_type[u] >= BT_MERC and buy_type[u] <= BT_DRAGON)) and adaptive_canonical[u] != racial_peon and not IsUnitIdType(old_id[u], UNIT_TYPE_STRUCTURE) and not IsUnitIdType(old_id[u], UNIT_TYPE_HERO) and not IsUnitIdType(old_id[u], UNIT_TYPE_PEON) and GetFoodUsed(old_id[u]) > 0
+endfunction
+
+// Check the prerequisite tree, stopping at workers and halls to avoid their production cycles.
+function AdaptivePrerequisitesInTier takes integer u, integer depth returns boolean
+  if u == 0 or u == UPGRADED or u == racial_peon then
+    return true
+  endif
+  if adaptive_tech_tier[u] > 0 then
+    return adaptive_tech_tier[u] <= tier
+  endif
+  if depth <= 0 then
+    return false
+  endif
+  if not AdaptivePrerequisitesInTier(needed1[u], depth - 1) or not AdaptivePrerequisitesInTier(needed2[u], depth - 1) or not AdaptivePrerequisitesInTier(needed3[u], depth - 1) then
+    return false
+  endif
+  #INCLUDETABLE <$VER$\NeededExtra.txt> #EFR
+  if u == u%1 and not AdaptivePrerequisitesInTier(u%4, depth - 1) then
+    return false
+  endif
+  #ENDINCLUDE
+  return true
+endfunction
+
+function AdaptiveWorkerCount takes integer u returns integer
+  if u == racial_ghoul then
+    return harvesting_ghouls
+  endif
+  return 0
+endfunction
+
+function AdaptiveUnitCount takes integer u returns integer
+  local integer count = GetUnitCount(old_id[u])
+  local integer other = 0
+  // Only equivalent forms count here; transformation sources have a different combat role.
+  set other = tc_add1[u]
+  if other > 0 and adaptive_canonical[other] == u then
+    set count = count + GetUnitCount(old_id[other])
+  endif
+  set other = tc_add2[u]
+  if other > 0 and other != tc_add1[u] and adaptive_canonical[other] == u then
+    set count = count + GetUnitCount(old_id[other])
+  endif
+  return Max(0, count - AdaptiveWorkerCount(u))
+endfunction
+
+function AdaptiveCandidateValid takes integer u returns boolean
+  return u > 0 and adaptive_registered[u] and buy_type[u] == BT_UNIT and AdaptiveCombatUnit(u) and ai_time >= available_time[u] and AdaptivePrerequisitesInTier(u, 8) and BlockListCheck(AdaptiveUnitCount(u) + AdaptiveWorkerCount(u) + 1, u) > AdaptiveUnitCount(u) + AdaptiveWorkerCount(u)
+endfunction
+
+function AdaptiveAllowedTarget takes integer u returns integer
+  return Max(0, BlockListCheck(adaptive_target[u] + AdaptiveWorkerCount(u), u) - AdaptiveWorkerCount(u))
+endfunction
+
+function AdaptiveVulnerability takes integer u returns real
+  local real attacks = enemy_piercing + enemy_normal + enemy_siege + enemy_magic
+  local real armor = adaptive_type_unarmored[u] + adaptive_type_lightarmor[u] + adaptive_type_mediumarmor[u] + adaptive_type_heavyarmor[u]
+  local real exposed = adaptive_type_unarmored[u] * (enemy_piercing + enemy_siege) + adaptive_type_lightarmor[u] * (enemy_piercing + enemy_magic) + adaptive_type_mediumarmor[u] * enemy_normal + adaptive_type_heavyarmor[u] * enemy_magic
+  if attacks <= 0 or armor <= 0 then
+    return 0.0
+  endif
+  return 0.25 * RMin(1, exposed / (attacks * armor))
+endfunction
+
+function AdaptiveCandidateScore takes integer u returns real
+  local real score = 0
+  if u <= 0 or adaptive_factor[u] <= 0 then
+    return 0.0
+  endif
+  #INCLUDETABLE <$VER$\Strengths.txt>
+  if adaptive_max_%1 > 0 then
+    set score = score + adaptive_need_%1 * adaptive_weight_%1[u] / adaptive_max_%1
+  endif
+  #ENDINCLUDE
+  return score * adaptive_factor[u]
+endfunction
+
+// The queue retains core orders and their aging priorities when counter targets change.
+function RemoveAdaptiveRequests takes nothing returns nothing
+  local integer i = 0
+  local integer keep = 0
+  call GetBuildLock()
+  loop
+    exitwhen i >= build_length
+    if build_type[i] < BUILD_ADAPTIVE then
+      set build_type[keep] = build_type[i]
+      set build_item[keep] = build_item[i]
+      set build_qty[keep] = build_qty[i]
+      set build_town[keep] = build_town[i]
+      set build_loc[keep] = build_loc[i]
+      set build_prio[keep] = build_prio[i]
+      set keep = keep + 1
+    endif
+    set i = i + 1
+  endloop
+  set build_length = keep
+  call ReleaseBuildLock()
+endfunction
+
+function ClearAdaptiveCounters takes nothing returns nothing
+  local integer i = 0
+  if adaptive_active then
+    call RemoveAdaptiveRequests()
+  endif
+  loop
+    exitwhen i >= adaptive_selected_count
+    set adaptive_target[adaptive_selected[i]] = 0
+    set i = i + 1
+  endloop
+  set adaptive_selected_count = 0
+  set adaptive_reserved_food = 0
+  set adaptive_reinforcement_unit = 0
+  set adaptive_report = ""
+  set adaptive_active = false
+  set adaptive_force_refresh = true
+endfunction
+
+function RefreshAdaptiveCounters takes integer ceiling returns nothing
+  local integer i = 1
+  local integer u = 0
+  local integer qty = 0
+  local integer combat_food = 0
+  local integer budget_left = 0
+  local integer best = 0
+  local integer food = 0
+  local integer previous_first = adaptive_selected[0]
+  local integer previous_second = adaptive_selected[1]
+  local integer previous = 0
+  local integer allocations = 0
+  local real score = 0
+  local real best_score = 0
+  local real largest_need = 0
+  local real ally_null = 0
+  local real self_null = 0
+  #INCLUDETABLE <$VER$\Strengths.txt>
+  local real self_%1 = GetPlayer%1Strength(ai_player)
+  #ENDINCLUDE
+
+  call RemoveAdaptiveRequests()
+  // Publish targets under the build lock; short waits cannot expose a partial plan.
+  call GetBuildLock()
+  loop
+    exitwhen i > OBJECT_NUM
+    set adaptive_have[i] = 0
+    set adaptive_target[i] = 0
+    set adaptive_factor[i] = 0
+    set i = i + 1
+    if ModuloInteger(i, 100) == 0 then
+      call Sleep(0.05)
+    endif
+  endloop
+  set i = 1
+  loop
+    exitwhen i > OBJECT_NUM
+    if AdaptiveCombatUnit(i) then
+      set qty = Max(0, GetUnitCount(old_id[i]) - AdaptiveWorkerCount(i))
+      set u = adaptive_canonical[i]
+      set adaptive_have[u] = adaptive_have[u] + qty
+      set combat_food = combat_food + qty * GetFoodUsed(old_id[i])
+    endif
+    set i = i + 1
+    if ModuloInteger(i, 100) == 0 then
+      call Sleep(0.05)
+    endif
+  endloop
+  #INCLUDETABLE <$VER$\Strengths.txt>
+  set adaptive_max_%1 = 0
+  set adaptive_cover_%1 = 0
+  set adaptive_need_%1 = RMax(0, enemy_%1 - RMax(0, ally_%2 - self_%2) / 20 - RMax(0, ally_%3 - self_%3) / 20)
+  set strengthtext[#EVAL{%row-1}] = "%1"
+  #ENDINCLUDE
+  set i = 0
+  loop
+    exitwhen i >= adaptive_unit_count
+    set u = adaptive_units[i]
+    if AdaptiveCandidateValid(u) then
+      set adaptive_factor[u] = 1 - AdaptiveVulnerability(u)
+      if not CanBuildUnit(u) then
+        set adaptive_factor[u] = adaptive_factor[u] * 0.5
+      endif
+      #INCLUDETABLE <$VER$\Strengths.txt>
+      set adaptive_max_%1 = RMax(adaptive_max_%1, adaptive_weight_%1[u])
+      #ENDINCLUDE
+    endif
+    set i = i + 1
+  endloop
+  set i = 0
+  loop
+    exitwhen i >= adaptive_unit_count
+    set u = adaptive_units[i]
+    set food = GetFoodUsed(old_id[u])
+    // Current registrations include capability upgrades; removed capabilities get no credit.
+    #INCLUDETABLE <$VER$\Strengths.txt>
+    if adaptive_max_%1 > 0 then
+      set adaptive_cover_%1 = adaptive_cover_%1 + adaptive_have[u] * food * RMin(1, adaptive_weight_%1[u] / adaptive_max_%1)
+    endif
+    #ENDINCLUDE
+    set i = i + 1
+  endloop
+  set adaptive_budget = Max(20, combat_food + Min(10, Max(0, Min(ceiling, ver_food_limit) - FoodUsed()))) * 25 / 100
+  if enemy_air >= 10 and adaptive_cover_air < enemy_air * 0.5 then
+    set adaptive_budget = Max(20, combat_food + Min(10, Max(0, Min(ceiling, ver_food_limit) - FoodUsed()))) * 40 / 100
+  endif
+  set adaptive_budget = Min(adaptive_budget, Max(0, Min(ceiling, ver_food_limit)))
+  #INCLUDETABLE <$VER$\Strengths.txt>
+  set adaptive_need_%1 = RMax(0, adaptive_need_%1 - adaptive_cover_%1)
+  if adaptive_need_%1 > largest_need then
+    set largest_need = adaptive_need_%1
+    set chosen_counter = #EVAL{%row-1}
+  endif
+  call Trace("Adaptive unmet %1: " + Real2Str(adaptive_need_%1))
+  #ENDINCLUDE
+  set no_counter = largest_need <= 0
+  set adaptive_selected_count = 0
+  set adaptive_selected[0] = 0
+  set adaptive_selected[1] = 0
+  set budget_left = adaptive_budget
+  // ponytail: bounded greedy allocation to two types; revisit only if match tests show poor mixes.
+  loop
+    set best = 0
+    set best_score = 0
+    set i = 0
+    loop
+      exitwhen i >= adaptive_unit_count
+      set u = adaptive_units[i]
+      if GetFoodUsed(old_id[u]) <= budget_left and (adaptive_selected_count < 2 or u == adaptive_selected[0] or u == adaptive_selected[1]) then
+        set score = AdaptiveCandidateScore(u)
+        if score > best_score then
+          set best = u
+          set best_score = score
+        endif
+      endif
+      set i = i + 1
+    endloop
+    exitwhen best == 0
+    if adaptive_selected_count == 0 then
+      set previous = previous_first
+    elseif adaptive_selected_count == 1 then
+      set previous = previous_second
+    else
+      set previous = 0
+    endif
+    if previous > 0 and GetFoodUsed(old_id[previous]) <= budget_left and best_score < AdaptiveCandidateScore(previous) * 1.2 then
+      set best = previous
+    endif
+    if best != adaptive_selected[0] and best != adaptive_selected[1] then
+      set adaptive_selected[adaptive_selected_count] = best
+      set adaptive_selected_count = adaptive_selected_count + 1
+    endif
+    set food = GetFoodUsed(old_id[best])
+    set adaptive_target[best] = adaptive_target[best] + 1
+    set budget_left = budget_left - food
+    set allocations = allocations + 1
+    if adaptive_target[best] > adaptive_have[best] then
+      #INCLUDETABLE <$VER$\Strengths.txt>
+      if adaptive_max_%1 > 0 then
+        set adaptive_need_%1 = RMax(0, adaptive_need_%1 - food * adaptive_weight_%1[best] / adaptive_max_%1)
+      endif
+      #ENDINCLUDE
+    endif
+    if ModuloInteger(allocations, 8) == 0 then
+      call Sleep(0.05)
+    endif
+  endloop
+  set chosen_counter_unit = adaptive_selected[0]
+  set no_counter = no_counter or adaptive_selected_count == 0
+  set adaptive_active = true
+  set adaptive_force_refresh = false
+  set adaptive_next_refresh = TimerGetElapsed(tq_timer) + 15 * sleep_multiplier
+  if not AdaptiveCandidateValid(adaptive_reinforcement_unit) then
+    set adaptive_reinforcement_unit = 0
+  endif
+  call RefreshAdaptiveReport()
+  call ReleaseBuildLock()
+  call Trace("Adaptive food allowance: " + Int2Str(adaptive_budget))
+  set i = 0
+  loop
+    exitwhen i >= adaptive_selected_count
+    set u = adaptive_selected[i]
+    call Trace("Adaptive target " + unitNames[u] + ": " + Int2Str(adaptive_target[u]))
+    set i = i + 1
+  endloop
+endfunction
+
+// Snapshot training counts once per build pass. Successful orders consume reservations
+// immediately even if Warcraft's unit counts have not yet reflected the new training order.
+function RefreshAdaptiveReservation takes nothing returns nothing
+  local integer i = 0
+  local integer u = 0
+  set adaptive_reserved_food = 0
+  if not AdaptiveCountersEnabled() then
+    return
+  endif
+  loop
+    exitwhen i >= adaptive_selected_count
+    set u = adaptive_selected[i]
+    set adaptive_loop_have[u] = AdaptiveUnitCount(u)
+    set adaptive_started[u] = 0
+    if AdaptiveCandidateValid(u) and CanBuildUnit(u) then
+      set adaptive_reserved_food = adaptive_reserved_food + Max(0, AdaptiveAllowedTarget(u) - adaptive_loop_have[u]) * GetFoodUsed(old_id[u])
+    endif
+    set i = i + 1
+  endloop
+  call Trace("Adaptive reserved food: " + Int2Str(adaptive_reserved_food))
+endfunction
+
+function AdaptiveAvailableFood takes integer u returns integer
+  local integer own_need = 0
+  set u = adaptive_canonical[u]
+  if AdaptiveCandidateValid(u) and CanBuildUnit(u) then
+    set own_need = Max(0, AdaptiveAllowedTarget(u) - adaptive_loop_have[u] - adaptive_started[u]) * GetFoodUsed(old_id[u])
+  endif
+  return Max(0, total_food - Max(0, adaptive_reserved_food - own_need))
+endfunction
+
+function AdaptiveProductionStarted takes integer u, integer qty returns nothing
+  local integer used = 0
+  if AdaptiveCountersEnabled() then
+    set u = adaptive_canonical[u]
+    set used = Min(qty, Max(0, AdaptiveAllowedTarget(u) - adaptive_loop_have[u] - adaptive_started[u]))
+    set adaptive_started[u] = adaptive_started[u] + qty
+    set adaptive_reserved_food = Max(0, adaptive_reserved_food - used * GetFoodUsed(old_id[u]))
+  endif
+endfunction
+
+function BuildAdaptiveCounters takes integer ceiling, integer prio returns nothing
+  local integer i = 0
+  local integer u = 0
+  loop
+    exitwhen i >= adaptive_selected_count
+    if not AdaptiveCandidateValid(adaptive_selected[i]) then
+      set adaptive_force_refresh = true
+    endif
+    set i = i + 1
+  endloop
+  if adaptive_force_refresh or TimerGetElapsed(tq_timer) >= adaptive_next_refresh then
+    call RefreshAdaptiveCounters(ceiling)
+  endif
+  set i = 0
+  loop
+    exitwhen i >= adaptive_selected_count
+    set u = adaptive_selected[i]
+    if AdaptiveCandidateValid(u) and AdaptiveAllowedTarget(u) > AdaptiveUnitCount(u) then
+      call SetBuildAllAM(BUILD_ADAPTIVE, AdaptiveAllowedTarget(u) + AdaptiveWorkerCount(u), u, -1, BLOC_STD, Max(prio, 65))
+    endif
+    set i = i + 1
+  endloop
+endfunction
+
+// Resets registrations, while targets survive until the next allocation.
 function ResetDynamicSystem takes nothing returns nothing
+  local integer i = 0
+  local integer u = 0
+  loop
+    exitwhen i >= adaptive_unit_count
+    set u = adaptive_units[i]
+    set adaptive_registered[u] = false
+    #INCLUDETABLE <$VER$\Strengths.txt>
+    set adaptive_weight_%1[u] = 0
+    #ENDINCLUDE
+    set i = i + 1
+  endloop
+  set adaptive_unit_count = 0
 #INCLUDETABLE <$VER$\Strengths.txt>
 	set totalanti_%1 = 0
 	set totalchance_%1 = 0
@@ -10590,6 +11096,15 @@ endfunction
 #INCLUDETABLE <$VER$\Strengths.txt>
 function AddUnitToAnti%1 takes integer u, integer percent returns nothing
   if percent > 0 then
+    if AdaptiveCountersEnabled() then
+      set u = adaptive_canonical[u]
+      if not adaptive_registered[u] then
+        set adaptive_units[adaptive_unit_count] = u
+        set adaptive_unit_count = adaptive_unit_count + 1
+        set adaptive_registered[u] = true
+      endif
+      set adaptive_weight_%1[u] = RMax(adaptive_weight_%1[u], percent)
+    endif
     set dyanti_%1[totalanti_%1]= u
     set dychance_%1[totalanti_%1]= percent
     set totalanti_%1 = totalanti_%1 + 1
@@ -10635,6 +11150,12 @@ endfunction
 
 function DynamicBuildUnitBase takes integer count, integer prio returns nothing
 	local integer num
+  if AdaptiveCountersEnabled() then
+    call BuildAdaptiveCounters(count, prio)
+    return
+  elseif adaptive_active then
+    call ClearAdaptiveCounters()
+  endif
   if reset_counter_unit == 1 and chosen_counter_unit > 0 then
     set chosen_counter_unit = 0 // If previous unit removed from the dynamic lists, then must choose a new unit and stop building current one
 	elseif chosen_counter_unit > 0 then
@@ -10660,6 +11181,9 @@ endfunction
 
 function DynamicStrategySelector takes nothing returns nothing
 	local integer strength_count = 0
+  if AdaptiveCountersEnabled() then
+    return
+  endif
 
 	#INCLUDETABLE <$VER$\Strengths.txt>
 	if chosen_counter == strength_count then
@@ -11274,6 +11798,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     local integer gold_cost = 0
     local integer wood_cost = 0
     local integer food_cost = 0
+    local integer available_food = 0
     local integer cost_qty = 0
     local integer n1 = needed1[unitid]
     local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
@@ -11325,6 +11850,13 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     set gold_cost = GetUnitGoldCost2(unitid) // When hero is free this is returning 0 correctly
     set wood_cost = GetUnitWoodCost2(unitid)
     set food_cost = GetFoodUsed(old_id[unitid])
+    set available_food = total_food
+    if AdaptiveCountersEnabled() and AdaptiveCombatUnit(unitid) then
+      set available_food = AdaptiveAvailableFood(unitid)
+      if available_food < food_cost then
+        return CANNOT_BUILD // A reservation defers this request without blocking the queue.
+      endif
+    endif
 
     if unitid == hero[1] or unitid == hero[2] or unitid == hero[3] then
       //call Trace("HERO COSTS: " + Int2Str(gold_cost) + " " + Int2Str(wood_cost))
@@ -11353,7 +11885,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     if food_cost == 0 then
       set afford_food = need_qty
     else
-      set afford_food = total_food / food_cost
+      set afford_food = available_food / food_cost
     endif
     if afford_food < afford_qty then
       set afford_qty = afford_food
@@ -11435,6 +11967,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
   #INCLUDETABLE <$VER$\UnitEquivalence.txt> #EFR #COND "%2" eq "UPGRADED_TO"
     if unitid == u%1 and GetUpgradeLevel(o%4) >= %5 then
       if SetProduce(afford_qty,o%3,town) then
+        call AdaptiveProductionStarted(unitid, afford_qty)
         if (afford_qty + have_qty == need_qty) then
           return BUILT_ALL
         else
@@ -11451,6 +11984,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     if unitid == u%1 then
       if GetUpgradeLevel(o%4) >= %5 then
         if ConvertUnits(afford_qty + have_qty, o%3) then
+          call AdaptiveProductionStarted(unitid, afford_qty)
           if (afford_qty + have_qty == need_qty) then
             return BUILT_ALL
           else
@@ -11512,6 +12046,7 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     endif
 
     if SetProduce(afford_qty,old_id[unitid],town) then
+      call AdaptiveProductionStarted(unitid, afford_qty)
       if needed3[unitid] == UPGRADED then
         set available_time[unitid] = ai_time + GetUnitBuildTime(old_id[unitid]) / 5 + 1
       endif
@@ -12381,6 +12916,68 @@ function FactoryNumberUpdate takes nothing returns nothing
 endfunction
 
 //============================================================================
+// Fill spare population after core production and counter targets are satisfied.
+// Like legacy dynamic production, request additional capacity above existing/training units.
+function BuildAdaptiveReinforcements takes nothing returns nothing
+  local integer i = 0
+  local integer u = 0
+  local integer best = 0
+  local integer food = Max(0, total_food - adaptive_reserved_food)
+  local integer qty = 0
+  local integer result = 0
+  local real score = 0
+  local real best_score = 0
+  if not AdaptiveCountersEnabled() or not adaptive_active or food <= 0 then
+    return
+  endif
+  loop
+    exitwhen i >= adaptive_selected_count
+    set u = adaptive_selected[i]
+    if AdaptiveCandidateValid(u) and adaptive_loop_have[u] < AdaptiveAllowedTarget(u) then
+      return // Missing counters get this production pass first, even with delayed native counts.
+    endif
+    set i = i + 1
+  endloop
+  set i = 0
+  loop
+    exitwhen i >= build_length
+    set u = build_item[i]
+    if build_type[i] == BUILD_UNIT and buy_type[u] == BT_UNIT and AdaptiveCombatUnit(u) and ai_time >= available_time[u] and AdaptivePrerequisitesInTier(u, 8) and BlockListCheck(RBlockListCheck(build_qty[i], u), u) > TownCountTown(u, build_town[i]) then
+      return // Preserve the strategy's opening and replacement targets.
+    endif
+    set i = i + 1
+  endloop
+  set i = 0
+  loop
+    exitwhen i >= adaptive_unit_count
+    set u = adaptive_units[i]
+    if AdaptiveCandidateValid(u) and CanBuildUnit(u) and GetFoodUsed(old_id[u]) <= food then
+      set score = 0
+      #INCLUDETABLE <$VER$\Strengths.txt>
+      if adaptive_max_%1 > 0 then
+        set score = score + RMax(1, enemy_%1) * adaptive_weight_%1[u] / adaptive_max_%1
+      endif
+      #ENDINCLUDE
+      set score = score * (1 - AdaptiveVulnerability(u))
+      if score > best_score then
+        set best = u
+        set best_score = score
+      endif
+    endif
+    set i = i + 1
+  endloop
+  if best > 0 then
+    set adaptive_reinforcement_unit = best
+    call RefreshAdaptiveReport()
+    set qty = Min(10, food / GetFoodUsed(old_id[best]))
+    set qty = BlockListCheck(TownCount(best) + qty, best)
+    set result = StartUnitAM(qty, best, -1, BLOC_STD, 40, 0)
+    if result == BUILT_SOME then
+      call Trace("Adaptive reinforcement " + unitNames[best] + ": " + Int2Str(qty))
+    endif
+  endif
+endfunction
+
 function OneBuildLoopAM takes nothing returns nothing
     local integer index = 0
     local integer index_free = 0
@@ -12429,6 +13026,7 @@ function OneBuildLoopAM takes nothing returns nothing
     set t_build_length = 0
 
     call GetBuildLock()
+    call RefreshAdaptiveReservation()
     loop
         exitwhen index >= build_length
         if index > 0 and ModuloInteger(index, 300) == 0 then
@@ -12438,6 +13036,9 @@ function OneBuildLoopAM takes nothing returns nothing
         set qty = RBlockListCheck(build_qty[index], id)
         set qty = BlockListCheck(qty, id)
         set tp = build_type[index]
+        if tp >= BUILD_ADAPTIVE and not AdaptiveCountersEnabled() then
+          set qty = 0
+        endif
         set town = Max(build_town[index],0)
         set mo = max_order[id + town*OBJECT_NUM]
 //        call DumpInteger("ID"+Int2Str(index),id)
@@ -12449,13 +13050,13 @@ function OneBuildLoopAM takes nothing returns nothing
           if tp == BUILD_UNIT and IsRacialHallId(id, tier + 1) and ((blocktierup and bl_tier_lockactive[tier - 1]) or expablocktier) and GetUnitGoldCost2(id) * 4 > total_gold and GetUnitWoodCost2(id) * 4 > total_wood then
               call Trace("TIER UP block " + logtype + unitNames[id] + " " + Int2Str(id))
               set ret = CANNOT_BUILD // Not ready to tier up
-          elseif tp == BUILD_UNIT then
+          elseif tp == BUILD_UNIT or tp == BUILD_ADAPTIVE then
               if IsRacialHallId(id, tier + 1) then
                 set bl_tier_lockactive[tier - 1] = false // lock only occurs once per tier, once lock is unlocked for that tier it stays unlocked e.g it doesn't have to start from scratch again if strategy changes or units die within tier 1
               endif  
               set logtype = "unit "
               set ret = StartUnitAM(qty,id,build_town[index], build_loc[index], build_prio[index], mo)
-          elseif tp == BUILD_UPGRADE then
+          elseif tp == BUILD_UPGRADE or tp == BUILD_ADAPTIVE_UPGRADE then
               set logtype = "upgrade "
               set ret = StartUpgradeAM(qty,id)
           elseif tp == BUILD_EXPAND then
@@ -12497,7 +13098,7 @@ function OneBuildLoopAM takes nothing returns nothing
           if tp == BUILD_UNIT and not IsUnitIdType(old_id[id], UNIT_TYPE_STRUCTURE) and TownCountTown(id,build_town[index]) < build_qty[index] * bl_tier_unitlock[tier-1] and FoodUsed() < bl_tier_foodlock[tier-1] then
             set blocktierup = true // Strictly Block tier up if a large proportion of requested units of strategy not built so we follow strategy definition, otherwise will tier up early if spare resources and can't build higher priority tasks first
           endif
-          exitwhen ret == NOT_ENOUGH_RES and tp != BUILD_ITEM and tp != BUILD_UPGRADE // Don't try and build anything else as thing we trying to buy is too expensive
+          exitwhen ret == NOT_ENOUGH_RES and tp != BUILD_ITEM and tp != BUILD_UPGRADE and tp != BUILD_ADAPTIVE_UPGRADE // Don't try and build anything else as thing we trying to buy is too expensive
           if ret == CANNOT_BUILD or ret == BUILT_SOME or ret == NOT_ENOUGH_RES or (ret == BUILT_ALL and qty < build_qty[index]) then
             set build_qty[index_free] = build_qty[index]
             set build_type[index_free] = build_type[index]
@@ -12546,6 +13147,9 @@ function OneBuildLoopAM takes nothing returns nothing
       call Trace(Int2Str(build_length) + " items remain on build list : BUILT ALL " + logtype + unitNames[id] + " " + Int2Str(id))
     endif
     
+    if ret != NOT_ENOUGH_RES then
+      call BuildAdaptiveReinforcements()
+    endif
     call ResetUpkeepSaveTime()
     call ReleaseBuildLock()
     call RefreshAllNeeded()
