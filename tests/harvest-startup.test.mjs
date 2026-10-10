@@ -1,7 +1,7 @@
 ﻿// Run: node --test --test-reporter=spec tests/harvest-startup.test.mjs
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { humanGame } from '../tests/helpers/harvest-game.mjs';
+import { humanGame } from './helpers/harvest-game.mjs';
 
 // Each scenario starts a fresh game: Given (setup), When (action), Then (assertions).
 describe('Human gold worker eligibility', () => {

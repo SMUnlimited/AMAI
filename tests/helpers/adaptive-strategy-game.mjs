@@ -5,13 +5,10 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { compile, expression, zeros } from './jass.mjs';
 
 const root = new URL('../../', import.meta.url);
 const cached = new Map();
-const zeros = () => Array(8192).fill(0);
-const rawcode = value => [...value].reduce((code, char) => code * 256 + char.charCodeAt(0), 0);
-const expression = value => value.replace(/\band\b/g, '&&').replace(/\bor\b/g, '||')
-  .replace(/\bnot\b/g, '!').replace(/'([^']{4})'/g, (_, code) => rawcode(code));
 
 function load(version) {
   if (cached.has(version)) return cached.get(version);
@@ -40,46 +37,6 @@ function load(version) {
   const data = { globals, script, types };
   cached.set(version, data);
   return data;
-}
-
-function compile(source, name, globalTypes) {
-  const match = source.match(new RegExp('function ' + name + ' takes (.*?) returns (\\w+)([\\s\\S]*?)endfunction'));
-  assert.ok(match, 'Missing production function ' + name);
-  const types = new Map(globalTypes);
-  const params = match[1] === 'nothing' ? [] : match[1].split(',').map(part => {
-    const [type, param] = part.trim().split(/\s+/);
-    types.set(param, type);
-    return param;
-  });
-  const assign = (target, value) => types.get(target.split('[')[0]) === 'integer'
-    ? 'Math.trunc(' + expression(value) + ')' : expression(value);
-  const body = match[3].split(/\r?\n/).map(raw => {
-    const line = raw.replace(/\/\/.*$/, '').trim();
-    if (!line) return '';
-    let part;
-    if ((part = line.match(/^local (\w+) array (\w+)$/))) {
-      types.set(part[2], part[1]);
-      return 'let ' + part[2] + ' = zeros();';
-    }
-    if ((part = line.match(/^local (\w+) (\w+)(?: = (.*))?$/))) {
-      types.set(part[2], part[1]);
-      return 'let ' + part[2] + ' = ' + assign(part[2], part[3] ?? '0') + ';';
-    }
-    if ((part = line.match(/^set (.+?)\s*=\s*(.+)$/))) return part[1] + ' = ' + assign(part[1], part[2]) + ';';
-    if ((part = line.match(/^if (.+) then$/))) return 'if (' + expression(part[1]) + ') {';
-    if ((part = line.match(/^elseif (.+) then$/))) return '} else if (' + expression(part[1]) + ') {';
-    if (line === 'else') return '} else {';
-    if (line === 'endif' || line === 'endloop') return '}';
-    if (line === 'loop') return 'while (true) {';
-    if ((part = line.match(/^exitwhen (.+)$/))) return 'if (' + expression(part[1]) + ') break;';
-    if ((part = line.match(/^return(?: (.+))?$/))) {
-      if (!part[1]) return 'return;';
-      return 'return ' + (match[2] === 'integer' ? 'Math.trunc(' + expression(part[1]) + ')' : expression(part[1])) + ';';
-    }
-    if (line.startsWith('call ')) return expression(line.slice(5)) + ';';
-    throw new Error('Unsupported production JASS in ' + name + ': ' + line);
-  }).join('\n');
-  return 'function ' + name + '(' + params.join(',') + ') {\n' + body + '\n}';
 }
 
 export function adaptiveGame({ version = 'REFORGED', race = 'Human', tier = 2, food = 50 } = {}) {

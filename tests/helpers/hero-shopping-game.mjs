@@ -2,27 +2,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { compile } from './jass.mjs';
+import { groupNatives } from './warcraft-natives.mjs';
 
 const root = new URL('../../', import.meta.url);
-function compile(file, name) {
-  const source = readFileSync(new URL(file, root), 'utf8');
-  const match = source.match(new RegExp(`function ${name} takes (.*?) returns \\w+([\\s\\S]*?)endfunction`));
-  assert.ok(match, `Missing ${name}`);
-  const args = match[1] === 'nothing' ? '' : match[1].split(',').map(p => p.trim().split(/\s+/)[1]).join(',');
-  const body = match[2].split(/\r?\n/).map(line => line.replace(/\/\/.*$/, '').trim()).filter(Boolean).map(line => {
-    if (/^local /.test(line)) return line.replace(/^local \w+ /, 'let ');
-    if (/^elseif /.test(line)) return line.replace(/^elseif (.*) then$/, '} else if ($1) {');
-    if (/^if /.test(line)) return line.replace(/^if (.*) then$/, 'if ($1) {');
-    if (line === 'else') return '} else {';
-    if (line === 'endif' || line === 'endloop') return '}';
-    if (line === 'loop') return 'while (true) {';
-    if (/^exitwhen /.test(line)) return `if (${line.slice(9)}) break`;
-    if (/^(set|call) /.test(line)) return line.replace(/^(set|call) /, '');
-    assert.match(line, /^return\b/, `Unsupported JASS: ${line}`);
-    return line;
-  }).join('\n').replace(/\band\b/g, '&&').replace(/\bor\b/g, '||').replace(/\bnot\b/g, '!');
-  return `function ${name}(${args}) {\n${body}\n}`;
-}
 
 export function heroGame(reservation, assigned = true) {
   const hero = { alive: true, type: 'hero', order: 'move-home', slots: 1, life: 20, maxLife: 100, mana: 0 };
@@ -70,7 +53,7 @@ export function heroGame(reservation, assigned = true) {
     GetArmyOfUnit: () => -1, GetDensities() {}, MoveLocation() {}, RMax: Math.max,
     UnitAlive: u => Boolean(u?.alive), GetUnitTypeId: u => u?.type,
     IsUnitType: (u, type) => u.type === type, GetSlotsFreeOnUnit: u => u.slots,
-    IsUnitInGroup: (u, g) => g.has(u), GroupAddUnit: (g, u) => g.add(u), GroupRemoveUnit: (g, u) => g.delete(u),
+    ...groupNatives(),
     GetUnitX: () => 0, GetUnitY: () => 0, GetLocationX: () => 0, GetLocationY: () => 0,
     DistanceBetweenUnits: () => state.distance, GetLocationNonCreepStrength: () => 0, GetUnitStrength: () => 100,
     GetFloatGameState: () => 12, TimerGetElapsed: () => state.now,
@@ -101,7 +84,7 @@ export function heroGame(reservation, assigned = true) {
     ['Jobs/SEND_HOME.eai', 'SendHomeMoveUnitToLoc'], ['Jobs/SEND_HOME.eai', 'SendUnitHomeJob'],
     ['Jobs/MICRO_HERO.eai', 'ExecuteSaveHero'], ['Jobs/MICRO_HERO.eai', 'HeroBugFixHealthCheck'],
     ['Jobs/MICRO_HERO.eai', 'MicroHeroJob'],
-  ]) vm.runInContext(compile(file, name), context);
+  ]) vm.runInContext(compile(readFileSync(new URL(file, root), 'utf8'), name), context);
   return {
     state, hero, effects, unitJobs,
     buyItem: () => state.BuyItemJob(2),

@@ -1,7 +1,7 @@
 // Run: node --test --test-reporter=spec tests/hero-shopping.test.mjs
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { heroGame } from '../tests/helpers/hero-shopping-game.mjs';
+import { heroGame } from './helpers/hero-shopping-game.mjs';
 
 // Fresh game for each scenario: setup, action, then expected behavior.
 // Warcraft movement and healing effects need the map checklist in HeroShopping.md.

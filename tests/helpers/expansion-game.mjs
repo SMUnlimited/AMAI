@@ -1,33 +1,15 @@
 // Execute production JASS with mocked Warcraft natives. The mocks cannot
 // reproduce mine replacement, hidden-unit enumeration, construction or pathing.
-import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { compile } from './jass.mjs';
+import { groupNatives } from './warcraft-natives.mjs';
 
 const root = new URL('../../', import.meta.url);
 const common = readFileSync(new URL('common.eai', root), 'utf8');
 const doubles = readFileSync(new URL('Jobs/DETECT_DOUBLE_EXP.eai', root), 'utf8');
 const harvest = readFileSync(new URL('Jobs/HARVEST_CHECK.eai', root), 'utf8');
 const build = readFileSync(new URL('Jobs/BUILD_EXPANSION.eai', root), 'utf8');
-
-function compile(source, name) {
-  const match = source.match(new RegExp(`function ${name} takes (.*?) returns \\w+([\\s\\S]*?)endfunction`));
-  assert.ok(match, `Missing ${name}`);
-  const parameters = match[1] === 'nothing' ? '' : match[1].split(',').map(p => p.trim().split(/\s+/)[1]).join(',');
-  const body = match[2].split(/\r?\n/).map(line => line.replace(/\/\/.*$/, '').trim()).filter(Boolean).map(line => {
-    if (line.startsWith('local ')) return line.replace(/^local \w+ /, 'let ');
-    if (line.startsWith('elseif ')) return line.replace(/^elseif (.*) then$/, '} else if ($1) {');
-    if (line.startsWith('if ')) return line.replace(/^if (.*) then$/, 'if ($1) {');
-    if (line === 'else') return '} else {';
-    if (line === 'endif' || line === 'endloop') return '}';
-    if (line === 'loop') return 'while (true) {';
-    if (line.startsWith('exitwhen ')) return `if (${line.slice(9)}) break`;
-    if (/^(set|call) /.test(line)) return line.replace(/^(set|call) /, '');
-    assert.match(line, /^return\b/, `Unsupported JASS: ${line}`);
-    return line;
-  }).join('\n').replace(/\band\b/g, '&&').replace(/\bor\b/g, '||').replace(/\bnot\b/g, '!');
-  return `function ${name}(${parameters}) {\n${body}\n}`;
-}
 
 export function expansionGame(race = 'undead') {
   const units = [];
@@ -56,11 +38,8 @@ export function expansionGame(race = 'undead') {
     DistanceBetweenUnits: (a, b) => Math.hypot(a.x - b.x, a.y - b.y),
     IsPlayerAlly: (a, b) => a === b || b === 3,
     IsPlayerEnemy: (a, b) => a !== b && a !== 3 && b !== 3 && a !== 15 && b !== 15,
-    CreateGroup: () => { const group = new Set(); activeGroups.add(group); return group; },
-    DestroyGroup: g => activeGroups.delete(g), GroupClear: g => g.clear(),
+    ...groupNatives(activeGroups),
     BlzGroupAddGroupFast: (source, target) => source.forEach(u => target.add(u)),
-    GroupAddUnit: (g, u) => g.add(u), GroupRemoveUnit: (g, u) => g.delete(u),
-    FirstOfGroup: g => g.values().next().value ?? null, IsUnitInGroup: (u, g) => g.has(u),
     GroupEnumUnitsOfPlayer: (g, p) => units.filter(u => u.owner === p).forEach(u => g.add(u)),
     // Include lingering corpses and hidden deposits so production must filter them.
     GroupEnumUnitsInRange: (g, x, y, radius) => units.filter(u => Math.hypot(u.x - x, u.y - y) <= radius).forEach(u => g.add(u)),

@@ -1,7 +1,7 @@
 // Run: node --test --test-reporter=spec tests/expansion-ownership.test.mjs
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { expansionGame } from '../tests/helpers/expansion-game.mjs';
+import { expansionGame } from './helpers/expansion-game.mjs';
 
 describe('Undead expansion ownership', () => {
   it('Given an owned Necropolis, when choosing its unhaunted mine, then haunting remains available', () => {

@@ -1,28 +1,10 @@
 // Execute production JASS; mocks cannot verify Warcraft captain control or pathing.
-import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { compile } from './jass.mjs';
+import { groupNatives } from './warcraft-natives.mjs';
 
 const root = new URL('../../', import.meta.url);
-function compile(file, name) {
-  const source = readFileSync(new URL(file, root), 'utf8');
-  const match = source.match(new RegExp(`function ${name} takes (.*?) returns \\w+([\\s\\S]*?)endfunction`));
-  assert.ok(match, `Missing ${name}`);
-  const args = match[1] === 'nothing' ? '' : match[1].split(',').map(p => p.trim().split(/\s+/)[1]).join(',');
-  const body = match[2].split(/\r?\n/).map(line => line.replace(/\/\/.*$/, '').trim()).filter(Boolean).map(line => {
-    if (/^local /.test(line)) return line.replace(/^local \w+ /, 'let ');
-    if (/^elseif /.test(line)) return line.replace(/^elseif (.*?)\s*then$/, '} else if ($1) {');
-    if (/^if /.test(line)) return line.replace(/^if (.*?)\s*then$/, 'if ($1) {');
-    if (line === 'else') return '} else {';
-    if (line === 'endif' || line === 'endloop') return '}';
-    if (line === 'loop') return 'while (true) {';
-    if (/^exitwhen /.test(line)) return `if (${line.slice(9)}) break`;
-    if (/^(set|call) /.test(line)) return line.replace(/^(set|call) /, '');
-    assert.match(line, /^return\b/, `Unsupported JASS: ${line}`);
-    return line;
-  }).join('\n').replace(/\band\b/g, '&&').replace(/\bor\b/g, '||').replace(/\bnot\b/g, '!');
-  return `function ${name}(${args}) {\n${body}\n}`;
-}
 
 export function undeadGame() {
   const statue = { x: 4000, y: 4000, owner: 0, strength: 1, mechanical: true, order: 'attack' };
@@ -53,7 +35,7 @@ export function undeadGame() {
     GetUnitState: (u, property) => u[property] ?? (property === 'life' || property === 'maxLife' ? 100 : 0),
     GetUnitCurrentOrder: u => u.order ?? 0, OrderId: order => order,
     DistanceBetweenUnits: (a, b) => Math.hypot(a.x - b.x, a.y - b.y),
-    IsUnitInGroup: (u, g) => g.has(u), GetUnitStrength: u => u.strength,
+    GetUnitStrength: u => u.strength,
     GetUnitX: u => u.x, GetUnitY: u => u.y, GetLocationX: l => l.x, GetLocationY: l => l.y,
     Location: (x, y) => { const l = { x, y }; locations.add(l); return l; },
     RemoveLocation: l => locations.delete(l), MoveLocation: (l, x, y) => Object.assign(l, { x, y }),
@@ -63,8 +45,7 @@ export function undeadGame() {
       state.RemoveLocation(a);
       return distance;
     },
-    CreateGroup: () => new Set(), DestroyGroup() {}, FirstOfGroup: g => g.values().next().value ?? null,
-    GroupRemoveUnit: (g, u) => g.delete(u),
+    ...groupNatives(),
     GroupEnumUnitsInRange: (g, x, y, radius) => units.filter(u => Math.hypot(u.x - x, u.y - y) <= radius).forEach(u => g.add(u)),
     SelectUnittype: g => g, SelectByHidden: g => g, SelectByAlive: g => g,
     CaptainInCombat: () => state.inCombat, CaptainRetreating: () => false, CaptainIsHome: () => false,
@@ -77,10 +58,10 @@ export function undeadGame() {
   };
   const context = vm.createContext(state);
   for (const name of ['IsStandardUnit', 'IsUnitBuying', 'GetSubtractionLoc', 'GetSubtractionLoc_kd', 'GetLengthOfLoc', 'GetDivisionLoc', 'GetNormalisedLoc', 'GetMultipleLoc_d', 'GetSumLoc_kd', 'GetProjectedLoc']) {
-    vm.runInContext(compile('common.eai', name), context);
+    vm.runInContext(compile(readFileSync(new URL('common.eai', root), 'utf8'), name), context);
   }
-  vm.runInContext(compile('Jobs/RETREAT_CONTROL.eai', 'RetreatControlJob'), context);
-  vm.runInContext(compile('Jobs/MICRO_UNITS.eai', 'StatueControl'), context);
+  vm.runInContext(compile(readFileSync(new URL('Jobs/RETREAT_CONTROL.eai', root), 'utf8'), 'RetreatControlJob'), context);
+  vm.runInContext(compile(readFileSync(new URL('Jobs/MICRO_UNITS.eai', root), 'utf8'), 'StatueControl'), context);
   return {
     state, statue, hero, enemy, units, orders, locations,
     checkBattle: () => state.RetreatControlJob(),

@@ -2,7 +2,8 @@
 // HarvestWood scheduling, hidden wisps and accepted unload orders need game checks.
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { compile } from './harvest-game.mjs';
+import { compile } from './jass.mjs';
+import { groupNatives } from './warcraft-natives.mjs';
 
 const source = readFileSync(new URL('../../Jobs/HARVEST_CHECK.eai', import.meta.url), 'utf8');
 
@@ -22,9 +23,8 @@ export function lumberGame(race = 'orc', { gold = 1000, wood = 50 } = {}) {
     TownCount: () => 10, TownCountDone: () => 10, FoodSpace: () => 10,
     GetUnitTypeId: u => u.type, GetHandleId: u => u.id, GetUnitCurrentOrder: u => u.order,
     UnitAlive: u => u.alive !== false, GetResourceAmount: () => 10000, OrderId: s => s,
-    CreateGroup: () => new Set(), DestroyGroup() {}, GroupClear: g => g.clear(),
-    CopyGroup: g => new Set(g), FirstOfGroup: g => g.values().next().value ?? null,
-    GroupAddUnit: (g, u) => g.add(u), GroupRemoveUnit: (g, u) => g.delete(u), IsUnitInGroup: (u, g) => g.has(u),
+    ...groupNatives(),
+    CopyGroup: g => new Set(g),
     GroupEnumUnitsOfPlayer: g => workers.forEach(u => g.add(u)),
     IsPeonReadyToHarvest: u => !u.reserved && !state.harvestgrp.has(u),
     SelectByPeons: g => new Set([...g].filter(state.IsPeonReadyToHarvest)),

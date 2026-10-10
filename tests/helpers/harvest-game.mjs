@@ -3,30 +3,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { compile } from './jass.mjs';
+import { groupNatives } from './warcraft-natives.mjs';
 
 const root = new URL('../../', import.meta.url);
 const harvest = readFileSync(new URL('Jobs/HARVEST_CHECK.eai', root), 'utf8');
 const militia = readFileSync(new URL('Jobs/MILITIA_CHECK.eai', root), 'utf8');
 const common = readFileSync(new URL('common.eai', root), 'utf8');
-
-export function compile(source, name) {
-  const match = source.match(new RegExp(`function ${name} takes (.*?) returns \\w+([\\s\\S]*?)endfunction`));
-  assert.ok(match, `Missing ${name}`);
-  const parameters = match[1] === 'nothing' ? '' : match[1].split(',').map(p => p.trim().split(/\s+/)[1]).join(',');
-  const body = match[2].split(/\r?\n/).map(line => line.replace(/\/\/.*$/, '').trim()).filter(Boolean).map(line => {
-    if (line.startsWith('local ')) return line.replace(/^local \w+ /, 'let ');
-    if (line.startsWith('elseif ')) return line.replace(/^elseif (.*) then$/, '} else if ($1) {');
-    if (line.startsWith('if ')) return line.replace(/^if (.*) then$/, 'if ($1) {');
-    if (line === 'else') return '} else {';
-    if (line === 'endif' || line === 'endloop') return '}';
-    if (line === 'loop') return 'while (true) {';
-    if (line.startsWith('exitwhen ')) return `if (${line.slice(9)}) break`;
-    if (/^(set|call) /.test(line)) return line.replace(/^(set|call) /, '');
-    assert.match(line, /^return\b/, `Unsupported JASS: ${line}`);
-    return line;
-  }).join('\n').replace(/\band\b/g, '&&').replace(/\bor\b/g, '||').replace(/\bnot\b/g, '!');
-  return `function ${name}(${parameters}) {\n${body}\n}`;
-}
 
 export function humanGame() {
   const peasants = Array.from({ length: 5 }, () => ({ callToArms: true, order: 852018 }));
@@ -43,12 +26,9 @@ export function humanGame() {
     race_militia_id: 1, militia_expansion_chat: '', C_Done: 0,
     GetUnitAbilityLevel: u => u.callToArms ? 1 : 0,
     GetUnitCurrentOrder: u => u.order,
-    IsUnitInGroup: (u, g) => g.has(u),
     IsStandardUnit: () => true, IsUnitBuying: () => false,
     OrderId: order => ({ harvest: 852018, repair: 852024, restoration: 852202, renew: 852161 })[order],
-    CreateGroup: () => new Set(), DestroyGroup() {}, GroupClear: g => g.clear(),
-    GroupAddUnit: (g, u) => g.add(u), GroupRemoveUnit: (g, u) => g.delete(u),
-    FirstOfGroup: g => g.values().next().value ?? null,
+    ...groupNatives(),
     GroupEnumUnitsOfType(g, type) { if (type === 'peasant') peasants.forEach(u => g.add(u)); },
     SelectByPlayer: g => g, SelectByAlive: g => g,
     GetUnitState: (u, property) => u?.[property] ?? 0,

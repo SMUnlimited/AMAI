@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import vm from 'node:vm';
+import { compile } from './helpers/jass.mjs';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const source = read('common.eai');
@@ -13,7 +14,11 @@ const extra = read('TFT/NeededExtra.txt').trim().split(/\r?\n/).slice(1)
   .map(row => row.split('\t'));
 const extraIds = Object.fromEntries([...new Set(extra.flatMap(row => [row[0], row[3]]))]
   .map((name, index) => [`u${name}`, index + 100]));
-const script = new vm.Script(names.map(compile).join('\n'));
+// Expand the production dependency table before translating JASS.
+const expanded = source.replace(/#INCLUDETABLE[^\n]+NeededExtra[^\n]*\n[\s\S]*?#ENDINCLUDE/g,
+  extra.map(([id, type, qty, needed]) =>
+    `if unitid == u${id} then\ncall SetBuildDependency(t, BUILD_${type}, ${qty}, u${needed}, -1, BLOC_STD, prio + prio_n_inc)\nendif`).join('\n'));
+const script = new vm.Script(names.map(name => compile(expanded, name)).join('\n'));
 
 test('Satisfied troops, research and items maintain missing infrastructure without requeueing themselves', () => {
   for (const type of [1, 2, 3]) {
@@ -292,34 +297,4 @@ function state(capacity = 32) {
   const refresh = s.RefreshNeeded;
   s.RefreshNeeded = (...args) => { s.refreshLocks.push(s.build_lock); return refresh(...args); };
   return s;
-}
-
-function expression(value) {
-  return value.replace(/\band\b/g, '&&').replace(/\bor\b/g, '||').replace(/\bnot\b/g, '!');
-}
-
-function compile(name) {
-  const match = source.match(new RegExp(`function ${name} takes ([^\\r\\n]+?) returns \\w+\\s+([\\s\\S]*?)endfunction`));
-  assert.ok(match, `Missing function ${name}`);
-  const params = match[1] === 'nothing' ? '' : match[1].split(',').map(p => p.trim().split(' ')[1]).join(',');
-  const body = match[2].replace(/#INCLUDETABLE[^\n]+NeededExtra[^\n]*\n[\s\S]*?#ENDINCLUDE/, extra.map(([id, type, qty, needed]) =>
-    `if unitid == u${id} then\ncall SetBuildDependency(t, BUILD_${type}, ${qty}, u${needed}, -1, BLOC_STD, prio + prio_n_inc)\nendif`).join('\n'));
-  const translated = body.split(/\r?\n/).map(raw => {
-    const line = raw.replace(/\/\/.*$/, '').trim();
-    if (!line) return '';
-    let m;
-    if ((m = line.match(/^local integer array (\w+)$/))) return `let ${m[1]} = zeros();`;
-    if ((m = line.match(/^local (?:integer|real|boolean|string|unit|item) (\w+) = (.+)$/))) return `let ${m[1]} = ${expression(m[2])};`;
-    if ((m = line.match(/^set (.+) = (.+)$/))) return `${m[1]} = ${expression(m[2])};`;
-    if ((m = line.match(/^if (.+) then$/))) return `if (${expression(m[1])}) {`;
-    if ((m = line.match(/^elseif (.+) then$/))) return `} else if (${expression(m[1])}) {`;
-    if (line === 'else') return '} else {';
-    if (line === 'endif' || line === 'endloop') return '}';
-    if (line === 'loop') return 'while (true) {';
-    if ((m = line.match(/^exitwhen (.+)$/))) return `if (${expression(m[1])}) break;`;
-    if ((m = line.match(/^return (.+)$/))) return `return ${expression(m[1])};`;
-    if ((m = line.match(/^call (\w+\(.*\))$/))) return `${expression(m[1])};`;
-    throw new Error(`Unsupported JASS in ${name}: ${line}`);
-  }).join('\n');
-  return `function ${name}(${params}) { ${translated} }`;
 }

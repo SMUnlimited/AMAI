@@ -3,32 +3,12 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { compile } from './helpers/jass.mjs';
 
 const root = new URL('../', import.meta.url);
 const common = readFileSync(new URL('common.eai', root), 'utf8');
 const doubles = readFileSync(new URL('Jobs/DETECT_DOUBLE_EXP.eai', root), 'utf8');
 const build = readFileSync(new URL('Jobs/BUILD_EXPANSION.eai', root), 'utf8');
-
-// Translate the small JASS control-flow subset used by these functions.
-function compile(source, name) {
-  const match = source.match(new RegExp(`function ${name} takes (.*?) returns \\w+([\\s\\S]*?)endfunction`));
-  assert.ok(match, `Missing ${name}`);
-  const parameters = match[1] === 'nothing' ? '' : match[1].split(',').map(p => p.trim().split(/\s+/)[1]).join(',');
-  const body = match[2].split(/\r?\n/).map(line => line.replace(/\/\/.*$/, '').trim()).filter(Boolean).map(line => {
-    if (/^local /.test(line)) line = line.replace(/^local \w+ /, 'let ');
-    else if (/^elseif /.test(line)) line = line.replace(/^elseif (.*) then$/, '} else if ($1) {');
-    else if (/^if /.test(line)) line = line.replace(/^if (.*) then$/, 'if ($1) {');
-    else if (line === 'else') line = '} else {';
-    else if (line === 'endif') line = '}';
-    else if (line === 'loop') line = 'while (true) {';
-    else if (line === 'endloop') line = '}';
-    else if (/^exitwhen /.test(line)) line = `if (${line.slice(9)}) break`;
-    else if (/^(set|call) /.test(line)) line = line.replace(/^(set|call) /, '');
-    else assert.match(line, /^return\b/, `Unsupported JASS: ${line}`);
-    return line.replace(/\band\b/g, '&&').replace(/\bor\b/g, '||').replace(/\bnot\b/g, '!');
-  }).join('\n');
-  return `function ${name}(${parameters}) {\n${body}\n}`;
-}
 
 const table = () => new Map();
 const key = (parent, child) => `${parent}:${child}`;

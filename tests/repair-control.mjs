@@ -5,10 +5,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import vm from 'node:vm';
+import { compile, expression } from './helpers/jass.mjs';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const source = read('Jobs/REPAIR_CONTROL.eai');
-const script = compileRepairPolicy();
+const script = new vm.Script(compile(source, 'UpdateRepairControl', new Map()) + '\nUpdateRepairControl();');
 
 // Worker limits: exact minimum succeeds; one worker below it fails.
 for (const [race, flags, normalWorkers, emergencyWorkers] of [
@@ -113,37 +114,6 @@ for (const [order, expected] of [['repair', false], ['restoration', false], ['re
 
 // Simulation plumbing: translate the real JASS policy and mock Warcraft natives.
 // Read the scenarios above first; this section only makes them executable in Node.
-function expression(value) {
-  return value.replace(/\band\b/g, '&&').replace(/\bor\b/g, '||');
-}
-
-function compileRepairPolicy() {
-  const body = source.match(/function UpdateRepairControl takes nothing returns nothing\s+([\s\S]*?)endfunction/)[1];
-  const integers = new Set();
-  
-  // Translate only the statement forms used by this policy; reject unfamiliar syntax.
-  const translated = body.split(/\r?\n/).map(raw => {
-    const line = raw.replace(/\/\/.*$/, '').trim();
-    if (!line) return '';
-    let match;
-    if ((match = line.match(/^local (integer|boolean) (\w+) = (.+)$/))) {
-      if (match[1] === 'integer') integers.add(match[2]);
-      return `let ${match[2]} = ${expression(match[3])};`;
-    }
-    if ((match = line.match(/^set (\w+) = (.+)$/))) {
-      const value = expression(match[2]);
-      return `${match[1]} = ${integers.has(match[1]) ? `Math.trunc(${value})` : value};`;
-    }
-    if ((match = line.match(/^if (.+) then$/))) return `if (${expression(match[1])}) {`;
-    if ((match = line.match(/^elseif (.+) then$/))) return `} else if (${expression(match[1])}) {`;
-    if (line === 'else') return '} else {';
-    if (line === 'endif') return '}';
-    if ((match = line.match(/^call (\w+\(.*\))$/))) return `${match[1]};`;
-    throw new Error(`Unsupported JASS: ${line}`);
-  }).join('\n');
-  return new vm.Script(`function update() { ${translated} } update();`);
-}
-
 function policy(overrides = {}) {
   const state = {
     peons: 6, gold: 150, wood: 75, nativeThreat: false,
