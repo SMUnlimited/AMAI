@@ -687,6 +687,10 @@ globals
     integer minimum_attack_strength = 11
 
     integer max_farms = 0
+    integer farm_previous_done = 0
+    integer farm_previous_pending = 0
+    integer farm_recovery_target = 0
+    integer farm_recovery_until = 0
 
     integer exp_time_count = 0
     integer exp_first_time = 30
@@ -12560,7 +12564,10 @@ endfunction
 
 //============================================================================
 function BuildFarms takes integer qty returns nothing
-  if TownCount(racial_farm) < race_farms_at_mine then
+  if farm_recovery_target > 0 then
+    // Let native production allocate builders at the base, not the exposed front or mine.
+    call BuildUnit(Min(TownCountDone(racial_farm) + qty, max_farms), racial_farm, farm_prio)
+  elseif TownCount(racial_farm) < race_farms_at_mine then
     call BuildAtMine(Min(TownCountDone(racial_farm) + qty, max_farms), racial_farm, farm_prio)
   elseif race_build_farms_front and front_locs_computed and TownCountDone(racial_farm) <= race_farms_front_limit + 1 and TownCountDone(racial_farm) >= 1 then
     call BuildFront(Min(TownCountDone(racial_farm) + qty, max_farms), racial_farm, farm_prio)
@@ -12571,10 +12578,29 @@ endfunction
 
 //============================================================================
 function FarmBuilder takes nothing returns nothing
+  local integer done = TownCountDone(racial_farm)
+  local integer pending = Max(0, TownCount(racial_farm) - done)
+  local integer lost = farm_previous_pending - pending - Max(0, done - farm_previous_done)
+
+  if ai_time >= farm_recovery_until then
+    set farm_recovery_target = 0
+  endif
+  // Count losses only while completed supply is stable or increasing. Sales and
+  // upgrade transitions can lower the completed count without losing a foundation.
+  // ponytail: count sampling can miss a loss replaced between checks; track handles if needed.
+  if lost > 0 and done >= farm_previous_done then
+    set farm_recovery_target = Min(3, Max(1, farm_recovery_target) + lost)
+    set farm_recovery_until = ai_time + 12 // ai_time advances once per five game seconds.
+  endif
+  set farm_previous_done = done
+  set farm_previous_pending = pending
+
   if FoodCap() >= ver_food_limit then
     return
   endif
-  if FoodSpace() <= farm_food2 then
+  if farm_recovery_target > 0 and FoodSpace() <= farm_food then
+    call BuildFarms(farm_recovery_target)
+  elseif FoodSpace() <= farm_food2 then
     call BuildFarms(2)
   elseif FoodSpace() <= farm_food then
     call BuildFarms(1)
