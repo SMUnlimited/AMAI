@@ -8366,6 +8366,8 @@ endfunction
 // (AMAI) Jobs Listing (Custom Job Scripts are placed here)
 //============================================================================
 
+#INCLUDESCRIPT <UndeadRecovery.eai>
+
 #INCLUDETABLE <Jobs.txt> #EFR
   #INCLUDESCRIPT <Jobs\%1.eai>
 #ENDINCLUDE
@@ -12993,6 +12995,7 @@ function OneBuildLoopAM takes nothing returns nothing
     local string logtype = ""
     local boolean blocktierup = false
     local boolean expablocktier = false
+    local boolean recovering = false
 
     call InitLastUpkeep()
 
@@ -13015,6 +13018,11 @@ function OneBuildLoopAM takes nothing returns nothing
     set total_gold   = GetGold() - gold_buffer
     set total_wood   = GetWood() - wood_buffer
     set total_food   = ver_food_limit - FoodUsed()
+    set recovering = UndeadMineRecoveryNeeded()
+    if recovering then
+      set total_gold = GetGold()
+      set total_wood = GetWood()
+    endif
 
     call CheckUpkeepAllowed(ver_food_limit - total_food)
 
@@ -13045,7 +13053,16 @@ function OneBuildLoopAM takes nothing returns nothing
 //        call DumpInteger("Prio"+Int2Str(index),build_prio[index])
 
         if qty > mo and qty > 0 then
-          if tp == BUILD_UNIT and IsRacialHallId(id, tier + 1) and ((blocktierup and bl_tier_lockactive[tier - 1]) or expablocktier) and GetUnitGoldCost2(id) * 4 > total_gold and GetUnitWoodCost2(id) * 4 > total_wood then
+          if recovering and tp == BUILD_UNIT then
+            if id == racial_peon then
+              set qty = Min(qty, 1)
+            elseif id == racial_farm then
+              set qty = Min(qty, TownCount(racial_farm) + 1)
+            endif
+          endif
+          if not UndeadRecoveryBuildAllowed(recovering, tp, id) then
+              set ret = CANNOT_BUILD
+          elseif tp == BUILD_UNIT and IsRacialHallId(id, tier + 1) and ((blocktierup and bl_tier_lockactive[tier - 1]) or expablocktier) and GetUnitGoldCost2(id) * 4 > total_gold and GetUnitWoodCost2(id) * 4 > total_wood then
               call Trace("TIER UP block " + logtype + unitNames[id] + " " + Int2Str(id))
               set ret = CANNOT_BUILD // Not ready to tier up
           elseif tp == BUILD_UNIT or tp == BUILD_ADAPTIVE then
@@ -13145,7 +13162,7 @@ function OneBuildLoopAM takes nothing returns nothing
       call Trace(Int2Str(build_length) + " items remain on build list : BUILT ALL " + logtype + unitNames[id] + " " + Int2Str(id))
     endif
     
-    if ret != NOT_ENOUGH_RES then
+    if ret != NOT_ENOUGH_RES and not recovering then
       call BuildAdaptiveReinforcements()
     endif
     call ResetUpkeepSaveTime()

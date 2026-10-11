@@ -21,6 +21,7 @@ export function heroGame(reservation, assigned = true) {
     hero_built: [false, true, false, false], hero_unit: [null, hero],
     buy_type: [1, 0, 1], BT_RACIAL_ITEM: 1, BUY_ITEM: 20, old_id: ['item', 'shop', 'potion'], racial_shop: 1,
     town_threatened: false, attack_running: true, isfleeing: false,
+    UndeadMineRecoveryNeeded: () => false,
     distance: 4000, now: 10, items: 0, ai_time: 10, regenerate_time: [20], available_time: [],
     buy_timeout_large: 60, buy_timeout_small: 5, buy_distance: 300,
     tq_timer: null, ai_player: 0, GAME_STATE_TIME_OF_DAY: 0, UNIT_TYPE_PEON: 'peon', UNIT_TYPE_STRUCTURE: 'structure',

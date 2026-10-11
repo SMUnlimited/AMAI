@@ -25,8 +25,4 @@ Mocks check source control flow, not Warcraft's pathing, combat, targeting,
 hidden-unit enumeration, construction, healing effects or accepted native orders.
 The in-game checklists remain necessary:
 
-- [Expansion ownership and harvest groups](../TestingScenarios/expansion-ownership.md)
-- [Lumber shortages](../TestingScenarios/harvest-lumber.md)
-- [Adaptive strategies](../TestingScenarios/adaptive-strategies.md)
-
 Follow the relevant checklist and build instructions when changing AI behavior.

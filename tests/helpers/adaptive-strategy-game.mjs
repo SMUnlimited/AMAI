@@ -85,6 +85,7 @@ export function adaptiveGame({ version = 'REFORGED', race = 'Human', tier = 2, f
     campaign_ai: false, towerrush: false, custom_data_set: false, tier,
     ai_time: 100, ver_food_limit: 100, sleep_multiplier: 1, build_lock: true,
     own_town_num: 1, gold_buffer: 0, wood_buffer: 0, front_locs_computed: true,
+    UndeadMineRecoveryNeeded: () => false, UndeadRecoveryBuildAllowed: () => true,
     build_qty: zeros(), build_type: zeros(), build_item: zeros(), build_town: zeros(),
     build_length: 0, JASS_MAX_ARRAY_SIZE: 8192,
     UNIT_TYPE_STRUCTURE: 'structure', UNIT_TYPE_HERO: 'hero', UNIT_TYPE_PEON: 'peon',

@@ -264,6 +264,7 @@ function state(capacity = 32) {
     BlockListCheck: qty => qty, RBlockListCheck: qty => qty, RefreshAdaptiveReservation() {}, BuildAdaptiveReinforcements() {},
     Get_f_qty: () => 1, GetUnitCountAlt: () => 0, GetNeutralNumber: id => id,
     GetGold: () => 100, GetWood: () => 100, FoodUsed: () => 0,
+    UndeadMineRecoveryNeeded: () => false, UndeadRecoveryBuildAllowed: () => true,
     IsRacialHallId: () => false, IsUnitIdType: () => false,
     UNIT_TYPE_STRUCTURE: 1, ModuloInteger: (a, b) => a % b,
   };

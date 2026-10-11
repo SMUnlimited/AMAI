@@ -3,6 +3,19 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { heroGame } from './helpers/hero-shopping-game.mjs';
 
+describe('Undead mine recovery reserves hero shopping funds', () => {
+  it('Given an active shopping job during mine recovery, when buying is checked, then the purchase stops without releasing healing', () => {
+    const game = heroGame('unit_healing');
+    game.state.UndeadMineRecoveryNeeded = () => true;
+
+    game.buyItem();
+
+    assert.equal(game.effects.includes('buy'), false);
+    assert.equal(game.state.shop_ordered, false);
+    assert.equal(game.state.unit_healing.has(game.hero), true);
+  });
+});
+
 // Fresh game for each scenario: setup, action, then expected behavior.
 // Warcraft movement and healing effects need the map checklist in HeroShopping.md.
 for (const [job, reservation] of [

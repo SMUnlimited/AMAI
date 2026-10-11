@@ -3,13 +3,23 @@
 // This executes the real .eai policy, but does not simulate Warcraft movement or combat.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { test } from 'node:test';
+import { test, describe, it } from 'node:test';
 import vm from 'node:vm';
 import { compile, expression } from './helpers/jass.mjs';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const source = read('Jobs/REPAIR_CONTROL.eai');
 const script = new vm.Script(compile(source, 'UpdateRepairControl', new Map()) + '\nUpdateRepairControl();');
+
+describe('Undead mine recovery reserves repair funds', () => {
+  it('Given ongoing repairs with enough resources, when mine recovery starts, then automatic repairs pause', () => {
+    const checkRepairs = policy({ race_has_ghouls: true, repair_enabled: true });
+
+    const enabled = checkRepairs({ UndeadMineRecoveryNeeded: () => true });
+
+    assert.equal(enabled, false);
+  });
+});
 
 // Worker limits: exact minimum succeeds; one worker below it fails.
 for (const [race, flags, normalWorkers, emergencyWorkers] of [
@@ -129,6 +139,7 @@ function policy(overrides = {}) {
     TownCountDone: () => state.peons, TownThreatened: () => state.nativeThreat,
     GetGold: () => state.gold, GetWood: () => state.wood,
     SetPeonsRepair: enabled => { state.nativeEnabled = enabled; },
+    UndeadMineRecoveryNeeded: () => false,
   });
   const context = vm.createContext(state);
   return (changes = {}) => {

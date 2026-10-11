@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- - Undead now fund mine recovery by selling surplus buildings at exhausted expansions before spare plain ziggurats, keeping defensive towers as a last resort. They preserve the last hall and shop, buildings at rebuildable mines, and supply for a missing acolyte.
 - (devtools) Added a Keep a Changelog skill to help contributors write clear, consistent changelog entries and prepare release sections.
 - (devtools) Added the Ponytail coding skill for contributors, that favor simple solutions and fewer dependencies.
 - (Installer) Optimized scripts preserve the `chatting` and `language` variable names, allowing the installer to customize AI chat and language while using optimization.
@@ -25,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Rebalanced Reforged Undead strategy counter ratings. (Powerer)
 - Dynamic strategy upgrades are attempted more frequently when the AI has large gold and lumber surpluses.
 - Reforged Human and Orc expansions now request racial shops earlier, while Undead requests an early main-base Tomb of Relics and gives expansion Tombs a slightly higher priority. (Powerer)
+- Night Elf, Orc and Human harvest controls now release two gold workers for lumber when lumber is below 200 and gold is above 300, and restore full mining when resources recover. Undead keeps its separate acolyte and ghoul workforces.
 - Chinese language updates (jzy-chitong56)
 - (Installer) Modernised the Electron interface with a responsive Warcraft-themed layout, explicit version selection and install action, accessible settings, in-app language and About controls, and a focused installation progress dialog.
 - (Installer) Replaced the Jasmine and Karma unit-test setup with Vitest for both Angular and installer process tests.
@@ -37,10 +39,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
-- Night Elf, Orc and Human harvest controls now release two gold workers for lumber when lumber is below 200 and gold is above 300, and restore full mining when resources recover. Undead keeps its separate acolyte and ghoul workforces.
-- Adaptive counter debug messages now use AMAI's number-to-text helpers for compatibility with the AI runtime.
-- Reforged and TFT armies keep training reinforcements after completing their strategy and counter targets, using spare population without taking food reserved for missing counters.
-- Dynamic counter requests in Reforged and TFT now use total unit targets correctly and remove obsolete counter orders and their prerequisites without clearing the strategy's core build requests.
 - Undead can haunt or rebuild a mine beside their own Necropolis without treating the hall as a competing expansion. Night Elf owned Entangled Gold Mines remain claimed, preventing duplicate Trees of Life and allowing later expansion targets to be considered.
 - Human and Orc harvesting now selects exposed neutral deposits and ignores dead mine claims, allowing released mines to be worked after Haunted or Entangled Gold Mine buildings are destroyed.
 - Obsidian Statues now follow nearby combat units that need health or mana instead of an old allied regroup point. Useful, safe statues stay still, statue-heavy armies no longer pull themselves backward, and positioning leaves retreats, spell casts and Destroyer transformations alone.

@@ -1,0 +1,275 @@
+// Shared by selling, surrender checks, and the build queue.
+function UndeadMineRecoveryNeeded takes nothing returns boolean
+  if not race_sell_ziggurats or not race_uses_mine_expansion or campaign_ai or harvest_mine_count > 0 or TownCountDone(racial_hall[1]) == 0 then
+    return false
+  endif
+  if TownCount(racial_expansion) > TownCountDone(racial_expansion) then
+    return TownCount(racial_peon) == 0
+  endif
+  return current_expansion != null and UnitAlive(current_expansion) and GetResourceAmount(current_expansion) > 0 and not CheckExpansionTaken(current_expansion) and not IsExpansionRebuildCoolingDown(current_expansion) and GetExpFoe(null) == null
+endfunction
+
+function UndeadRecoveryGoldNeeded takes nothing returns integer
+  local integer cost = 0
+  if TownCount(racial_expansion) == TownCountDone(racial_expansion) then
+    set cost = GetUnitGoldCost2(racial_expansion)
+  endif
+  if TownCount(racial_peon) == 0 then
+    set cost = cost + GetUnitGoldCost2(racial_peon)
+    if FoodSpace() < GetFoodUsed(old_id[racial_peon]) and TownCount(racial_farm) == TownCountDone(racial_farm) then
+      set cost = cost + GetUnitGoldCost2(racial_farm)
+    endif
+  endif
+  return cost
+endfunction
+
+function UndeadRecoveryWoodNeeded takes nothing returns integer
+  local integer cost = 0
+  if TownCount(racial_expansion) == TownCountDone(racial_expansion) then
+    set cost = GetUnitWoodCost2(racial_expansion)
+  endif
+  if TownCount(racial_peon) == 0 then
+    set cost = cost + GetUnitWoodCost2(racial_peon)
+    if FoodSpace() < GetFoodUsed(old_id[racial_peon]) and TownCount(racial_farm) == TownCountDone(racial_farm) then
+      set cost = cost + GetUnitWoodCost2(racial_farm)
+    endif
+  endif
+  return cost
+endfunction
+
+function UndeadRecoveryBuildAllowed takes boolean recovering, integer buildtype, integer id returns boolean
+  if not recovering then
+    return true
+  endif
+  if buildtype == BUILD_EXPAND and id == racial_expansion then
+    return true
+  endif
+  return buildtype == BUILD_UNIT and ((id == racial_peon and TownCount(racial_peon) == 0) or (id == racial_farm and TownCount(racial_peon) == 0 and FoodSpace() < GetFoodUsed(old_id[racial_peon]) and TownCount(racial_farm) == TownCountDone(racial_farm)))
+endfunction
+
+function IsRecoveryZiggurat takes unit u returns boolean
+  local integer i = 0
+  local integer id = GetUnitTypeId(u)
+  loop
+    exitwhen i > ziggarray
+    if id == racial_zigg[i] then
+      return true
+    endif
+    set i = i + 1
+  endloop
+  return false
+endfunction
+
+function IsAbandonedUndeadExpansion takes unit site returns boolean
+  local group g = null
+  local unit u = null
+  local boolean exhausted = false
+  local boolean useful = false
+  local real dx = GetUnitX(site) - GetLocationX(home_location)
+  local real dy = GetUnitY(site) - GetLocationY(home_location)
+  // Most candidates are at home; never scan or dismantle the active base.
+  if dx * dx + dy * dy <= race_ziggurat_keep_distance * race_ziggurat_keep_distance then
+    return false
+  endif
+  set g = CreateGroup()
+  call GroupEnumUnitsInRange(g, GetUnitX(site), GetUnitY(site), race_ziggurat_keep_distance, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if UnitAlive(u) then
+      if IsUnitGoldMine(u) then
+        if GetResourceAmount(u) > 0 then
+          set useful = true // Includes hidden deposits awaiting a replacement mine.
+        else
+          set exhausted = true
+        endif
+      elseif GetOwningPlayer(u) == ai_player then
+        if GetUnitTypeId(u) == old_id[racial_peon] or GetUnitTypeId(u) == old_id[racial_ghoul] or IsRacialHall(u, 2) then
+          set useful = true
+        elseif IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsRecoveryZiggurat(u) and not IsRacialHall(u, 1) and GetUnitTypeId(u) != old_id[racial_shop] then
+          set useful = true
+        endif
+      endif
+    endif
+    exitwhen useful
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+  return exhausted and not useful and GetLocationNonCreepStrength(GetUnitX(site), GetUnitY(site), race_ziggurat_keep_distance) == 0
+endfunction
+
+function UndeadMinesUnavailable takes nothing returns boolean
+  local integer i = 0
+  local unit mine = null
+  if not race_sell_ziggurats or not race_uses_mine_expansion or campaign_ai or not pathing_done or harvest_mine_count > 0 or GetGoldOwned() > 0 or TownCount(racial_expansion) > TownCountDone(racial_expansion) then
+    return false
+  endif
+  // A missing target, cooldown or uncleared camp does not mean gold is exhausted.
+  loop
+    exitwhen i >= expansion_list_length + water_expansion_list_length
+    if i < expansion_list_length then
+      set mine = expansion_list[i]
+    else
+      set mine = water_expansion_list[i - expansion_list_length]
+    endif
+    if mine != null and UnitAlive(mine) and GetResourceAmount(mine) > 0 then
+      if not CheckExpansionTaken(mine) or CanYieldAlliedMine(mine, GetMineClaimant(mine)) then
+        set mine = null
+        return false
+      endif
+    endif
+    set i = i + 1
+  endloop
+  set mine = null
+  return true
+endfunction
+
+function UndeadArmyFundingGoldNeeded takes nothing returns integer
+  local integer i = 0
+  local integer id = 0
+  local integer cost = 0
+  loop
+    exitwhen i >= build_length
+    set id = build_item[i]
+    // Fund one trainable combat unit at a time, following existing queue priority.
+    if (build_type[i] == BUILD_UNIT or build_type[i] == BUILD_ADAPTIVE) and id != racial_peon and not IsUnitIdType(old_id[id], UNIT_TYPE_STRUCTURE) and GetFoodUsed(old_id[id]) > 0 and build_qty[i] > TownCountTown(id, build_town[i]) and CanBuildUnit(id) then
+      set cost = GetUnitGoldCost2(id)
+      if cost > 0 then
+        return cost + Max(gold_buffer, 0)
+      endif
+    endif
+    set i = i + 1
+  endloop
+  return 0
+endfunction
+
+function UndeadRecoverySalePriority takes unit u, boolean recovering returns integer
+  local integer id = GetUnitTypeId(u)
+  local boolean ziggurat = IsRecoveryZiggurat(u)
+  if not ziggurat and id != old_id[racial_shop] and id != old_id[racial_hall[1]] then
+    return 0
+  endif
+  // Avoid construction/upgrades and preserve capacity for a missing acolyte.
+  if GetUnitCount(id) != GetUnitCountDone(id) or (TownCount(racial_peon) == 0 and FoodSpace() - GetUnitFoodMade(u) < GetFoodUsed(old_id[racial_peon])) then
+    return 0
+  endif
+  // Keep recruitment room and avoid immediately rebuilding the sold supply.
+  if not recovering and FoodSpace() - GetUnitFoodMade(u) < Max(farm_food + 1, GetFoodMade(old_id[racial_farm])) then
+    return 0
+  endif
+  if not ziggurat then
+    if id == old_id[racial_shop] and TownCountDone(racial_shop) <= 1 then
+      return 0
+    endif
+    if id == old_id[racial_hall[1]] and (TownCountDone(racial_hall[1]) <= 1 or GetUnitCurrentOrder(u) != 0) then
+      return 0
+    endif
+    if IsAbandonedUndeadExpansion(u) then
+      return 10
+    endif
+    return 0
+  endif
+  if IsAbandonedUndeadExpansion(u) then
+    return 10
+  endif
+  if id == old_id[racial_farm] then
+    if FoodSpace() >= GetUnitFoodMade(u) then
+      return 20
+    endif
+    return 40 // Losing supply is preferable to permanently losing income.
+  endif
+  if not recovering then
+    return 0 // Endgame funding must not sacrifice active defensive towers.
+  endif
+  if GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), race_ziggurat_keep_distance) == 0 then
+    return 50 // Active towers are the last resort; keep towers fighting enemies.
+  endif
+  return 0
+endfunction
+
+function TrySellUndeadBuilding takes boolean recovering returns boolean
+  local group g = null
+  local group candidates = null
+  local unit u = null
+  local unit candidate = null
+  local integer priority = 0
+  local integer best = 100
+  local boolean unsummoning = false
+  local integer scanned = 0
+  local integer funding_gold = 0
+  if recovering then
+    if GetGold() >= UndeadRecoveryGoldNeeded() and GetWood() >= UndeadRecoveryWoodNeeded() then
+      return true // Reserve these resources for the worker and mine.
+    endif
+  else
+    set funding_gold = UndeadArmyFundingGoldNeeded()
+    if funding_gold == 0 then
+      return false
+    endif
+    if GetGold() >= funding_gold then
+      return true // Let normal production spend it; no mine reserve is created.
+    endif
+  endif
+  set g = CreateGroup()
+  set candidates = CreateGroup()
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if UnitAlive(u) and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
+      if GetUnitCurrentOrder(u) == OrderId("unsummon") then
+        set unsummoning = true
+      elseif IsRecoveryZiggurat(u) or GetUnitTypeId(u) == old_id[racial_shop] or GetUnitTypeId(u) == old_id[racial_hall[1]] then
+        call GroupAddUnit(candidates, u)
+      endif
+    endif
+    exitwhen unsummoning
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  // One player enumeration; no site scans at all while another refund is pending.
+  if not unsummoning then
+    loop
+      set u = FirstOfGroup(candidates)
+      exitwhen u == null
+      set priority = UndeadRecoverySalePriority(u, recovering)
+      if priority > 0 and priority < best then
+        set candidate = u
+        set best = priority
+      endif
+      exitwhen best == 10 // An abandoned site is already the best possible choice.
+      call GroupRemoveUnit(candidates, u)
+      set scanned = scanned + 1
+      if ModuloInteger(scanned, 20) == 0 then
+        call Sleep(0.01)
+      endif
+    endloop
+  endif
+  call DestroyGroup(candidates)
+  set candidates = null
+  if not unsummoning and candidate != null then
+    // A staggered scan may yield while another job starts recovery.
+    if UnitAlive(candidate) and GetUnitCurrentOrder(candidate) != OrderId("unsummon") then
+      if recovering then
+        if UndeadMineRecoveryNeeded() and (GetGold() < UndeadRecoveryGoldNeeded() or GetWood() < UndeadRecoveryWoodNeeded()) then
+          call Unsummon(candidate)
+        endif
+      elseif UndeadMinesUnavailable() and GetGold() < UndeadArmyFundingGoldNeeded() then
+        call Unsummon(candidate)
+      endif
+    endif
+  endif
+  set u = null
+  set candidate = null
+  return unsummoning or best < 100
+endfunction
+
+function TryRecoverUndeadMine takes nothing returns boolean
+  if not UndeadMineRecoveryNeeded() then
+    return false
+  endif
+  return TrySellUndeadBuilding(true)
+endfunction
