@@ -40,6 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Units sent home now wait for required ability research before trying to heal or hide, e.g preventing unresearched Cannibalize from leaving units stuck at graveyards.
 - Undead can haunt or rebuild a mine beside their own Necropolis without treating the hall as a competing expansion. Night Elf owned Entangled Gold Mines remain claimed, preventing duplicate Trees of Life and allowing later expansion targets to be considered.
 - Human and Orc harvesting now selects exposed neutral deposits and ignores dead mine claims, allowing released mines to be worked after Haunted or Entangled Gold Mine buildings are destroyed.
 - Obsidian Statues now follow nearby combat units that need health or mana instead of an old allied regroup point. Useful, safe statues stay still, statue-heavy armies no longer pull themselves backward, and positioning leaves retreats, spell casts and Destroyer transformations alone.

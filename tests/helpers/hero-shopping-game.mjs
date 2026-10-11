@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { compile } from './jass.mjs';
+import { compile, expression } from './jass.mjs';
 import { groupNatives } from './warcraft-natives.mjs';
 
 const root = new URL('../../', import.meta.url);
@@ -41,7 +41,14 @@ export function heroGame(reservation, assigned = true) {
     UnitUseItemTarget() {}, UnitAddItem: () => { effects.push('transfer'); state.healingItems++; },
     DistanceBetweenPoints_dk: () => state.homeDistance,
     TQAddUnitJob: (delay, job, parameter, unit) => unitJobs.push({ delay, job, parameter, unit }),
-    GetUnitAbilityLevel: () => 0,
+    abilities: new Map(), upgrades: new Map(),
+    GetUnitAbilityLevel: (u, ability) => state.abilities.get(ability) ?? 0,
+    GetUpgradeLevel: upgrade => state.upgrades.get(upgrade) ?? 0,
+    UNIT_TYPE_DEAD: 'dead', UNIT_TYPE_TOWNHALL: 'townhall',
+    follow_zeppelin: null, ward_cast: false,
+    IsUnitInvisibleAM: () => false, Player: n => n, PLAYER_NEUTRAL_AGGRESSIVE: 12,
+    corpses: [],
+    GroupEnumUnitsInRangeOfLoc: group => state.corpses.forEach(unit => group.add(unit)),
     ACTION_DO_NOTHING: 0, ACTION_GO_HOME: 1, ACTION_FOUNTAIN: 2, ACTION_TP: 3,
     ACTION_ZEPPELIN_HOME: 4, ACTION_ZEPPELIN_FOUNTAIN: 5, ACTION_HEALER: 6,
     ACTION_MANA_FOUNTAIN: 7, ACTION_MOONWELLS: 8, major_hero: null,
@@ -75,9 +82,22 @@ export function heroGame(reservation, assigned = true) {
       if (state.purchaseSucceeds) state.healingItems++;
     }, TQAddJob: () => effects.push('job'),
     IssueTargetOrderById() {},
+    IssueTargetOrder: (u, order) => effects.push(order),
   };
+  const abilityTech = readFileSync(new URL('REFORGED/AbilityTech.txt', root), 'utf8').trim().split(/\r?\n/).slice(1);
+  const units = readFileSync(new URL('REFORGED/StandardUnits.txt', root), 'utf8').trim().split(/\r?\n/)
+    .map(row => row.split('\t'));
+  const upgrades = new Map(units.map(([name, code]) => [name, code]));
+  const common = readFileSync(new URL('common.eai', root), 'utf8').replace(
+    /#INCLUDETABLE <\$VER\$\\AbilityTech.txt> #EFR[\s\S]*?#ENDINCLUDE/,
+    abilityTech.map(row => {
+      const [ability, upgrade, level] = row.split('\t');
+      return `if abil == '${ability}' and GetUpgradeLevel('${upgrades.get(upgrade)}') < ${level} then\nreturn 0\nendif`;
+    }).join('\n'),
+  );
   if (reservation) state[reservation].add(hero);
   const context = vm.createContext(state);
+  vm.runInContext(compile(common, 'GetUnitUsableAbilityLevel'), context);
   for (const [file, name] of [
     ['common.eai', 'IsStandardUnit'], ['common.eai', 'IsUnitBuying'], ['common.eai', 'GetHeroToBuyItem'],
     ['Jobs/BUY_ITEM.eai', 'EndBuyItemJob'], ['Jobs/BUY_ITEM.eai', 'BuyItemJob'],
@@ -90,6 +110,9 @@ export function heroGame(reservation, assigned = true) {
     state, hero, effects, unitJobs,
     buyItem: () => state.BuyItemJob(2),
     sendHome: () => state.SendUnitHomeJob(hero, 0),
+    giveAbility: (code, level = 1) => state.abilities.set(Number(expression(`'${code}'`)), level),
+    research: (code, level = 1) => state.upgrades.set(Number(expression(`'${code}'`)), level),
+    abilityLevel: code => state.GetUnitUsableAbilityLevel(hero, Number(expression(`'${code}'`))),
     saveHero: () => state.ExecuteSaveHero(1, state.ACTION_GO_HOME, null),
     checkHero: () => state.MicroHeroJob(1),
   };
