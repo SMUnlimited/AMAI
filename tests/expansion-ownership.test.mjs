@@ -4,6 +4,18 @@ import { describe, it } from 'node:test';
 import { expansionGame } from './helpers/expansion-game.mjs';
 
 describe('Undead expansion ownership', () => {
+  it('Given an allied peon beside an unclaimed mine, when that peon is killed, then the mine stays available before and after its death', () => {
+    const game = expansionGame();
+    const mine = game.addMine();
+    const peon = game.addHall({ type: 'peon', owner: 3, structure: false, hall: false });
+
+    const before = game.isTaken(mine);
+    peon.alive = false;
+    const after = game.isTaken(mine);
+
+    assert.equal(before, false);
+    assert.equal(after, false);
+  });
   it('Given an owned Necropolis, when choosing its unhaunted mine, then haunting remains available', () => {
     const game = expansionGame();
     const mine = game.addMine();

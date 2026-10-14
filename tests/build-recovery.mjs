@@ -8,7 +8,7 @@ import { compile } from './helpers/jass.mjs';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const source = read('common.eai');
-const names = ['SetBuildAllAMCore', 'SetBuildDependency', 'RefreshNeeded', 'SetBuildAllAM', 'AddRefresh',
+const names = ['RefreshTrackedTownBuilders', 'SetBuildAllAMCore', 'SetBuildDependency', 'RefreshNeeded', 'SetBuildAllAM', 'AddRefresh',
   'RefreshAllNeeded', 'OneBuildLoopAM', 'BuildLoopAM', 'StaggerSleep', 'HealArmy'];
 const extra = read('TFT/NeededExtra.txt').trim().split(/\r?\n/).slice(1)
   .map(row => row.split('\t'));
@@ -249,6 +249,7 @@ function zeros(capacity = Infinity) {
 
 function state(capacity = 32) {
   const s = {
+    own_town_num: 0,
     ...extraIds, BUILD_UNIT: 1, BUILD_ADAPTIVE: 5, BUILD_ADAPTIVE_UPGRADE: 6, BUILD_UPGRADE: 2, BUILD_ITEM: 3, BUILD_EXPAND: 4,
     BUILT_ALL: 0, NOT_ENOUGH_RES: 1, CANNOT_BUILD: 2, BUILT_SOME: 3,
     BT_RACIAL_ITEM: 5, BT_ML_UPGRADE: 6, BT_HERO: 3, BT_NEUTRAL_HERO: 7,

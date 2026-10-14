@@ -7,7 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
-- - Undead now fund mine recovery by selling surplus buildings at exhausted expansions before spare plain ziggurats, keeping defensive towers as a last resort. They preserve the last hall and shop, buildings at rebuildable mines, and supply for a missing acolyte.
+- Undead now fund mine recovery by selling surplus buildings at exhausted expansions before spare plain ziggurats, keeping defensive towers as a last resort. They preserve the last hall and shop, buildings at rebuildable mines, and supply for a missing acolyte.
+- Expansion building counts, construction and upgrades now use the same AMAI-tracked town for all races, avoiding reliance on Warcraft's native separate town numbering. Construction waits for an outstanding worker order or foundation before issuing another order, and town-specific upgrades select buildings assigned to that town.
 - (devtools) Added a Keep a Changelog skill to help contributors write clear, consistent changelog entries and prepare release sections.
 - (devtools) Added the Ponytail coding skill for contributors, that favor simple solutions and fewer dependencies.
 - (Installer) Optimized scripts preserve the `chatting` and `language` variable names, allowing the installer to customize AI chat and language while using optimization.
@@ -40,6 +41,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Expansion construction now releases dead or stalled town builders even when mine eligibility or resource checks reject further requests. Early-game worker locality checks also preserve tracked expansion construction orders.
+- Ghouls returning home for lumber retry failed harvesting orders, leave the return list once harvesting starts, and wait for healing instead of interrupting it. Return lists now remove dead entries and stay compact during repeated updates.
 - Units sent home now wait for required ability research before trying to heal or hide, e.g preventing unresearched Cannibalize from leaving units stuck at graveyards.
 - Undead can haunt or rebuild a mine beside their own Necropolis without treating the hall as a competing expansion. Night Elf owned Entangled Gold Mines remain claimed, preventing duplicate Trees of Life and allowing later expansion targets to be considered.
 - Human and Orc harvesting now selects exposed neutral deposits and ignores dead mine claims, allowing released mines to be worked after Haunted or Entangled Gold Mine buildings are destroyed.

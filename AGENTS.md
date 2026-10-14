@@ -40,7 +40,6 @@
 - Keep JASS translation, Warcraft native mocks, and game setup in `tests/helpers/`. The test file should read as gameplay scenarios, without requiring readers to understand the harness first.
 - Use plain action names such as `buyItem`, `sendHome`, and `checkHero`. Keep meaningful setup and expected outcomes visible in each test; avoid generic abstractions or dense scenario matrices.
 - Preserve coverage of the actual source functions. Do not replace production logic with a hand-written version of the behavior under test.
-- Include the exact run command and keep the matching in-game scenario document current. Automated checks should state where mocks cannot verify Warcraft behavior.
 
 ## PowerShell examples (run from repository root)
 

@@ -27,7 +27,7 @@ function load(version) {
     'TownCountEx', 'TownCountDone', 'TownCount', 'TownCountTown', 'CanBuildUnit',
     'SetBuildAllAMCore', 'SetBuildDependency', 'RefreshNeeded', 'SetBuildAllAM', 'BuildUnit',
     'AddRefresh', 'RefreshAllNeeded', 'CheckNotBuiltFrom', 'StartUnitAM', 'SetBuildFree',
-    'OneBuildLoopAM', 'BuildAdaptiveReinforcements', 'ResetDynamicSystem', 'DynamicBuildUnitBase', 'DynamicBuildUnit',
+    'OneBuildLoopAM', 'RefreshTrackedTownBuilders', 'BuildAdaptiveReinforcements', 'ResetDynamicSystem', 'DynamicBuildUnitBase', 'DynamicBuildUnit',
     'FormatAdaptiveCounterReport', 'GetCounterDebugReport', 'GetCurrentDynamicReport',
     'GetCurrentStrategyReport', 'QueueStrategy', 'RefreshAdaptiveReport',
     'DynamicStrategySelector', ...[...source.matchAll(/^function (Adaptive\w+|RemoveAdaptiveRequests|ClearAdaptiveCounters|RefreshAdaptiveCounters|RefreshAdaptiveReservation|BuildAdaptiveCounters|AddUnitToAnti\w+) takes/gm)]
@@ -84,7 +84,7 @@ export function adaptiveGame({ version = 'REFORGED', race = 'Human', tier = 2, f
     IsAMAI: true, ai_player: 0, adaptive_counters: version !== 'ROC', strategy: 0,
     campaign_ai: false, towerrush: false, custom_data_set: false, tier,
     ai_time: 100, ver_food_limit: 100, sleep_multiplier: 1, build_lock: true,
-    own_town_num: 1, gold_buffer: 0, wood_buffer: 0, front_locs_computed: true,
+    own_town_num: 1, town_builder: Array(8192).fill(null), gold_buffer: 0, wood_buffer: 0, front_locs_computed: true,
     UndeadMineRecoveryNeeded: () => false, UndeadRecoveryBuildAllowed: () => true,
     build_qty: zeros(), build_type: zeros(), build_item: zeros(), build_town: zeros(),
     build_length: 0, JASS_MAX_ARRAY_SIZE: 8192,

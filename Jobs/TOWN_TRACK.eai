@@ -11,6 +11,15 @@
     boolean array town_can_tp
     real array town_dist
     unit array town_mine
+    group array town_structures
+    hashtable tracked_structures = InitHashtable()
+    unit array town_builder
+    integer array town_build_type
+    integer array town_build_wait
+    integer array town_build_item
+    integer array town_build_count
+    integer array town_build_progress
+    real array town_build_distance
     integer most_threatened_town = -1
     integer most_threatened_enemy_town = -1
     integer max_value_town = -1
@@ -23,6 +32,11 @@
     boolean home_found_temp = false
 #ELSE
 function CopyTown takes integer from, integer to returns nothing
+  local group g = null
+  local unit u = null
+  if from == to then
+    return
+  endif
   set town_owner[to] = town_owner[from]
   set town_loc[to] = town_loc[from]
   set town_value[to] = town_value[from]
@@ -33,6 +47,31 @@ function CopyTown takes integer from, integer to returns nothing
   set town_can_tp[to] = town_can_tp[from]
   set town_dist[to] = town_dist[from]
   set town_mine[to] = town_mine[from]
+  if town_structures[to] != null then
+    call DestroyGroup(town_structures[to])
+  endif
+  if town_structures[from] != null then
+    set town_structures[to] = CopyGroup(town_structures[from])
+    set g = CopyGroup(town_structures[to])
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      call SaveInteger(tracked_structures, GetHandleId(u), 0, to + 1)
+      call GroupRemoveUnit(g, u)
+    endloop
+    call DestroyGroup(g)
+    set g = null
+    set u = null
+  else
+    set town_structures[to] = null
+  endif
+  set town_builder[to] = town_builder[from]
+  set town_build_type[to] = town_build_type[from]
+  set town_build_wait[to] = town_build_wait[from]
+  set town_build_item[to] = town_build_item[from]
+  set town_build_count[to] = town_build_count[from]
+  set town_build_progress[to] = town_build_progress[from]
+  set town_build_distance[to] = town_build_distance[from]
   // Not below are temporary to keep usage of it accurate as army track will run after this and re-evaluate.
   if most_threatened_town == from then
     set most_threatened_town = to
@@ -63,12 +102,36 @@ function TrackTown takes integer num returns boolean
   set town_has_expansion[num] = false
   set town_can_tp[num] = false
   set town_dist[num] = -1
+  if Player(town_owner[num]) == ai_player then
+    if town_structures[num] == null then
+      set town_structures[num] = CreateGroup()
+    endif
+    // Release dead handles from the previous snapshot before reusing the group.
+    call DestroyGroup(g)
+    set g = CopyGroup(town_structures[num])
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      if not UnitAlive(u) or GetOwningPlayer(u) != ai_player then
+        call FlushChildHashtable(tracked_structures, GetHandleId(u))
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+    call DestroyGroup(g)
+    set g = CreateGroup()
+    call GroupClear(town_structures[num])
+  endif
   call GroupEnumUnitsInRangeOfLoc(g, town_loc[num], town_radius, null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
-    if UnitAlive(u) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and GetOwningPlayer(u) == Player(town_owner[num]) and IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitInGroup(u, in_town_group) then
+    if UnitAlive(u) and GetUnitState(u, UNIT_STATE_LIFE) > 0 and GetOwningPlayer(u) == Player(town_owner[num]) and IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitInGroup(u, in_town_group) and (GetOwningPlayer(u) != ai_player or num == town_num or GetTrackedStructureTown(u) == num) then
       call GroupAddUnit(in_town_group, u)
+      if GetOwningPlayer(u) == ai_player then
+        call GroupAddUnit(town_structures[num], u)
+        call SaveInteger(tracked_structures, GetHandleId(u), 0, num + 1)
+        call TrackedStructureDone(u)
+      endif
       set l = GetSumLoc_dd(l, GetUnitLoc(u))
       set town_count[num] = town_count[num] + 1
       if IsUnitType(u, UNIT_TYPE_TOWNHALL) then

@@ -1,8 +1,13 @@
 #IFDEF GLOBAL
 #ELSE
 function GhoulReturnHomeJob takes unit u returns nothing
-  local group g = CreateGroup()
+  local group g = null
   local boolean returning = false
+  if not UnitAlive(u) or GetOwningPlayer(u) != ai_player or GetUnitTypeId(u) != old_id[racial_ghoul] then
+    call RemoveUnitFromHashtable(returning_ghouls, 0, 0, u)
+    return
+  endif
+  set g = CreateGroup()
   set g = ReturnLivingUnitsOfHashtable(returning_ghouls, 0, 0, g)
   set returning = IsUnitInGroup(u, g)
   call DestroyGroup(g)
@@ -10,8 +15,12 @@ function GhoulReturnHomeJob takes unit u returns nothing
   if not returning then
     return
   endif
-  if not UnitAlive(u) then
+  if GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == OrderId("resumeharvesting") then
     call RemoveUnitFromHashtable(returning_ghouls, 0, 0, u)
+    return
+  endif
+  if not IsStandardUnit(u) or IsUnitBuying(u) then
+    call TQAddUnitJob(4, GHOUL_RETURN_HOME, 0, u)
     return
   endif
   if DistanceBetweenPoints_dk(GetUnitLoc(u), home_location) > 800 then
@@ -20,5 +29,6 @@ function GhoulReturnHomeJob takes unit u returns nothing
     return
   endif
   call IssueImmediateOrder(u, "autoharvestlumber")
+  call TQAddUnitJob(4, GHOUL_RETURN_HOME, 0, u)
 endfunction
 #ENDIF

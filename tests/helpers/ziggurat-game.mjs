@@ -27,6 +27,7 @@ export function zigguratGame({ gold = 0, wood = 1000, mines = 0, buildingMine = 
   const production = [];
   const counts = (id, done = false) => units.filter(u => u.alive && u.owner === 0 && u.type === id && (!done || !u.unfinished)).length;
   const state = {
+    own_town_num: 0,
     gold, wood, harvest_mine_count: mines, buildingMine,
     ai_player: 0, racial_expansion: 1, racial_peon: 2, racial_farm: 3,
     racial_shop: 4, racial_ghoul: 5, racial_hall: [0, 6],
@@ -102,6 +103,7 @@ export function zigguratGame({ gold = 0, wood = 1000, mines = 0, buildingMine = 
   for (const match of recovery.matchAll(/function (\w+) takes/g)) vm.runInContext(compile(recovery, match[1]), context);
   for (const name of ['SelectByZiggurat', 'CheckSellZiggurat', 'SellZigguratJob']) vm.runInContext(compile(selling, name), context);
   vm.runInContext(compile(read('Jobs/DETECT_DEFEAT.eai'), 'Defeated'), context);
+  vm.runInContext(compile(read('common.eai'), 'RefreshTrackedTownBuilders'), context);
   vm.runInContext(compile(read('common.eai'), 'OneBuildLoopAM'), context);
   vm.runInContext(compile(read('Jobs/BUY_NEUTRAL.eai'), 'BuyNeutral'), context);
   vm.runInContext(compile(read('Jobs/BUY_NEUTRAL_HERO.eai'), 'BuyNeutralHero'), context);

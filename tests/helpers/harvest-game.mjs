@@ -14,6 +14,7 @@ const common = readFileSync(new URL('common.eai', root), 'utf8');
 export function humanGame() {
   const peasants = Array.from({ length: 5 }, () => ({ callToArms: true, order: 852018 }));
   const state = {
+    own_town: [], own_town_num: 0, town_builder: [], town_build_type: [], town_build_wait: [], ai_time: 0,
     race_militia_available: true, race_militia_ability: 'Amil',
     militia_allowed: false, militia_check_enabled: true, militia_reserved_peons: new Set(),
     expansion_peon: null, militia_builder: null, early_remote_builders: new Set(),
@@ -52,6 +53,7 @@ export function humanGame() {
   };
   const context = vm.createContext(state);
   for (const [source, name] of [
+    [common, 'IsTrackedTownBuilder'],
     ...['IsConstructionOrder', 'IsReservedHarvestPeon', 'IsPeonReadyToHarvest'].map(name => [harvest, name]),
     [militia, 'IsMilitiaAllowed'], [militia, 'MilitiaCheckJob'], [common, 'Militia_Expansion'],
   ]) {

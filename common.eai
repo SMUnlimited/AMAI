@@ -2014,12 +2014,13 @@ function FlushUnitHashtable takes hashtable ht, integer key, integer start retur
     return ht
   endif
   set g = CreateGroup()
-  set g = ReturnUnitsOfHashtable(ht, key, start, g)
+  set g = ReturnLivingUnitsOfHashtable(ht, key, start, g)
   loop
     exitwhen i >= size
     set i = i + 1
     call RemoveSavedHandle(ht, key, i)
   endloop
+  call SaveInteger(ht, key, start, 0)
   set ht = AddUnitsToHashtable(ht, key, start, g)
   call DestroyGroup(g)
   set g = null
@@ -2041,6 +2042,7 @@ function RemoveUnitFromHashtable takes hashtable ht, integer key, integer start,
     set i = i + 1
     call RemoveSavedHandle(ht, key, i)
   endloop
+  call SaveInteger(ht, key, start, 0)
   set ht = AddUnitsToHashtable(ht, key, start, g)
   call DestroyGroup(g)
   set g = null
@@ -2614,6 +2616,143 @@ function InitAssaultGroup takes nothing returns nothing
 endfunction
 
 //============================================================================
+function CopyGroup takes group g returns group
+  local group gnew = CreateGroup()
+  if g != null and FirstOfGroup(g) != null then
+    call BlzGroupAddGroupFast(g,gnew)
+  endif
+  return gnew
+endfunction
+
+// Tracked town indices belong to AMAI, independently of the engine's town indices.
+function GetTrackedTown takes integer town returns integer
+  if town < 0 or town >= own_town_num then
+    return -1
+  endif
+  return own_town[town]
+endfunction
+
+function GetTrackedTownAtPoint takes player owner, real x, real y returns integer
+  local integer i = 0
+  local integer nearest = -1
+  local real dx = 0
+  local real dy = 0
+  local real distance = 0
+  local real best = town_radius * town_radius + 1
+  loop
+    exitwhen i >= town_num
+    if town_loc[i] != null and Player(town_owner[i]) == owner then
+      set dx = x - GetLocationX(town_loc[i])
+      set dy = y - GetLocationY(town_loc[i])
+      set distance = dx * dx + dy * dy
+      if distance <= town_radius * town_radius and distance < best then
+        set best = distance
+        set nearest = i
+      endif
+    endif
+    set i = i + 1
+  endloop
+  return nearest
+endfunction
+
+// Keep an existing association while it remains in range. New structures use
+// the nearest owned tracked town, with stable index ordering for equal distances.
+function GetTrackedStructureTown takes unit u returns integer
+  local integer assigned = LoadInteger(tracked_structures, GetHandleId(u), 0) - 1
+  local real dx = 0
+  local real dy = 0
+  if assigned >= 0 and assigned < town_num and town_loc[assigned] != null and Player(town_owner[assigned]) == GetOwningPlayer(u) then
+    set dx = GetUnitX(u) - GetLocationX(town_loc[assigned])
+    set dy = GetUnitY(u) - GetLocationY(town_loc[assigned])
+    if dx * dx + dy * dy <= town_radius * town_radius then
+      return assigned
+    endif
+  endif
+  return GetTrackedTownAtPoint(GetOwningPlayer(u), GetUnitX(u), GetUnitY(u))
+endfunction
+
+function TrackedStructureDone takes unit u returns boolean
+  local integer id = GetUnitTypeId(u)
+  local integer key = GetHandleId(u)
+  // Completion stays known after damage, and a changed unit type is checked again.
+  if LoadInteger(tracked_structures, key, 1) == id then
+    return true
+  endif
+  if GetUnitCountDone(id) == GetUnitCount(id) or (GetUnitCountDone(id) > 0 and GetUnitState(u, UNIT_STATE_LIFE) >= GetUnitState(u, UNIT_STATE_MAX_LIFE)) then
+    call SaveInteger(tracked_structures, key, 1, id)
+    return true
+  endif
+  return false
+endfunction
+
+function GetTrackedTownUnitCount takes integer id, boolean only_done, integer town returns integer
+  local integer tracked = GetTrackedTown(town)
+  local integer count = 0
+  local group g = null
+  local unit u = null
+  if tracked < 0 or town_structures[tracked] == null then
+    return 0
+  endif
+  set g = CopyGroup(town_structures[tracked])
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if UnitAlive(u) and GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == id and GetTrackedStructureTown(u) == tracked and (not only_done or TrackedStructureDone(u)) then
+      set count = count + 1
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+  return count
+endfunction
+
+function TrackedTownHasMine takes integer town returns boolean
+  local integer tracked = GetTrackedTown(town)
+  if tracked < 0 then
+    return false
+  endif
+  return town_mine[tracked] != null and UnitAlive(town_mine[tracked]) and GetResourceAmount(town_mine[tracked]) > 0
+endfunction
+
+function TrackedTownHasHall takes integer town returns boolean
+  local integer tracked = GetTrackedTown(town)
+  local group g = null
+  local unit u = null
+  if tracked < 0 or town_structures[tracked] == null then
+    return false
+  endif
+  set g = CopyGroup(town_structures[tracked])
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if UnitAlive(u) and GetOwningPlayer(u) == ai_player and IsUnitType(u, UNIT_TYPE_TOWNHALL) and GetTrackedStructureTown(u) == tracked then
+      call DestroyGroup(g)
+      set g = null
+      return true
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  return false
+endfunction
+
+function IsTrackedTownBuilder takes unit u returns boolean
+  local integer i = 0
+  local integer tracked = 0
+  loop
+    exitwhen i >= own_town_num
+    set tracked = own_town[i]
+    if town_builder[tracked] == u and (ai_time < town_build_wait[tracked] or GetUnitCurrentOrder(u) == town_build_type[tracked]) then
+      return true
+    endif
+    set i = i + 1
+  endloop
+  return false
+endfunction
+
 function GetUnitCountEx takes integer unitid, boolean only_done, integer townid returns integer
 
   if unitid == 0 then // can happen but lets speed up calculation a little instead of running the functions
@@ -2628,6 +2767,9 @@ function GetUnitCountEx takes integer unitid, boolean only_done, integer townid 
         return GetUnitCount(old_id[unitid])
       endif
     else
+      if IsUnitIdType(old_id[unitid], UNIT_TYPE_STRUCTURE) then
+        return GetTrackedTownUnitCount(old_id[unitid], only_done, townid)
+      endif
       return GetTownUnitCount(old_id[unitid],townid,only_done)
     endif
   else
@@ -3902,14 +4044,6 @@ endfunction
 //==========================================================================
 // (AMAI)	CopyGroup
 //==========================================================================
-function CopyGroup takes group g returns group
-  local group gnew = CreateGroup()
-  if FirstOfGroup(g) != null then
-    call BlzGroupAddGroupFast(g,gnew)
-  endif
-  return gnew
-endfunction
-
 // Is unit actually invisible to player via abilities
 function IsUnitInvisibleAM takes unit u, player target returns boolean
   local boolean isInvis = false
@@ -11428,38 +11562,41 @@ endfunction
 //============================================================================
 
 function HasExpanded takes nothing returns boolean
-  return TownWithMine() >= 1 or GetMinesHarvested() > 1 or TownCountDone(racial_expansion) > 1
+  local integer i = 0
+  if GetMinesHarvested() > 1 or TownCountDone(racial_expansion) > 1 then
+    return true
+  endif
+  loop
+    exitwhen i >= own_town_num
+    if own_town[i] != home_town and TrackedTownHasMine(i) then
+      return true
+    endif
+    set i = i + 1
+  endloop
+  return false
 endfunction
 
 function GuardSecondaryAM takes integer townid, integer qty, integer unitid, integer prio returns nothing
-  if TownHasHall(townid) and TownHasMine(townid) then
+  if TrackedTownHasHall(townid) and TrackedTownHasMine(townid) then
     call SecondaryTownAM( townid, qty, unitid, prio )
   endif
 endfunction
 
 function DefendTownsEx takes boolean only_done, boolean at_front, integer qty, integer unitid, integer prio returns nothing
-  local integer twm = TownWithMine()
-  local integer i = twm
-  local integer lasttown = twm
-  //call Trace("DefendTownsEx TownWithMine:" + Int2Str(twm))
-  if not at_front then
-    set twm = Max(twm, 1) // Home town is town 0 and exclude if at_front is not set
-  else
-    set twm = Max(twm, 0)
-  endif
-  set i = twm
+  local integer i = 0
+  local integer lasttown = 0
   loop
     exitwhen i >= own_town_num
-    if TownHasMine(i) then
+    if TrackedTownHasMine(i) then
       set lasttown = i
     endif
     set i = i + 1
   endloop 
-  set i = twm
+  set i = 0
   loop
     exitwhen i >= own_town_num or (ancient_expanding and ancient_exp_state > 1 and ancient_exp_state != 4 and i == lasttown) // If ancient expanding new town isn't ready yet even if town hall is built
-    if i < own_town_num and TownCountTown(racial_expansion, i) > 0 and TownHasMine(i) and TownCountEx(unitid, only_done, i) < qty then
-      if i <= 0 and at_front then
+    if (at_front or own_town[i] != home_town) and TownCountTown(racial_expansion, i) > 0 and TrackedTownHasMine(i) and TownCountEx(unitid, only_done, i) < qty then
+      if own_town[i] == home_town and at_front then
         call BuildFront(qty, unitid, prio)
       else  
         call SecondaryTownAM(i, qty, unitid, prio)
@@ -11487,20 +11624,19 @@ function DefendTownsFrontDone takes integer qty, integer unitid, integer prio re
 endfunction
 
 function DefendTownsCond takes integer qty, integer unitid, integer min_dist, integer max_dist, integer min_gold, integer prio returns nothing
-  local integer twm = Max(TownWithMine(),1)
-  local integer i = twm
-  local integer lasttown = twm
+  local integer i = 0
+  local integer lasttown = 0
   loop
     exitwhen i >= own_town_num
-    if TownHasMine(i) then
+    if TrackedTownHasMine(i) then
       set lasttown = i
     endif
     set i = i + 1
   endloop
-  set i = twm
+  set i = 0
   loop
     exitwhen i >= own_town_num or (ancient_expanding and ancient_exp_state > 1 and ancient_exp_state != 4 and i == lasttown)
-    if i < own_town_num and town_dist[own_town[i]] >= min_dist and town_dist[own_town[i]] <= max_dist and TownHasMine(i) and GetResourceAmount(town_mine[own_town[i]]) > min_gold and TownCountEx(racial_expansion,true,i) > 0 and TownCountEx(unitid, true, -1) < qty * Max(TownCountEx(racial_expansion, true, -1),1) then
+    if own_town[i] != home_town and town_dist[own_town[i]] >= min_dist and town_dist[own_town[i]] <= max_dist and TrackedTownHasMine(i) and GetResourceAmount(town_mine[own_town[i]]) > min_gold and TownCountEx(racial_expansion,true,i) > 0 and TownCountEx(unitid, true, i) < qty then
       call SecondaryTownAM(i, qty, unitid, prio)
     endif
     set i = i + 1
@@ -11536,7 +11672,7 @@ endfunction
 //============================================================================
 
 function MeleeTownHallAM takes integer townid, integer unitid, integer prio returns nothing
-  if TownHasMine(townid) and not TownHasHall(townid) then
+  if TrackedTownHasMine(townid) and not TrackedTownHasHall(townid) then
     call SecondaryTownAM( townid, 1, unitid, prio )
   endif
 endfunction
@@ -11671,6 +11807,34 @@ function UpgradeBuilding takes integer qty, integer unitid, integer town, intege
   local integer current_town = town
   local integer tracked_town = 0
   local integer num = 0
+  if town >= 0 then
+    set tracked_town = GetTrackedTown(town)
+    call DestroyGroup(g)
+    if tracked_town < 0 or town_structures[tracked_town] == null then
+      set g = null
+      return CANNOT_BUILD
+    endif
+    set g = CopyGroup(town_structures[tracked_town])
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      if GetOwningPlayer(u) == ai_player and GetUnitTypeId(u) == old_id[needed1[unitid]] and UnitAlive(u) and GetTrackedStructureTown(u) == tracked_town and TrackedStructureDone(u) then
+        if IssueImmediateOrderById(u, old_id[unitid]) then
+          set num = num + 1
+          set available_time[unitid] = ai_time + GetUnitBuildTime(old_id[unitid]) / 5 + 1
+        endif
+      endif
+      exitwhen num >= qty
+      call GroupRemoveUnit(g, u)
+    endloop
+    call DestroyGroup(g)
+    set g = null
+    set u = null
+    if num > 0 then
+      return BUILT_SOME
+    endif
+    return CANNOT_BUILD
+  endif
   if town == -1 then
     set current_town = 0
   endif
@@ -11806,6 +11970,166 @@ endfunction
 //============================================================================
 // AMAI Build Codes
 //============================================================================
+function GetTrackedTownBuilder takes integer tracked returns unit
+  local group g = CreateGroup()
+  local unit u = null
+  local unit peon = null
+  local real dx = 0
+  local real dy = 0
+  local real distance = 0
+  local real best = 0
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if GetUnitTypeId(u) == old_id[racial_peon] and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitLoaded(u) and not IsReservedHarvestPeon(u) and (GetUnitCurrentOrder(u) == OrderId("harvest") or GetUnitCurrentOrder(u) == 0) then
+      set dx = GetUnitX(u) - GetLocationX(town_loc[tracked])
+      set dy = GetUnitY(u) - GetLocationY(town_loc[tracked])
+      set distance = dx * dx + dy * dy
+      if peon == null or distance < best then
+        set best = distance
+        set peon = u
+      endif
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+  return peon
+endfunction
+
+// Refresh only after an outstanding build order ends. Routine counts reuse the
+// town tracker snapshot; this also covers tracking paused during an attack.
+function RefreshTrackedTownStructures takes integer tracked returns nothing
+  local group g = CreateGroup()
+  local unit u = null
+  if town_structures[tracked] == null then
+    set town_structures[tracked] = CreateGroup()
+  endif
+  call GroupEnumUnitsInRangeOfLoc(g, town_loc[tracked], town_radius, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if UnitAlive(u) and GetOwningPlayer(u) == ai_player and IsUnitType(u, UNIT_TYPE_STRUCTURE) and GetTrackedStructureTown(u) == tracked then
+      call GroupAddUnit(town_structures[tracked], u)
+      call SaveInteger(tracked_structures, GetHandleId(u), 0, tracked + 1)
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+endfunction
+
+function StartTrackedTownBuilding takes integer qty, integer unitid, integer town returns integer
+  local integer tracked = GetTrackedTown(town)
+  local unit peon = null
+  local unit spaceunit = null
+  local unit probe = null
+  local location l = null
+  if tracked < 0 or town_loc[tracked] == null then
+    return CANNOT_BUILD
+  endif
+  set peon = town_builder[tracked]
+  if peon != null and UnitAlive(peon) then
+    if GetUnitCurrentOrder(peon) == town_build_type[tracked] or ai_time < town_build_wait[tracked] then
+      set peon = null
+      return BUILT_SOME
+    endif
+  endif
+  if ai_time < town_build_wait[tracked] then
+    set peon = null
+    return CANNOT_BUILD
+  endif
+  set peon = GetTrackedTownBuilder(tracked)
+  if peon == null then
+    return CANNOT_BUILD
+  endif
+  // Reuse the established neutral-unit placement probe without changing our
+  // unit counts. Reject a displaced position belonging to a different town.
+  set spaceunit = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], town_loc[tracked], 270.0)
+  set probe = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], town_loc[tracked], 270.0)
+  set l = GetUnitLoc(probe)
+  call RemoveUnit(probe)
+  call RemoveUnit(spaceunit)
+  set probe = null
+  set spaceunit = null
+  if GetTrackedTownAtPoint(ai_player, GetLocationX(l), GetLocationY(l)) != tracked then
+    call RemoveLocation(l)
+    set l = null
+    set peon = null
+    return CANNOT_BUILD
+  endif
+  call IssuePointOrderByIdLoc(peon, old_id[unitid], l)
+  set town_builder[tracked] = peon
+  set town_build_type[tracked] = old_id[unitid]
+  set town_build_wait[tracked] = ai_time + 2 // Ten game seconds for a foundation to appear.
+  set town_build_item[tracked] = unitid
+  set town_build_count[tracked] = TownCountTown(unitid, town)
+  set town_build_distance[tracked] = DistanceBetweenPoints_dk(GetUnitLoc(peon), town_loc[tracked])
+  set town_build_progress[tracked] = ai_time
+  call RemoveLocation(l)
+  set l = null
+  set peon = null
+  return BUILT_SOME
+endfunction
+
+// Maintain reservations before request eligibility and resource gates, including
+// passes with no build requests. Only stop the order this reservation issued.
+function RefreshTrackedTownBuilders takes nothing returns nothing
+  local integer i = 0
+  local integer tracked = 0
+  local unit peon = null
+  local real distance = 0
+  local boolean release = false
+  local boolean refreshed = false
+  loop
+    exitwhen i >= own_town_num
+    set tracked = own_town[i]
+    set peon = town_builder[tracked]
+    set release = false
+    set refreshed = false
+    if peon != null then
+      if not UnitAlive(peon) or GetOwningPlayer(peon) != ai_player or town_loc[tracked] == null then
+        set release = true
+        set town_build_wait[tracked] = ai_time
+      elseif GetUnitCurrentOrder(peon) != town_build_type[tracked] then
+        set release = ai_time >= town_build_wait[tracked]
+      elseif not TrackedTownHasMine(i) then
+        call IssueImmediateOrder(peon, "stop")
+        set release = true
+        set town_build_wait[tracked] = ai_time + 2
+      else
+        set distance = DistanceBetweenPoints_dk(GetUnitLoc(peon), town_loc[tracked])
+        if distance < town_build_distance[tracked] - 32 then
+          set town_build_distance[tracked] = distance
+          set town_build_progress[tracked] = ai_time
+        elseif ai_time - town_build_progress[tracked] >= 24 then
+          // Do not stop actual construction while normal tracking is paused.
+          call RefreshTrackedTownStructures(tracked)
+          set refreshed = true
+          if TownCountTown(town_build_item[tracked], i) > town_build_count[tracked] then
+            set town_build_progress[tracked] = ai_time
+          else
+            call IssueImmediateOrder(peon, "stop")
+            set release = true
+            set town_build_wait[tracked] = ai_time + 2
+          endif
+        endif
+      endif
+      if release then
+        if town_loc[tracked] != null and not refreshed then
+          call RefreshTrackedTownStructures(tracked)
+        endif
+        set town_builder[tracked] = null
+      endif
+    endif
+    set i = i + 1
+  endloop
+  set peon = null
+endfunction
+
 function StartUnitAM takes integer ask_qty, integer unitid, integer town, integer bloc, integer prio, integer max_order returns integer
     local integer have_qty = 0
     local integer need_qty = 0
@@ -11823,8 +12147,12 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     local integer nn = GetNeutralNumber(unitid)
     local integer i = 1
 
+    if town >= 0 then
+      call RefreshTrackedTownBuilders()
+    endif
+
     // If specified town not built ignore town specific requests
-    if town != -1 and (town >= own_town_num or (unitid != racial_expansion and (TownCountTown(racial_expansion, town) <= 0 or not TownHasMine(town)))) then
+    if town != -1 and (town >= own_town_num or (unitid != racial_expansion and (TownCountTown(racial_expansion, town) <= 0 or not TrackedTownHasMine(town)))) then
         return CANNOT_BUILD
     endif
 
@@ -12056,6 +12384,10 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
     //if not CanBuildUnit(unitid) then
     //  return CANNOT_BUILD
     //endif
+
+    if town >= 0 and buy_type[unitid] == BT_BUILDING then
+      return StartTrackedTownBuilding(ask_qty, unitid, town)
+    endif
 
     if bloc != BLOC_STD then
       if BuildAtSpecialLoc(unitid, town, bloc) != CANNOT_BUILD then   // This only occurs if no peon could be obtained
@@ -13040,6 +13372,7 @@ function OneBuildLoopAM takes nothing returns nothing
     call InitLastUpkeep()
 
     call TimeKeeper()
+    call RefreshTrackedTownBuilders()
     call SetBuildFree()
     call FarmBuilder()
     call PeonBuilder()
@@ -15369,6 +15702,7 @@ endfunction
 //============================================================================
 // (AMAI) Universal peon assignment
 //============================================================================
+// This legacy harvesting path uses engine town indices throughout.
 function universal_peon_assignment takes nothing returns nothing
   local integer T = TownWithMine()
   local integer g = GetGold()
@@ -15449,7 +15783,7 @@ function universal_peon_assignment takes nothing returns nothing
 
   loop
     exitwhen i > T
-    if T != i and TownHasMine(i) and TownCountEx(racial_expansion,true,i) > 0 then
+    if T != i and TownHasMine(i) then
       if gdivw < 3.0 or g < 300 or ((FoodUsed() <= 20 or GetMinesHarvested() < 1 or g <= 2500) and hero_built[3]) then
         call HarvestGold(i,goldTarget)
       else
