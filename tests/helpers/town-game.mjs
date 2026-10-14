@@ -50,13 +50,15 @@ export function townGame(race = 'undead') {
     militia_reserved_peons: new Set(), towerrush: false, race_tower_peon: 0,
     harvestgrp: new Set(), UNIT_TYPE_HERO: 'hero', hero: [], build_free: array(),
     gold_sum: array(), build_time_sum: array(), build_num: array(), prio_sum: array(),
-    scans: { player: 0, range: 0 }, probeOffset: 500,
+    scans: { player: 0, range: 0 }, probeOffset: 500, randomValues: [],
     ...groupNatives(groups),
     Player: p => p, GetHandleId: u => u?.id ?? 0, GetOwningPlayer: u => u.owner,
     UnitAlive: u => Boolean(u?.alive), IsUnitHidden: u => u.hidden, IsUnitLoaded: u => u.loaded,
     GetUnitTypeId: u => u.type, IsUnitType: (u, kind) => Boolean(u[kind]),
     GetUnitX: u => u.x, GetUnitY: u => u.y, GetUnitLoc: u => ({ x: u.x, y: u.y }),
     GetLocationX: l => l.x, GetLocationY: l => l.y, Location: (x, y) => ({ x, y }), RemoveLocation() {},
+    Atan2: Math.atan2, Cos: Math.cos, Sin: Math.sin,
+    GetRandomReal: (min, max) => min + (max - min) * (state.randomValues.shift() ?? 0.5),
     GetUnitState: (u, key) => u[key], GetResourceAmount: u => u.gold,
     GetUnitCurrentOrder: u => u.order, OrderId: order => order,
     GetUnitCount: raw => count(raw), GetUnitCountDone: raw => count(raw, true),
@@ -122,7 +124,8 @@ export function townGame(race = 'undead') {
     'GetUnitCountEx', 'isSameUpgradeLine', 'GetUnitCountAlt', 'TownCountEx', 'TownCount', 'TownCountDone', 'TownCountTown',
     'SetBuildAllAMCore', 'SetBuildDependency', 'RefreshNeeded', 'SetBuildAllAM', 'SecondaryTownAM',
     'DefendTownsEx', 'DefendTownsDone', 'DefendTownsCond', 'IsRacialHallId',
-    'GetTrackedTownBuilder', 'RefreshTrackedTownStructures', 'StartTrackedTownBuilding', 'RefreshTrackedTownBuilders', 'StartUnitAM', 'UpgradeBuilding', 'HasExpanded',
+    'AIGetProjectedLoc', 'GetTrackedTownBuilder', 'RefreshTrackedTownStructures', 'GetTrackedTownBuildLocation',
+    'StartTrackedTownBuilding', 'RefreshTrackedTownBuilders', 'StartUnitAM', 'UpgradeBuilding', 'HasExpanded',
   ]) vm.runInContext(compile(common, name), context);
   for (const name of ['IsConstructionOrder', 'IsReservedHarvestPeon']) vm.runInContext(compile(harvest, name), context);
   vm.runInContext(compile(tracking, 'TrackTown'), context);

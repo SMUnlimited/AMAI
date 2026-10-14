@@ -12022,12 +12022,58 @@ function RefreshTrackedTownStructures takes integer tracked returns nothing
   set u = null
 endfunction
 
+function GetTrackedTownBuildLocation takes integer tracked, integer unitid returns location
+  local location center = Location(GetLocationX(town_loc[tracked]), GetLocationY(town_loc[tracked]))
+  local location mine = null
+  local location result = null
+  local group g = null
+  local unit u = null
+  local real angle = 0
+  if IsRacialHallId(unitid, 1) then
+    return center
+  endif
+  // Town tracking may be centered on the mine. Use its cached hall as the
+  // support-building anchor regardless of the tracking enumeration order.
+  set g = CopyGroup(town_structures[tracked])
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    if UnitAlive(u) and GetOwningPlayer(u) == ai_player and IsUnitType(u, UNIT_TYPE_TOWNHALL) and GetTrackedStructureTown(u) == tracked then
+      call RemoveLocation(center)
+      set center = GetUnitLoc(u)
+      exitwhen true
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set u = null
+  if town_mine[tracked] != null and UnitAlive(town_mine[tracked]) then
+    set mine = GetUnitLoc(town_mine[tracked])
+  else
+    set mine = Location(GetLocationX(center), GetLocationY(center))
+  endif
+  if DistanceBetweenPoints(center, mine) > 128 then
+    set angle = GetRandomReal(-1.309, 1.309) // Fan within 75 degrees of the outward direction.
+  else
+    set angle = GetRandomReal(-3.142, 3.142)
+  endif
+  // Negative projection points away from the mine and reserves the hall area.
+  set result = AIGetProjectedLoc(center, mine, -GetRandomReal(350, 750), angle)
+  call RemoveLocation(center)
+  call RemoveLocation(mine)
+  set center = null
+  set mine = null
+  return result
+endfunction
+
 function StartTrackedTownBuilding takes integer qty, integer unitid, integer town returns integer
   local integer tracked = GetTrackedTown(town)
   local unit peon = null
   local unit spaceunit = null
   local unit probe = null
   local location l = null
+  local location target = null
   if tracked < 0 or town_loc[tracked] == null then
     return CANNOT_BUILD
   endif
@@ -12048,8 +12094,11 @@ function StartTrackedTownBuilding takes integer qty, integer unitid, integer tow
   endif
   // Reuse the established neutral-unit placement probe without changing our
   // unit counts. Reject a displaced position belonging to a different town.
-  set spaceunit = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], town_loc[tracked], 270.0)
-  set probe = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], town_loc[tracked], 270.0)
+  set target = GetTrackedTownBuildLocation(tracked, unitid)
+  set spaceunit = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], target, 270.0)
+  set probe = CreateUnitAtLoc(Player(PLAYER_NEUTRAL_PASSIVE), old_id[unitid], target, 270.0)
+  call RemoveLocation(target)
+  set target = null
   set l = GetUnitLoc(probe)
   call RemoveUnit(probe)
   call RemoveUnit(spaceunit)

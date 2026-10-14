@@ -104,6 +104,7 @@ describe('Building at tracked towns independently of Warcraft town numbering', (
 
   it('Given a Human expansion, when building a scout tower, then construction uses that tracked town', () => {
     const game = townGame('human');
+    game.state.probeOffset = 0;
     game.addMine();
     game.addUnit(game.ids.hall);
     const worker = game.addUnit(game.ids.worker, { x: 5900 });
@@ -112,12 +113,13 @@ describe('Building at tracked towns independently of Warcraft town numbering', (
     game.build(game.ids.farm);
 
     assert.equal(game.orders[0].unit, worker);
-    assert.equal(game.orders[0].x, 6500);
+    assert.equal(Math.hypot(game.orders[0].x - 6000, game.orders[0].y), 550);
     assert.deepEqual(game.production, []);
   });
 
   it('Given an Orc expansion, when building a burrow, then construction uses that tracked town', () => {
     const game = townGame('orc');
+    game.state.probeOffset = 0;
     game.addMine();
     game.addUnit(game.ids.hall);
     const worker = game.addUnit(game.ids.worker, { x: 5900 });
@@ -126,12 +128,13 @@ describe('Building at tracked towns independently of Warcraft town numbering', (
     game.build(game.ids.farm);
 
     assert.equal(game.orders[0].unit, worker);
-    assert.equal(game.orders[0].x, 6500);
+    assert.equal(Math.hypot(game.orders[0].x - 6000, game.orders[0].y), 550);
     assert.deepEqual(game.production, []);
   });
 
   it('Given a Night Elf expansion, when building a moon well, then construction uses that tracked town', () => {
     const game = townGame('elf');
+    game.state.probeOffset = 0;
     game.addMine();
     game.addUnit(game.ids.hall);
     const worker = game.addUnit(game.ids.worker, { x: 5900 });
@@ -140,8 +143,66 @@ describe('Building at tracked towns independently of Warcraft town numbering', (
     game.build(game.ids.farm);
 
     assert.equal(game.orders[0].unit, worker);
-    assert.equal(game.orders[0].x, 6500);
+    assert.equal(Math.hypot(game.orders[0].x - 6000, game.orders[0].y), 550);
     assert.deepEqual(game.production, []);
+  });
+
+  it('Given an expansion centered on its mine, when building successive ziggurats, then their angles and distances vary outward from the cached hall', () => {
+    const game = townGame();
+    game.addMine();
+    const hall = game.addUnit(game.ids.hall, { x: 6500 });
+    const worker = game.addUnit(game.ids.worker);
+    game.trackTowns();
+    game.state.town_loc[0] = { x: 6000, y: 0 };
+    game.state.probeOffset = 0;
+    game.state.randomValues = [0.25, 0, 0.75, 1];
+    const scansBefore = game.state.scans.range;
+
+    game.build(game.ids.farm);
+    const first = game.orders[0];
+    game.addUnit(game.ids.farm, { x: first.x, y: first.y, unfinished: true, life: 100 });
+    worker.order = 0;
+    game.advance(10);
+    game.build(game.ids.farm, 2);
+    const second = game.orders[1];
+
+    assert.ok(first.x > hall.x && second.x > hall.x, 'Support buildings fan away from the mine');
+    assert.ok(first.y < 0 && second.y > 0, 'Successive buildings use different directions');
+    assert.ok(Math.abs(Math.hypot(first.x - hall.x, first.y) - 350) < 0.001);
+    assert.ok(Math.abs(Math.hypot(second.x - hall.x, second.y) - 750) < 0.001);
+    assert.equal(game.state.scans.range, scansBefore + 1, 'Only foundation discovery requires a new range scan');
+    assert.equal(game.groups.size, 0);
+  });
+
+  it('Given a mine without a hall direction, when building a support building, then it spreads around the reserved hall area', () => {
+    const game = townGame();
+    game.addMine();
+    game.addUnit(game.ids.worker);
+    game.trackTowns();
+    game.state.probeOffset = 0;
+    game.state.randomValues = [0.25, 0.5];
+    const scansBefore = game.state.scans.range;
+
+    game.build(game.ids.farm);
+
+    assert.ok(game.orders[0].y > 500);
+    assert.ok(Math.abs(Math.hypot(game.orders[0].x - 6000, game.orders[0].y) - 550) < 0.001);
+    assert.equal(game.state.scans.range, scansBefore);
+    assert.equal(game.groups.size, 0);
+  });
+
+  it('Given a random support position displaced into another town, when checking its placement, then construction rejects the displaced position', () => {
+    const game = townGame();
+    game.addMine();
+    game.addUnit(game.ids.worker);
+    game.trackTowns();
+    game.state.probeOffset = -6000;
+
+    const result = game.build(game.ids.farm);
+
+    assert.equal(result, game.state.CANNOT_BUILD);
+    assert.deepEqual(game.orders, []);
+    assert.equal(game.groups.size, 0);
   });
 
   it('Given a pending worker order, when construction checks repeat, then no second worker or order is issued', () => {
