@@ -110,15 +110,15 @@ test('Empty queues and the final available slot never write beyond capacity', ()
   assert.deepEqual(queue(s), before);
 });
 
-test('Capacity is checked after acquiring the lock, including recursive quantity insertion', () => {
+test('Capacity is checked after acquiring the lock, including multiple quantity insertion', () => {
   const s = state(2);
   s.onLock = () => { s.build_length = 2; s.onLock = null; };
   assert.equal(s.SetBuildAllAMCore(1, 1, 1, -1, 0, 50), false);
   assert.equal(s.build_lock, true);
-  const recursive = state(2);
-  assert.equal(recursive.SetBuildAllAMCore(1, 4, 1, -1, 0, 50), true);
-  assert.deepEqual(queue(recursive), [[1, 3, 52], [1, 4, 50]]);
-  assert.equal(recursive.build_lock, true);
+  const multiple = state(2);
+  assert.equal(multiple.SetBuildAllAMCore(1, 4, 1, -1, 0, 50), true);
+  assert.deepEqual(queue(multiple), [[1, 3, 52], [1, 4, 50]]);
+  assert.equal(multiple.build_lock, true);
 });
 
 test('Repeated refreshes against a full queue remain bounded and retry when space returns', () => {

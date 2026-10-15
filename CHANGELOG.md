@@ -41,6 +41,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Memory and optimization fixes.
+- Malformed chat conditions now stop at the end of the text or an unreadable character instead of potentially stalling AI chat processing.
 - Expansion construction now releases dead or stalled town builders even when mine eligibility or resource checks reject further requests. Early-game worker locality checks also preserve tracked expansion construction orders.
 - Ghouls returning home for lumber retry failed harvesting orders, leave the return list once harvesting starts, and wait for healing instead of interrupting it. Return lists now remove dead entries and stay compact during repeated updates.
 - Units sent home now wait for required ability research before trying to heal or hide, e.g preventing unresearched Cannibalize from leaving units stuck at graveyards.
@@ -63,6 +65,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Attempts to open Commander using shortcuts or chat commands now explain when Commander is disabled for the game or the player has no allied computer to command.
 - Reworked and renabled multi-mine handling around individual mine claims, allowing all races to harvest or expand at clustered mines without blocking later expansions, including bounded per-worker gold rosters that avoid lumber-worker churn or militia defense control, a three-mine worker-production cap, hall-based harvesting that bypasses broken town bookkeeping, surplus Human/Orc-style mine handling, movable entangling halls, and configurable mine styles for custom races.
 - (internal) Long-running AI jobs now report their elapsed time correctly in diagnostic warnings.
+- (internal) The AI job queue now reserves space for heap swaps and checks capacity after acquiring its lock, preventing array overflow when the queue fills.
 - (Installer) The installation dialog now receives worker completion and enables Close after installation finishes.
 - (Installer) The Electron installer now terminates its full worker process tree when stopped, replaced, closed, or disconnected, without reporting late worker errors after its window has closed.
 - (Installer) Development mode now runs only the Electron window against the repository's root `MPQEditor.exe` and compiled `Scripts`, without requiring a production package layout or opening a non-functional browser copy.

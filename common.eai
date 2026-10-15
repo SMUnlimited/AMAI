@@ -920,7 +920,7 @@ globals
 	constant integer PROFILE_SELECTION = 6
 	constant integer NEUTRAL_GUARDS = 7
   constant integer TYPECASTING = 8
-  hashtable attacktable = InitHashtable() // To build custom attack groups
+  hashtable attacktable = InitHashtable() // Parent 0: unit types seen during an assault scan (no sleeps).
   constant integer CUSTOM_ATTACK = 1
 
   gamecache amaiCache = InitGameCache("AMAI_AI.w3v")
@@ -2438,6 +2438,7 @@ endfunction
 
 function CheckChatCondition takes string s returns boolean
   local integer i = 1
+  local integer length = StringLength(s)
   local boolean is_compare = false
   local integer compare = 0
   local string key = ""
@@ -2455,7 +2456,9 @@ function CheckChatCondition takes string s returns boolean
     return true
   endif
   loop
+    exitwhen i >= length
     set c = GetChar(s, i)
+    exitwhen c == ""
     if c == "}" then
       if is_compare then
         if key == "PlayerRace" then
@@ -6224,11 +6227,12 @@ endfunction
 
 //============================================================================
 function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, group group_par, unit unit_par_2 returns nothing
-  if tq_length >= JASS_MAX_ARRAY_SIZE then
-    // Do nothing too many jobs already
-    return
-  endif  
   call GetTQLock()
+  // Index 0 is the heap sentinel; tq_length + 1 is the exchange scratch slot.
+  if tq_length >= JASS_MAX_ARRAY_SIZE - 2 then
+    call ReleaseTQLock()
+    return
+  endif
   if jid == BUILD_EXPANSION then
     if unit_par == null or unit_par_2 == null or LoadBoolean(expansion_job_pending, GetHandleId(unit_par), GetHandleId(unit_par_2)) then
       call ReleaseTQLock()
@@ -10487,62 +10491,65 @@ endfunction
 function SetBuildAllAMCore takes integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns boolean
   local integer i = 0
   local integer j = 0
-  if unitid == 0 or qty == 0 then
+  local integer have_qty = 0
+  local boolean accepted = false
+  if unitid == 0 or qty <= 0 then
     return false
   endif
   if t == BUILD_UPGRADE or t == BUILD_ADAPTIVE_UPGRADE then
-    if GetUpgradeLevel(old_id[unitid]) >= qty then
-      return true
-    endif
+    set have_qty = GetUpgradeLevel(old_id[unitid])
   elseif t == BUILD_ITEM then
-    if GetItemNumber(unitid) >= qty then
-      return true
-    endif
+    set have_qty = GetItemNumber(unitid)
   elseif buy_type[unitid] > BT_RACIAL_ITEM and not neutral_available[GetNeutralNumber(unitid)] then
     return false
-  elseif TownCountTown(unitid, town) >= qty then
+  else
+    set have_qty = TownCountTown(unitid, town)
+  endif
+  if have_qty >= qty then
     return true
   endif
   call GetBuildLock()
-  set j = build_length - 1
+  // Expand quantities without recursive calls or recounting the same units.
   loop
-    exitwhen i >= build_length
-    exitwhen build_prio[i] < prio
-    if build_item[i] == unitid and build_qty[i] >= qty and build_town[i] == town and (build_type[i] == t or (t < BUILD_ADAPTIVE and build_type[i] < BUILD_ADAPTIVE)) then
+    exitwhen qty <= have_qty or qty <= 0
+    set i = 0
+    set j = build_length - 1
+    loop
+      exitwhen i >= build_length
+      exitwhen build_prio[i] < prio
+      if build_item[i] == unitid and build_qty[i] >= qty and build_town[i] == town and (build_type[i] == t or (t < BUILD_ADAPTIVE and build_type[i] < BUILD_ADAPTIVE)) then
+        call ReleaseBuildLock()
+        return true
+      endif
+      set i = i + 1
+    endloop
+    if build_length >= JASS_MAX_ARRAY_SIZE then
       call ReleaseBuildLock()
-      return true
+      return accepted // Preserve accepted higher quantities if the queue fills.
     endif
-    set i = i + 1
+    loop
+      exitwhen j < i
+      set build_qty[j+1] = build_qty[j]
+      set build_type[j+1] = build_type[j]
+      set build_item[j+1] = build_item[j]
+      set build_town[j+1] = build_town[j]
+      set build_loc[j+1] = build_loc[j]
+      set build_prio[j+1] = build_prio[j]
+      set j = j - 1
+    endloop
+    set build_qty[i] = qty
+    set build_type[i] = t
+    set build_item[i] = unitid
+    set build_town[i] = town
+    set build_loc[i] = bloc
+    set build_prio[i] = prio
+    set build_length = build_length + 1
+    set accepted = true
+    set qty = qty - 1
+    set prio = prio + prio_q_inc
   endloop
-  if build_length >= JASS_MAX_ARRAY_SIZE then
-    call ReleaseBuildLock()
-    return false // Build queue full
-  endif
-  loop
-    exitwhen j < i
-    set build_qty[j+1] = build_qty[j]
-    set build_type[j+1] = build_type[j]
-    set build_item[j+1] = build_item[j]
-    set build_town[j+1] = build_town[j]
-    set build_loc[j+1] = build_loc[j]
-    set build_prio[j+1] = build_prio[j]
-    set j = j - 1
-  endloop
-  set build_qty[i] = qty
-  set build_type[i] = t
-  set build_item[i] = unitid
-  set build_town[i] = town
-  set build_loc[i] = bloc
-  set build_prio[i] = prio
-  set build_length = build_length + 1
   call ReleaseBuildLock()
-
-  if qty > 1 then
-    call SetBuildAllAMCore(t, qty - 1, unitid, town, bloc, prio + prio_q_inc )
-  endif
-
-  return true
-
+  return accepted
 endfunction
 
 function SetBuildDependency takes integer parent_type, integer t, integer qty, integer unitid, integer town, integer bloc, integer prio returns nothing
@@ -13664,26 +13671,24 @@ function AttackGroupAddUnknown takes nothing returns nothing
   local unit u = null
   local integer id = 0
   local integer i = 0
-  call GroupEnumUnitsOfPlayer(g, ai_player, null)
-  set g = SelectUnittype(g, UNIT_TYPE_PEON, false)
-  set g = SelectUnittype(g, UNIT_TYPE_STRUCTURE, false)
-  set g = SelectUnittype(g, UNIT_TYPE_SUMMONED, false)
-  set g = SelectByHidden(g,false)
-  set g = SelectByAlive(g,true)
+  call FlushChildHashtable(attacktable, 0)
   loop
-    exitwhen i >= attack_length or FirstOfGroup(g) == null
-    set g = SelectById(g, old_id[attack_units[i]], false)
+    exitwhen i >= attack_length
+    call SaveBoolean(attacktable, 0, old_id[attack_units[i]], true)
     set i = i + 1
   endloop
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
     set id = GetUnitTypeId(u)
-    if (IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) or IsUnitType(u, UNIT_TYPE_ATTACKS_GROUND)) and id != 'ngir' then
+    if not LoadBoolean(attacktable, 0, id) and id != 'ngir' and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_SUMMONED) and (IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) or IsUnitType(u, UNIT_TYPE_ATTACKS_GROUND)) then
       call AddAssault(60,id)  //other hero and unit , like other race and custom
+      call SaveBoolean(attacktable, 0, id, true)
     endif
     call GroupRemoveUnit(g, u)
   endloop
+  call FlushChildHashtable(attacktable, 0)
   call DestroyGroup(g)
   set g = null
 endfunction
@@ -13853,19 +13858,25 @@ endfunction
 function DesperationAssault takes nothing returns nothing
   local group g = null
   local unit u = null
-  local integer i = 0
+  local integer id = 0
   if not player_defeated then
     call Trace("Adding desperation troops")
+    call FlushChildHashtable(attacktable, 0)
     set g = CreateGroup()
     call GroupEnumUnitsOfPlayer(g, ai_player, null)
     loop
       set u = FirstOfGroup(g)
       exitwhen u == null
       if (IsUnitType(u, UNIT_TYPE_ANCIENT) or not IsUnitType(u, UNIT_TYPE_STRUCTURE)) and UnitAlive(u) and not IsUnitHidden(u) then
-        call AddAssault(60, GetUnitTypeId(u))
+        set id = GetUnitTypeId(u)
+        if not LoadBoolean(attacktable, 0, id) then
+          call AddAssault(60, id)
+          call SaveBoolean(attacktable, 0, id, true)
+        endif
       endif
       call GroupRemoveUnit(g, u )
     endloop
+    call FlushChildHashtable(attacktable, 0)
     call DestroyGroup(g)
     set g = null
   endif
