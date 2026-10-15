@@ -5397,11 +5397,15 @@ endfunction
 // (AMAI)	GetUnitToBuy
 //==========================================================================
 function GetUnitToBuy takes unit ru, unit buy_place returns unit
-  local group g = CreateGroup()
+  local group g = null
   local unit u = null
   local real distance = 10000
   local real newdistance = 0
   set ru = null
+  if buy_place == null or not UnitAlive(buy_place) then
+    return null
+  endif
+  set g = CreateGroup()
   call GroupEnumUnitsOfPlayer(g, ai_player, null)
   set g = SelectByUnitStandard(g, true)
   loop
@@ -6290,6 +6294,8 @@ endfunction
 //============================================================================
 function GetLocationInDistanceFromLoc takes location loc, real dist, boolean injob returns location
   local real distance = 0
+  local real last_distance = 0
+  local real progress_time = TimerGetElapsed(tq_timer)
   local real x = 0
   local real y = 0
   local unit u = null
@@ -6314,6 +6320,11 @@ function GetLocationInDistanceFromLoc takes location loc, real dist, boolean inj
     elseif GetUnitState(u, UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u) == OrderId("stop") or GetUnitCurrentOrder(u) != OrderId("move") then
       set exitloop = true
       //return null
+    elseif distance > last_distance + 32 then
+      set last_distance = distance
+      set progress_time = TimerGetElapsed(tq_timer)
+    elseif TimerGetElapsed(tq_timer) - progress_time >= 10 then
+      set exitloop = true
     endif
     if injob then
       call Sleep(0.2)
@@ -8121,6 +8132,9 @@ endfunction
 //============================================================================
 function GetHeroToBuyItem takes unit shop, real limit, boolean is_healing_included returns unit
   local integer i = 1
+  if shop == null or not UnitAlive(shop) then
+    return null
+  endif
   loop
     exitwhen i > 3
     if hero_built[i] and UnitAlive(hero_unit[i]) then
@@ -13921,7 +13935,8 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     exitwhen IsUnitInvisibleAM(target, ai_player)
     if attacking_expansion and current_expansion != null and main_army >= 0 and army_loc[main_army] != null and not CaptainInCombat(true) then
       set target_loc = GetUnitLoc(target)
-      set cur_dist = DistanceBetweenPoints_dd(army_loc[main_army], target_loc)
+      // Army tracking owns its location; release only the temporary target location.
+      set cur_dist = DistanceBetweenPoints(army_loc[main_army], target_loc)
       call RemoveLocation(target_loc)
       set target_loc = null
       if last_dist >= 0 and RAbs(cur_dist - last_dist) <= 300 then
@@ -13944,7 +13959,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     endif
     if not attacking_expansion and main_army >= 0 and army_loc[main_army] != null and not CaptainInCombat(true) and not CaptainAtGoal() and not CaptainIsHome() then
       set target_loc = GetUnitLoc(target)
-      set gen_cur_dist = DistanceBetweenPoints_dd(army_loc[main_army], target_loc)
+      set gen_cur_dist = DistanceBetweenPoints(army_loc[main_army], target_loc)
       call RemoveLocation(target_loc)
       set target_loc = null
       if gen_last_dist >= 0 and RAbs(gen_cur_dist - gen_last_dist) <= 300 then
@@ -15018,35 +15033,49 @@ endfunction
 function AncientExpaAttack takes nothing returns nothing
   local location loc = null
   local real attacktimer = 0
-  local integer i = 0
-  local real creepstrength = 0
+  local unit ancient = ancient_exp_unit
+  local unit mine = ancient_exp_mine
+  local unit creep = ancient_exp_creep
   call Trace("An Ancient Expansion Attack")
-  call RemoveGuardPosition(ancient_exp_unit)
-  call IssueImmediateOrderById(ancient_exp_unit, OrderIdCancel)
-  call IssueImmediateOrder(ancient_exp_unit, "unroot")
-  set ancient_attack_running = true
-  call FromGroupAndGhoulsAM(3)
-  call CaptainAttack(GetUnitX(ancient_exp_unit), GetUnitY(ancient_exp_unit))
-  if (ancient_exp_creep != null and UnitAlive(ancient_exp_creep)) then
-    set loc = GetUnitLoc(ancient_exp_creep)
-  else
-    set loc = GetUnitLoc(ancient_exp_mine)
+  if AncientAttackIsCurrent(ancient, mine) then
+    call RemoveGuardPosition(ancient)
+    call IssueImmediateOrderById(ancient, OrderIdCancel)
+    call IssueImmediateOrder(ancient, "unroot")
+    set ancient_attack_running = true
+    call FromGroupAndGhoulsAM(3)
+    if AncientAttackIsCurrent(ancient, mine) then
+      call CaptainAttack(GetUnitX(ancient), GetUnitY(ancient))
+      if UnitAlive(creep) then
+        set loc = GetUnitLoc(creep)
+      else
+        set loc = GetUnitLoc(mine)
+      endif
+      set attacktimer = TimerGetElapsed(tq_timer) + 120
+      loop
+        exitwhen not AncientAttackIsCurrent(ancient, mine) or player_defeated or isfleeing or (town_threatened and town_threat_break)
+        exitwhen CaptainAtGoal() or CaptainIsEmpty() or (main_army >= 0 and army_loc[main_army] != null and DistanceBetweenPoints(army_loc[main_army], loc) < 500)
+        exitwhen TimerGetElapsed(tq_timer) >= attacktimer
+        call Sleep(1)
+      endloop
+      if AncientAttackIsCurrent(ancient, mine) and not player_defeated and not isfleeing and not (town_threatened and town_threat_break) and TimerGetElapsed(tq_timer) < attacktimer then
+        call IssuePointOrderLoc(ancient, "attack", loc)
+        if UnitAlive(creep) then
+          call AttackMoveKillCreep(creep, false)
+        endif
+      endif
+      call RemoveLocation(loc)
+      set loc = null
+    endif
+    // Creeping also yields. An old attack must not revive a cleaned-up job.
+    if AncientAttackIsCurrent(ancient, mine) then
+      call IssueTargetOrder(ancient, "entangle", mine)
+      set ancient_attack_running = false
+      set ancient_exp_state = 7
+    endif
   endif
-  loop
-    exitwhen CaptainAtGoal() or DistanceBetweenPoints(army_loc[main_army], loc) < 500 // Attack force at ancient
-    call Sleep(1)
-  endloop
-  call IssuePointOrderLoc(ancient_exp_unit, "attack", loc)
-  call RemoveLocation(loc)
-  set loc = null
-  set creepstrength = GetAncientCampStrength()
-  //if GetOwnStrength() >= creepstrength then
-    // Just creep normally as safer if tree not actually required in attack
-  call AttackMoveKillCreep(ancient_exp_creep, false)
-  //endif
-  call IssueTargetOrder(ancient_exp_unit, "entangle", ancient_exp_mine)
-  set ancient_attack_running = false
-  set ancient_exp_state = 7
+  set ancient = null
+  set mine = null
+  set creep = null
 endfunction
 
 function SetLeadAlly takes nothing returns nothing
@@ -15218,7 +15247,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
 
     // ancient expansion attack
     //
-    if ancient_expanding and GetOwnStrength() >= GetAncientCampStrength() then
+    if ancient_expanding and (ancient_exp_state == 2 or ancient_exp_state == 3) and GetOwnStrength() >= GetAncientCampStrength() then
       if ancient_exp_state == 3 and ancient_exp_unit != null then
         call AncientExpaAttack()
         return

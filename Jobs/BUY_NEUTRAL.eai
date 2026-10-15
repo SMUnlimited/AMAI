@@ -1,8 +1,19 @@
 #IFDEF GLOBAL
 boolean retreat_home_n = false
 #ELSE
+function EndBuyNeutralJob takes integer nn returns nothing
+  call GroupRemoveUnit(unit_buying_merc, neutral_sent[nn])
+  if neutral_sent[nn] != null and UnitAlive(neutral_sent[nn]) and IsStandardUnit(neutral_sent[nn]) then
+    call RecycleGuardPosition(neutral_sent[nn])
+  endif
+  set neutral_sent[nn] = null
+  set retreat_home_n = false
+  set neutral_ordered[nn] = false
+  set buy_time_large[nn] = -1
+  set buy_time_small[nn] = -1
+endfunction
+
 function BuyNeutral takes integer id returns nothing
-  local real timetotravel = 0
   local real daytime = GetFloatGameState(GAME_STATE_TIME_OF_DAY)
   local real current_time = TimerGetElapsed(tq_timer)
   local real time_next_try = 0
@@ -10,7 +21,7 @@ function BuyNeutral takes integer id returns nothing
   local integer nn = GetNeutralNumber(id)
   local unit buy_place = nearest_neutral[nn]
   local boolean place_guarded = neutral_guarded[nn]
-  local integer detectedenemies = GetLocationNonCreepStrength(GetUnitX(neutral_sent[nn]), GetUnitY(neutral_sent[nn]), 1000) 
+  local integer detectedenemies = 0
   local location l = null
 
   call DisplayToAllJobDebug("BUY_NEUTRAL JOB START")
@@ -19,10 +30,17 @@ function BuyNeutral takes integer id returns nothing
     set buy_place = null
     return
   endif
+  if not retreat_home_n and (buy_place == null or not UnitAlive(buy_place)) then
+    call EndBuyNeutralJob(nn)
+    set buy_place = null
+    return
+  endif
   // moved this check here to prevent a job crash if placed lower down
   if neutral_sent[nn] == null or not UnitAlive(neutral_sent[nn]) then
+    call GroupRemoveUnit(unit_buying_merc, neutral_sent[nn])
+    set neutral_sent[nn] = null
     if retreat_home_n then
-      set retreat_home_n = false
+      call EndBuyNeutralJob(nn)
       set buy_place = null
       return
     endif
@@ -42,13 +60,7 @@ function BuyNeutral takes integer id returns nothing
       call IssuePointOrder(neutral_sent[nn], "move", GetLocationX(home_location), GetLocationY(home_location))
       call TQAddJob(5, BUY_NEUTRAL, id)
     else
-      call GroupRemoveUnit(unit_buying_merc, neutral_sent[nn])
-      call RecycleGuardPosition(neutral_sent[nn])
-      set retreat_home_n = false
-      set neutral_sent[nn] = null
-      set neutral_ordered[nn] = false
-      set buy_time_large[nn] = -1
-      set buy_time_small[nn] = -1
+      call EndBuyNeutralJob(nn)
     endif
     set buy_place = null
     call RemoveLocation(l)
@@ -59,25 +71,16 @@ function BuyNeutral takes integer id returns nothing
 //  call DisplayToAll("Buy Neutral Started")
   if (buy_time_large[nn] >= 0 and buy_time_large[nn] + buy_timeout_large < current_time) or (buy_time_small[nn] >= 0 and buy_time_small[nn] + buy_timeout_small < current_time) then
     set available_time[id] = ai_time + regenerate_time[id] / 2
-    call RecycleGuardPosition(neutral_sent[nn])
-    call GroupRemoveUnit(unit_buying_merc, neutral_sent[nn])
-    set neutral_sent[nn] = null
-    set neutral_ordered[nn] = false
-    set buy_time_large[nn] = -1
-    set buy_time_small[nn] = -1
+    call EndBuyNeutralJob(nn)
     set buy_place = null
     return
   endif
   if TownCountDone(id) >= neutral_wanted[nn] then
-    call RecycleGuardPosition(neutral_sent[nn])
-    call GroupRemoveUnit(unit_buying_merc, neutral_sent[nn])
-    set neutral_sent[nn] = null
-    set neutral_ordered[nn] = false
-    set buy_time_large[nn] = -1
-    set buy_time_small[nn] = -1
+    call EndBuyNeutralJob(nn)
     set buy_place = null
     return
   endif
+  set detectedenemies = GetLocationNonCreepStrength(GetUnitX(neutral_sent[nn]), GetUnitY(neutral_sent[nn]), 1000)
   if place_guarded and daytime >= 5 and daytime < 18 then
     set time_next_try = (18 - daytime)*20
   else
@@ -86,7 +89,6 @@ function BuyNeutral takes integer id returns nothing
     if buy_time_large[nn] < 0 then
       set buy_time_large[nn] = current_time
     endif
-    set timetotravel = GetTimeToReachUnit(neutral_sent[nn], buy_place)
     set dist = DistanceBetweenUnits(neutral_sent[nn], buy_place)
     if dist < buy_distance then
       call CreateDebugTag("buy unit", 10, neutral_sent[nn], 3.00, 1.50) 

@@ -1,4 +1,5 @@
 // Execute production JASS; mocks cannot verify Warcraft captain control or pathing.
+import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { compile } from './jass.mjs';
@@ -26,17 +27,20 @@ export function undeadGame() {
     player_defeated: false, ancient_expanding: false, ancient_attack_running: false,
     br_rush_attacked: false, desperation_assault: false, sleep_multiplier: 1, RETREAT_CONTROL: 1,
     ally_loc: { x: 0, y: 0 }, last_ally_loc: { x: 0, y: 0 },
+    last_major_hero_loc: { x: 4000, y: 4000 },
     enemy_loc: { x: 0, y: 0 }, last_enemy_loc: { x: 0, y: 0 },
     inCombat: true, bj_PI: Math.PI,
     Player: p => p, GetOwningPlayer: u => u.owner,
     IsPlayerAlly: (a, b) => a === b || a === 2, IsPlayerEnemy: (a, b) => a !== b && a !== 2,
-    UnitAlive: u => Boolean(u) && (u.life ?? 100) > 0, IsUnitHidden: u => Boolean(u.hidden), IsUnitInvisibleAM: u => Boolean(u.invisible),
+    UnitAlive: u => Boolean(u) && !u.removed && (u.life ?? 100) > 0, IsUnitHidden: u => Boolean(u.hidden), IsUnitInvisibleAM: u => Boolean(u.invisible),
     IsUnitVisible: u => u.visible !== false, UnitIsSleeping: u => Boolean(u.sleeping), IsUnitType: (u, type) => Boolean(u[type]),
     GetUnitState: (u, property) => u[property] ?? (property === 'life' || property === 'maxLife' ? 100 : 0),
     GetUnitCurrentOrder: u => u.order ?? 0, OrderId: order => order,
     DistanceBetweenUnits: (a, b) => Math.hypot(a.x - b.x, a.y - b.y),
     GetUnitStrength: u => u.strength,
-    GetUnitX: u => u.x, GetUnitY: u => u.y, GetLocationX: l => l.x, GetLocationY: l => l.y,
+    GetUnitX(u) { assert.ok(u && !u.removed, 'Read coordinates of a missing or removed unit'); return u.x; },
+    GetUnitY(u) { assert.ok(u && !u.removed, 'Read coordinates of a missing or removed unit'); return u.y; },
+    GetLocationX: l => l.x, GetLocationY: l => l.y,
     Location: (x, y) => { const l = { x, y }; locations.add(l); return l; },
     RemoveLocation: l => locations.delete(l), MoveLocation: (l, x, y) => Object.assign(l, { x, y }),
     GetUnitLoc: u => state.Location(u.x, u.y),

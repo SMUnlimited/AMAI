@@ -8,13 +8,15 @@ import { groupNatives } from './warcraft-natives.mjs';
 const root = new URL('../../', import.meta.url);
 
 export function heroGame(reservation, assigned = true) {
-  const hero = { alive: true, type: 'hero', order: 'move-home', slots: 1, life: 20, maxLife: 100, mana: 0 };
+  const hero = { alive: true, type: 'hero', x: 6000, y: 4000, order: 'move-home', slots: 1, life: 20, maxLife: 100, mana: 0 };
   const effects = [];
   const unitJobs = [];
+  const threatScans = [];
+  const validUnit = u => { assert.ok(u && !u.removed, 'Read coordinates of a missing or removed unit'); return u; };
   const state = {
     shop_sent: assigned ? hero : null, shop_ordered: true, retreat_home: false,
     shop_buy_time_large: -1, shop_buy_time_small: -1, shop_distance_limit: 100000,
-    shop_unit: { alive: true, type: 'shop' }, shop_wanted: 1,
+    shop_unit: { alive: true, type: 'shop', x: 6100, y: 4000 }, shop_wanted: 1,
     unit_buying_item: new Set(assigned ? [hero] : []),
     unit_buying_tavern: new Set(), unit_buying_merc: new Set(),
     unit_healing: new Set(), unit_rescueing: new Set(), unit_harassing: new Set(), unit_zepplin_move: new Set(),
@@ -59,11 +61,12 @@ export function heroGame(reservation, assigned = true) {
     hero_radius: 1000, enemy_density: 0, ally_density: 0, enemy_density_loc: {}, ally_density_loc: {},
     town_loc: [{}], most_threatened_town: 0, tp_item: 3,
     GetArmyOfUnit: () => -1, GetDensities() {}, MoveLocation() {}, RMax: Math.max,
-    UnitAlive: u => Boolean(u?.alive), GetUnitTypeId: u => u?.type,
+    UnitAlive: u => Boolean(u?.alive && !u.removed), GetUnitTypeId: u => u?.type,
     IsUnitType: (u, type) => u.type === type, GetSlotsFreeOnUnit: u => u.slots,
     ...groupNatives(),
-    GetUnitX: () => 0, GetUnitY: () => 0, GetLocationX: () => 0, GetLocationY: () => 0,
-    DistanceBetweenUnits: () => state.distance, GetLocationNonCreepStrength: () => 0, GetUnitStrength: () => 100,
+    GetUnitX: u => validUnit(u).x, GetUnitY: u => validUnit(u).y, GetLocationX: () => 0, GetLocationY: () => 0,
+    DistanceBetweenUnits(a, b) { validUnit(a); validUnit(b); return state.distance; },
+    GetLocationNonCreepStrength(x, y) { threatScans.push({ x, y }); return state.threat ?? 0; }, GetUnitStrength: () => 100,
     GetFloatGameState: () => 12, TimerGetElapsed: () => state.now,
     GetItemNumber: () => state.items, IsHealingItem: () => true,
     GetUnitCurrentOrder: u => u.order, OrderId: s => s, GetUnitLoc: () => ({}),
@@ -107,7 +110,7 @@ export function heroGame(reservation, assigned = true) {
     ['Jobs/MICRO_HERO.eai', 'MicroHeroJob'],
   ]) vm.runInContext(compile(readFileSync(new URL(file, root), 'utf8'), name), context);
   return {
-    state, hero, effects, unitJobs,
+    state, hero, effects, unitJobs, threatScans,
     buyItem: () => state.BuyItemJob(2),
     sendHome: () => state.SendUnitHomeJob(hero, 0),
     giveAbility: (code, level = 1) => state.abilities.set(Number(expression(`'${code}'`)), level),
@@ -116,5 +119,28 @@ export function heroGame(reservation, assigned = true) {
     saveHero: () => state.ExecuteSaveHero(1, state.ACTION_GO_HOME, null),
     checkHero: () => state.MicroHeroJob(1),
   };
+}
+
+export function neutralGame() {
+  const game = heroGame(undefined, false);
+  const { state, hero } = game;
+  Object.assign(state, {
+    nearest_neutral: [state.shop_unit], neutral_guarded: [false], neutral_sent: [null],
+    neutral_ordered: [true], neutral_wanted: [1], buy_time_large: [-1], buy_time_small: [-1],
+    retreat_home_n: false, BUY_NEUTRAL: 21, neutralCount: 0,
+    GetNeutralNumber: () => 0, TownCountDone: () => state.neutralCount,
+    GroupEnumUnitsOfPlayer: g => { if (hero.alive && !hero.removed) g.add(hero); },
+    IsUnitLoaded: () => false, IsUnitIllusion: () => false, UNIT_TYPE_SUMMONED: 'summoned',
+    GetExpansionPeon: () => null, GetExpansionPeon2: () => null,
+    GetTimeToReachUnit: () => 1,
+  });
+  const context = vm.createContext(state);
+  for (const name of ['SelectByUnitStandard', 'GetUnitToBuy']) {
+    vm.runInContext(compile(readFileSync(new URL('common.eai', root), 'utf8'), name), context);
+  }
+  const source = readFileSync(new URL('Jobs/BUY_NEUTRAL.eai', root), 'utf8');
+  vm.runInContext(compile(source, 'EndBuyNeutralJob'), context);
+  vm.runInContext(compile(source, 'BuyNeutral'), context);
+  return { ...game, buyNeutral: () => state.BuyNeutral(2) };
 }
 

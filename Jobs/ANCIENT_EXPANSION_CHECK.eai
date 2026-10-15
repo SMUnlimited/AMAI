@@ -1,5 +1,6 @@
 #IFDEF GLOBAL
    boolean ancient_expanding = false
+   boolean ancient_exp_check_pending = false
    integer OrderIdCancel = 851976
 #ELSE
 
@@ -8,16 +9,34 @@
 // TODO once we can do pathing requests in the pathing thread can be reworked.
 function AncientExpansionCheck takes nothing returns nothing
   local unit u = null
+  local unit mine = current_expansion
+  local location loc = null
+  set ancient_exp_check_pending = false
   call TraceAll("ANCIENT_EXPANSION_CHECK JOB START")
   if not ancient_expanding then
-    if current_expansion != null and take_exp and not CheckExpansionTaken(current_expansion) then
+    if mine != null and UnitAlive(mine) and take_exp and not IsExpansionRebuildCoolingDown(mine) and not CheckExpansionTaken(mine) then
       set u = GetExpFoe(u)
       if u != null then
         call TraceAll("Ancient expansion - Begin Job")
-        if ancient_exp_loc == null then
-          set ancient_exp_loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_expansion], GetUnitLoc(u), ver_creeps_attack_buildings_dist, true)
+        set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_expansion], GetUnitLoc(u), ver_creeps_attack_buildings_dist, true)
+        // Placement yields; the build thread may choose another target meanwhile.
+        if ancient_expanding or mine != current_expansion or not UnitAlive(mine) or CheckExpansionTaken(mine) or IsExpansionRebuildCoolingDown(mine) then
+          call RemoveLocation(loc)
+          set loc = null
+          set u = null
+          set mine = null
+          return
         endif
-        set ancient_exp_mine = current_expansion
+        if loc == null then
+          call SaveReal(expansion_retry_cooldowns, GetHandleId(mine), 0, TimerGetElapsed(tq_timer) + 60)
+          set u = null
+          set mine = null
+          return
+        endif
+        call RemoveLocation(ancient_exp_loc)
+        set ancient_exp_loc = loc
+        set loc = null
+        set ancient_exp_mine = mine
         set ancient_exp_creep = u
         set ancient_expanding = true
         call TQAddJob(1, ANCIENT_EXPANSION, 0)
@@ -28,6 +47,7 @@ function AncientExpansionCheck takes nothing returns nothing
       call Trace("Ancient expansion - No expansion available")
     endif
   endif
+  set mine = null
 endfunction
 
 #ENDIF

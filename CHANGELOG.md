@@ -41,6 +41,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Night Elf Ancient expansions now release stalled builders and entangling trees after two minutes without progress, with a short mine retry cooldown. Placement probes also stop when stuck, and camp checks skip construction and entangling phases.
+- Ancient expansion attacks now wait for completed Trees, bound army regrouping waits, and stop using old targets after cleanup. Mine-recovery attempts now prepare their site before starting construction.
+- Item and mercenary shopping now checks that the shop and buyer still exist before using their positions, checks threats around the selected buyer, and releases stale shopping reservations when buyers are lost.
+- Attack travel checks now preserve tracked army positions instead of destroying them. Retreat battle scans also skip units lost during scan waits.
 - Memory and optimization fixes.
 - Malformed chat conditions now stop at the end of the text or an unreadable character instead of potentially stalling AI chat processing.
 - Expansion construction now releases dead or stalled town builders even when mine eligibility or resource checks reject further requests. Early-game worker locality checks also preserve tracked expansion construction orders.
