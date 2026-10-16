@@ -41,6 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Fixed critical issue so all races now use each strategy's intended selection weight, fixing mismatched preferences when choosing an opening or changing strategy.
 - Night Elf Ancient expansions now release stalled builders and entangling trees after two minutes without progress, with a short mine retry cooldown. Placement probes also stop when stuck, and camp checks skip construction and entangling phases.
 - Ancient expansion attacks now wait for completed Trees, bound army regrouping waits, and stop using old targets after cleanup. Mine-recovery attempts now prepare their site before starting construction.
 - Item and mercenary shopping now checks that the shop and buyer still exist before using their positions, checks threats around the selected buyer, and releases stale shopping reservations when buyers are lost.
