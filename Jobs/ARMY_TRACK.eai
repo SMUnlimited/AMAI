@@ -19,11 +19,24 @@
     integer next_most_threatened_town = -1
     integer next_most_threatened_enemy_town = -1
     location captain_home = null
+    location defense_captain_home = null
     boolean captain_tp = true
     integer tmpmainarmy = -1
     integer town_threat_count = 0
 #ELSE
 // Army Tracker
+
+function ClearTownIntrusion takes integer num returns nothing
+  set town_intruder[num] = null
+  set town_intruder_anchor[num] = null
+  set town_intruder_owner[num] = null
+  set town_intruder_since[num] = 0
+  set town_intruder_seen[num] = 0
+  set town_intruder_life[num] = 0
+  set town_intruder_pressure[num] = 0
+  set town_intruder_confirmed[num] = false
+  set town_tower_progress[num] = false
+endfunction
 
 function CopyArmy takes integer from, integer to returns nothing
   set army_owner[to] = army_owner[from]
@@ -39,27 +52,37 @@ function CopyArmy takes integer from, integer to returns nothing
   endif
 endfunction
 
-// Helper: call SetCaptainHome only when captain_home doesn't already match the target
-function EnsureSetCaptainHome takes location target returns nothing
-  if target == null then
-    return
-  endif
-  if captain_home == null or GetLocationX(captain_home) != GetLocationX(target) or GetLocationY(captain_home) != GetLocationY(target) then
-    call SetCaptainHome(BOTH_CAPTAINS, GetLocationX(target), GetLocationY(target))
-  endif
-endfunction
-
 // Helper: store a copy of a location for captain_home to avoid shared-handle invalidation
 function SetCaptainHomeLoc takes location target returns nothing
   local location new_loc = null
   if target == null then
     return
   endif
+  if captain_home != null and GetLocationX(captain_home) == GetLocationX(target) and GetLocationY(captain_home) == GetLocationY(target) then
+    return
+  endif
+  call SetCaptainHome(ATTACK_CAPTAIN, GetLocationX(target), GetLocationY(target))
   set new_loc = Location(GetLocationX(target), GetLocationY(target))
   if captain_home != null then
     call RemoveLocation(captain_home)
   endif
   set captain_home = new_loc
+endfunction
+
+function SetDefenseCaptainHome takes location target returns nothing
+  local location new_loc = null
+  if target == null then
+    return
+  endif
+  if defense_captain_home != null and GetLocationX(defense_captain_home) == GetLocationX(target) and GetLocationY(defense_captain_home) == GetLocationY(target) then
+    return
+  endif
+  call SetCaptainHome(DEFENSE_CAPTAIN, GetLocationX(target), GetLocationY(target))
+  set new_loc = Location(GetLocationX(target), GetLocationY(target))
+  if defense_captain_home != null then
+    call RemoveLocation(defense_captain_home)
+  endif
+  set defense_captain_home = new_loc
 endfunction
 
 // Share eligibility with seeding so rejected units do not start range scans.
@@ -124,7 +147,7 @@ function TrackArmy takes integer num returns boolean
   set army_count[num] = count
   set army_strength[num] = strength
   
-  if army_count[num] <= 1 or army_strength[num] == 0 then
+  if army_count[num] == 0 or army_strength[num] == 0 then
     call DestroyGroup(army_group[num])
     set army_group[num] = null
     call RemoveLocation(army_loc[num])
@@ -282,12 +305,16 @@ function GetLiveTownDefenseValue takes integer num returns integer
   local integer value = 0
   local boolean has_expansion = false
   local integer scanned = 0
+  set town_defense_anchor[num] = null
   call GroupEnumUnitsInRangeOfLoc(g, town_loc[num], town_radius, null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
     if UnitAlive(u) and GetOwningPlayer(u) == Player(town_owner[num]) and IsUnitType(u, UNIT_TYPE_STRUCTURE) then
       if IsUnitType(u, UNIT_TYPE_TOWNHALL) or GetUnitTypeId(u) == old_id[racial_expansion] then
+        if town_defense_anchor[num] == null or IsUnitType(u, UNIT_TYPE_TOWNHALL) then
+          set town_defense_anchor[num] = u
+        endif
         set has_expansion = true
         set value = value + 5
       else
@@ -312,6 +339,117 @@ function GetLiveTownDefenseValue takes integer num returns integer
   return value
 endfunction
 
+// A local candidate must threaten a live economy, not merely pass near a town.
+function LocalIntrusionRank takes unit u, unit anchor returns integer
+  local real dx = 0
+  local real dy = 0
+  local integer order = 0
+  if u == null or anchor == null or not UnitAlive(u) or not UnitAlive(anchor) then
+    return 0
+  endif
+  if not IsPlayerEnemy(GetOwningPlayer(anchor), GetOwningPlayer(u)) or not IsPlayerEnemy(ai_player, GetOwningPlayer(u)) or IsUnitHidden(u) or not IsUnitVisible(u, ai_player) or IsUnitInvisibleAM(u, ai_player) then
+    return 0
+  endif
+  set dx = GetUnitX(u) - GetUnitX(anchor)
+  set dy = GetUnitY(u) - GetUnitY(anchor)
+  if dx * dx + dy * dy > full_threat_distance * full_threat_distance then
+    return 0
+  endif
+  if IsUnitTower(u) then
+    return 3
+  endif
+  if IsUnitType(u, UNIT_TYPE_ANCIENT) and IsUnitType(u, UNIT_TYPE_MELEE_ATTACKER) then
+    return 2
+  endif
+  if IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and IsUnitType(u, UNIT_TYPE_ATTACKS_GROUND) then
+    set order = GetUnitCurrentOrder(u)
+    if order != OrderId("harvest") and order != OrderId("resumeharvesting") then
+      return 1
+    endif
+  endif
+  return 0
+endfunction
+
+function UpdateTownIntrusion takes integer num returns nothing
+  local unit anchor = town_defense_anchor[num]
+  local unit target = town_intruder[num]
+  local unit u = null
+  local group g = null
+  local real now = TimerGetElapsed(tq_timer)
+  local real strength = 0
+  local real best_strength = -1
+  local real distance = 0
+  local real best_distance = 0
+  local real dx = 0
+  local real dy = 0
+  local integer rank = 0
+  local integer best_rank = 0
+  local integer scanned = 0
+  local boolean keep_target = false
+  set town_intruder_pressure[num] = 0
+  set town_tower_progress[num] = false
+  if anchor == null then
+    call ClearTownIntrusion(num)
+    return
+  endif
+  if town_intruder_anchor[num] != anchor or now - town_intruder_seen[num] > 12 or LocalIntrusionRank(target, anchor) == 0 or GetOwningPlayer(target) != town_intruder_owner[num] then
+    call ClearTownIntrusion(num)
+    set target = null
+  endif
+  set keep_target = target != null
+  set g = CreateGroup()
+  call GroupEnumUnitsInRange(g, GetUnitX(anchor), GetUnitY(anchor), full_threat_distance, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    set rank = LocalIntrusionRank(u, anchor)
+    if rank > 0 then
+      set strength = GetUnitStrength(u)
+      // Towers already contribute through the wider tower scan.
+      if rank < 3 then
+        set town_intruder_pressure[num] = town_intruder_pressure[num] + strength
+      endif
+      if not keep_target then
+        set dx = GetUnitX(u) - GetUnitX(anchor)
+        set dy = GetUnitY(u) - GetUnitY(anchor)
+        set distance = dx * dx + dy * dy
+        if rank > best_rank or (rank == best_rank and (strength > best_strength or (strength == best_strength and distance < best_distance))) then
+          set target = u
+          set best_rank = rank
+          set best_strength = strength
+          set best_distance = distance
+        endif
+      endif
+    endif
+    call GroupRemoveUnit(g, u)
+    set scanned = scanned + 1
+    if ModuloInteger(scanned, 64) == 0 then
+      call Sleep(0.01)
+    endif
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  // Recheck after scan waits, before using the selected handle.
+  if LocalIntrusionRank(target, anchor) == 0 or GetOwningPlayer(anchor) != Player(town_owner[num]) or (keep_target and GetOwningPlayer(target) != town_intruder_owner[num]) then
+    call ClearTownIntrusion(num)
+  else
+    if not keep_target then
+      set town_intruder[num] = target
+      set town_intruder_anchor[num] = anchor
+      set town_intruder_owner[num] = GetOwningPlayer(target)
+      set town_intruder_since[num] = now
+      set town_intruder_life[num] = GetUnitState(target, UNIT_STATE_LIFE)
+    endif
+    set town_intruder_seen[num] = now
+    set town_intruder_confirmed[num] = now - town_intruder_since[num] >= 4
+    set town_intruder_pressure[num] = town_intruder_pressure[num] * distance_threat_mult / Pow(full_threat_distance, distance_threat_exponent)
+    set town_tower_progress[num] = town_intruder_confirmed[num] and IsUnitTower(target) and GetUnitState(target, UNIT_STATE_LIFE) >= GetUnitState(target, UNIT_STATE_MAX_LIFE) * 0.25 and GetUnitState(target, UNIT_STATE_LIFE) - town_intruder_life[num] >= GetUnitState(target, UNIT_STATE_MAX_LIFE) * 0.1
+  endif
+  set target = null
+  set anchor = null
+  set u = null
+endfunction
+
 function UpdateSpecificTownThreat takes integer num returns nothing
   local integer i = 0
   local real dist = 0
@@ -328,6 +466,8 @@ function UpdateSpecificTownThreat takes integer num returns nothing
   if town_count[num] <= 0 or (IsPlayerAlly(Player(town_owner[num]), ai_player) and GetLiveTownDefenseValue(num) < 2) then
     set town_threat[num] = 0
     set town_threat_army[num] = -1
+    call ClearTownIntrusion(num)
+    set town_defense_anchor[num] = null
     return
   endif
   
@@ -335,6 +475,12 @@ function UpdateSpecificTownThreat takes integer num returns nothing
   set y = GetLocationY(town_loc[num])
   set loc = Location(0,0)
   set town_strength = GetLocationTowerStrength(x, y, ver_tower_check_radius) * 2 // Detect any tower rush events
+  if IsPlayerAlly(Player(town_owner[num]), ai_player) then
+    call UpdateTownIntrusion(num)
+    if town_intruder_confirmed[num] then
+      set town_strength = town_strength + town_intruder_pressure[num]
+    endif
+  endif
   loop
     exitwhen i >= army_num
     if army_owner[i] != town_owner[num] and Player(army_owner[i]) != ai_player then
@@ -395,102 +541,108 @@ function UpdateSpecificTownThreat takes integer num returns nothing
   endif
 endfunction
 
+function CanRecallToTown takes integer num, real threshold, real strength returns boolean
+  if num < 0 or num >= town_num then
+    return false
+  endif
+  return town_count[num] > 0 and town_threat[num] > 0 and town_threat[num] <= strength and (town_threat[num] > threshold or town_tower_progress[num])
+endfunction
+
 function UpdateTownThreat takes nothing returns nothing
-  local integer i = lastFreeNum
+  local integer i = 0
   local real accepted_threat_level = LinearInterpolation(atl_time_start, atl_time_end, atl_time_start_val, atl_time_end_val, TimerGetElapsed(tq_timer)) * LinearInterpolation(atl_enemy_start, atl_enemy_end, atl_enemy_start_mult, atl_enemy_end_mult, c_enemy_total)
   local real playerthreat = 0
   local integer enemy_army = -1
-  local boolean has_player_town = false
-  local boolean has_threat_town = false
-  if lastFreeNum == 0 then
-    set next_most_threatened_player_town = -1
-    set next_most_threatened_town = -1
-    set next_most_threatened_enemy_town = -1
+  local integer selected = -1
+  local integer local_town = -1
+  local integer previous_town = most_threatened_town
+  local location defense_target = null
+  local unit intruder = null
+  local real dx = 0
+  local real dy = 0
+  if main_army >= 0 and main_army < army_num then
+    set playerthreat = ApplyFleeStrengthModifier(distance_threat_mult * army_strength[main_army] / Pow(full_threat_distance, distance_threat_exponent), false)
   endif
+  set next_most_threatened_player_town = -1
+  set next_most_threatened_town = -1
+  set next_most_threatened_enemy_town = -1
   loop
     exitwhen i >= town_num
-    if i > 0 and ModuloInteger(i, 10) == 0 then 
-      call Sleep(0.01)  // This can take along time, but this could cause most threatened town to be wrong in other processes, so sleep so at least no other jobs can use this yet
+    if i > 0 and ModuloInteger(i, 10) == 0 then
+      call Sleep(0.01)
     endif
     call UpdateSpecificTownThreat(i)
+    if IsPlayerAlly(Player(town_owner[i]), ai_player) and (Player(town_owner[i]) == ai_player or town_can_tp[i]) then
+      if CanRecallToTown(i, accepted_threat_level * 1.05, playerthreat) or (Player(town_owner[i]) == ai_player and CanRecallToTown(i, accepted_threat_level, playerthreat)) then
+        if selected < 0 or (Player(town_owner[i]) == ai_player and Player(town_owner[selected]) != ai_player) or (town_owner[i] == town_owner[selected] and town_threat[i] > town_threat[selected]) then
+          set selected = i
+        endif
+      endif
+    endif
+    if town_intruder_confirmed[i] and (Player(town_owner[i]) == ai_player or (IsPlayerAlly(Player(town_owner[i]), ai_player) and town_can_tp[i])) then
+      if local_town < 0 or (Player(town_owner[i]) == ai_player and Player(town_owner[local_town]) != ai_player) or (town_owner[i] == town_owner[local_town] and town_threat[i] > town_threat[local_town]) then
+        set local_town = i
+      endif
+    endif
     set i = i + 1
   endloop
-  
-  set playerthreat = ApplyFleeStrengthModifier(distance_threat_mult * army_strength[main_army] / Pow(full_threat_distance, distance_threat_exponent), false) // Converts the players total strength into threat
-  if i >= town_num then
-    set mode = 3
-    set lastFreeNum = 0
-    set most_threatened_player_town = next_most_threatened_player_town
-    set most_threatened_town = next_most_threatened_town
-    set most_threatened_enemy_town = next_most_threatened_enemy_town
-    
-    set has_player_town = most_threatened_player_town >= 0 and town_count[most_threatened_player_town] > 0
-    set has_threat_town = most_threatened_town >= 0 and town_count[most_threatened_town] > 0
-
-    if town_threat[most_threatened_town] > 0 then
-      call Trace("ThreatenedTownThreat:" + Real2Str(town_threat[most_threatened_town]) + " AcceptedThreatLevel:" + Real2Str(accepted_threat_level))
+  set mode = 3
+  set lastFreeNum = 0
+  set most_threatened_player_town = next_most_threatened_player_town
+  set most_threatened_town = next_most_threatened_town
+  set most_threatened_enemy_town = next_most_threatened_enemy_town
+  if selected >= 0 then
+    set town_threatened = true
+    set town_threat_count = 0
+  elseif town_threatened and town_threat_count < 3 and previous_town >= 0 and previous_town < town_num and town_count[previous_town] > 0 and town_threat_army[previous_town] >= 0 and town_threat[previous_town] <= playerthreat then
+    // Preserve army-defense persistence, without prolonging cancelled tower bait.
+    set selected = previous_town
+    set town_threat_count = town_threat_count + 1
+  else
+    set town_threatened = false
+    // A minor intrusion must not redirect a fighting army's future retreat.
+    if home_town >= 0 and home_town < town_num and town_count[home_town] > 0 then
+      set selected = home_town
     endif
-    if town_threat[most_threatened_player_town] > 0 then
-      call Trace("PlayerThreatenedTownThreat:" + Real2Str(town_threat[most_threatened_player_town]) + " AcceptedThreatLevel:" + Real2Str(accepted_threat_level))
+  endif
+  if selected >= 0 then
+    set most_threatened_town = selected
+    call SetCaptainHomeLoc(town_loc[selected])
+    set captain_tp = town_can_tp[selected]
+  else
+    call SetCaptainHomeLoc(home_location)
+    set captain_tp = true
+  endif
+  set defense_target = captain_home
+  if town_threatened and selected >= 0 then
+    if town_intruder_confirmed[selected] then
+      set local_town = selected
     endif
-    if has_player_town and town_threat[most_threatened_player_town] > accepted_threat_level and town_threat[most_threatened_player_town] <= playerthreat then //and town_threat[most_threatened_town] > (I2R(c_ally_total + 1) / c_enemy_total) * town_threat[most_threatened_enemy_town] then
-      set town_threatened = true
-      set town_threat_count = 0
-      set most_threatened_town = most_threatened_player_town
-      set enemy_army = town_threat_army[most_threatened_town]
-      if enemy_army >= 0 then
-        call EnsureSetCaptainHome(army_loc[enemy_army])
-      else
-        call EnsureSetCaptainHome(town_loc[most_threatened_player_town])
+    set enemy_army = town_threat_army[selected]
+    if enemy_army >= 0 and enemy_army < army_num and UnitAlive(town_defense_anchor[selected]) then
+      set dx = GetLocationX(army_loc[enemy_army]) - GetUnitX(town_defense_anchor[selected])
+      set dy = GetLocationY(army_loc[enemy_army]) - GetUnitY(town_defense_anchor[selected])
+      if dx * dx + dy * dy <= full_threat_distance * full_threat_distance then
+        set defense_target = army_loc[enemy_army]
       endif
-      call SetCaptainHomeLoc(town_loc[most_threatened_player_town])
-      set captain_tp = town_can_tp[most_threatened_player_town]
-      //call TraceAll("ARMYTRACK: captain_home from player town " + Int2Str(most_threatened_player_town) + " loc=(" + Real2Str(GetLocationX(captain_home)) + "," + Real2Str(GetLocationY(captain_home)) + ")")
-    elseif has_threat_town and town_threat[most_threatened_town] > accepted_threat_level * 1.05 and town_threat[most_threatened_town] <= playerthreat then
-      set town_threatened = true
-      set town_threat_count = 0
-      set enemy_army = town_threat_army[most_threatened_town]
-      if enemy_army >= 0 then
-        call EnsureSetCaptainHome(army_loc[enemy_army])
-      else
-        call EnsureSetCaptainHome(town_loc[most_threatened_town])
-      endif  
-      call SetCaptainHomeLoc(town_loc[most_threatened_town])
-      set captain_tp = town_can_tp[most_threatened_town]
-      //call TraceAll("ARMYTRACK: captain_home from allied town " + Int2Str(most_threatened_town) + " loc=(" + Real2Str(GetLocationX(captain_home)) + "," + Real2Str(GetLocationY(captain_home)) + ")")
-    elseif town_threatened and town_threat_count < 3 and (has_threat_town or has_player_town) then
-      // persist town threat a bit longer around picked town before standing down
-      set town_threat_count = town_threat_count + 1
-    elseif has_player_town and town_threat[most_threatened_player_town] > 0 and town_threat[most_threatened_player_town] <= playerthreat then
-      set town_threatened = false
-      call EnsureSetCaptainHome(town_loc[most_threatened_player_town])
-      set most_threatened_town = most_threatened_player_town
-      call SetCaptainHomeLoc(town_loc[most_threatened_player_town])
-      set captain_tp = town_can_tp[most_threatened_player_town]
-      //call TraceAll("ARMYTRACK: captain_home settle player town " + Int2Str(most_threatened_player_town) + " loc=(" + Real2Str(GetLocationX(captain_home)) + "," + Real2Str(GetLocationY(captain_home)) + ")")
-    elseif has_threat_town and town_threat[most_threatened_town] > 0 and town_threat[most_threatened_town] <= playerthreat then
-      set town_threatened = false
-      call EnsureSetCaptainHome(town_loc[most_threatened_town])
-      call SetCaptainHomeLoc(town_loc[most_threatened_town])
-      set captain_tp = town_can_tp[most_threatened_town]
-      //call TraceAll("ARMYTRACK: captain_home settle allied town " + Int2Str(most_threatened_town) + " loc=(" + Real2Str(GetLocationX(captain_home)) + "," + Real2Str(GetLocationY(captain_home)) + ")")
-    elseif home_town >= 0 and town_count[home_town] > 0 then
-      set town_threatened = false
-      call EnsureSetCaptainHome(town_loc[home_town]) // Return to known home town
-      call SetCaptainHomeLoc(town_loc[home_town])
-      set captain_tp = town_can_tp[home_town]
-      //call TraceAll("ARMYTRACK: captain_home home_town=" + Int2Str(home_town) + " loc=(" + Real2Str(GetLocationX(captain_home)) + "," + Real2Str(GetLocationY(captain_home)) + ")")
+    endif
+  endif
+  if local_town >= 0 and (not town_threatened or selected == local_town) then
+    set intruder = town_intruder[local_town]
+    if LocalIntrusionRank(intruder, town_defense_anchor[local_town]) > 0 then
+      // Positioning local defenders does not interrupt the assault captain.
+      set defense_target = GetUnitLoc(intruder)
+      call SetDefenseCaptainHome(defense_target)
+      call RemoveLocation(defense_target)
     else
-      set town_threatened = false
-      call EnsureSetCaptainHome(home_location) // Final fallback, just use start location
-      call SetCaptainHomeLoc(home_location)
-      set captain_tp = true
-      //call TraceAll("ARMYTRACK: captain_home fallback home_location loc=(" + Real2Str(GetLocationX(captain_home)) + "," + Real2Str(GetLocationY(captain_home)) + ")")
+      call SetDefenseCaptainHome(captain_home)
     endif
   else
-    set lastFreeNum = i
-    call TQAddJob(1, ARMY_TRACK, 0)
+    // Restore immediately on lost confidence: never chase a withdrawing scout.
+    call SetDefenseCaptainHome(defense_target)
   endif
+  set intruder = null
+  set defense_target = null
 endfunction
 
 function ArmyTrackJob takes nothing returns nothing
