@@ -1,12 +1,12 @@
 // Count work in production JASS; native combat behavior still needs a Warcraft game.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { compile } from './jass.mjs';
+import { compile, expression } from './jass.mjs';
 import { groupNatives } from './warcraft-natives.mjs';
+import { compiledCommon } from './strength-game.mjs';
 
 // Exclude the commented-out older parser, and preserve integer heap division.
-const source = readFileSync(new URL('../../common.eai', import.meta.url), 'utf8')
+const source = compiledCommon('REFORGED')
   .replace(/^\s*\/\/.*$/gm, '').replace(/\bpos\/2/g, 'Math.trunc(pos/2)');
 
 export function performanceGame({ capacity = 8192 } = {}) {
@@ -44,6 +44,9 @@ export function performanceGame({ capacity = 8192 } = {}) {
     GetChatVar: key => key === 'Gold' ? '100' : '',
     GetChatVarB: key => key === 'Ready', GetChatVarR: () => 100, S2R: Number,
   };
+  for (const [, name, value] of source.matchAll(/^\s*constant integer (o\w+)\s+= (.+)$/gm)) {
+    state[name] = Number(expression(value.trim()));
+  }
   // Strict bounds expose JASS array overflow instead of silently growing a JS array.
   for (const suffix of ['time', 'jid', 'par', 'unit_par', 'group_par', 'unit_par2']) {
     const values = Array(capacity).fill(suffix.includes('par') && suffix !== 'par' ? null : 0);

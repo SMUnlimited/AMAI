@@ -5749,6 +5749,9 @@ endfunction
 
 //============================================================================
 function GetUnitStrengthEx takes unit u returns integer
+  if IsUnitType(u, UNIT_TYPE_SUMMONED) then
+    return GetUnitLevel(u) // Temporary threats still matter in combat, even without a table entry or food cost.
+  endif
   if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then
     if IsUnitType(u, UNIT_TYPE_HERO) then
       return GetHeroStrength(u)
@@ -5863,10 +5866,30 @@ endfunction
 #INCLUDETABLE <$VER$\Strengths.txt>
 function GetPlayer%1Strength takes player p returns real
   local real strength = 0
+  local group g = CreateGroup()
+  local unit u = null
+  local integer unitid = 0
   #DEFINE $STRENGTHNUM$ %row
   #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND %#OEVAL{16+$STRENGTHNUM$} != 0
   set strength = strength + %#OEVAL{16+$STRENGTHNUM$} * GetPlayerUnitTypeCount(p, o%1 )
   #ENDINCLUDE
+  call GroupEnumUnitsOfPlayer(g, p, null)
+  loop
+    set u = FirstOfGroup(g)
+    exitwhen u == null
+    // Filter instances, not types: Animate Dead can summon ordinary army units too.
+    if UnitAlive(u) and IsUnitType(u, UNIT_TYPE_SUMMONED) then
+      set unitid = GetUnitTypeId(u)
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND %#OEVAL{16+$STRENGTHNUM$} != 0
+      if unitid == o%1 then
+        set strength = strength - %#OEVAL{16+$STRENGTHNUM$}
+      endif
+  #ENDINCLUDE
+    endif
+    call GroupRemoveUnit(g, u)
+  endloop
+  call DestroyGroup(g)
+  set g = null
   #DEFINE $CSTRENGTH$ %1
   #INCLUDETABLE <$VER$\StrengthPredictionRules.txt> #EFR #COND '%1' eq '$CSTRENGTH$'
   if ai_time >= %2 and ((%3 >= 0 and ai_time <= %3) or %3 < 0) and %4 then
@@ -13694,6 +13717,10 @@ function AttackGroupAddUnknown takes nothing returns nothing
   local integer id = 0
   local integer i = 0
   call FlushChildHashtable(attacktable, 0)
+  // Respect explicit exclusions before adding captured or custom troops.
+  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND "%11" ne "true"
+  call SaveBoolean(attacktable, 0, o%1, true)
+  #ENDINCLUDE
   loop
     exitwhen i >= attack_length
     call SaveBoolean(attacktable, 0, old_id[attack_units[i]], true)
