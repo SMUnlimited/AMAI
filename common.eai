@@ -5699,6 +5699,9 @@ endfunction
 // (AMAI) Get Strength of a Player
 //==========================================================================
 function GetPlayerStrengthHandicap takes player p returns real
+  if GetPlayerId(p) >= GetBJMaxPlayers() then
+    return 1.0
+  endif
   return SquareRoot(GetPlayerHandicap(p))
 endfunction
 
@@ -5794,10 +5797,14 @@ function GetPlayerStrength takes player p returns real
 // #ENDINCLUDE
 //  return R2I((I2R(GetPlayerState(p, PLAYER_STATE_RESOURCE_FOOD_USED) - peon_count)*2 + GetPlayerHeroStrengthMod(p) ) * GetPlayerStrengthHandicap(p))
 
-  local group g = CreateGroup()
+  local group g = null
   local unit u = null
   local real sum = 0
 
+  if GetPlayerId(p) >= GetBJMaxPlayers() then
+    return 0.0
+  endif
+  set g = CreateGroup()
   call GroupEnumUnitsOfPlayer(g, p, null)
   loop
     set u = FirstOfGroup(g)
@@ -5819,6 +5826,9 @@ endfunction
 //============================================================================
 function GetUnexactPlayerStrength takes player p returns integer
   local integer pid = GetPlayerId(p)
+  if pid >= GetBJMaxPlayers() then
+    return 0
+  endif
   if p_str_cache_timeout[pid] < ai_time then
     if difficulty == HARD then
       set p_str_cache[pid] = Max(0,R2I(GetPlayerStrength(p)))
@@ -14098,9 +14108,11 @@ endfunction
 
 function SetChatVarsAttack takes unit u returns nothing
   local player p = GetOwningPlayer(u)
-  call SetChatVar("TargetRace", race_name[player_race[GetPlayerId(p)]])
-  call SetChatVar("TargetColor", ColorText(GetPlayerColor(p)))
-  call SetChatVarR("TargetStrength", GetPlayerStrength(p))
+  if GetPlayerId(p) < GetBJMaxPlayers() then
+    call SetChatVar("TargetRace", race_name[player_race[GetPlayerId(p)]])
+    call SetChatVar("TargetColor", ColorText(GetPlayerColor(p)))
+    call SetChatVarR("TargetStrength", GetPlayerStrength(p))
+  endif
   set p = null
 endfunction
 
@@ -14709,13 +14721,19 @@ endfunction
 
 //============================================================================
 function GetRace takes player p returns integer
+  if GetPlayerId(p) >= GetBJMaxPlayers() then
+    return 0
+  endif
   return player_race[GetPlayerId(p)]
 endfunction
 
 //============================================================================
 function GetRaceAggression takes unit target returns integer
-  local integer i = Max((GetRace(GetOwningPlayer(target)) - 1) * tiernum + tier - 1,0)
-  return race_aggression[i]
+  local integer raceId = GetRace(GetOwningPlayer(target))
+  if raceId == 0 then
+    return 0
+  endif
+  return race_aggression[Max((raceId - 1) * tiernum + tier - 1,0)]
 endfunction
 
 //============================================================================
