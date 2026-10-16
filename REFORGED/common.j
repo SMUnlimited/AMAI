@@ -1945,6 +1945,28 @@ globals
     constant abilityreallevelfield ABILITY_RLF_FULL_DAMAGE_AMOUNT_NVC5                           = ConvertAbilityRealLevelField('Nvc5')
     constant abilityreallevelfield ABILITY_RLF_HALF_DAMAGE_FACTOR                                = ConvertAbilityRealLevelField('Nvc6')
     constant abilityreallevelfield ABILITY_RLF_INTERVAL_BETWEEN_PULSES                           = ConvertAbilityRealLevelField('Tau5')
+    constant abilityreallevelfield ABILITY_RLF_ALLY_HEALING_PER_SECOND                           = ConvertAbilityRealLevelField('hcr1')
+    constant abilityreallevelfield ABILITY_RLF_ENEMY_DAMAGE_PER_SECOND                           = ConvertAbilityRealLevelField('hcr2')
+    constant abilityreallevelfield ABILITY_RLF_ENEMY_HEALING_REDUCTION_PERCENT                   = ConvertAbilityRealLevelField('hcr3')
+    constant abilityreallevelfield ABILITY_RLF_ALLY_HEALING_BASE                                 = ConvertAbilityRealLevelField('hcl1')
+    constant abilityreallevelfield ABILITY_RLF_HEALING_PER_DEBUFF_REMOVED                        = ConvertAbilityRealLevelField('hcl2')
+    constant abilityreallevelfield ABILITY_RLF_ALLY_BUFF_DURATION                                = ConvertAbilityRealLevelField('hcl3')
+    constant abilityreallevelfield ABILITY_RLF_ALLY_DAMAGE_BONUS_PERCENT_BASE                    = ConvertAbilityRealLevelField('hcl4')
+    constant abilityreallevelfield ABILITY_RLF_ALLY_DAMAGE_BONUS_PERCENT_PER_DEBUFF_REMOVED      = ConvertAbilityRealLevelField('hcl5')
+    constant abilityreallevelfield ABILITY_RLF_ENEMY_STUN_DURATION                               = ConvertAbilityRealLevelField('hcl6')
+    constant abilityreallevelfield ABILITY_RLF_DAMAGE_TO_SUMMONS                                 = ConvertAbilityRealLevelField('hcl7')
+    constant abilityreallevelfield ABILITY_RLF_ALLY_PERCENT_MAGIC_RESIST_INCREASE                = ConvertAbilityRealLevelField('hsa1')
+    constant abilityreallevelfield ABILITY_RLF_ALLY_PERCENT_HEALING_INCREASE                     = ConvertAbilityRealLevelField('hsa2')
+    constant abilityreallevelfield ABILITY_RLF_ALLY_PERCENT_COOLDOWN_DECREASE                    = ConvertAbilityRealLevelField('hsa3')
+    constant abilityreallevelfield ABILITY_RLF_ENEMY_PERCENT_MAGIC_RESIST_DECREASE               = ConvertAbilityRealLevelField('hsa4')
+    constant abilityreallevelfield ABILITY_RLF_ENEMY_PERCENT_HEALING_DECREASE                    = ConvertAbilityRealLevelField('hsa5')
+    constant abilityreallevelfield ABILITY_RLF_ENEMY_PERCENT_COOLDOWN_INCREASE                   = ConvertAbilityRealLevelField('hsa6')
+    constant abilityreallevelfield ABILITY_RLF_ALLY_FLAT_MANA_REGEN                              = ConvertAbilityRealLevelField('hsa7')
+    constant abilityreallevelfield ABILITY_RLF_DASH_SPEED                                        = ConvertAbilityRealLevelField('chr1')
+    constant abilityreallevelfield ABILITY_RLF_DASH_DAMAGE                                       = ConvertAbilityRealLevelField('chr2')
+    constant abilityreallevelfield ABILITY_RLF_BONUS_CRITICAL_STRIKE                             = ConvertAbilityRealLevelField('chr3')
+    constant abilityreallevelfield ABILITY_RLF_NORMAL_BONUS_CRITICAL_STRIKE_DURATION             = ConvertAbilityRealLevelField('chr4')
+    constant abilityreallevelfield ABILITY_RLF_HERO_BONUS_CRITICAL_STRIKE_DURATION               = ConvertAbilityRealLevelField('chr5')
 
     constant abilitybooleanlevelfield ABILITY_BLF_PERCENT_BONUS_HAB2            = ConvertAbilityBooleanLevelField('Hab2')
     constant abilitybooleanlevelfield ABILITY_BLF_USE_TELEPORT_CLUSTERING_HMT3  = ConvertAbilityBooleanLevelField('Hmt3')
@@ -2010,6 +2032,7 @@ globals
     constant abilitybooleanlevelfield ABILITY_BLF_ALLOW_ON_ANY_PLAYER_SLOT      = ConvertAbilityBooleanLevelField('sla2')
     constant abilitybooleanlevelfield ABILITY_BLF_DISABLE_OTHER_ABILITIES       = ConvertAbilityBooleanLevelField('Ncl5')
     constant abilitybooleanlevelfield ABILITY_BLF_ALLOW_BOUNTY                  = ConvertAbilityBooleanLevelField('Ntm4')
+    constant abilitybooleanlevelfield ABILITY_BLF_REMOVE_BUFFS_ON_ABILITY_START = ConvertAbilityBooleanLevelField('chr6')
 
     constant abilitystringlevelfield ABILITY_SLF_ICON_NORMAL                    = ConvertAbilityStringLevelField('aart')
     constant abilitystringlevelfield ABILITY_SLF_CASTER                         = ConvertAbilityStringLevelField('acat')
@@ -2727,9 +2750,11 @@ constant native GetManipulatedItem  takes nothing returns item
 
 // EVENT_PLAYER_UNIT_EQUIP_ITEM
 constant native GetEquippedItem     takes nothing returns item
+constant native BlzGetEquippedItem     takes nothing returns item
 
 // EVENT_PLAYER_UNIT_UNEQUIP_ITEM
 constant native GetUnequippedItem   takes nothing returns item
+constant native BlzGetUnequippedItem   takes nothing returns item
 
 // For EVENT_PLAYER_UNIT_PICKUP_ITEM, returns the item absorbing the picked up item in case it is stacking.
 // Returns null if the item was a powerup and not a stacking item.
@@ -2931,6 +2956,7 @@ native          GetItemX        takes item i returns real
 native          GetItemY        takes item i returns real
 native          SetItemPosition takes item i, real x, real y returns nothing
 native          SetItemColor takes item whichItem, playercolor whichColor returns nothing
+native          BlzSetItemColor takes item whichItem, playercolor whichColor returns nothing
 native          SetItemDropOnDeath  takes item whichItem, boolean flag returns nothing
 native          SetItemDroppable takes item i, boolean flag returns nothing
 native          SetItemPawnable takes item i, boolean flag returns nothing
@@ -2939,6 +2965,8 @@ native          SetItemInvulnerable takes item whichItem, boolean flag returns n
 native          IsItemInvulnerable  takes item whichItem returns boolean
 native          IsItemEquipped  takes item whichItem returns boolean
 native          IsItemInBag     takes item whichItem returns boolean
+native          BlzIsItemEquipped  takes item whichItem returns boolean
+native          BlzIsItemInBag     takes item whichItem returns boolean
 native          SetItemVisible  takes item whichItem, boolean show returns nothing
 native          IsItemVisible   takes item whichItem returns boolean
 native          IsItemOwned     takes item whichItem returns boolean
@@ -2959,6 +2987,8 @@ native          GetItemUserData takes item whichItem returns integer
 native          SetItemUserData takes item whichItem, integer data returns nothing
 native          GetItemEquipmentType takes item whichItem returns equipmentType
 native          GetItemTag           takes item whichItem returns itemTag
+native          BlzGetItemEquipmentType takes item whichItem returns equipmentType
+native          BlzGetItemTag           takes item whichItem returns itemTag
 
 //============================================================================
 // Unit API
@@ -3068,17 +3098,22 @@ native          GetUnitPointValueByType takes integer unitType returns integer
 
 native          UnitAddItem             takes unit whichUnit, item whichItem returns boolean
 native          UnitEquipItem           takes unit whichUnit, item whichItem returns boolean
+native          BlzUnitEquipItem           takes unit whichUnit, item whichItem returns boolean
 native          UnitAddItemById         takes unit whichUnit, integer itemId returns item
 native          UnitAddItemToSlotById   takes unit whichUnit, integer itemId, integer itemSlot returns boolean
 native          UnitRemoveItem          takes unit whichUnit, item whichItem returns nothing
 native          UnitRemoveItemFromSlot  takes unit whichUnit, integer itemSlot returns item
 native          UnitUnequipItem         takes unit whichUnit, item whichItem returns nothing
+native          BlzUnitUnequipItem         takes unit whichUnit, item whichItem returns nothing
 native          UnitUnequipItemFromSlot takes unit whichUnit, loadoutslot slot returns item
+native          BlzUnitUnequipItemFromSlot takes unit whichUnit, loadoutslot slot returns item
 native          UnitHasItem             takes unit whichUnit, item whichItem returns boolean
 native          UnitHasItemBagged       takes unit whichUnit, item whichItem returns boolean
+native          BlzUnitHasItemBagged       takes unit whichUnit, item whichItem returns boolean
 native          UnitItemInSlot          takes unit whichUnit, integer itemSlot returns item
 native          UnitInventorySize       takes unit whichUnit returns integer
 native          UnitExtendedInventorySize takes unit whichUnit returns integer
+native          BlzUnitExtendedInventorySize takes unit whichUnit returns integer
 
 native          UnitItemInBagSlot               takes unit whichUnit, integer itemSlot returns item
 native          UnitItemInEquipmentSlot         takes unit whichUnit, loadoutslot itemSlot returns item
@@ -3087,6 +3122,13 @@ native          UnitHasLoadoutSlotEmpty         takes unit whichUnit, loadoutslo
 native          UnitHasAnyItemEquiped           takes unit whichUnit returns boolean
 native          UnitHasItemEquipmentOfType      takes unit whichUnit, equipmentType equipmentId returns boolean
 native          UnitCanEquipItemOfEquipmentType takes unit whichUnit, equipmentType equipmentId returns boolean
+native          BlzUnitItemInBagSlot               takes unit whichUnit, integer itemSlot returns item
+native          BlzUnitItemInEquipmentSlot         takes unit whichUnit, loadoutslot itemSlot returns item
+native          BlzUnitHasItemEquipped             takes unit whichUnit, item whichItem returns boolean
+native          BlzUnitHasLoadoutSlotEmpty         takes unit whichUnit, loadoutslot itemSlot returns boolean
+native          BlzUnitHasAnyItemEquipped           takes unit whichUnit returns boolean
+native          BlzUnitHasItemEquipmentOfType      takes unit whichUnit, equipmentType equipmentId returns boolean
+native          BlzUnitCanEquipItemOfEquipmentType takes unit whichUnit, equipmentType equipmentId returns boolean
 
 native          UnitDropItemPoint       takes unit whichUnit, item whichItem, real x, real y returns boolean
 native          UnitDropItemSlot        takes unit whichUnit, item whichItem, integer slot returns boolean
@@ -3172,6 +3214,7 @@ native UnitSetUsesAltIcon           takes unit whichUnit, boolean flag returns n
 
 native UnitDamagePoint              takes unit whichUnit, real delay, real radius, real x, real y, real amount, boolean attack, boolean ranged, attacktype attackType, damagetype damageType, weapontype weaponType returns boolean
 native UnitDamageTarget             takes unit whichUnit, widget target, real amount, boolean attack, boolean ranged, attacktype attackType, damagetype damageType, weapontype weaponType returns boolean
+native BlzUnitHeal                  takes unit whichUnit, unit source, real life, boolean isItem, boolean applyStatBonuses returns real
 
 native IssueImmediateOrder          takes unit whichUnit, string order returns boolean
 native IssueImmediateOrderById      takes unit whichUnit, integer order returns boolean
@@ -3224,6 +3267,8 @@ native SetUnitTypeSlots             takes unit whichUnit, integer slots returns 
 
 native GetUnitUserData              takes unit whichUnit returns integer
 native SetUnitUserData              takes unit whichUnit, integer data returns nothing
+
+native BlzResetUnitTalents          takes unit whichUnit returns nothing
 
 //============================================================================
 // Player API
@@ -3524,6 +3569,7 @@ native ChooseRandomNPBuilding   takes nothing returns integer
 native ChooseRandomItem         takes integer level returns integer
 native ChooseRandomItemEx       takes itemtype whichType, integer level returns integer
 native ChooseRandomItemExWithFilter takes itemtype whichType, integer level, equipmentType whichEquipmentType, itemTag whichTag returns integer
+native ChooseRandomItemExWithFilterAndIncludes takes itemtype whichType, integer level, equipmentType whichEquipmentType, itemTag whichTag, boolean includeInvalidMorphs, boolean includeNonPickRandom returns integer
 native SetRandomSeed            takes integer seed returns nothing
 
 //============================================================================
@@ -3613,6 +3659,7 @@ native EnableMinimapFilterButtons   takes boolean enableAlly, boolean enableCree
 native EnableDragSelect             takes boolean state, boolean ui returns nothing
 native EnablePreSelect              takes boolean state, boolean ui returns nothing
 native EnableSelect                 takes boolean state, boolean ui returns nothing
+native BlzGetHUDScale               takes nothing returns real
 
 //============================================================================
 // Trackable API
@@ -3770,6 +3817,8 @@ native SetCameraFieldControlledByInput takes camerafield whichField, boolean con
 native GetCameraFieldControlledByInput takes camerafield whichField returns boolean
 native SetCameraTargetController    takes unit whichUnit, real xoffset, real yoffset, boolean inheritOrientation returns nothing
 native SetCameraOrientController    takes unit whichUnit, real xoffset, real yoffset returns nothing
+native BlzGetCameraAllowsHotkeyTargetLock takes nothing returns boolean
+native BlzSetCameraAllowsHotkeyTargetLock takes boolean allows returns nothing
 native BlzCameraSetCameraType       takes integer cameraType returns nothing
 native BlzCameraGetCameraType       takes nothing returns integer
 
@@ -3885,6 +3934,7 @@ native EndThematicMusic             takes nothing returns nothing
 native SetMusicVolume               takes integer volume returns nothing
 native SetMusicPlayPosition         takes integer millisecs returns nothing
 native SetThematicMusicVolume       takes integer volume returns nothing
+native BlzSetThematicMusicAbsoluteVolume takes integer volume returns nothing
 native SetThematicMusicPlayPosition takes integer millisecs returns nothing
 
 // other music and sound calls
@@ -3929,6 +3979,7 @@ native AddSpecialEffect             takes string modelName, real x, real y retur
 native AddSpecialEffectLoc          takes string modelName, location where returns effect
 native AddSpecialEffectTarget       takes string modelName, widget targetWidget, string attachPointName returns effect
 native DestroyEffect                takes effect whichEffect returns nothing
+native BlzRemoveEffect              takes effect whichEffect returns nothing
 
 native AddSpellEffect               takes string abilityString, effecttype t, real x, real y returns effect
 native AddSpellEffectLoc            takes string abilityString, effecttype t,location where returns effect
@@ -3956,7 +4007,7 @@ native GetAbilitySoundById          takes integer abilityId, soundtype t returns
 //============================================================================
 // Terrain API
 //
-native GetTerrainCliffLevel         takes real x, real y returns integer
+native GetTerrainCliffLevel         	takes real x, real y returns integer
 native SetWaterBaseColor            	takes integer red, integer green, integer blue, integer alpha returns nothing
 native SetHDWaterParams             	takes integer red, integer green, integer blue, boolean useColor, integer vertexDisplacement, integer minOpacity, integer maxOpacity, integer reflectivity, integer emissivity, integer edgeSoftness, integer waveStrength returns nothing
 native SetHDWaterParamsEx           	takes integer red, integer green, integer blue, boolean override, integer vertexDisplacement, integer minOpacity, integer maxOpacity, integer reflectivity, integer emissivity, integer edgeSoftness, integer waveStrength, integer envMapStrength returns nothing
@@ -3970,13 +4021,13 @@ native BlzSetHDWaterEmissivity  		takes integer emissivity returns nothing
 native BlzSetHDWaterEdgeSoftness    	takes integer edgeSoftness returns nothing
 native BlzSetHDWaterWaveStrength 		takes integer waveStrength returns nothing
 native BlzSetHDWaterEnvMapStrength  		takes integer envMapStrengthy returns nothing
-native SetWaterDeforms              takes boolean val returns nothing
-native GetTerrainType               takes real x, real y returns integer
-native GetTerrainVariance           takes real x, real y returns integer
-native SetTerrainType               takes real x, real y, integer terrainType, integer variation, integer area, integer shape returns nothing
-native IsTerrainPathable            takes real x, real y, pathingtype t returns boolean
+native SetWaterDeforms              	takes boolean val returns nothing
+native GetTerrainType               	takes real x, real y returns integer
+native GetTerrainVariance           	takes real x, real y returns integer
+native SetTerrainType               	takes real x, real y, integer terrainType, integer variation, integer area, integer shape returns nothing
+native IsTerrainPathable            	takes real x, real y, pathingtype t returns boolean
 native BlzIsTerrainPathableEx       	takes real x, real y, pathingtype t returns boolean
-native SetTerrainPathable           takes real x, real y, pathingtype t, boolean flag returns nothing
+native SetTerrainPathable           	takes real x, real y, pathingtype t, boolean flag returns nothing
 
 //============================================================================
 // Image API
@@ -4016,7 +4067,7 @@ native IsPointBlighted          takes real x, real y returns boolean
 //============================================================================
 // Doodad API
 //
-native SetDoodadAnimation       takes real x, real y, real radius, integer doodadID, boolean nearestOnly, string animName, boolean animRandom returns nothing
+native SetDoodadAnimation           takes real x, real y, real radius, integer doodadID, boolean nearestOnly, string animName, boolean animRandom returns nothing
 native SetDoodadAnimationRect       takes rect r, integer doodadID, string animName, boolean animRandom returns nothing
 native BlzSetSingleDoodadAnimation  takes integer index, string animName, boolean animRandom returns nothing
 native SetDoodadColor               takes real x, real y, real radius, integer doodadID, boolean nearestOnly, playercolor whichColor returns nothing
