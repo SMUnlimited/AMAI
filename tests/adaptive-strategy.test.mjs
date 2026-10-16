@@ -8,12 +8,15 @@ for (const version of ['REFORGED', 'TFT']) {
     for (const race of ['Human', 'Orc', 'Undead', 'Elf']) {
       it('Given ' + race + ' at tier two, when its source counter registrations run, then eligible anti-air units receive bounded targets', () => {
         const game = adaptiveGame({ version, race });
+        game.state.chatting = true;
         game.threat('air', 20);
 
         game.registerRaceCounters();
 
         assert.ok(game.targets().length > 0);
         assert.ok(game.targets().length <= 2);
+        assert.equal(game.state.GetCurrentDynamicReport(), ' ' + game.state.chat_dynamic_counter + ' air');
+        assert.equal(game.state.chat_strategy, 'My strategy.' + game.state.GetCurrentDynamicReport());
         for (const target of game.targets()) {
           assert.ok(game.state.adaptive_weight_air[game.id(target.name)] > 0);
           assert.equal(game.state.AdaptiveCandidateValid(game.id(target.name)), true);
@@ -190,15 +193,53 @@ describe('Reinforcements after strategy completion', () => {
 });
 
 describe('Adaptive debug text and strategy chat', () => {
-  it('Given adaptation has not planned yet, when reading the debug and chat reports, then both identify adaptive planning', () => {
+  it('Given adaptation has not planned yet, when reading the debug and chat reports, then only debug text identifies adaptive planning', () => {
     const game = adaptiveGame();
 
     assert.equal(game.state.GetCounterDebugReport(), 'adaptive counters: planning');
-    assert.equal(game.state.GetCurrentDynamicReport(), ' adaptive counters: planning');
+    assert.equal(game.state.GetCurrentDynamicReport(), '');
   });
 
   for (const version of ['REFORGED', 'TFT']) {
-    it('Given ' + version + ' faces mixed threats, when publishing its counter plan, then debug text and queued strategy chat include both types and their targets', () => {
+    it('Given ' + version + ' uses the same unit targets for air and heavy armor, when the threat changes, then queued chat updates its category', () => {
+      const game = adaptiveGame({ version });
+      game.state.chatting = true;
+      game.register('air', 'RIFLEMAN');
+      game.register('heavyarmor', 'RIFLEMAN');
+      game.threat('air', 8);
+      game.plan();
+      const targets = game.targets();
+      const debugReport = game.state.GetCounterDebugReport();
+      assert.equal(game.state.GetCurrentDynamicReport(), ' ' + game.state.chat_dynamic_counter + ' air');
+
+      game.threat('air', 0);
+      game.threat('heavyarmor', 8);
+      game.advance(15);
+      game.plan({ force: false });
+
+      assert.deepEqual(game.targets(), targets);
+      assert.equal(game.state.GetCounterDebugReport(), debugReport);
+      assert.equal(game.state.GetCurrentDynamicReport(), ' ' + game.state.chat_dynamic_counter + ' heavyarmor');
+      assert.equal(game.state.chat_strategy, 'My strategy.' + game.state.GetCurrentDynamicReport());
+    });
+
+    it('Given ' + version + ' cannot counter its largest air threat, when selecting heavy-armor counters, then chat names heavy armor', () => {
+      const game = adaptiveGame({ version });
+      game.state.chatting = true;
+      game.register('air', 'RIFLEMAN');
+      game.block('RIFLEMAN');
+      game.register('heavyarmor', 'PRIEST');
+      game.threat('air', 20);
+      game.threat('heavyarmor', 8);
+
+      game.plan();
+
+      assert.deepEqual(game.targets().map(unit => unit.name), ['PRIEST']);
+      assert.equal(game.state.GetCurrentDynamicReport(), ' ' + game.state.chat_dynamic_counter + ' heavyarmor');
+      assert.equal(game.state.chat_strategy, 'My strategy.' + game.state.GetCurrentDynamicReport());
+    });
+
+    it('Given ' + version + ' faces mixed threats, when publishing its counter plan, then debug text lists unit targets and strategy chat names the threat category', () => {
       const game = adaptiveGame({ version });
       game.state.chatting = true;
       game.own('FOOTMAN', 20);
@@ -211,14 +252,15 @@ describe('Adaptive debug text and strategy chat', () => {
 
       for (const target of game.targets()) {
         assert.ok(game.state.GetCounterDebugReport().includes(target.name + ' x' + target.quantity));
-        assert.ok(game.state.chat_strategy.includes(target.name + ' x' + target.quantity));
+        assert.equal(game.state.chat_strategy.includes(target.name), false);
       }
       assert.ok(game.state.GetCounterDebugReport().startsWith('adaptive counters: '));
+      assert.equal(game.state.GetCurrentDynamicReport(), ' ' + game.state.chat_dynamic_counter + ' air');
       assert.equal(game.state.chat_strategy, 'My strategy.' + game.state.GetCurrentDynamicReport());
     });
   }
 
-  it('Given an announced air counter, when the enemy transitions to heavy armor, then the queued strategy message replaces the obsolete unit choice', () => {
+  it('Given an announced air counter, when the enemy transitions to heavy armor, then the queued strategy message names the new threat category', () => {
     const game = adaptiveGame();
     game.state.chatting = true;
     game.own('FOOTMAN', 20);
@@ -232,12 +274,13 @@ describe('Adaptive debug text and strategy chat', () => {
     game.advance(15);
     game.plan({ force: false });
 
-    assert.ok(game.state.chat_strategy.includes('PRIEST x'));
+    assert.equal(game.state.GetCurrentDynamicReport(), ' ' + game.state.chat_dynamic_counter + ' heavyarmor');
+    assert.equal(game.state.chat_strategy.includes('PRIEST'), false);
     assert.equal(game.state.chat_strategy.includes('RIFLEMAN'), false);
     assert.equal(game.state.GetCounterDebugReport().includes('RIFLEMAN'), false);
   });
 
-  it('Given no counter gaps, when ordinary reinforcement production starts, then the reports describe reinforcements instead of a stale threat category', () => {
+  it('Given no counter gaps, when ordinary reinforcement production starts, then debug text describes reinforcements and chat omits counter details', () => {
     const game = adaptiveGame({ food: 80 });
     game.state.chatting = true;
     game.register('air', 'RIFLEMAN');
@@ -247,7 +290,8 @@ describe('Adaptive debug text and strategy chat', () => {
     game.build();
 
     assert.equal(game.state.GetCounterDebugReport(), 'adaptive reinforcements: RIFLEMAN');
-    assert.equal(game.state.chat_strategy, 'My strategy. adaptive reinforcements: RIFLEMAN');
+    assert.equal(game.state.GetCurrentDynamicReport(), '');
+    assert.equal(game.state.chat_strategy, '');
   });
 
   it('Given an air threat without any eligible counter, when planning, then the report explains the lack of eligible units', () => {
@@ -287,7 +331,7 @@ describe('Adaptive debug text and strategy chat', () => {
     assert.equal(game.state.chat_strategy, '');
   });
 
-  it('Given the native object-name lookup returns an AI profile name, when reporting counters, then both debug text and strategy chat retain the registered unit name', () => {
+  it('Given the native object-name lookup returns an AI profile name, when reporting counters, then debug text retains the registered unit name and chat names the threat category', () => {
     const game = adaptiveGame();
     game.state.chatting = true;
     game.state.GetObjectName = () => 'Aggressive Orc profile';
@@ -297,7 +341,8 @@ describe('Adaptive debug text and strategy chat', () => {
     game.plan();
 
     assert.ok(game.state.GetCounterDebugReport().includes('RIFLEMAN x'));
-    assert.ok(game.state.chat_strategy.includes('RIFLEMAN x'));
+    assert.equal(game.state.GetCurrentDynamicReport(), ' ' + game.state.chat_dynamic_counter + ' air');
+    assert.equal(game.state.chat_strategy.includes('RIFLEMAN'), false);
     assert.equal(game.state.GetCounterDebugReport().includes('Aggressive Orc profile'), false);
     assert.equal(game.state.chat_strategy.includes('Aggressive Orc profile'), false);
     assert.equal(game.state.GetCounterDebugReport().includes('Counter:'), false);

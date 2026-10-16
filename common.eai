@@ -1146,6 +1146,7 @@ globals
     integer adaptive_reserved_food = 0
     integer adaptive_reinforcement_unit = 0
     string adaptive_report = ""
+    string adaptive_chat_report = ""
     #INCLUDETABLE <$VER$\Strengths.txt>
     integer array dyanti_%1
     integer totalanti_%1 = 0
@@ -3612,12 +3613,6 @@ function GetCounterDebugReport takes nothing returns string
 endfunction
 
 function GetCurrentDynamicReport takes nothing returns string
-  if AdaptiveCountersEnabled() then
-    if adaptive_report == "" then
-      return " " + ApplyTrans("Adaptive planning")
-    endif
-    return " " + adaptive_report
-  endif
   if strengthtext[chosen_counter] != null and no_counter == false then 
     return " " + chat_dynamic_counter + " " + ApplyTrans(strengthtext[chosen_counter])
   endif
@@ -3703,13 +3698,16 @@ endfunction
 // Cache only published plans, so chat readers cannot observe a partially allocated army.
 function RefreshAdaptiveReport takes nothing returns nothing
   local string report = FormatAdaptiveCounterReport()
-  if report != adaptive_report then
-    set adaptive_report = report
+  local string chat_report = GetCurrentDynamicReport()
+  set adaptive_report = report
+  if chat_report != adaptive_chat_report then
+    set adaptive_chat_report = chat_report
     if chatting then
-      call QueueStrategy(GetCurrentStrategyReport() + GetCurrentDynamicReport())
+      call QueueStrategy(GetCurrentStrategyReport() + chat_report)
     endif
   endif
   set report = null
+  set chat_report = null
 endfunction
 
 //============================================================================
@@ -11009,6 +11007,7 @@ function ClearAdaptiveCounters takes nothing returns nothing
   set adaptive_reserved_food = 0
   set adaptive_reinforcement_unit = 0
   set adaptive_report = ""
+  set adaptive_chat_report = ""
   set adaptive_active = false
   set adaptive_force_refresh = true
 endfunction
@@ -11102,13 +11101,8 @@ function RefreshAdaptiveCounters takes integer ceiling returns nothing
   set adaptive_budget = Min(adaptive_budget, Max(0, Min(ceiling, ver_food_limit)))
   #INCLUDETABLE <$VER$\Strengths.txt>
   set adaptive_need_%1 = RMax(0, adaptive_need_%1 - adaptive_cover_%1)
-  if adaptive_need_%1 > largest_need then
-    set largest_need = adaptive_need_%1
-    set chosen_counter = #EVAL{%row-1}
-  endif
   call Trace("Adaptive unmet %1: " + Real2Str(adaptive_need_%1))
   #ENDINCLUDE
-  set no_counter = largest_need <= 0
   set adaptive_selected_count = 0
   set adaptive_selected[0] = 0
   set adaptive_selected[1] = 0
@@ -11149,6 +11143,13 @@ function RefreshAdaptiveCounters takes integer ceiling returns nothing
     set adaptive_target[best] = adaptive_target[best] + 1
     set budget_left = budget_left - food
     set allocations = allocations + 1
+    #INCLUDETABLE <$VER$\Strengths.txt>
+    // Announce only a threat that an allocated counter actually addresses.
+    if adaptive_max_%1 > 0 and adaptive_weight_%1[best] > 0 and adaptive_need_%1 > largest_need then
+      set largest_need = adaptive_need_%1
+      set chosen_counter = #EVAL{%row-1}
+    endif
+    #ENDINCLUDE
     if adaptive_target[best] > adaptive_have[best] then
       #INCLUDETABLE <$VER$\Strengths.txt>
       if adaptive_max_%1 > 0 then
@@ -11161,7 +11162,7 @@ function RefreshAdaptiveCounters takes integer ceiling returns nothing
     endif
   endloop
   set chosen_counter_unit = adaptive_selected[0]
-  set no_counter = no_counter or adaptive_selected_count == 0
+  set no_counter = largest_need <= 0 or adaptive_selected_count == 0
   set adaptive_active = true
   set adaptive_force_refresh = false
   set adaptive_next_refresh = TimerGetElapsed(tq_timer) + 15 * sleep_multiplier
