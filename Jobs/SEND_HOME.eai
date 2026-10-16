@@ -52,6 +52,8 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
   local integer enemystrength = 0
   local unit otherhero = null
   local item it = null
+  local boolean ward_recovery = false
+  local real home_distance = 0
 
   call DisplayToAllJobDebug("SEND_HOME Job")
 
@@ -89,6 +91,7 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
   call DisplayToAllJobDebug("SEND_HOME Starting check")
 
   if GetUnitState(u, UNIT_STATE_LIFE) >= GetUnitState(u, UNIT_STATE_MAX_LIFE) * (I2R(60)/100) and GetUnitCurrentOrder(u) != OrderId("cannibalize") then
+    call GroupRemoveUnit(ward_recovery_patients, u)
     call CreateDebugTag("SEND_HOME Healed", 10, u, 3.00, 1.50)	
     if shop_ordered and shop_sent == u then
       call EndBuyItemJob(false)
@@ -140,7 +143,9 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
         call TQAddUnitJob(2, SEND_HOME, p, u)
       endif
   else
-      if DistanceBetweenPoints_dk(GetUnitLoc(u), captain_home) >= 1200 then
+      set ward_recovery = RequestWardRecovery(u)
+      set home_distance = DistanceBetweenPoints_dk(GetUnitLoc(u), captain_home)
+      if home_distance >= 1200 or (ward_recovery and home_distance > 300) then
        call RemoveGuardPosition(u)  // prevent town_threatened give control , but not restore , causing hesitation                                                                   
        call SendHomeMoveUnitToLoc(u,captain_home)
        if follow_zeppelin != null and IsStandardUnit(follow_zeppelin) and not IsUnitType(u, UNIT_TYPE_FLYING) then
@@ -154,7 +159,12 @@ function SendUnitHomeJob takes unit u, integer p returns nothing
          return
        endif
       else
-        if town_threatened and GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 1500) > 0 then  // only need to control the unit if it is attacked nearby, otherwise will be killed
+        if ward_recovery then
+          // Stay within the ward's area while healing, without interrupting spells.
+          if GetUnitCurrentOrder(u) == 0 or GetUnitCurrentOrder(u) == OrderId("move") or GetUnitCurrentOrder(u) == OrderId("attack") or GetUnitCurrentOrder(u) == OrderId("smart") then
+            call IssueImmediateOrder(u, "holdposition")
+          endif
+        elseif town_threatened and GetLocationNonCreepStrength(GetUnitX(u), GetUnitY(u), 1500) > 0 then  // only need to control the unit if it is attacked nearby, otherwise will be killed
           call CreateDebugTag("SEND_HOME town_threatened", 10, u, 3.00, 1.50)
           call RecycleGuardPosition(u)   // Gives unit control for only a little bit but dosn't remove from healing group
         elseif GetUnitUsableAbilityLevel(u, 'Ashm') > 0 and (GetFloatGameState(GAME_STATE_TIME_OF_DAY) >= 18 or GetFloatGameState(GAME_STATE_TIME_OF_DAY) < 6) and not IsUnitType(u, UNIT_TYPE_HERO) then

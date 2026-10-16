@@ -1,0 +1,82 @@
+#IFDEF GLOBAL
+#ELSE
+
+function EndWardRecovery takes unit healer returns nothing
+  set ward_recovery_healer = null
+  call GroupClear(ward_recovery_patients)
+  if UnitAlive(healer) and GetOwningPlayer(healer) == ai_player then
+    if GetUnitState(healer, UNIT_STATE_LIFE) < GetUnitState(healer, UNIT_STATE_MAX_LIFE) * 0.60 then
+      call TQAddUnitJob(0, SEND_HOME, 0, healer)
+    else
+      call ResetGuardPositionJob(healer)
+    endif
+  else
+    call GroupRemoveUnit(unit_healing, healer)
+  endif
+endfunction
+
+function WardRecoveryJob takes unit healer returns nothing
+  local group g = null
+  local unit patient = null
+  local unit ward = null
+  local integer id = -1
+  local integer order = 0
+  local boolean ready = false
+  if healer != ward_recovery_healer then
+    return
+  endif
+  set id = GetHealerId(GetUnitTypeId(healer))
+  if not UnitAlive(healer) or GetOwningPlayer(healer) != ai_player or IsUnitLoaded(healer) or IsUnitHidden(healer) or IsUnitIllusion(healer) or id == -1 then
+    call EndWardRecovery(healer)
+    return
+  endif
+  if healer_type[id] != HEALER_TYPE_WARD or (healer_upg_id[id] != 0 and GetUpgradeLevel(healer_upg_id[id]) < healer_upg_level[id]) or GetLocationNonCreepStrength(GetLocationX(captain_home), GetLocationY(captain_home), 800) > 0 then
+    call EndWardRecovery(healer)
+    return
+  endif
+  set g = CopyGroup(ward_recovery_patients)
+  loop
+    set patient = FirstOfGroup(g)
+    exitwhen patient == null
+    if not UnitAlive(patient) or GetOwningPlayer(patient) != ai_player or IsUnitType(patient, UNIT_TYPE_MECHANICAL) or IsUnitType(patient, UNIT_TYPE_SUMMONED) or not IsUnitInGroup(patient, unit_healing) or GetUnitState(patient, UNIT_STATE_LIFE) >= GetUnitState(patient, UNIT_STATE_MAX_LIFE) * 0.60 then
+      call GroupRemoveUnit(ward_recovery_patients, patient)
+    elseif not IsUnitLoaded(patient) and DistanceBetweenPoints_dk(GetUnitLoc(patient), captain_home) <= 300 then
+      set ready = true
+    endif
+    call GroupRemoveUnit(g, patient)
+  endloop
+  call DestroyGroup(g)
+  set g = null
+  set patient = null
+  if FirstOfGroup(ward_recovery_patients) == null then
+    call EndWardRecovery(healer)
+    return
+  endif
+  set order = GetUnitCurrentOrder(healer)
+  // Finish spells before moving or casting again.
+  if order == 0 or order == OrderId("attack") or order == OrderId("move") or order == OrderId("smart") or order == OrderId("stop") or order == OrderId("holdposition") then
+    if DistanceBetweenPoints_dk(GetUnitLoc(healer), captain_home) > 300 then
+      call SendHomeMoveUnitToLoc(healer, captain_home)
+    else
+      set g = CreateGroup()
+      // Only reuse wards close enough to cover patients gathered around the recovery point.
+      call GroupEnumUnitsInRange(g, GetLocationX(captain_home), GetLocationY(captain_home), 100, null)
+      loop
+        set ward = FirstOfGroup(g)
+        exitwhen ward == null
+        exitwhen UnitAlive(ward) and GetUnitTypeId(ward) == 'ohwd' and IsPlayerAlly(GetOwningPlayer(ward), ai_player)
+        call GroupRemoveUnit(g, ward)
+      endloop
+      if ward == null and ready and GetUnitState(healer, UNIT_STATE_MANA) >= healer_mana_cost[id] then
+        call IssuePointOrderById(healer, healer_spell[id], GetLocationX(captain_home), GetLocationY(captain_home))
+      elseif order != OrderId("holdposition") then
+        call IssueImmediateOrder(healer, "holdposition")
+      endif
+      call DestroyGroup(g)
+      set g = null
+      set ward = null
+    endif
+  endif
+  call TQAddUnitJob(2, WARD_RECOVERY, 0, healer)
+endfunction
+#ENDIF

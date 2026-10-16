@@ -20,6 +20,7 @@ export function heroGame(reservation, assigned = true) {
     unit_buying_item: new Set(assigned ? [hero] : []),
     unit_buying_tavern: new Set(), unit_buying_merc: new Set(),
     unit_healing: new Set(), unit_rescueing: new Set(), unit_harassing: new Set(), unit_zepplin_move: new Set(),
+    healer_group: new Set(), ward_recovery_healer: null, ward_recovery_patients: new Set(),
     hero_built: [false, true, false, false], hero_unit: [null, hero],
     buy_type: [1, 0, 1], BT_RACIAL_ITEM: 1, BUY_ITEM: 20, old_id: ['item', 'shop', 'potion'], racial_shop: 1,
     town_threatened: false, attack_running: true, isfleeing: false,
@@ -103,6 +104,7 @@ export function heroGame(reservation, assigned = true) {
   vm.runInContext(compile(common, 'GetUnitUsableAbilityLevel'), context);
   for (const [file, name] of [
     ['common.eai', 'IsStandardUnit'], ['common.eai', 'IsUnitBuying'], ['common.eai', 'GetHeroToBuyItem'],
+    ['common.eai', 'RequestWardRecovery'],
     ['Jobs/BUY_ITEM.eai', 'EndBuyItemJob'], ['Jobs/BUY_ITEM.eai', 'BuyItemJob'],
     ['Jobs/RESET_GUARD_POSITION.eai', 'ResetGuardPositionJob'],
     ['Jobs/SEND_HOME.eai', 'SendHomeMoveUnitToLoc'], ['Jobs/SEND_HOME.eai', 'SendUnitHomeJob'],
