@@ -43,6 +43,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Zeppelins carrying army passengers are left to finish their transport instead of being reassigned to follow, rescue, or expansion pickup. Failed rescue pickups fall back to normal recovery after a minute, and recovery starts only after the passenger has unloaded. Overlapping rescues now keep their unloading state separate.
+- Expansion Zeppelins retain their reservation when unloading a worker fails, preventing follow or rescue orders from interrupting delivery retries.
 - Injured heroes now use healing items they already carry even when their usual recovery item differs or the carried item is not yet available to buy. Instant healing takes priority over regeneration.
 - Zeppelin rescues now order burrowed units to emerge and let them finish before attempting pickup.
 - Injured Night Elf units and heroes now approach their own nearest living moon well with enough mana and target it for healing, instead of sharing a destination that could redirect them to a distant or destroyed well.

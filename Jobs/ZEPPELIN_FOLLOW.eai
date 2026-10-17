@@ -2,10 +2,8 @@
 #ELSE
 function ZeppelinFollowJob takes nothing returns nothing
   local real dist = 0
-  local location l = null
   local group g = null
   local location heroloc = null
-  local boolean b = true
   call DisplayToAllJobDebug("ZEPPELIN_FOLLOW Start")
   if (follow_zeppelin == null) then
     //call GroupEnumUnitsOfType(g, "goblinzeppelin", null)
@@ -15,6 +13,7 @@ function ZeppelinFollowJob takes nothing returns nothing
     //set g = SelectByOrderOr(g, 0, order_attack, true)
     set g = SelectByUnitStandard(g, true)
     set g = SelectByUnitFree(g, true)
+    set g = SelectEmptyTransports(g)
     //if FirstOfGroup(g) != null then
     //  call GroupPointOrderLoc(g, "attack", exist_town[GetRandomInt(0,Max(exist_town_num-1,0))])
     //endif
@@ -34,6 +33,14 @@ function ZeppelinFollowJob takes nothing returns nothing
     set zeppelin_following = false
     return
   endif
+  if HasTransportCargo(follow_zeppelin) then
+    // Native army transport must finish before follow or rescue can take over.
+    call RecycleGuardPosition(follow_zeppelin)
+    set follow_zeppelin = null
+    set zeppelin_following = false
+    call TQAddJob(10, ZEPPELIN_FOLLOW, 0)
+    return
+  endif
   if (major_hero == null or not UnitAlive(major_hero)) then
     call RecycleGuardPosition(follow_zeppelin) // Not being used by other zepplin control so recycle position
     set follow_zeppelin = null
@@ -46,27 +53,14 @@ function ZeppelinFollowJob takes nothing returns nothing
   set dist = DistanceBetweenUnits(major_hero, follow_zeppelin)
   if dist > max_follow_dist and not IsUnitLoaded(major_hero) then
     call CreateDebugTag("Zepplin follow hero", 10, follow_zeppelin, 3.00, 1.50)
-    set l = GetLocationBetweenUnits(follow_zeppelin, major_hero, (dist - 0.5 * max_follow_dist)/RMax(dist,1))
-    //set l = GetLocationBetweenUnits(follow_zeppelin, major_hero, (dist - 0.33 * max_follow_dist))
-    set b = IssuePointOrder(follow_zeppelin, "unloadall", GetLocationX(l), GetLocationY(l))  // Extra aid to help prevent units getting stuck in zepplin
-    if b == false then
-      call IssuePointOrder(follow_zeppelin, "unloadall", GetLocationX(l) + GetRandomReal(-200,200), GetLocationY(l) + GetRandomReal(-200,200)) 
-    endif
     call IssueTargetOrder(follow_zeppelin, "move", major_hero)
     call TQAddJob(RMax((dist - max_follow_dist) / RMax(GetUnitMoveSpeed(follow_zeppelin) + GetUnitMoveSpeed(major_hero), 50), 1) * sleep_multiplier,ZEPPELIN_FOLLOW,0)
   else
     call CreateDebugTag("Zepplin follow stopped", 10, follow_zeppelin, 3.00, 1.50)
     call IssueImmediateOrder(follow_zeppelin, "stop")
-    set l = GetUnitLoc(follow_zeppelin)
-    set b = IssuePointOrder(follow_zeppelin, "unloadall", GetUnitX(follow_zeppelin), GetUnitY(follow_zeppelin))
-    if b == false then
-      call IssuePointOrder(follow_zeppelin, "unloadall", GetLocationX(l) + GetRandomReal(-200,200), GetLocationY(l) + GetRandomReal(-200,200)) 
-    endif
     call RecycleGuardPosition(follow_zeppelin)
     call TQAddJob(10,ZEPPELIN_FOLLOW,0)
   endif
 
-  call RemoveLocation(l)
-  set l = null
 endfunction
 #ENDIF
