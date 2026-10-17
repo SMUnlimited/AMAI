@@ -3,6 +3,73 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { townGame } from './helpers/town-game.mjs';
 
+describe('Special building placement after losing the starting town', () => {
+  it('Given a destroyed main hall and a surviving expansion, when a front tower is ordered, then it builds at the expansion despite cached starting front points', () => {
+    const game = townGame('orc');
+    const main = game.addUnit(game.ids.hall, { x: 0 });
+    game.addUnit(game.ids.hall);
+    game.addUnit(game.ids.worker);
+    game.trackTowns();
+
+    main.alive = false;
+    game.buildAtFront(game.ids.tower);
+
+    assert.equal(game.orders.at(-1).x, 6500);
+    assert.equal(game.orders.at(-1).order, game.state.old_id[game.ids.tower]);
+    assert.equal(game.production.length, 0);
+  });
+
+  it('Given a surviving expansion and no cached mine location, when a mine farm is ordered, then it builds at the expansion', () => {
+    const game = townGame();
+    game.addUnit(game.ids.hall);
+    game.addUnit(game.ids.worker);
+    game.trackTowns();
+    game.state.mine_loc = null;
+
+    game.buildAtMine(game.ids.farm);
+
+    assert.equal(game.orders.at(-1).x, 6500);
+    assert.equal(game.orders.at(-1).order, game.state.old_id[game.ids.farm]);
+  });
+
+  it('Given a surviving expansion and no computed front, when a front farm is ordered, then it builds at the expansion', () => {
+    const game = townGame('orc');
+    game.addUnit(game.ids.hall);
+    game.addUnit(game.ids.worker);
+    game.trackTowns();
+    game.state.front_locs_computed = false;
+
+    game.buildAtFront(game.ids.farm);
+
+    assert.equal(game.orders.at(-1).x, 6500);
+  });
+
+  it('Given only an expansion hall survives, when lumber placement searches for trees, then its worker starts at the expansion', () => {
+    const game = townGame('human');
+    game.addUnit(game.ids.hall);
+    game.trackTowns();
+
+    const lumber = game.findLumber();
+
+    assert.equal(lumber.x, 6000);
+    assert.equal(lumber.y, 0);
+  });
+
+  it('Given living main and expansion halls, when front and lumber locations are selected, then they stay at the starting town', () => {
+    const game = townGame('orc');
+    game.addUnit(game.ids.hall, { x: 0 });
+    game.addUnit(game.ids.hall);
+    game.addUnit(game.ids.worker);
+    game.trackTowns();
+
+    game.buildAtFront(game.ids.tower);
+    const lumber = game.findLumber();
+
+    assert.equal(game.orders.find(order => order.order === game.state.old_id[game.ids.tower]).x, 1500);
+    assert.equal(lumber.x, 0);
+  });
+});
+
 describe('Building at tracked towns independently of Warcraft town numbering', () => {
   it('Given an expansion worker before the early-game locality checks finish, when local harvesting checks run, then its tracked construction is not redirected home', () => {
     const game = townGame();

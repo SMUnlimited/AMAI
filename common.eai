@@ -6481,16 +6481,35 @@ endfunction
 //============================================================================
 // Gets the best location to build a lumber mill building
 //============================================================================
+function GetBaseBuildLocation takes nothing returns location
+  local integer i = 0
+  local location fallback = home_location
+  loop
+    exitwhen i >= own_town_num
+    if TrackedTownHasHall(i) then
+      if DistanceBetweenPoints(town_loc[own_town[i]], home_location) <= town_radius then
+        return home_location
+      endif
+      if fallback == home_location then
+        set fallback = town_loc[own_town[i]]
+      endif
+    endif
+    set i = i + 1
+  endloop
+  return fallback
+endfunction
+
 function GetLumberLocationAtBase takes nothing returns location
   local integer ground_id = old_id[racial_peon]	//human peasant
   local real distance = 0
   local real x = 0
   local real y = 0
   local unit u = null
+  local location base = GetBaseBuildLocation()
   if race_has_ghouls then
     set ground_id = old_id[racial_ghoul]
   endif
-  set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), ground_id, GetLocationX(home_location), GetLocationY(home_location))
+  set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), ground_id, GetLocationX(base), GetLocationY(base))
   call IssueImmediateOrder(u, "autoharvestlumber")
   call Sleep(5.00)
   set x = GetUnitX(u)
@@ -11957,6 +11976,11 @@ endfunction
 //============================================================================
 function GetBuildLocation takes integer bloc returns location
   local integer i = 0
+  local location base = GetBaseBuildLocation()
+  // Mine and front points are cached at the starting base, not a surviving expansion.
+  if base != home_location then
+    return base
+  endif
   if bloc == BLOC_MINE then
     return mine_loc
   endif
@@ -12382,11 +12406,11 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
       return BUILT_SOME
     endif
     
-    if bloc == BLOC_FRONT and not front_locs_computed then
+    if bloc == BLOC_FRONT and not front_locs_computed and GetBaseBuildLocation() == home_location then
       return BUILT_SOME
     endif
       
-    if bloc == BLOC_MINE and mine_loc == null then
+    if bloc == BLOC_MINE and mine_loc == null and GetBaseBuildLocation() == home_location then
       return BUILT_SOME
     endif
 

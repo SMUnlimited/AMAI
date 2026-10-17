@@ -44,6 +44,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Lumber mills, towers and farms using special build locations now move to a surviving town after the starting town loses its hall, instead of continuing to build at the abandoned base.
 - Advancing armies now divert to nearby visible enemy troops only when local strength favors them, then resume their destination. Equal or stronger nearby enemies can trigger AMAI-controlled retreat before combat begins; authorized retreats and travel to defend towns take priority.
 - Zeppelins carrying army passengers are left to finish their transport instead of being reassigned to follow, rescue, or expansion pickup. Failed rescue pickups fall back to normal recovery after a minute, and recovery starts only after the passenger has unloaded. Overlapping rescues now keep their unloading state separate.
 - Expansion Zeppelins retain their reservation when unloading a worker fails, preventing follow or rescue orders from interrupting delivery retries.

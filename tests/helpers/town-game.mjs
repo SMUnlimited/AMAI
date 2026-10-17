@@ -45,6 +45,7 @@ export function townGame(race = 'undead') {
     total_gold: 5000, total_wood: 5000, total_food: 80, neededPeons: 0,
     build_length: 0, prio_n_inc: 10, prio_q_inc: 2, neutral_available: [true],
     ancient_expanding: false, ancient_exp_state: 0, front_locs_computed: true,
+    front_loc: [{ x: 1000, y: 0 }], front_loc_num: 1, mine_loc: { x: 300, y: 0 }, race_has_ghouls: false,
     racial_rushcreep: 0, racial_lumber: 0, br_rush_built: true,
     expansion_peon: null, militia_builder: null, early_remote_builders: new Set(),
     militia_reserved_peons: new Set(), towerrush: false, race_tower_peon: 0,
@@ -59,6 +60,7 @@ export function townGame(race = 'undead') {
     GetLocationX: l => l.x, GetLocationY: l => l.y, Location: (x, y) => ({ x, y }), RemoveLocation() {},
     Atan2: Math.atan2, Cos: Math.cos, Sin: Math.sin,
     GetRandomReal: (min, max) => min + (max - min) * (state.randomValues.shift() ?? 0.5),
+    GetRandomInt: min => min,
     GetUnitState: (u, key) => u[key], GetResourceAmount: u => u.gold,
     GetUnitCurrentOrder: u => u.order, OrderId: order => order,
     GetUnitCount: raw => count(raw), GetUnitCountDone: raw => count(raw, true),
@@ -102,6 +104,10 @@ export function townGame(race = 'undead') {
       return false; // AI runtime return value cannot establish acceptance.
     },
     CreateUnitAtLoc(owner, raw, loc) { return { owner, type: raw, x: loc.x + state.probeOffset, y: loc.y, alive: true }; },
+    CreatePathingUnitFull: (_, owner, raw, x, y) => ({ owner, type: raw, x, y, alive: true }),
+    GetExpansionPeon: () => units.find(u => u.alive && u.type === state.old_id[state.racial_peon]) ?? null,
+    GetExpansionPeon2: () => null,
+    Sleep() {},
     RemoveUnit(u) { u.alive = false; },
     GetMinesHarvested: () => state.town_mine.filter(u => u?.alive && u.gold > 0).length,
   };
@@ -126,6 +132,7 @@ export function townGame(race = 'undead') {
     'DefendTownsEx', 'DefendTownsDone', 'DefendTownsCond', 'IsRacialHallId',
     'AIGetProjectedLoc', 'GetTrackedTownBuilder', 'RefreshTrackedTownStructures', 'GetTrackedTownBuildLocation',
     'StartTrackedTownBuilding', 'RefreshTrackedTownBuilders', 'StartUnitAM', 'UpgradeBuilding', 'HasExpanded',
+    'GetBaseBuildLocation', 'GetBuildLocation', 'BuildAtSpecialLoc', 'GetLumberLocationAtBase', 'BuildLumberMillAtBase',
   ]) vm.runInContext(compile(common, name), context);
   for (const name of ['IsConstructionOrder', 'IsReservedHarvestPeon']) vm.runInContext(compile(harvest, name), context);
   vm.runInContext(compile(tracking, 'TrackTown'), context);
@@ -147,6 +154,9 @@ export function townGame(race = 'undead') {
     trackTowns() { state.GroupClear(state.in_town_group); for (const tracked of state.own_town) state.TrackTown(tracked); },
     count: (id, town = 1, done = false) => state.TownCountEx(id, done, town),
     build: (id, qty = 1, town = 1) => state.StartUnitAM(qty, id, town, 0, 95, 1),
+    buildAtFront: id => state.StartUnitAM(1, id, -1, state.BLOC_FRONT, 95, 1),
+    buildAtMine: id => state.StartUnitAM(1, id, -1, state.BLOC_MINE, 95, 1),
+    findLumber: () => state.GetLumberLocationAtBase(),
     requestDefenses: (id, qty = 1) => state.DefendTownsDone(qty, id, 95),
     upgrade: (id, town = 1) => state.UpgradeBuilding(1, id, town, 0),
     maintainBuilders: () => state.RefreshTrackedTownBuilders(),
