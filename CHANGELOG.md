@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+## 3.8.0 - 2026-10-17
+
 ### Added
 
 - Added the `stop_creeping_after_level_5` global setting, enabled by default for TFT and Reforged and disabled for ROC. The AI stops creeping with nothing else to do once all trained heroes are level 5 or higher. Expansion clearing is unchanged; disable the setting to keep idle creeping at higher levels.
@@ -51,7 +53,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Injured heroes now use healing items they already carry even when their usual recovery item differs or the carried item is not yet available to buy. Instant healing takes priority over regeneration.
 - Zeppelin rescues now order burrowed units to emerge and let them finish before attempting pickup.
 - Injured Night Elf units and heroes now approach their own nearest living moon well with enough mana and target it for healing, instead of sharing a destination that could redirect them to a distant or destroyed well.
-
 - Ward healers now return to the recovery location with injured units instead of trying to heal them beside the enemy. One healer stays to support recovering troops and heroes, casts when patients arrive, and rejoins the army when they are healthy enough. Nearby wards are reused, and recovery is abandoned if the location comes under attack.
 - Summoned units no longer influence counter-unit choices or strategy ratings, including ordinary troops raised by Animate Dead. They still count as combat threats using their level, even when absent from the unit tables.
 - Attack groups now respect explicit unit-table exclusions while continuing to include captured and custom attackers in ROC, TFT and Reforged.

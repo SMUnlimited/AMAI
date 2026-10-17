@@ -35,7 +35,7 @@ Improvements and fixes to the core AI engine will improve the older scripts as w
 
 | AMAI Scripts      | Optimal Version | Supported Version      |
 | ----------------- | ------------------- | ------------------|
-| **REFORGED** | **3.0.0** | 3.0.0+ |
+| **REFORGED** | **3.0.0/3.0.1** | 3.0.0+ |
 | **TFT** | **1.24-1.28** | 1.24+ |
 | **ROC** | **1.24-1.28** | 1.24 - 1.31 |
 
@@ -65,6 +65,7 @@ Select if Commander is enabled, or if you want to have AMAI play against the van
 
 Use Optimised Scripts: Optimises the scripts to use less CPU and memory. On by default.
 Override Default AI Language: Sets the default chat language of AMAI to current language of the installer and disables initial game prompt of language in the Commander.
+Disable chatting: If you do not like AMAI chatting to you, this can be disabled.
 
 ![installer](installer.jpg)
 
