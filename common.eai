@@ -336,9 +336,7 @@ globals
    boolean ver_only_heroes_buy = false  // can only heroes buy stuff ?
    integer ver_food_limit = 100  // what is the food limit ?
    integer ver_strat_change_enemy_strength_min = 25  // don't allow strategy change unless the maximum strength of all enemy players in the game is above this.
-   integer ver_hero_base_value = 4  // what is the base strength of a hero (the level number is added to get the actual strength) ?
-   integer ver_hero_ultimate_level = 6  // at what level do the heroes get their ultimates ?
-   integer ver_hero_ultimate_value = 4  // how much extra strength does the ultimate give to the hero ?
+   integer ver_hero_base_value = 2  // Hero strength before level growth and learned ability bonuses.
    real ver_creeps_attack_buildings_dist = 1000  // how far away do creeps attack buildings ?
    boolean ver_mercs_night_buy = false // can mercs be bought at night without waking up creeps ?
    real ver_tower_check_radius = 2000  // check for towers in this radius around a target
@@ -5708,62 +5706,76 @@ function GetPlayerStrengthHandicap takes player p returns real
 endfunction
 
 //============================================================================
-function GetPlayerHeroBonusStrength takes player p returns integer
-  local integer strength = 0
-  #INCLUDETABLE <$VER$\StandardUnits.txt> #EFR #COND %#OEVAL{16} != 0
-  set strength = strength + %#OEVAL{16} * GetPlayerUnitTypeCount(p, o%1 )
-  #ENDINCLUDE
-  return strength
-endfunction
-//============================================================================
-function GetHeroStrength takes unit u returns integer
-  local integer lvl = GetHeroLevel(u)
-  if GetOwningPlayer(u) != ai_player or not IsUnitInGroup(u, unit_healing) then
-    if lvl >= ver_hero_ultimate_level then
-      return R2I(ver_hero_base_value + lvl + ver_hero_ultimate_value + 0.5)
-    else
-      return R2I(ver_hero_base_value + lvl + 0.5)
-    endif
+function GetHeroAbilityStrength takes unit u, integer abil, real rank1, real rank2, real rank3 returns real
+  local integer rank = GetUnitAbilityLevel(u, abil)
+  if rank >= 3 then
+    return rank3
+  elseif rank == 2 then
+    return rank2
+  elseif rank == 1 then
+    return rank1
   endif
-  return 0
+  return 0.0
 endfunction
 
 //============================================================================
-function GetPlayerHeroStrengthMod takes player p returns integer
+function GetHeroStrength takes unit u returns real
+  local real strength = ver_hero_base_value + 0.5 * (GetHeroLevel(u) - 1)
+  local real mana_factor = 0.25
+  local real bonus = 0.0
+  local real factory = 0.0
+  local real rockets = 0.0
+  local real robogoblin = 0.0
+  if GetOwningPlayer(u) == ai_player and IsUnitInGroup(u, unit_healing) then
+    return 0.0
+  endif
+  if GetUnitState(u, UNIT_STATE_MAX_MANA) > 0.0 then
+    set mana_factor = 0.25 + 0.75 * RMin(1.0, RMax(0.0, GetUnitState(u, UNIT_STATE_MANA) / GetUnitState(u, UNIT_STATE_MAX_MANA)))
+  endif
+  // ENDURANE_AURA is a spelling alias of ENDURANCE_AURA, not a second ability.
+  // Replacement variants share one bonus: keep the strongest learned variant.
+  #INCLUDETABLE <$VER$\HeroAbilities.txt> #EFR #COND "%1" ne "ENDURANE_AURA" and (%3 != 0 or %4 != 0 or %5 != 0)
+  set bonus = GetHeroAbilityStrength(u, '%2', %3, %4, %5) * #EVAL{"%6" eq "true" ? "mana_factor" : "1.0"}
+  #EVAL{"%1" =~ /^POCKETFACTORY/ ? "set factory = RMax(factory, bonus)" : "%1" =~ /^ROCKETS/ ? "set rockets = RMax(rockets, bonus)" : "%1" =~ /^ROBOGOBLIN/ ? "set robogoblin = RMax(robogoblin, bonus)" : "set strength = strength + bonus"}
+  #ENDINCLUDE
+  return strength + factory + rockets + robogoblin
+endfunction
+
+//============================================================================
+function GetPlayerHeroStrengthMod takes player p returns real
   local group g = CreateGroup()
   local unit u = null
-  local integer sum = 0
+  local real sum = 0.0
   local real handicap = GetPlayerStrengthHandicap(p)
   call GroupEnumUnitsOfPlayer(g, p, null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
     if IsUnitType(u, UNIT_TYPE_HERO) and UnitAlive(u) then
-      set sum = sum + R2I(GetHeroStrength(u) * handicap * (GetUnitState(u, UNIT_STATE_LIFE) / RMax(GetUnitState(u, UNIT_STATE_MAX_LIFE),1)))
+      set sum = sum + GetHeroStrength(u) * handicap * (GetUnitState(u, UNIT_STATE_LIFE) / RMax(GetUnitState(u, UNIT_STATE_MAX_LIFE),1))
     endif
     call GroupRemoveUnit(g,u)
   endloop
-  set sum = sum + GetPlayerHeroBonusStrength(p)
   call DestroyGroup(g)
   set g = null
   return sum 
 endfunction
 
 //============================================================================
-function GetUnitStrengthEx takes unit u returns integer
+function GetUnitStrengthEx takes unit u returns real
   if IsUnitType(u, UNIT_TYPE_SUMMONED) then
-    return GetUnitLevel(u) // Temporary threats still matter in combat, even without a table entry or food cost.
+    return I2R(GetUnitLevel(u)) // Temporary threats still matter in combat, even without a table entry or food cost.
   endif
   if GetOwningPlayer(u) != Player(PLAYER_NEUTRAL_AGGRESSIVE) then
     if IsUnitType(u, UNIT_TYPE_HERO) then
       return GetHeroStrength(u)
     else
-      return R2I((GetUnitFoodUsed(u) + GetUnitLevel(u)) / 2 + 0.5) // +0.5 for rounding , food used often matches the level but can be weaker or stronger forms of a lvl 2 unit so uses average
+      return I2R(R2I((GetUnitFoodUsed(u) + GetUnitLevel(u)) / 2 + 0.5)) // Preserve the existing non-hero rating.
     endif
   else
-      return R2I(GetUnitLevel(u) + 0.5) // Creeps entirely use the level in evaluating strength
+      return I2R(GetUnitLevel(u)) // Creeps entirely use the level in evaluating strength
   endif
-  return 0
+  return 0.0
 endfunction
 
 function IsUnitTower takes unit u returns boolean
@@ -5822,8 +5834,8 @@ function GetPlayerStrength takes player p returns real
   endloop
   call DestroyGroup(g)
   set g = null
-  //call Trace("A HERO strength added: " + Int2Str(GetPlayerHeroStrengthMod(p)))
-  return sum + I2R(GetPlayerHeroStrengthMod(p))
+  //call Trace("A HERO strength added: " + Real2Str(GetPlayerHeroStrengthMod(p)))
+  return sum + GetPlayerHeroStrengthMod(p)
 
 
 endfunction
@@ -6156,7 +6168,7 @@ function GetOwnStrength takes nothing returns integer
   call DestroyGroup(g)
   set g = null
   set air_strength = R2I(airsum + 0.5)
-  return R2I(sum) + GetPlayerHeroStrengthMod(ai_player)
+  return R2I(sum + GetPlayerHeroStrengthMod(ai_player))
 endfunction
 
 //============================================================================
