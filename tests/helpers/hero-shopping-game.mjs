@@ -25,6 +25,7 @@ export function heroGame(reservation, assigned = true) {
     hero_built: [false, true, false, false], hero_unit: [null, hero],
     buy_type: [1, 0, 1], BT_RACIAL_ITEM: 1, BUY_ITEM: 20, old_id: ['item', 'shop', 'potion'], racial_shop: 1,
     town_threatened: false, attack_running: true, isfleeing: false,
+    NEUTRAL_MERCHANT: 0, neutral_guarded: [false], neutral_night_buy: [false], nearest_neutral: [null],
     UndeadMineRecoveryNeeded: () => false,
     distance: 4000, now: 10, items: 0, ai_time: 10, regenerate_time: [20], available_time: [],
     buy_timeout_large: 60, buy_timeout_small: 5, buy_distance: 300,
@@ -33,15 +34,15 @@ export function heroGame(reservation, assigned = true) {
     captain_home: {}, SEND_HOME: 40, RESET_GUARD_POSITION: 16,
     UNIT_STATE_LIFE: 'life', UNIT_STATE_MAX_LIFE: 'maxLife', UNIT_STATE_MANA: 'mana',
     UNIT_TYPE_HERO: 'hero', UNIT_TYPE_FLYING: 'flying', ITEMTYPE_CONTINUOUS: 1,
-    healingItems: 0, continuous: false, homeDistance: 0, purchaseSucceeds: false, otherhero: null,
+    healingItems: 0, carriedItems: new Map(), usedItems: [], continuous: false, homeDistance: 0, purchaseSucceeds: false, otherhero: null,
     GetUnitState: (u, property) => u[property], I2R: n => n, Max: Math.max,
     GetHeroHealingItem: () => 2, GetHeroManaItem: () => 0,
     SomeUnitHasHealingItem: () => state.otherhero,
     GetUnitOfTypeNearUnit: () => state.shop_unit,
-    GetItemNumberOnUnit: (id, u) => id === 2 ? (u === hero ? state.healingItems : 1) : 0,
+    GetItemNumberOnUnit: (id, u) => id === 2 ? (u === hero ? state.healingItems : 1) : (u === hero ? state.carriedItems.get(id) ?? 0 : 0),
     GetItemInstantType: () => state.continuous ? 1 : 0, GetItemHealingTime: () => state.continuous ? 9 : 0,
-    GetItemOfTypeOnUnit: () => ({}),
-    UnitUseItem: () => { effects.push('use'); state.healingItems = 0; },
+    GetItemOfTypeOnUnit: id => ({ id }),
+    UnitUseItem: (u, item) => { effects.push('use'); state.usedItems.push(item.id); state.carriedItems.delete(item.id); state.healingItems = 0; },
     UnitUseItemTarget() {}, UnitAddItem: () => { effects.push('transfer'); state.healingItems++; },
     DistanceBetweenPoints_dk: () => state.homeDistance,
     TQAddUnitJob: (delay, job, parameter, unit) => unitJobs.push({ delay, job, parameter, unit }),
@@ -104,6 +105,16 @@ export function heroGame(reservation, assigned = true) {
   );
   if (reservation) state[reservation].add(hero);
   const context = vm.createContext(state);
+  const healingRows = readFileSync(new URL('REFORGED/HealingItems.txt', root), 'utf8').trim().split(/\r?\n/).slice(1)
+    .map(row => row.split('\t'));
+  const healingIds = new Map(healingRows.map(([name], index) => [name, name === 'HEALING_POTION' ? 2 : 100 + index]));
+  const carriedHealing = common.match(/function GetCarriedHeroHealingItem[\s\S]*?endfunction/)[0].replace(
+    /#INCLUDETABLE[^\n]+"(SUDDEN|CONTINUOUS)"[^\n]*\r?\n([\s\S]*?)#ENDINCLUDE/g,
+    (_, speed, body) => healingRows.filter(([, , type, itemSpeed]) => itemSpeed === speed &&
+      ['HEALINGITEM_HERO', 'HEALINGITEM_SINGLE', 'HEALINGITEM_MASS', 'MERCHANTITEM_MASS'].includes(type))
+      .map(([name]) => body.replaceAll('u%1', healingIds.get(name))).join('\n'),
+  );
+  vm.runInContext(compile(carriedHealing, 'GetCarriedHeroHealingItem'), context);
   vm.runInContext(compile(common, 'GetUnitUsableAbilityLevel'), context);
   for (const [file, name] of [
     ['common.eai', 'IsStandardUnit'], ['common.eai', 'IsUnitBuying'], ['common.eai', 'GetHeroToBuyItem'],
@@ -118,6 +129,8 @@ export function heroGame(reservation, assigned = true) {
     state, hero, effects, unitJobs, groupJobs, threatScans,
     buyItem: () => state.BuyItemJob(2),
     sendHome: () => state.SendUnitHomeJob(hero, 0),
+    carryItem: name => name === 'HEALING_POTION' ? state.healingItems++ : state.carriedItems.set(healingIds.get(name), 1),
+    healingItemId: name => healingIds.get(name),
     giveAbility: (code, level = 1) => state.abilities.set(Number(expression(`'${code}'`)), level),
     research: (code, level = 1) => state.upgrades.set(Number(expression(`'${code}'`)), level),
     abilityLevel: code => state.GetUnitUsableAbilityLevel(hero, Number(expression(`'${code}'`))),

@@ -3,6 +3,64 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { heroGame } from './helpers/hero-shopping-game.mjs';
 
+describe('Hero recovery uses carried healing items', () => {
+  it('Given a hero carrying a potion but preferring salve, when recovering far from home, then it uses the potion', () => {
+    const game = heroGame('unit_healing');
+    game.state.GetHeroHealingItem = () => game.healingItemId('HEALING_SALVE');
+    game.state.homeDistance = 2000;
+    game.carryItem('HEALING_POTION');
+
+    game.sendHome();
+
+    assert.deepEqual(game.state.usedItems, [game.healingItemId('HEALING_POTION')]);
+    assert.deepEqual(game.effects, ['use']);
+  });
+
+  it('Given a hero with both salve and a potion, when recovering, then instant healing takes priority', () => {
+    const game = heroGame('unit_healing');
+    game.carryItem('HEALING_SALVE');
+    game.carryItem('HEALING_POTION');
+
+    game.sendHome();
+
+    assert.deepEqual(game.state.usedItems, [game.healingItemId('HEALING_POTION')]);
+    assert.equal(game.state.carriedItems.get(game.healingItemId('HEALING_SALVE')), 1);
+  });
+
+  it('Given a hero carrying a healing scroll with no item available to buy, when recovering, then it uses the scroll', () => {
+    const game = heroGame('unit_healing');
+    game.state.GetHeroHealingItem = () => 0;
+    game.carryItem('M_SCROLL_OF_HEALING');
+
+    game.sendHome();
+
+    assert.deepEqual(game.state.usedItems, [game.healingItemId('M_SCROLL_OF_HEALING')]);
+  });
+
+  it('Given a hero carrying salve away from home with no item available to buy, when recovering, then it retreats before using salve', () => {
+    const game = heroGame('unit_healing');
+    game.state.GetHeroHealingItem = () => 0;
+    game.state.continuous = true;
+    game.state.homeDistance = 2000;
+    game.carryItem('HEALING_SALVE');
+
+    game.sendHome();
+
+    assert.deepEqual(game.effects, ['move']);
+    assert.deepEqual(game.state.usedItems, []);
+  });
+
+  it('Given a hero carrying only mana and moonstone items, when selecting carried healing, then neither is selected', () => {
+    const game = heroGame('unit_healing');
+    game.carryItem('MANA_POTION');
+    game.carryItem('MOONSTONE');
+
+    const item = game.state.GetCarriedHeroHealingItem(game.hero);
+
+    assert.equal(item, 0);
+  });
+});
+
 describe('Undead mine recovery reserves hero shopping funds', () => {
   it('Given an active shopping job during mine recovery, when buying is checked, then the purchase stops without releasing healing', () => {
     const game = heroGame('unit_healing');

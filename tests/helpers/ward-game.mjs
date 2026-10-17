@@ -40,7 +40,7 @@ export function orcGame(version = 'REFORGED') {
     GetManaFountainID: () => 0, GetUnitUsableAbilityLevel: () => 0,
     GetLocationNonCreepStrength: () => state.homeThreat,
     homeThreat: 0, town_threatened: false, race_use_fountain: false, race_has_moonwells: false, follow_zeppelin: null,
-    GetHeroHealingItem: () => 0, GetHeroManaItem: () => 0, shop_ordered: false,
+    GetCarriedHeroHealingItem: () => 0, GetHeroHealingItem: () => 0, GetHeroManaItem: () => 0, shop_ordered: false,
     ACTION_DO_NOTHING: 0, ACTION_TP: 3, ACTION_HEALER: 6,
     I2R: n => n, SEND_HOME: 40, WARD_RECOVERY: 41,
     UNIT_TYPE_FLYING: 'flying',
