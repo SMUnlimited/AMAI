@@ -10,6 +10,7 @@
     boolean canflee = false
     boolean isfleeing = false
     boolean retreat_group_refreshed = false
+    unit attack_intrusion = null // Nearby enemy temporarily interrupting offensive travel.
     integer added_target_aggression = 0  // The current bonus aggression added to current attack specified in the profiles
     integer added_racial_aggression = 0  // The current bonus added to current attack based on which race amai is attacking
 
@@ -42,6 +43,12 @@ function RetreatControlJob takes nothing returns nothing
   local real xe = 0
   local real ye = 0
   local integer i = 0
+  local unit intrusion = null
+  local real scan_x = 0
+  local real scan_y = 0
+  local real intrusion_dist = 800 * 800
+  local real unit_dist = 0
+  local boolean transit_threat = false
 
   // local variables used to calculate roughly where the current enemy army is located at
   local integer ally_count = 0
@@ -110,6 +117,7 @@ function RetreatControlJob takes nothing returns nothing
 //	endif
 //  endif
 
+set attack_intrusion = null
 if not retreat_controlled then
   return
 endif
@@ -159,10 +167,14 @@ if attack_running then
     if major_hero == null or not UnitAlive(major_hero) then
       call Trace("No major hero in retreat control")
     else
+      set scan_x = GetUnitX(major_hero)
+      set scan_y = GetUnitY(major_hero)
       call GroupEnumUnitsInRange(g,GetUnitX(major_hero),GetUnitY(major_hero),battle_radius,null)
     endif
     set usearmy = false
   else
+    set scan_x = GetLocationX(army_loc[main_army])
+    set scan_y = GetLocationY(army_loc[main_army])
     call GroupEnumUnitsInRange(g, GetLocationX(army_loc[main_army]), GetLocationY(army_loc[main_army]), battle_radius, null)
     set usearmy = true
     set ally_sum = ally_sum + army_strength[main_army]
@@ -188,8 +200,16 @@ if attack_running then
           set ya = ya + GetUnitY(u)
           //set ally_loc = GetSumLoc_dd(ally_loc, GetUnitLoc(u))
           set ally_count = ally_count + 1
-        elseif IsPlayerEnemy(GetOwningPlayer(u), ai_player) and not IsUnitInvisibleAM(u, ai_player) then
+        elseif IsPlayerEnemy(GetOwningPlayer(u), ai_player) and IsUnitVisible(u, ai_player) and not IsUnitInvisibleAM(u, ai_player) then
           set enemy_sum = enemy_sum + unit_strength
+          // Reuse the battle scan; squared distance avoids locations and square roots.
+          if IsUnitType(u, UNIT_TYPE_MELEE_ATTACKER) or IsUnitType(u, UNIT_TYPE_RANGED_ATTACKER) then
+            set unit_dist = (GetUnitX(u) - scan_x) * (GetUnitX(u) - scan_x) + (GetUnitY(u) - scan_y) * (GetUnitY(u) - scan_y)
+            if unit_dist < intrusion_dist then
+              set intrusion = u
+              set intrusion_dist = unit_dist
+            endif
+          endif
           set xe = xe + GetUnitX(u)
           set ye = ye + GetUnitY(u)
           //set enemy_loc = GetSumLoc_dd(enemy_loc, GetUnitLoc(u))
@@ -237,9 +257,10 @@ if attack_running then
 
   set enemy_strength_sum = enemy_sum + creep_sum
   set ally_strength_sum = ally_sum
+  set transit_threat = intrusion != null and not town_threatened
   call Trace("RETREAT_CONTROL: Our strength: " + Real2Str(ally_strength_sum) + " Enemy strength: " + Real2Str(enemy_strength_sum))
 
-  if CaptainInCombat(true) and not desperation_assault and (enemy_strength_sum > ApplyFleeStrengthModifier(ally_strength_sum, true) or (town_threatened and town_threat_break and attack_running) or ally_strength_sum == 0) then
+  if (CaptainInCombat(true) or transit_threat) and not desperation_assault and (enemy_strength_sum > ApplyFleeStrengthModifier(ally_strength_sum, true) or (transit_threat and enemy_strength_sum >= ally_strength_sum) or (town_threatened and town_threat_break and attack_running) or ally_strength_sum == 0) then
     call Trace("RETREAT_CONTROL: Flee!!!!")
     set break_attack = attack_running
     if not retreat_group_refreshed then
@@ -257,10 +278,14 @@ if attack_running then
     call SetGroupsFlee(false) // Prevent natural fleeing
     set isfleeing = false
     set canflee = false
+    if transit_threat and not desperation_assault and enemy_strength_sum < ally_strength_sum and enemy_strength_sum <= ApplyFleeStrengthModifier(ally_strength_sum, false) then
+      set attack_intrusion = intrusion
+    endif
   endif
   
 endif  
 
+  set intrusion = null
   call TQAddJob(2 * sleep_multiplier, RETREAT_CONTROL, 0)
 endfunction
 #ENDIF

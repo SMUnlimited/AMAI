@@ -13867,6 +13867,7 @@ endfunction
 //============================================================================
 function EnableRetreatControl takes nothing returns nothing
   set break_attack = false
+  set attack_intrusion = null
   if not retreat_controlled then
     call Trace("===Retreat control started===")
     set retreat_controlled = true
@@ -14045,6 +14046,34 @@ function DesperationAssault takes nothing returns nothing
   endif
 endfunction
 
+// Interceptions share retreat's strength assessment and never replace the strategic target.
+function AttackTransitIntrusion takes nothing returns boolean
+  local real x = 0
+  local real y = 0
+  if attack_intrusion == null or not attack_running or isfleeing or break_attack or town_threatened or desperation_assault then
+    return false
+  endif
+  if not UnitAlive(attack_intrusion) or IsUnitHidden(attack_intrusion) or not IsUnitVisible(attack_intrusion, ai_player) or IsUnitInvisibleAM(attack_intrusion, ai_player) or not IsPlayerEnemy(GetOwningPlayer(attack_intrusion), ai_player) then
+    return false
+  endif
+  if main_army >= 0 and army_loc[main_army] != null then
+    set x = GetLocationX(army_loc[main_army])
+    set y = GetLocationY(army_loc[main_army])
+  elseif major_hero != null and UnitAlive(major_hero) then
+    set x = GetUnitX(major_hero)
+    set y = GetUnitY(major_hero)
+  else
+    return false
+  endif
+  set x = GetUnitX(attack_intrusion) - x
+  set y = GetUnitY(attack_intrusion) - y
+  if x * x + y * y >= 800 * 800 then
+    return false
+  endif
+  call CaptainAttack(GetUnitX(attack_intrusion), GetUnitY(attack_intrusion))
+  return true
+endfunction
+
 function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boolean reform, boolean ally_override returns nothing
   local real dist = 0
   local integer attack_length_counter = 0
@@ -14058,6 +14087,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
   local integer gen_stuck_counter = 0
   local real gen_last_dist = -1
   local real gen_cur_dist = 0
+  local boolean intercepting = false
   //local group g = null
 
   set lastcaptainx = GetUnitX(target)
@@ -14082,7 +14112,14 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
     exitwhen not UnitAlive(target)
     exitwhen IsPlayerAlly(ai_player, GetOwningPlayer(target))
     exitwhen IsUnitInvisibleAM(target, ai_player)
-    if attacking_expansion and current_expansion != null and main_army >= 0 and army_loc[main_army] != null and not CaptainInCombat(true) then
+    set intercepting = AttackTransitIntrusion()
+    if intercepting then
+      set stuck_counter = 0
+      set gen_stuck_counter = 0
+      set last_dist = -1
+      set gen_last_dist = -1
+    endif
+    if not intercepting and attacking_expansion and current_expansion != null and main_army >= 0 and army_loc[main_army] != null and not CaptainInCombat(true) then
       set target_loc = GetUnitLoc(target)
       // Army tracking owns its location; release only the temporary target location.
       set cur_dist = DistanceBetweenPoints(army_loc[main_army], target_loc)
@@ -14106,7 +14143,7 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
         return
       endif
     endif
-    if not attacking_expansion and main_army >= 0 and army_loc[main_army] != null and not CaptainInCombat(true) and not CaptainAtGoal() and not CaptainIsHome() then
+    if not intercepting and not attacking_expansion and main_army >= 0 and army_loc[main_army] != null and not CaptainInCombat(true) and not CaptainAtGoal() and not CaptainIsHome() then
       set target_loc = GetUnitLoc(target)
       set gen_cur_dist = DistanceBetweenPoints(army_loc[main_army], target_loc)
       call RemoveLocation(target_loc)
@@ -14148,7 +14185,9 @@ function CommonSleepUntilTargetDeadAM takes unit target, boolean iscreeping, boo
       set ally_found = true
     endif  
     set dist = DistanceBetweenPoints_kd(ally_loc, GetUnitLoc(target))
-    if ally_found and dist > 1300 and dist < 2500 then
+    if intercepting then
+      // Keep the destination intact while the captain deals with the nearby enemy.
+    elseif ally_found and dist > 1300 and dist < 2500 then
       set lastcaptainx = GetLocationX(ally_loc)
       set lastcaptainy = GetLocationY(ally_loc)
       //call SetCaptainHome(, lastcaptainx, lastcaptainy)
@@ -14227,13 +14266,24 @@ endfunction
 //============================================================================
 function SleepUntilAtGoalAM takes nothing returns nothing
   local integer lcount = 0
+  local real goal_x = lastcaptainx
+  local real goal_y = lastcaptainy
+  local boolean diverted = false
   call Trace("SleepUntilGoal")
   loop
     exitwhen town_threat_break and town_threatened
     set lcount = lcount + 1
     exitwhen break_attack
     exitwhen isfleeing
-    if lcount >= 6 then
+    if AttackTransitIntrusion() then
+      set diverted = true
+    else
+      if diverted and not town_threatened and attack_running then
+        call AttackMoveXY(R2I(goal_x), R2I(goal_y))
+      endif
+      set diverted = false
+    endif
+    if lcount >= 6 and not diverted then
       exitwhen CaptainAtGoal()        // reached goal
       exitwhen CaptainIsHome()        // failed to path and returned home
     endif
@@ -14663,10 +14713,13 @@ function QueueAttackMoveXY takes integer x, integer y returns nothing
   call DoAttackJobs()
   loop
     call Sleep(sleep_multiplier)
-    call AttackMoveXY(x,y)
     exitwhen break_attack
+    exitwhen isfleeing
     exitwhen CaptainRetreating()
-    exitwhen CaptainAtGoal()
+    if not AttackTransitIntrusion() then
+      call AttackMoveXY(x,y)
+      exitwhen CaptainAtGoal()
+    endif
     call Sleep(sleep_multiplier)
   endloop
   set lastcaptainx = x

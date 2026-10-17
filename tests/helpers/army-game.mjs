@@ -26,6 +26,7 @@ export function armyGame({ expansion = false } = {}) {
     major_hero: null, tmpmainarmy: -1, UNIT_TYPE_STRUCTURE: 'structure', UNIT_TYPE_PEON: 'peon',
     attacking_expansion: expansion, current_expansion: expansion ? target : null,
     town_threat_break: false, town_threatened: false, break_attack: false, isfleeing: false,
+    attack_intrusion: null,
     desperation_assault: false, sleep_multiplier: 1, attack_reform_length: 10,
     home_location: location(0, 0), ally_loc: location(4000, 4000),
     c_ally_total: 0, amaiCache: null, ALLIANCE_TARGET: 0, lastcaptainx: 0, lastcaptainy: 0,
@@ -43,7 +44,7 @@ export function armyGame({ expansion = false } = {}) {
       units.filter(u => u.alive && Math.hypot(u.x - x, u.y - y) <= radius).forEach(u => g.add(u));
     },
     GroupEnumUnitsInRangeOfLoc(g, l, radius) { state.GroupEnumUnitsInRange(g, valid(l).x, valid(l).y, radius); },
-    CaptainIsEmpty: () => false, CaptainInCombat: () => false, CaptainAtGoal: () => false, CaptainIsHome: () => false,
+    CaptainIsEmpty: () => false, CaptainInCombat: () => false, CaptainAtGoal: () => false, CaptainIsHome: () => false, CaptainRetreating: () => false,
     GetStoredInteger: () => 0, I2U: () => null, Int2Str: String, GetRandomReal: min => min,
     AttackMoveKill() {}, CreateDebugTag() {}, CreateDebugTagLoc() {}, Trace() {},
     waits: 0,
@@ -57,7 +58,7 @@ export function armyGame({ expansion = false } = {}) {
     'GetSubtractionLoc_kd', 'GetSubtractionLoc_dk', 'GetSumLoc_kd', 'GetMultipleLoc',
     'GetMultipleLoc_d', 'GetDivisionLoc', 'GetNormalisedLoc', 'GetProjectedLoc',
     'DistanceBetweenPoints', 'DistanceBetweenPoints_dd', 'DistanceBetweenPoints_kd',
-    'CommonSleepUntilTargetDeadAM',
+    'AttackTransitIntrusion', 'CommonSleepUntilTargetDeadAM',
   ]) vm.runInContext(compile(common, name), context);
   for (const name of ['IsArmyUnit', 'TrackArmy']) {
     vm.runInContext(compile(read('Jobs/ARMY_TRACK.eai'), name), context);

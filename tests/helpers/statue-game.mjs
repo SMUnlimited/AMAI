@@ -17,6 +17,7 @@ export function undeadGame() {
   const state = {
     major_hero: hero, main_army: 0, army_loc: [{ x: 4000, y: 4000 }], army_strength: [11],
     ai_player: 0, PLAYER_NEUTRAL_AGGRESSIVE: 12, UNIT_TYPE_STRUCTURE: 'structure',
+    UNIT_TYPE_MELEE_ATTACKER: 'melee', UNIT_TYPE_RANGED_ATTACKER: 'ranged',
     UNIT_TYPE_MECHANICAL: 'mechanical', UNIT_TYPE_PEON: 'peon', UNIT_TYPE_ATTACKS_GROUND: 'attacksGround',
     UNIT_STATE_LIFE: 'life', UNIT_STATE_MAX_LIFE: 'maxLife', UNIT_STATE_MANA: 'mana', UNIT_STATE_MAX_MANA: 'maxMana',
     unit_rescueing: new Set(), unit_harassing: new Set(), unit_zepplin_move: new Set(),
