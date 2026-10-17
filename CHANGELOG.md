@@ -42,6 +42,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Injured Night Elf units and heroes now approach their own nearest living moon well with enough mana and target it for healing, instead of sharing a destination that could redirect them to a distant or destroyed well.
+
 - Ward healers now return to the recovery location with injured units instead of trying to heal them beside the enemy. One healer stays to support recovering troops and heroes, casts when patients arrive, and rejoins the army when they are healthy enough. Nearby wards are reused, and recovery is abandoned if the location comes under attack.
 - Summoned units no longer influence counter-unit choices or strategy ratings, including ordinary troops raised by Animate Dead. They still count as combat threats using their level, even when absent from the unit tables.
 - Attack groups now respect explicit unit-table exclusions while continuing to include captured and custom attackers in ROC, TFT and Reforged.
