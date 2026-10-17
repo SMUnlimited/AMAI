@@ -88,6 +88,27 @@ describe('SendHome ability research', () => {
     assert.deepEqual(game.effects, []);
   });
 
+  it('Given an injured fiend with Burrow and an available zeppelin, when sent home from far away, then it hands over to transport without scheduling more send-home orders', () => {
+    const game = heroGame();
+    game.hero.type = 'fiend';
+    game.giveAbility('Abur');
+    game.research('Rubu');
+    game.state.homeDistance = 4000;
+    const zeppelin = { type: 'zeppelin' };
+    game.state.follow_zeppelin = zeppelin;
+
+    game.sendHome();
+
+    assert.equal(game.groupJobs.length, 1);
+    assert.equal(game.groupJobs[0].job, game.state.ZEPPELIN_MOVE);
+    assert.equal(game.groupJobs[0].unit, game.hero);
+    assert.ok(game.groupJobs[0].group.has(zeppelin));
+    assert.ok(game.state.unit_healing.has(game.hero));
+    assert.equal(game.state.IsStandardUnit(game.hero), false);
+    assert.deepEqual(game.unitJobs, []);
+    assert.deepEqual(game.effects, ['remove-guard', 'move']);
+  });
+
   it('Given an injured gargoyle before Stone Form research, when sent home, then it never attempts Stone Form', () => {
     const game = heroGame();
     game.hero.type = 'gargoyle';

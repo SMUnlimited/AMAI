@@ -11,6 +11,7 @@ export function heroGame(reservation, assigned = true) {
   const hero = { alive: true, type: 'hero', x: 6000, y: 4000, order: 'move-home', slots: 1, life: 20, maxLife: 100, mana: 0 };
   const effects = [];
   const unitJobs = [];
+  const groupJobs = [];
   const threatScans = [];
   const validUnit = u => { assert.ok(u && !u.removed, 'Read coordinates of a missing or removed unit'); return u; };
   const state = {
@@ -44,6 +45,8 @@ export function heroGame(reservation, assigned = true) {
     UnitUseItemTarget() {}, UnitAddItem: () => { effects.push('transfer'); state.healingItems++; },
     DistanceBetweenPoints_dk: () => state.homeDistance,
     TQAddUnitJob: (delay, job, parameter, unit) => unitJobs.push({ delay, job, parameter, unit }),
+    TQAddGroupJob: (delay, job, parameter, unit, group) => groupJobs.push({ delay, job, parameter, unit, group }),
+    ZEPPELIN_MOVE: 'transport', ZTARGET_HOME: 0,
     abilities: new Map(), upgrades: new Map(),
     GetUnitAbilityLevel: (u, ability) => state.abilities.get(ability) ?? 0,
     GetUpgradeLevel: upgrade => state.upgrades.get(upgrade) ?? 0,
@@ -112,7 +115,7 @@ export function heroGame(reservation, assigned = true) {
     ['Jobs/MICRO_HERO.eai', 'MicroHeroJob'],
   ]) vm.runInContext(compile(readFileSync(new URL(file, root), 'utf8'), name), context);
   return {
-    state, hero, effects, unitJobs, threatScans,
+    state, hero, effects, unitJobs, groupJobs, threatScans,
     buyItem: () => state.BuyItemJob(2),
     sendHome: () => state.SendUnitHomeJob(hero, 0),
     giveAbility: (code, level = 1) => state.abilities.set(Number(expression(`'${code}'`)), level),
