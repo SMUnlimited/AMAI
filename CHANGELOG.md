@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- Added the `stop_creeping_after_level_5` global setting, enabled by default for TFT and Reforged and disabled for ROC. The AI stops creeping with nothing else to do once all trained heroes are level 5 or higher. Expansion clearing is unchanged; disable the setting to keep idle creeping at higher levels.
 - Undead now fund mine recovery by selling surplus buildings at exhausted expansions before spare plain ziggurats, keeping defensive towers as a last resort. They preserve the last hall and shop, buildings at rebuildable mines, and supply for a missing acolyte.
 - Expansion building counts, construction and upgrades now use the same AMAI-tracked town for all races, avoiding reliance on Warcraft's native separate town numbering. Construction waits for an outstanding worker order or foundation before issuing another order, and town-specific upgrades select buildings assigned to that town.
 - (devtools) Added a Keep a Changelog skill to help contributors write clear, consistent changelog entries and prepare release sections.

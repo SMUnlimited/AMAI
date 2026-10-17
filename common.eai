@@ -260,6 +260,7 @@ globals
 // (AMAI) Global Settings
 //==============================================================
 #PRAGMA START VERSION SETTINGS
+    boolean stop_creeping_after_level_5 = true // Stop idle creeping when all trained heroes are level 5 or higher
     real sleep_multiplier = 1  // increases performance by checking stuff not so often
     integer slm_start = 4  // how many computer players is needed tor the sleep multiplier to start increasing
     integer slm_end = 10 // how many computer players is needed tor the sleep multiplier to stop increasing
@@ -15312,6 +15313,22 @@ endfunction
 //============================================================================
 // AMAI SingleMeleeAttack
 //============================================================================
+function AllTrainedHeroesAtLeastLevel5 takes nothing returns boolean
+  local integer i = 1
+  local boolean has_hero = false
+  loop
+    exitwhen i > 3
+    if hero_built[i] then
+      if hero_unit[i] == null or GetHeroLevel(hero_unit[i]) < 5 then
+        return false
+      endif
+      set has_hero = true
+    endif
+    set i = i + 1
+  endloop
+  return has_hero
+endfunction
+
 function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer ai_strength returns nothing
   local unit hall = null
   local unit mega = null
@@ -15568,7 +15585,7 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
     endif
   endif // if not creep only
 
-  if no_creep_attack or ai_no_creep then
+  if no_creep_attack or ai_no_creep or (stop_creeping_after_level_5 and AllTrainedHeroesAtLeastLevel5()) then
     call Trace("no creeping" )
     call Sleep(4 * sleep_multiplier)
     return
