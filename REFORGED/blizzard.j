@@ -4189,6 +4189,16 @@ function IsUnitAliveBJ takes unit whichUnit returns boolean
 endfunction
 
 //===========================================================================
+function UnitIsDeadBJ takes unit whichUnit returns boolean
+    return not BlzUnitIsAlive(whichUnit)
+endfunction
+
+//===========================================================================
+function UnitIsAliveBJ takes unit whichUnit returns boolean
+    return BlzUnitIsAlive(whichUnit)
+endfunction
+
+//===========================================================================
 function IsUnitGroupDeadBJEnum takes nothing returns nothing
     if not IsUnitDeadBJ(GetEnumUnit()) then
         set bj_isUnitGroupDeadResult = false
