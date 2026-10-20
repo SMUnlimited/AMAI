@@ -35,7 +35,7 @@ Improvements and fixes to the core AI engine will improve the older scripts as w
 
 | AMAI Scripts      | Optimal Version | Supported Version      |
 | ----------------- | ------------------- | ------------------|
-| **REFORGED** | **3.0.0** | 3.0.0+ |
+| **REFORGED** | **3.0.0** | 3.0.1+ |
 | **TFT** | **1.24-1.28** | 1.24+ |
 | **ROC** | **1.24-1.28** | 1.24 - 1.31 |
 
