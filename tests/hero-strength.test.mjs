@@ -4,6 +4,27 @@ import { strengthGame } from './helpers/strength-game.mjs';
 
 for (const version of ['ROC', 'TFT', 'REFORGED']) {
   describe(`${version} learned hero abilities and combat readiness`, () => {
+    it('A missing unit contributes zero without calling unit natives', () => {
+      const game = strengthGame(version);
+
+      assert.equal(game.state.GetUnitStrength(null), 0);
+    });
+
+    it('A unit with zero maximum health contributes zero instead of dividing by zero', () => {
+      const game = strengthGame(version);
+      const unit = game.addUnit('FOOTMAN', { maxLife: 0 });
+
+      assert.equal(game.state.GetUnitStrength(unit), 0);
+      assert.equal(game.strength(), 0);
+    });
+
+    it('A tower with invalid maximum health contributes zero instead of negative strength', () => {
+      const game = strengthGame(version);
+      const tower = game.addUnit('hgtw', { structure: true, ranged: true, maxLife: -1 });
+
+      assert.equal(game.state.GetUnitStrength(tower), 0);
+    });
+
     it('A fresh hero has base strength without a food or unlearned skill allowance', () => {
       const game = strengthGame(version);
       const hero = game.addUnit('Hpal', { hero: true, level: 1, food: 5 });

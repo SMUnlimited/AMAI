@@ -15,6 +15,9 @@ export function heroGame(reservation, assigned = true) {
   const threatScans = [];
   const validUnit = u => { assert.ok(u && !u.removed, 'Read coordinates of a missing or removed unit'); return u; };
   const state = {
+    attacktable: new Map(), CUSTOM_ATTACK: 1,
+    SaveInteger: (table, parent, child, value) => table.set(parent + ':' + child, value),
+    LoadInteger: (table, parent, child) => table.get(parent + ':' + child) ?? 0,
     shop_sent: assigned ? hero : null, shop_ordered: true, retreat_home: false,
     shop_buy_time_large: -1, shop_buy_time_small: -1, shop_distance_limit: 100000,
     shop_unit: { alive: true, type: 'shop', x: 6100, y: 4000 }, shop_wanted: 1,
@@ -82,6 +85,7 @@ export function heroGame(reservation, assigned = true) {
       assert.equal(count, 1, 'Keep the original shopping assault count');
       assert.equal(type, 'hero');
       effects.push('assault');
+      return true;
     },
     RemoveGuardPosition: () => effects.push('remove-guard'),
     IssuePointOrder: () => effects.push('move'), IssueImmediateOrder: () => effects.push('order'),

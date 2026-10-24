@@ -143,6 +143,19 @@ for (const [job, reservation] of [
 }
 
 describe('Healthy shoppers return to normal control', () => {
+  it('Given a bulk request already registered for the hero type, shopping completion still returns this individual hero', () => {
+    const game = heroGame();
+    game.state.SaveInteger(game.state.attacktable, game.state.CUSTOM_ATTACK, game.hero.type, 60);
+    game.state.distance = 100;
+    game.state.items = 1;
+
+    game.buyItem();
+
+    assert.deepEqual(game.effects, ['recycle', 'assault']);
+    assert.equal(game.state.LoadInteger(game.state.attacktable, game.state.CUSTOM_ATTACK, game.hero.type), 60);
+    assert.equal(game.state.shop_ordered, false);
+  });
+
   it('Given an available hero, when an attack cancels shopping, then it rejoins the assault', () => {
     const game = heroGame();
     game.state.attack_running = true;
@@ -151,6 +164,7 @@ describe('Healthy shoppers return to normal control', () => {
     game.buyItem();
 
     assert.deepEqual(game.effects, ['recycle', 'assault']);
+    assert.equal(game.state.LoadInteger(game.state.attacktable, game.state.CUSTOM_ATTACK, game.hero.type), 0);
     assert.equal(game.state.shop_sent, null);
     assert.equal(game.state.shop_ordered, false);
   });
@@ -163,6 +177,22 @@ describe('Healthy shoppers return to normal control', () => {
     game.buyItem();
 
     assert.deepEqual(game.effects, ['recycle', 'assault']);
+    assert.equal(game.state.shop_ordered, false);
+  });
+
+  it('Given a hero that shops twice before the army reforms, when each trip finishes, then it rejoins both times', () => {
+    const game = heroGame();
+    game.state.distance = 100;
+    game.state.items = 1;
+
+    game.buyItem();
+    game.state.shop_sent = game.hero;
+    game.state.shop_ordered = true;
+    game.state.unit_buying_item.add(game.hero);
+    game.buyItem();
+
+    assert.deepEqual(game.effects, ['recycle', 'assault', 'recycle', 'assault']);
+    assert.equal(game.state.LoadInteger(game.state.attacktable, game.state.CUSTOM_ATTACK, game.hero.type), 0);
     assert.equal(game.state.shop_ordered, false);
   });
 

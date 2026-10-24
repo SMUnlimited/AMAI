@@ -14,7 +14,7 @@ export function performanceGame({ capacity = 8192 } = {}) {
   const work = { visits: 0, groups: 0 };
   const natives = groupNatives(groups);
   const state = {
-    ai_player: 0, player_defeated: false, attacktable: new Map(),
+    ai_player: 0, player_defeated: false, desperation_assault: false, attacktable: new Map(), CUSTOM_ATTACK: 1,
     attack_length: 0, attack_units: [], old_id: [],
     UNIT_TYPE_PEON: 'worker', UNIT_TYPE_STRUCTURE: 'structure', UNIT_TYPE_SUMMONED: 'summoned',
     UNIT_TYPE_ANCIENT: 'ancient', UNIT_TYPE_ATTACKS_FLYING: 'air', UNIT_TYPE_ATTACKS_GROUND: 'ground',
@@ -27,6 +27,8 @@ export function performanceGame({ capacity = 8192 } = {}) {
     AddAssault: (qty, type) => { assaults.push({ qty, type }); return true; },
     LoadBoolean: (table, parent, child) => table.get(`${parent}:${child}`) ?? false,
     SaveBoolean: (table, parent, child, value) => table.set(`${parent}:${child}`, value),
+    LoadInteger: (table, parent, child) => table.get(`${parent}:${child}`) ?? 0,
+    SaveInteger: (table, parent, child, value) => table.set(`${parent}:${child}`, value),
     FlushChildHashtable(table, parent) {
       for (const key of table.keys()) if (key.startsWith(`${parent}:`)) table.delete(key);
     },
@@ -66,7 +68,7 @@ export function performanceGame({ capacity = 8192 } = {}) {
   const types = new Map([['tq_length', 'integer'], ['tq_jid', 'integer'], ['tq_par', 'integer']]);
   for (const name of [
     'SelectUnittype', 'SelectByHidden', 'SelectByAlive', 'SelectById',
-    'AttackGroupAddUnknown', 'DesperationAssault', 'LookupCT', 'GetChar', 'CompareReal', 'CheckChatCondition',
+    'AddAssaultAM', 'AttackGroupAddUnknown', 'DesperationAssault', 'LookupCT', 'GetChar', 'CompareReal', 'CheckChatCondition',
     'TQCopy', 'TQExchange', 'TQUpHeap', 'TQFillPos', 'TQRemoveRoot', 'TQAddJobEx',
   ]) vm.runInContext(compile(source, name, types), context);
 

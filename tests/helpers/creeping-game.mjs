@@ -25,6 +25,13 @@ export function creepingGame() {
     SetAllianceTargetIfLeadAndChat() {}, ClearAllianceTarget() {}, C_Expansion: 1,
     CreepAttack: () => attacks.push('idle creep'),
     AttackMoveKillCreep: () => attacks.push('expansion'),
+    difficulty: 0, EASY: 0, comp_chosen_target_rate: 0,
+    GetHeroXP: hero => hero.xp ?? 0,
+    GetRandomInt: (min, max) => Math.floor((min + max) / 2), FoodUsed: () => 30,
+    ChooseAnEnemyTarget: () => null,
+    ChooseAttackTarget: () => ({ alive: true }),
+    alli_target: null, C_Attack: 2,
+    AttackMoveKillAAM: () => attacks.push('player attack'),
   };
   vm.runInContext(['AllTrainedHeroesAtLeastLevel5', 'SingleMeleeAttackAM']
     .map(name => compile(source, name)).join('\n'), vm.createContext(state));

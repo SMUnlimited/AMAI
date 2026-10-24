@@ -53,7 +53,7 @@ describe('Army collection work', () => {
     assert.equal(game.groups.size, 0);
   });
 
-  it('Given a later reinforcement pass, when new troops are available, then previously seen types are requested again', () => {
+  it('Given a later reinforcement pass without a reset, when new troops are available, then only new types are requested', () => {
     const game = performanceGame();
     game.addUnit(1000);
     game.reinforce();
@@ -62,10 +62,10 @@ describe('Army collection work', () => {
 
     game.reinforce();
 
-    assert.deepEqual(game.assaults.map(request => request.type), [1000, 1000, 2000]);
+    assert.deepEqual(game.assaults.map(request => request.type), [1000, 2000]);
   });
 
-  it('Given 25 different troop types, when reinforcing after normal army setup, then every type is reconsidered', () => {
+  it('Given captured troop types already registered by an army scan, when desperation runs, then only the remaining unregistered type is requested', () => {
     const game = performanceGame();
     game.state.attack_length = 1;
     game.state.attack_units = [1];
@@ -76,7 +76,7 @@ describe('Army collection work', () => {
 
     game.reinforce();
 
-    assert.deepEqual(game.assaults.map(request => request.type), Array.from({ length: 25 }, (_, i) => 1000 + i));
+    assert.deepEqual(game.assaults.map(request => request.type), [1000]);
   });
 
   it('Given a defeated player, when desperation reinforcements run, then no scan or assault request is made', () => {

@@ -78,7 +78,9 @@ for (const version of ['ROC', 'TFT', 'REFORGED']) {
 
       assert.deepEqual(game.assaults, [captured.id, custom.id]);
       assert.equal(game.groups.size, 0);
-      assert.equal(game.state.attacktable.size, 0);
+      assert.equal([...game.state.attacktable.keys()].some(key => key.startsWith('0:')), false);
+      assert.equal(game.state.LoadInteger(game.state.attacktable, game.state.CUSTOM_ATTACK, captured.id), 60);
+      assert.equal(game.state.LoadInteger(game.state.attacktable, game.state.CUSTOM_ATTACK, custom.id), 60);
     });
 
     it('An attacker already configured for the wave is not added again', () => {

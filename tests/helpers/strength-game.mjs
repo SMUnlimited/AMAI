@@ -21,7 +21,7 @@ export function compiledCommon(version) {
 
 export function strengthGame(version) {
   const source = compiledCommon(version);
-  const units = [], assaults = [], groups = new Set();
+  const units = [], assaults = [], assaultRequests = [], merges = [], messages = [], groups = new Set();
   const state = {
     ...groupNatives(groups), ai_player: 0, ai_time: 100, tier: 1,
     attacktable: new Map(), attack_length: 0, attack_units: [], old_id: zeros(),
@@ -29,6 +29,18 @@ export function strengthGame(version) {
     ver_hero_base_value: 2,
     racial_ghoul: 0, racial_rushcreep: 0, harvesting_ghouls: 0,
     br_rush_attacked: false, ancient_expanding: false,
+    attack_max: [], take_all_ghouls_along: false, attacking_ghouls: 0,
+    minimum_peon_wood: 200, towerrush: false,
+    desperation_assault: false, player_defeated: false, CUSTOM_ATTACK: 1,
+    assaultSucceeds: true, unit_harassing: new Set(), RecycleGuardPosition() {},
+    race_has_ghouls: false, race_ghouls_attack: false, distraction_group: 0,
+    DoAttackJobs() {}, AttackMoveKill() {}, ReformUntilTargetDeadAM() {},
+    Chat() {}, C_Done: 0, SleepInCombatAM() {},
+    GetWood: () => 0, GetUpgradeLevel: () => 0,
+    IsStandardUnit: u => !u.healing, IsUnitBuying: u => Boolean(u.buying),
+    Min: Math.min, Max: Math.max, Trace() {}, Int2Str: String, Sleep() {},
+    InitAssault() { assaults.length = 0; assaultRequests.length = 0; },
+    MergeUnits: (count, a, b, id) => merges.push({ count, a, b, id }),
     UNIT_TYPE_SUMMONED: 'summoned', UNIT_TYPE_HERO: 'hero', UNIT_TYPE_PEON: 'peon',
     UNIT_TYPE_STRUCTURE: 'structure', UNIT_TYPE_ANCIENT: 'ancient',
     UNIT_TYPE_MELEE_ATTACKER: 'melee', UNIT_TYPE_RANGED_ATTACKER: 'ranged',
@@ -47,12 +59,18 @@ export function strengthGame(version) {
     GetPlayerUnitTypeCount: (p, id) => units.filter(u => u.owner === p && u.id === id && u.alive).length,
     SaveBoolean: (table, parent, child, value) => table.set(parent + ':' + child, value),
     LoadBoolean: (table, parent, child) => table.get(parent + ':' + child) ?? false,
+    SaveInteger: (table, parent, child, value) => table.set(parent + ':' + child, value),
+    LoadInteger: (table, parent, child) => table.get(parent + ':' + child) ?? 0,
     FlushChildHashtable(table, parent) {
       for (const key of table.keys()) if (key.startsWith(parent + ':')) table.delete(key);
     },
-    AddAssault: (count, id) => assaults.push(id),
+    AddAssault(count, id) {
+      assaults.push(id);
+      assaultRequests.push({ count, id });
+      return state.assaultSucceeds;
+    },
     R2I: Math.trunc, I2R: Number, RMax: Math.max, RMin: Math.min, SquareRoot: Math.sqrt,
-    DisplayToAll(message) { throw new Error(message); },
+    DisplayToAll: message => messages.push(message),
   };
   for (const [, name, value] of source.matchAll(/^\s*constant integer ([ou]\w+)\s+= (.+)$/gm)) {
     state[name] = Number(expression(value.trim()));
@@ -64,10 +82,13 @@ export function strengthGame(version) {
     .map(([, category]) => category).filter(category => category !== 'AntiAir');
   const names = ['GetHeroAbilityStrength', 'GetHeroStrength', 'GetPlayerHeroStrengthMod',
     'GetUnitStrengthEx', 'IsUnitTower', 'GetPlayerStrengthHandicap', 'GetUnitStrength',
-    'GetPlayerStrength', 'GetOwnStrength', 'AttackGroupAddUnknown', ...categories.map(c => 'GetPlayer' + c + 'Strength')];
+    'GetPlayerStrength', 'GetOwnStrength', 'AttackGroupAddUnknown', 'ConversionsAM',
+    'InitAssaultAM', 'AddAssaultAM', 'GroupRecycleHarrassPositionInstant',
+    'DesperationAssault', 'FormGroupAM', 'FromGroupAndGhoulsAM', 'AttackMoveKillAAM',
+    ...categories.map(c => 'GetPlayer' + c + 'Strength')];
   vm.runInContext([...new Set(names)].map(name => compile(source, name)).join('\n'), vm.createContext(state));
   return {
-    state, assaults, groups,
+    state, assaults, assaultRequests, merges, messages, groups,
     addUnit(name, options = {}) {
       const id = state['o' + name] ?? Number(expression("'" + name + "'"));
       const unit = { id, owner: 0, alive: true, hidden: false, food: 0, level: 4,
@@ -83,5 +104,23 @@ export function strengthGame(version) {
       hero.abilities[state[name]] = rank;
     },
     attack: () => state.AttackGroupAddUnknown(),
+    reinforce: () => state.DesperationAssault(),
+    returnFromHarassment(...troops) {
+      const group = state.CreateGroup();
+      for (const unit of troops) state.GroupAddUnit(group, unit);
+      state.GroupRecycleHarrassPositionInstant(group);
+    },
+    startAttack: target => state.AttackMoveKillAAM(target, true),
+    formArmy(name, maximum = 60) {
+      const id = state['u' + name];
+      assert.ok(id, 'Unknown army unit ' + name);
+      state.racial_ghoul = state.uGHOUL;
+      state.old_id[id] = state['o' + name];
+      state.attack_units = [id];
+      state.attack_max = [maximum];
+      state.attack_length = 1;
+      state.TownCountDone = unitid => units.filter(u => u.id === state.old_id[unitid] && u.alive).length;
+      state.FormGroupAM(0);
+    },
   };
 }

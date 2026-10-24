@@ -921,7 +921,7 @@ globals
 	constant integer PROFILE_SELECTION = 6
 	constant integer NEUTRAL_GUARDS = 7
   constant integer TYPECASTING = 8
-  hashtable attacktable = InitHashtable() // Parent 0: unit types seen during an assault scan (no sleeps).
+  hashtable attacktable = InitHashtable() // Parent 0: scan exclusions/attempts; CUSTOM_ATTACK: accepted bulk quantities.
   constant integer CUSTOM_ATTACK = 1
 
   gamecache amaiCache = InitGameCache("AMAI_AI.w3v")
@@ -2612,6 +2612,19 @@ function InitDefenseGroup takes nothing returns nothing
 endfunction
 
 //============================================================================
+function InitAssaultAM takes nothing returns nothing
+  call InitAssault()
+  call FlushChildHashtable(attacktable, CUSTOM_ATTACK)
+endfunction
+
+// Bulk formation requests share a target quantity; failed calls must remain retryable.
+function AddAssaultAM takes integer qty, integer id returns nothing
+  local integer missing = qty - LoadInteger(attacktable, CUSTOM_ATTACK, id)
+  if missing > 0 and AddAssault(missing, id) then
+    call SaveInteger(attacktable, CUSTOM_ATTACK, id, qty)
+  endif
+endfunction
+
 function InitAssaultGroup takes nothing returns nothing
 	if IsAMAI then
 		set attack_length = 0
@@ -5831,17 +5844,22 @@ endfunction
 
 //============================================================================
 function GetUnitStrength takes unit u returns real
-  if GetUnitState(u, UNIT_STATE_MAX_LIFE) == 0 then
-    call DisplayToAll("ERROR: Major error has occured and caused amai system to crash at function GetUnitStrength")
-    call DisplayToAll("Please contact the creator and provide this replay to them")
+  local real max_life = 0
+  if u == null then
+    return 0.0
+  endif
+  set max_life = GetUnitState(u, UNIT_STATE_MAX_LIFE)
+  if max_life <= 0 then
+     call DisplayToAll("ERROR: Major error has occured and caused amai system to fail at function GetUnitStrength")
+    return 0.0
   endif
   if IsUnitTower(u) then
-    return 3 * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE)) // Towers can usually take out 2 footmen with ease so strength based on that
+    return 3 * (GetUnitState(u, UNIT_STATE_LIFE) / max_life) // Towers can usually take out 2 footmen with ease so strength based on that
   endif
   if IsUnitType(u, UNIT_TYPE_ANCIENT) and IsUnitType(u, UNIT_TYPE_MELEE_ATTACKER) then // Passive as these can hit back with melee
-    return 1 * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE))
+    return 1 * (GetUnitState(u, UNIT_STATE_LIFE) / max_life)
   endif
-  return GetUnitStrengthEx(u) * GetPlayerStrengthHandicap(GetOwningPlayer(u)) * (GetUnitState(u, UNIT_STATE_LIFE) / GetUnitState(u, UNIT_STATE_MAX_LIFE))
+  return GetUnitStrengthEx(u) * GetPlayerStrengthHandicap(GetOwningPlayer(u)) * (GetUnitState(u, UNIT_STATE_LIFE) / max_life)
 endfunction
 
 //============================================================================
@@ -8626,6 +8644,33 @@ function ConversionsAM takes integer desire, integer unitid returns nothing
 #ENDINCLUDE
 endfunction
 
+function DesperationAssault takes nothing returns nothing
+  local group g = null
+  local unit u = null
+  local integer id = 0
+  if not player_defeated then
+    call Trace("Adding desperation troops")
+    call FlushChildHashtable(attacktable, 0)
+    set g = CreateGroup()
+    call GroupEnumUnitsOfPlayer(g, ai_player, null)
+    loop
+      set u = FirstOfGroup(g)
+      exitwhen u == null
+      if (IsUnitType(u, UNIT_TYPE_ANCIENT) or not IsUnitType(u, UNIT_TYPE_STRUCTURE)) and UnitAlive(u) and not IsUnitHidden(u) then
+        set id = GetUnitTypeId(u)
+        if not LoadBoolean(attacktable, 0, id) then
+          call AddAssaultAM(60, id)
+          call SaveBoolean(attacktable, 0, id, true)
+        endif
+      endif
+      call GroupRemoveUnit(g, u)
+    endloop
+    call FlushChildHashtable(attacktable, 0)
+    call DestroyGroup(g)
+    set g = null
+  endif
+endfunction
+
 function FormGroupAM takes integer seconds returns nothing
   local integer index = 0
   local integer count = 0
@@ -8634,7 +8679,14 @@ function FormGroupAM takes integer seconds returns nothing
   local group g = null
   local unit u = null
 
-  call InitAssault()
+  call InitAssaultAM()
+  if desperation_assault then
+    call DesperationAssault()
+    if seconds > 0 then
+      call Sleep(seconds)
+    endif
+    return
+  endif
 
   loop
     exitwhen index >= attack_length
@@ -8671,7 +8723,7 @@ function FormGroupAM takes integer seconds returns nothing
       endloop
       call DestroyGroup(g)
       set g = null
-      set desire = (count - harvesting_ghouls) // all spare ghouls should attack and join attack as built
+      set desire = count - Min(harvesting_ghouls, count) // Reserve only available ghouls; all spare ghouls should attack.
       if towerrush then
         set desire = Min(Max(count - 2 , 0),desire)  // reserve
       endif
@@ -8685,9 +8737,9 @@ function FormGroupAM takes integer seconds returns nothing
     call ConversionsAM(desire,unitid)
 
     if count >= desire then
-      call AddAssault(desire,old_id[unitid])
+      call AddAssaultAM(desire,old_id[unitid])
     else
-      call AddAssault(count,old_id[unitid])
+      call AddAssaultAM(count,old_id[unitid])
     endif
 
     set index = index + 1
@@ -13871,7 +13923,7 @@ function AttackGroupAddUnknown takes nothing returns nothing
     exitwhen u == null
     set id = GetUnitTypeId(u)
     if not LoadBoolean(attacktable, 0, id) and id != 'ngir' and UnitAlive(u) and not IsUnitHidden(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitType(u, UNIT_TYPE_SUMMONED) and (IsUnitType(u, UNIT_TYPE_ATTACKS_FLYING) or IsUnitType(u, UNIT_TYPE_ATTACKS_GROUND)) then
-      call AddAssault(60,id)  //other hero and unit , like other race and custom
+      call AddAssaultAM(60,id)  //other hero and unit , like other race and custom
       call SaveBoolean(attacktable, 0, id, true)
     endif
     call GroupRemoveUnit(g, u)
@@ -14044,33 +14096,6 @@ function CheckAttackWait takes unit target returns boolean
 endfunction
 
 //============================================================================
-function DesperationAssault takes nothing returns nothing
-  local group g = null
-  local unit u = null
-  local integer id = 0
-  if not player_defeated then
-    call Trace("Adding desperation troops")
-    call FlushChildHashtable(attacktable, 0)
-    set g = CreateGroup()
-    call GroupEnumUnitsOfPlayer(g, ai_player, null)
-    loop
-      set u = FirstOfGroup(g)
-      exitwhen u == null
-      if (IsUnitType(u, UNIT_TYPE_ANCIENT) or not IsUnitType(u, UNIT_TYPE_STRUCTURE)) and UnitAlive(u) and not IsUnitHidden(u) then
-        set id = GetUnitTypeId(u)
-        if not LoadBoolean(attacktable, 0, id) then
-          call AddAssault(60, id)
-          call SaveBoolean(attacktable, 0, id, true)
-        endif
-      endif
-      call GroupRemoveUnit(g, u )
-    endloop
-    call FlushChildHashtable(attacktable, 0)
-    call DestroyGroup(g)
-    set g = null
-  endif
-endfunction
-
 // Interceptions share retreat's strength assessment and never replace the strategic target.
 function AttackTransitIntrusion takes nothing returns boolean
   local real x = 0
@@ -15358,6 +15383,8 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
   local unit mega = null
   local unit creep = null
   local unit common = null
+  local integer hero_xp = 0
+  local integer second_hero_xp = 0
 
 //call Trace("SingleMeleeAttack")
 
@@ -15370,7 +15397,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
         if common != null then
           call Trace("===Desperation Attack Alliance Target===")
           //call Chat(C_Ally)
-          call DesperationAssault()
           call AttackMoveKillAAM(common, true)
           call ClearAllianceTarget(common)
           set common = null
@@ -15383,7 +15409,6 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
     if (common != null) then
       call Trace("===Desperation Attack Random Enemy Target===")
       call SetAllianceTargetIfLeadAndChat(common, C_Ally)
-      call DesperationAssault()
       call AttackMoveKillAAM(common, true)
       call ClearAllianceTarget(common)
       set common = null
@@ -15596,7 +15621,13 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
         set mega = null
       endif
 
-      if GetHeroXP(hero_unit[1]) < GetRandomInt(50,150) or GetHeroXP(hero_unit[1]) > GetRandomInt(300,850) or GetHeroXP(hero_unit[2]) > 450 or FoodUsed() > GetRandomInt(40,60) then
+      if hero_unit[1] != null then
+        set hero_xp = GetHeroXP(hero_unit[1])
+      endif
+      if hero_unit[2] != null then
+        set second_hero_xp = GetHeroXP(hero_unit[2])
+      endif
+      if hero_xp < GetRandomInt(50,150) or hero_xp > GetRandomInt(300,850) or second_hero_xp > 450 or FoodUsed() > GetRandomInt(40,60) then
         set hall = ChooseAttackTarget(hall)
         if hall != null and UnitAlive(hall) then
           call SetAllianceTargetIfLeadAndChat(alli_target, C_Attack)
