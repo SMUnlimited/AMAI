@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## Unreleased
 
+### Added
+
+- Water mines are rechecked during play and become land expansion options when a route opens, allowing the AI to use them without a Zeppelin.
+- (internal) AI logic can request pathing checks during play and read their results through the existing pathing thread, without starting extra threads or pausing other checks.
+
 ### Fixed
 
 - Desperation attacks now form their full roster after resetting the assault group and avoid duplicate troop requests across formation and captured/custom troop scans. Units returning from shopping, harassment or combat can rejoin repeatedly without changing those bulk requests.

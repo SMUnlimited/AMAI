@@ -1098,6 +1098,30 @@ globals
     boolean first_expansion_chosen = false
     boolean pathing_done = false
 
+    constant integer PATHING_CHECK_UNUSED = 0
+    constant integer PATHING_CHECK_PENDING = 1
+    constant integer PATHING_CHECK_REACHABLE = 2
+    constant integer PATHING_CHECK_UNREACHABLE = -1
+    constant integer PATHING_CHECK_LIMIT = 32
+    integer array pathing_check_state
+    integer array pathing_check_unit_id
+    real array pathing_check_from_x
+    real array pathing_check_from_y
+    real array pathing_check_to_x
+    real array pathing_check_to_y
+    real array pathing_check_distance
+    integer pathing_check_active = 0
+    integer pathing_check_next = 1
+    unit pathing_check_probe = null
+    real pathing_check_started = 0
+    real pathing_check_progress = 0
+    real pathing_check_x = 0
+    real pathing_check_y = 0
+    integer water_pathing_request = 0
+    integer water_pathing_cursor = 0
+    unit water_pathing_mine = null
+    real water_pathing_next_time = 0
+
     integer confirm_count = 0
     integer array ai_force
     integer ai_force_length = 0
@@ -4899,6 +4923,134 @@ function CreatePathingUnit takes unit u returns unit
   return u
 endfunction
 
+// Nonblocking requests for the existing pathing thread. Coordinates are copied,
+// so callers retain ownership of both locations. A zero ticket means rejected
+// (invalid locations/type or all 32 slots in use); retry later if the queue is full.
+function RequestPathingCheck takes location from, location target, pathingtype path returns integer
+  local integer i = 1
+  local integer id = 0
+  if from == null or target == null then
+    return 0
+  endif
+  if path == PATHING_TYPE_WALKABILITY then
+    set id = groundid
+  elseif path == PATHING_TYPE_FLOATABILITY then
+    set id = 'hdes'
+  elseif path == PATHING_TYPE_AMPHIBIOUSPATHING then
+    set id = 'nsnp'
+  elseif path == PATHING_TYPE_FLYABILITY then
+    set id = 'hgyr'
+  else
+    return 0
+  endif
+  loop
+    exitwhen i > PATHING_CHECK_LIMIT
+    if pathing_check_state[i] == PATHING_CHECK_UNUSED then
+      set pathing_check_unit_id[i] = id
+      set pathing_check_from_x[i] = GetLocationX(from)
+      set pathing_check_from_y[i] = GetLocationY(from)
+      set pathing_check_to_x[i] = GetLocationX(target)
+      set pathing_check_to_y[i] = GetLocationY(target)
+      set pathing_check_distance[i] = 0
+      set pathing_check_state[i] = PATHING_CHECK_PENDING
+      return i
+    endif
+    set i = i + 1
+  endloop
+  return 0
+endfunction
+
+function GetPathingCheckResult takes integer ticket returns integer
+  if ticket < 1 or ticket > PATHING_CHECK_LIMIT then
+    return PATHING_CHECK_UNUSED
+  endif
+  return pathing_check_state[ticket]
+endfunction
+
+// Sampled travel distance, useful for rating a reachable destination.
+function GetPathingCheckDistance takes integer ticket returns real
+  if ticket < 1 or ticket > PATHING_CHECK_LIMIT then
+    return 0.0
+  endif
+  return pathing_check_distance[ticket]
+endfunction
+
+// Release completed results, or cancel pending checks. Tickets must not be used
+// after release: their slots can be reused by another caller.
+function ReleasePathingCheck takes integer ticket returns nothing
+  if ticket < 1 or ticket > PATHING_CHECK_LIMIT then
+    return
+  endif
+  if pathing_check_active == ticket then
+    call RemoveUnit(pathing_check_probe)
+    set pathing_check_probe = null
+    set pathing_check_active = 0
+  endif
+  set pathing_check_state[ticket] = PATHING_CHECK_UNUSED
+  set pathing_check_distance[ticket] = 0
+endfunction
+
+// Advance at most one probe without sleeping, leaving neutral maintenance and
+// other AI threads free to run. Round-robin slots prevent recycled slots starving
+// older requests. Stuck probes time out even if Warcraft leaves their move active.
+function ProcessPathingChecks takes nothing returns nothing
+  local integer i = 0
+  local integer ticket = pathing_check_active
+  local real now = TimerGetElapsed(tq_timer)
+  local real x = 0
+  local real y = 0
+  local real dx = 0
+  local real dy = 0
+  if ticket == 0 then
+    loop
+      exitwhen i >= PATHING_CHECK_LIMIT
+      set ticket = pathing_check_next
+      set pathing_check_next = ModuloInteger(ticket, PATHING_CHECK_LIMIT) + 1
+      exitwhen pathing_check_state[ticket] == PATHING_CHECK_PENDING
+      set ticket = 0
+      set i = i + 1
+    endloop
+    if ticket == 0 then
+      return
+    endif
+    set pathing_check_active = ticket
+    set pathing_check_probe = CreatePathingUnitFull(null, ai_player, pathing_check_unit_id[ticket], pathing_check_from_x[ticket], pathing_check_from_y[ticket])
+    call IssuePointOrder(pathing_check_probe, "move", pathing_check_to_x[ticket], pathing_check_to_y[ticket])
+    set pathing_check_started = now
+    set pathing_check_progress = now
+    set pathing_check_x = GetUnitX(pathing_check_probe)
+    set pathing_check_y = GetUnitY(pathing_check_probe)
+  endif
+  if not UnitAlive(pathing_check_probe) then
+    set pathing_check_state[ticket] = PATHING_CHECK_UNREACHABLE
+  else
+    set x = GetUnitX(pathing_check_probe)
+    set y = GetUnitY(pathing_check_probe)
+    set dx = x - pathing_check_x
+    set dy = y - pathing_check_y
+    if dx * dx + dy * dy >= 1024 then
+      set pathing_check_distance[ticket] = pathing_check_distance[ticket] + SquareRoot(dx * dx + dy * dy)
+      set pathing_check_x = x
+      set pathing_check_y = y
+      set pathing_check_progress = now
+    endif
+    set dx = x - pathing_check_to_x[ticket]
+    set dy = y - pathing_check_to_y[ticket]
+    if dx * dx + dy * dy <= buy_distance * buy_distance then
+      set pathing_check_state[ticket] = PATHING_CHECK_REACHABLE
+    elseif now - pathing_check_started >= 120 or now - pathing_check_progress >= 10 then
+      set pathing_check_state[ticket] = PATHING_CHECK_UNREACHABLE
+    elseif GetUnitCurrentOrder(pathing_check_probe) != OrderId("move") then
+      call IssuePointOrder(pathing_check_probe, "move", pathing_check_to_x[ticket], pathing_check_to_y[ticket])
+    endif
+  endif
+  if pathing_check_state[ticket] != PATHING_CHECK_PENDING then
+    call RemoveUnit(pathing_check_probe)
+    set pathing_check_probe = null
+    set pathing_check_active = 0
+  endif
+endfunction
+
 function CanPathToLoc takes location locA, location target, pathingtype path returns real 
 
 // This function returns the time to path to a location. If positive its pathable, if negative
@@ -7045,6 +7197,70 @@ function AddWaterExpansion takes unit u, real d returns nothing
   set water_expansion_list_length = water_expansion_list_length + 1
 endfunction
 
+// Recheck remaining water mines one at a time, with a minute between sweeps.
+// Keep retired water slots in place: creep records and active selections use
+// their indices. The bad flag excludes them from future water selections.
+function CheckWaterExpansionPaths takes nothing returns nothing
+  local integer result = GetPathingCheckResult(water_pathing_request)
+  local integer i = 0
+  local location target = null
+  local real now = TimerGetElapsed(tq_timer)
+  if water_pathing_request != 0 then
+    if not UnitAlive(water_pathing_mine) or GetResourceAmount(water_pathing_mine) <= 0 then
+      call ReleasePathingCheck(water_pathing_request)
+      set water_pathing_request = 0
+      set water_pathing_mine = null
+    elseif result == PATHING_CHECK_PENDING then
+      return
+    else
+      if result == PATHING_CHECK_REACHABLE and IsUnitInGroup(water_pathing_mine, water_expansion) then
+        loop
+          exitwhen i >= water_expansion_list_length
+          if water_expansion_list[i] == water_pathing_mine then
+            set bad_water_expansion_flag[i] = 1
+            exitwhen true
+          endif
+          set i = i + 1
+        endloop
+        if current_expansion == water_pathing_mine then
+          set current_expansion_creeps = expansion_list_length
+          set current_expansion_iswater = false
+          set specialexpand = true
+        endif
+        call GroupRemoveUnit(water_expansion, water_pathing_mine)
+        call AddExpansion(water_pathing_mine, GetPathingCheckDistance(water_pathing_request))
+        set water_map = BlzGroupGetSize(water_expansion) >= expansion_list_length
+      endif
+      call ReleasePathingCheck(water_pathing_request)
+      set water_pathing_request = 0
+      set water_pathing_mine = null
+    endif
+  endif
+  if now < water_pathing_next_time or water_expansion_list_length == 0 then
+    return
+  endif
+  loop
+    if water_pathing_cursor >= water_expansion_list_length then
+      set water_pathing_cursor = 0
+      set water_pathing_next_time = now + 60
+      return
+    endif
+    set water_pathing_mine = water_expansion_list[water_pathing_cursor]
+    if UnitAlive(water_pathing_mine) and GetResourceAmount(water_pathing_mine) > 0 and IsUnitInGroup(water_pathing_mine, water_expansion) then
+      set target = GetUnitLoc(water_pathing_mine)
+      set water_pathing_request = RequestPathingCheck(home_location, target, PATHING_TYPE_WALKABILITY)
+      call RemoveLocation(target)
+      set target = null
+      // Retry the same mine on the next tick if all request slots are occupied.
+      if water_pathing_request != 0 then
+        set water_pathing_cursor = water_pathing_cursor + 1
+      endif
+      return
+    endif
+    set water_pathing_cursor = water_pathing_cursor + 1
+  endloop
+endfunction
+
 //==============================================================
 function GetExpNearestMin takes unit ru returns unit
 // Return the nearest mine, uses old system so computer has a mine as new system can take a while to calculate
@@ -9100,8 +9316,11 @@ function PathingThread takes nothing returns nothing
   set first_expansion_chosen = first_expansion_chosen == true or (water_expansion_list_length > 0)  // no expansion but have water expansion , can take expansion
   call CheckAllNeutrals() // The more advanced new system check
   set pathing_done = true
-  loop // no need repeated run
+  set water_pathing_next_time = TimerGetElapsed(tq_timer) + 60
+  loop
     call StaggerSleep(2 * sleep_multiplier, sleep_multiplier)
+    call CheckWaterExpansionPaths()
+    call ProcessPathingChecks()
     if t == 5 then
       loop
         exitwhen i >= NEUTRAL_COUNT
@@ -13670,7 +13889,7 @@ function OneBuildLoopAM takes nothing returns nothing
     call PeonBuilder()
     // Zeppelin builder
     if GetGold() > 600 and GetWood() > 360 then
-      if (water_expansion_list_length > 0) then
+      if water_expansion_list_length > 0 and BlzGroupGetSize(water_expansion) > 0 then
         call BuildUnit(2, neutral_zeppelin, 80)
       else
         call BuildUnit(2, neutral_zeppelin, 50)
