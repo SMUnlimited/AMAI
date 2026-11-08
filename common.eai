@@ -1066,6 +1066,7 @@ globals
     hashtable expansion_job_pending = InitHashtable()
     hashtable expansion_retry_state = InitHashtable()
     hashtable expansion_retry_cooldowns = InitHashtable()
+    real expansion_evaluation_retry_time = 0
 
     integer exp_number = 0
     integer array exp_rp
@@ -13631,7 +13632,12 @@ local boolean upkeepboost = false
 local integer aggexpand = 0
 local boolean fastexpa = true
 local boolean minetimeready = false
+local real now = TimerGetElapsed(tq_timer)
 
+// Back off failed selection in game seconds; ai_time uses five-second ticks.
+if now < expansion_evaluation_retry_time then
+  return
+endif
 if not first_expansion_chosen then
   call Trace("ExpansionBuilder: Expansions not evaluated yet")
   return
@@ -13643,11 +13649,15 @@ if current_expansion == null or CheckExpansionTaken(current_expansion) then
   call ChooseExpansion()
   if current_expansion == null then
     call Trace("ExpansionBuilder: No mine available")
+    set take_exp = false
+    set expansion_evaluation_retry_time = now + 30
     return
   endif
   if CheckExpansionTaken(current_expansion) then
     call Trace("ExpansionBuilder: Expansion taken by someone else")
     set current_expansion = null
+    set take_exp = false
+    set expansion_evaluation_retry_time = now + 30
     return
   endif
   set specialexpand = not IsWaterExpansion(current_expansion) // water expand can't use racial expansion techniques
@@ -13702,11 +13712,17 @@ endif
       call ChooseExpansion()
       if current_expansion == null then
         call Trace("ExpansionBuilder: No mine available (after rebuild scan)")
+        set take_exp = false
+        set expansion_evaluation_retry_time = now + 30
+        set u = null
         return
       endif
       if CheckExpansionTaken(current_expansion) then
         call Trace("ExpansionBuilder: Expansion taken by someone else (after rebuild scan)")
         set current_expansion = null
+        set take_exp = false
+        set expansion_evaluation_retry_time = now + 30
+        set u = null
         return
       endif
       set specialexpand = not IsWaterExpansion(current_expansion)

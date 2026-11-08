@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- When no usable expansion mine is found, the AI waits 30 seconds before evaluating expansions again and clears its old request to creep the unavailable site. First expansions and recovery after losing mines remain available.
 - Desperation attacks now form their full roster after resetting the assault group and avoid duplicate troop requests across formation and captured/custom troop scans. Units returning from shopping, harassment or combat can rejoin repeatedly without changing those bulk requests.
 - Ghoul attack formations now reserve only the ghouls available, preventing negative troop requests when more ghouls are healing or otherwise unavailable than the lumber workforce requires.
 - Attacks now treat missing heroes as having no experience without querying an empty hero slot, including when a desperation attack cannot find a target.
