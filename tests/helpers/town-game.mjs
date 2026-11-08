@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { compile, zeros } from './jass.mjs';
 import { groupNatives } from './warcraft-natives.mjs';
+import { installPathing } from './pathing-game.mjs';
 
 const read = path => readFileSync(new URL('../../' + path, import.meta.url), 'utf8');
 const common = read('common.eai').replace(/#INCLUDETABLE[^\n]*\n[\s\S]*?#ENDINCLUDE/g, '');
@@ -24,7 +25,7 @@ export function townGame(race = 'undead') {
   const array = () => zeros();
   const count = (raw, done = false) => units.filter(u => u.alive && u.owner === 0 && u.type === raw && (!done || !u.unfinished)).length;
   const state = {
-    ai_player: 0, IsAMAI: true, ai_time: 100, debugging: 0,
+    ai_player: 0, IsAMAI: true, ai_time: 100, debugging: 0, groundid: 1, buy_distance: 350, sleep_multiplier: 1,
     own_town: [2, 0], own_town_num: 2, town_num: 3, home_town: 2, town_radius: 2500,
     town_owner: [0, 1, 0], town_loc: [{ x: 6000, y: 0 }, { x: 12000, y: 0 }, { x: 0, y: 0 }],
     town_structures: [new Set(), null, new Set()], tracked_structures: new Map(),
@@ -107,7 +108,13 @@ export function townGame(race = 'undead') {
     CreatePathingUnitFull: (_, owner, raw, x, y) => ({ owner, type: raw, x, y, alive: true }),
     GetExpansionPeon: () => units.find(u => u.alive && u.type === state.old_id[state.racial_peon]) ?? null,
     GetExpansionPeon2: () => null,
-    Sleep() {},
+    SetUnitMoveSpeed() {}, UnitApplyTimedLife() {}, ModuloInteger: (a, b) => a % b, SquareRoot: Math.sqrt,
+    Sleep(seconds) {
+      if (state.pathing_check_state.some(result => result === state.PATHING_CHECK_PENDING)) {
+        state.ai_time += seconds / 5;
+        state.ProcessPathingChecks();
+      }
+    },
     RemoveUnit(u) { u.alive = false; },
     GetMinesHarvested: () => state.town_mine.filter(u => u?.alive && u.gold > 0).length,
   };
@@ -124,6 +131,7 @@ export function townGame(race = 'undead') {
   const [hall, hall2, hall3, farm, tower, worker, expansion] = names[race].map(name => ids[name]);
   Object.assign(state, { racial_hall: [0, hall, hall2, hall3], tiernum: 3, racial_peon: worker, racial_expansion: expansion });
   const context = vm.createContext(state);
+  installPathing(state, context);
   for (const name of [
     'CopyGroup', 'GetTrackedTown', 'GetTrackedTownAtPoint', 'GetTrackedStructureTown', 'TrackedStructureDone',
     'GetTrackedTownUnitCount', 'TrackedTownHasMine', 'TrackedTownHasHall', 'IsTrackedTownBuilder',

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { pathingGame } from './helpers/pathing-game.mjs';
+import { pathingGame, towerGame } from './helpers/pathing-game.mjs';
 
 describe('Mid-game pathing requests', () => {
   it('Given caller-owned locations, when a request is queued, then it keeps copied coordinates after the locations are freed', () => {
@@ -129,6 +129,196 @@ describe('Mid-game pathing requests', () => {
 
     const rawcode = text => [...text].reduce((n, c) => n * 256 + c.charCodeAt(0), 0);
     assert.deepEqual(game.probes.map(u => u.id), [game.state.groundid, ...['hdes', 'nsnp', 'hgyr'].map(rawcode)]);
+  });
+});
+
+describe('Pathing polling cadence', () => {
+  it('Given a timed tree search and long staggered waits, when the thread polls its result, then it retains the harvest order without rapid sampling or early expiry', () => {
+    const game = pathingGame();
+    game.state.sleep_multiplier = 2;
+    game.state.GetRandomReal = (min, max) => max;
+    game.state.treeFound = true;
+    const ticket = game.state.RequestPathingProbe(game.state.home_location, game.state.home_location,
+      game.state.groundid, 'autoharvestlumber', 300, 1);
+
+    game.runThread(9);
+
+    assert.equal(game.result(ticket), game.state.PATHING_CHECK_REACHABLE);
+    assert.equal(game.state.GetPathingProbeOrder(ticket), 'harvest');
+    assert.equal(game.probes[0].speed, 300);
+    assert.equal(game.probes[0].removed, true);
+    assert.ok(game.sleeps.slice(1).every(sleep => sleep.seconds === 6));
+  });
+
+  it('Given no pathing requests, when the pathing thread runs, then it sleeps for the full staggered interval', () => {
+    const game = pathingGame();
+    game.state.sleep_multiplier = 2;
+    game.state.GetRandomReal = (min, max) => max;
+
+    game.runThread(19);
+
+    assert.equal(game.probes.length, 0);
+    assert.ok(game.sleeps.slice(1).every(sleep => sleep.seconds === 6));
+    assert.equal(game.neutralChecks.filter(check => check.kind === 'enemies').length, 3);
+  });
+
+  it('Given an automatic mine reachability check, when its route stays blocked, then the probe times out using slow polling', () => {
+    const game = pathingGame();
+    const mine = game.addWaterMine();
+
+    game.runThread(85);
+
+    assert.equal(game.probes.length, 1);
+    assert.equal(game.probes[0].removed, true);
+    assert.equal(game.state.IsWaterExpansion(mine), true);
+    assert.ok(game.sleeps.some(sleep => sleep.active !== 0));
+    assert.ok(game.sleeps.slice(1).every(sleep => sleep.seconds === 2));
+  });
+
+  it('Given a waypoint queued after a reachability check, when each request runs, then only the active waypoint uses rapid polling', () => {
+    const game = pathingGame();
+    game.state.routeOpen = true;
+    const reachability = game.request();
+    const waypoint = game.state.RequestPathingPoint(game.location(8000, 0), game.state.home_location, 600);
+
+    game.runThread(9);
+
+    assert.equal(game.result(reachability), game.state.PATHING_CHECK_REACHABLE);
+    assert.equal(game.result(waypoint), game.state.PATHING_CHECK_REACHABLE);
+    const reachabilitySleeps = game.sleeps.filter(sleep => sleep.active === reachability);
+    const waypointSleeps = game.sleeps.filter(sleep => sleep.active === waypoint);
+    assert.ok(reachabilitySleeps.length > 0 && reachabilitySleeps.every(sleep => sleep.seconds === 2));
+    assert.ok(waypointSleeps.length > 0 && waypointSleeps.every(sleep => sleep.seconds <= 0.2));
+    const lastWaypointTime = waypointSleeps.at(-1).time;
+    assert.ok(game.sleeps.some(sleep => sleep.time > lastWaypointTime && sleep.seconds === 2));
+    assert.ok(game.sleeps.filter(sleep => sleep.time > lastWaypointTime).every(sleep => sleep.seconds > 0.2));
+  });
+});
+
+describe('Route waypoint requests', () => {
+  it('Given a waypoint request during a staggered wait, when the route is walked, then sampling stops within one short step of the requested distance', () => {
+    const game = pathingGame();
+    const origin = game.location(8000, 0);
+    game.state.routeOpen = true;
+    const ticket = game.state.RequestPathingPoint(origin, game.state.home_location, 600);
+
+    game.runThread(5);
+    const point = game.state.GetPathingCheckLocation(ticket);
+    game.release(ticket);
+
+    assert.ok(origin.x - point.x >= 600);
+    assert.ok(origin.x - point.x <= 600 + 522 * 0.2);
+    assert.equal(point.y, 0);
+    assert.ok(game.locations.has(point), 'Result is owned by the caller after release');
+    assert.equal(game.state.GetPathingCheckLocation(ticket), null);
+    assert.ok(game.neutralChecks.filter(check => check.kind === 'enemies').length <= 2);
+  });
+
+  it('Given a waypoint beyond the destination, when the probe reaches the destination first, then destination proximity does not produce a false waypoint', () => {
+    const game = pathingGame();
+    game.state.routeOpen = true;
+    const ticket = game.state.RequestPathingPoint(game.state.home_location, game.location(100, 0), 600);
+
+    game.poll();
+    game.runFor(14);
+
+    assert.equal(game.result(ticket), game.state.PATHING_CHECK_UNREACHABLE);
+    assert.equal(game.state.GetPathingCheckLocation(ticket), null);
+    assert.equal(game.probes[0].removed, true);
+  });
+
+  it('Given existing synchronous location callers, when finding a point from either end of a route, then the thread creates and cleans up both probes', () => {
+    const game = pathingGame();
+    const target = game.location(8000, 0);
+    game.state.routeOpen = true;
+
+    const towardHome = game.state.GetLocationInDistanceFromLoc(target, 600, false);
+    const fromHome = game.state.GetLocationInDistanceFromBaseToLoc(target, 600);
+
+    assert.ok(target.x - towardHome.x >= 600 && target.x - towardHome.x < 705);
+    assert.ok(fromHome.x >= 600 && fromHome.x < 705);
+    assert.ok(game.probes.every(probe => probe.removed));
+    assert.ok(game.state.pathing_check_state.every(result => result === game.state.PATHING_CHECK_UNUSED));
+    assert.equal(game.state.RequestPathingPoint(target, target, -1), 0);
+  });
+});
+
+describe('Tower rush background positioning', () => {
+  it('Given an approved tower rush, when positioning begins, then its job returns before creating a probe and resumes without repeating target selection', () => {
+    const game = towerGame();
+    game.state.routeOpen = true;
+
+    game.checkRush();
+    assert.equal(game.state.now, 0);
+    assert.equal(game.probes.length, 0);
+    assert.equal(game.jobs[0].job, game.state.TOWER_RUSH_CHECK);
+    game.state.race_towerrush_probability = 0;
+    game.finishPositioning();
+
+    assert.equal(game.state.towerrush, true);
+    assert.equal(game.state.racial_rushcreep, 0);
+    assert.equal(game.distanceChecks.length, 1);
+    assert.ok(8000 - game.state.tower_target_loc.x >= 2000);
+    assert.ok(8000 - game.state.tower_target_loc.x < 2105);
+    assert.equal(game.jobs[0].job, game.state.TOWER_RUSH);
+    assert.equal(game.probes[0].removed, true);
+  });
+
+  it('Given an early Night Elf target, when its waypoint completes, then positioning retains the closer 780-unit distance', () => {
+    const game = towerGame();
+    game.state.enemyRace = game.state.RACE_NIGHTELF;
+    game.state.routeOpen = true;
+
+    game.checkRush();
+    game.finishPositioning();
+
+    assert.ok(8000 - game.state.tower_target_loc.x >= 780);
+    assert.ok(8000 - game.state.tower_target_loc.x < 885);
+  });
+
+  it('Given a blocked route, when the background probe times out, then the tower rush is abandoned and its request is released', () => {
+    const game = towerGame();
+
+    game.checkRush();
+    game.finishPositioning();
+
+    assert.equal(game.state.towerrush, false);
+    assert.equal(game.state.toweringplayerloc, null);
+    assert.equal(game.state.tower_pathing_request, 0);
+    assert.equal(game.jobs.length, 0);
+    assert.equal(game.locations.size, 1);
+    assert.equal(game.probes[0].removed, true);
+  });
+
+  it('Given a pending positioning probe, when the target changes, then the old request is cancelled without clearing the new target', () => {
+    const game = towerGame();
+    game.checkRush();
+    const ticket = game.state.tower_pathing_request;
+    game.poll();
+    game.state.RemoveLocation(game.state.toweringplayerloc);
+    const nextTarget = game.location(6000, 3000);
+
+    game.state.toweringplayerloc = nextTarget;
+    game.checkRush();
+
+    assert.equal(game.state.toweringplayerloc, nextTarget);
+    assert.equal(game.state.tower_pathing_pending, false);
+    assert.equal(game.result(ticket), game.state.PATHING_CHECK_UNUSED);
+    assert.equal(game.probes[0].removed, true);
+  });
+
+  it('Given a full pathing queue, when a ticket becomes available, then positioning retries without rerolling its rush decision', () => {
+    const game = towerGame();
+    const tickets = Array.from({ length: game.state.PATHING_CHECK_LIMIT }, () => game.request());
+
+    game.checkRush();
+    assert.equal(game.state.tower_pathing_request, 0);
+    assert.equal(game.state.tower_pathing_pending, true);
+    game.release(tickets[0]);
+    game.checkRush();
+
+    assert.equal(game.state.tower_pathing_request, tickets[0]);
+    assert.equal(game.distanceChecks.length, 1);
   });
 });
 

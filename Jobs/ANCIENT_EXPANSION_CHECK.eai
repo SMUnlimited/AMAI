@@ -1,52 +1,69 @@
 #IFDEF GLOBAL
    boolean ancient_expanding = false
    boolean ancient_exp_check_pending = false
+   integer ancient_pathing_request = 0
+   unit ancient_pathing_mine = null
+   unit ancient_pathing_creep = null
    integer OrderIdCancel = 851976
 #ELSE
 
 // ######################## Ancient Expansion Check #################
-// Job only exists to run the pathing code outside the expansion builder code to not cause a delay to build processes
-// TODO once we can do pathing requests in the pathing thread can be reworked.
+// Placement probes run in PathingThread; this job only submits and polls them.
 function AncientExpansionCheck takes nothing returns nothing
   local unit u = null
   local unit mine = current_expansion
   local location loc = null
+  local integer result = PATHING_CHECK_UNUSED
   set ancient_exp_check_pending = false
   call TraceAll("ANCIENT_EXPANSION_CHECK JOB START")
-  if not ancient_expanding then
-    if mine != null and UnitAlive(mine) and take_exp and not IsExpansionRebuildCoolingDown(mine) and not CheckExpansionTaken(mine) then
-      set u = GetExpFoe(u)
-      if u != null then
-        call TraceAll("Ancient expansion - Begin Job")
-        set loc = GetBuildLocationInDistanceFromLoc_d(old_id[racial_expansion], GetUnitLoc(u), ver_creeps_attack_buildings_dist, true)
-        // Placement yields; the build thread may choose another target meanwhile.
-        if ancient_expanding or mine != current_expansion or not UnitAlive(mine) or CheckExpansionTaken(mine) or IsExpansionRebuildCoolingDown(mine) then
-          call RemoveLocation(loc)
-          set loc = null
-          set u = null
-          set mine = null
-          return
-        endif
-        if loc == null then
-          call SaveReal(expansion_retry_cooldowns, GetHandleId(mine), 0, TimerGetElapsed(tq_timer) + 60)
-          set u = null
-          set mine = null
-          return
-        endif
-        call RemoveLocation(ancient_exp_loc)
-        set ancient_exp_loc = loc
-        set loc = null
-        set ancient_exp_mine = mine
-        set ancient_exp_creep = u
-        set ancient_expanding = true
-        call TQAddJob(1, ANCIENT_EXPANSION, 0)
-        set u = null
-      endif
-      set u = null
-    else
-      call Trace("Ancient expansion - No expansion available")
-    endif
+  if ancient_pathing_request != 0 then
+    set mine = ancient_pathing_mine
+    set u = ancient_pathing_creep
   endif
+  // Reject stale targets before reading the result or the creep's coordinates.
+  if ancient_expanding or mine == null or mine != current_expansion or not UnitAlive(mine) or not take_exp or IsExpansionRebuildCoolingDown(mine) or CheckExpansionTaken(mine) then
+    call ReleasePathingCheck(ancient_pathing_request)
+    set ancient_pathing_request = 0
+    set ancient_pathing_mine = null
+    set ancient_pathing_creep = null
+    return
+  endif
+  if ancient_pathing_request == 0 then
+    set u = GetExpFoe(u)
+    if u == null then
+      return
+    endif
+    set loc = GetUnitLoc(u)
+    set ancient_pathing_request = RequestPathingPoint(loc, home_location, ver_creeps_attack_buildings_dist)
+    call RemoveLocation(loc)
+    set loc = null
+    set ancient_pathing_mine = mine
+    set ancient_pathing_creep = u
+  endif
+  set result = GetPathingCheckResult(ancient_pathing_request)
+  if ancient_pathing_request == 0 or result == PATHING_CHECK_PENDING then
+    set ancient_exp_check_pending = true
+    call TQAddJob(0.5, ANCIENT_EXPANSION_CHECK, 0)
+    return
+  endif
+  set loc = GetPathingCheckLocation(ancient_pathing_request)
+  call ReleasePathingCheck(ancient_pathing_request)
+  set ancient_pathing_request = 0
+  set ancient_pathing_mine = null
+  set ancient_pathing_creep = null
+  set loc = GetBuildLocationAtPoint(old_id[racial_expansion], loc)
+  if loc == null then
+    call SaveReal(expansion_retry_cooldowns, GetHandleId(mine), 0, TimerGetElapsed(tq_timer) + 60)
+    return
+  endif
+  call RemoveLocation(ancient_exp_loc)
+  set ancient_exp_loc = loc
+  set ancient_exp_mine = mine
+  set ancient_exp_creep = u
+  set ancient_expanding = true
+  call TQAddJob(1, ANCIENT_EXPANSION, 0)
+  set loc = null
+  set u = null
   set mine = null
 endfunction
 

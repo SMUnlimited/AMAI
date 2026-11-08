@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { compile } from './jass.mjs';
+import { installPathing } from './pathing-game.mjs';
 
 const read = path => readFileSync(new URL('../../' + path, import.meta.url), 'utf8');
 
@@ -16,8 +17,9 @@ export function ancientGame() {
   const mine = { id: 2, x: 5000, y: 0, alive: true, owner: 15, gold: 10000 };
   const creep = { id: 3, x: 4800, y: 0, alive: true, owner: 12 };
   const state = {
-    now: 0, ai_time: 0, tq_timer: null, ai_player: 0, player_defeated: false,
+    now: 0, ai_time: 0, tq_timer: null, ai_player: 0, player_defeated: false, sleep_multiplier: 1,
     ancient_expanding: true, ancient_exp_state: 2, ancient_exp_check_pending: false,
+    ancient_pathing_request: 0, ancient_pathing_mine: null, ancient_pathing_creep: null,
     ancient_exp_loc: location(4000, 0), ancient_exp_wisp: wisp, ancient_exp_unit: null,
     ancient_exp_mine: mine, ancient_exp_creep: creep, ancient_attack_running: false, anc_retry: 0,
     current_expansion: mine, take_exp: true, exp_time_count: 0,
@@ -26,7 +28,7 @@ export function ancientGame() {
     creep_battle_radius: 750, expansion_radius: 1500, ver_creeps_attack_buildings_dist: 600,
     PLAYER_NEUTRAL_PASSIVE: 15, OrderIdCancel: 851976,
     expansion_retry_state: new Map(), expansion_retry_cooldowns: new Map(), tracked_structures: new Map(),
-    own_town_num: 0, groundid: 1, home_location: location(0, 0),
+    own_town_num: 0, groundid: 1, home_location: location(0, 0), buy_distance: 200,
     candidate: wisp, foundation: null, pathProbe: null, pathMoves: true, gold: 1000, wood: 1000, campStrength: 5,
     main_army: -1, army_loc: [], atGoal: true, empty: false, isfleeing: false,
     town_threatened: false, town_threat_break: false,
@@ -72,6 +74,8 @@ export function ancientGame() {
       return state.pathProbe;
     },
     IssuePointOrder: (u, order) => { validUnit(u).order = order; },
+    SetUnitMoveSpeed: (u, speed) => { validUnit(u).speed = speed; },
+    UnitApplyTimedLife() {},
     Sleep(seconds) {
       state.now += seconds;
       state.ai_time = state.now / 5;
@@ -85,8 +89,10 @@ export function ancientGame() {
     TQAddJob: (delay, job, par) => jobs.push({ delay, job, par }),
     DisplayToAllJobDebug() {}, TraceAll() {}, Trace() {}, CreateDebugTag() {},
     Int2Str: String, Player: p => p, OrderId: order => order, RMax: Math.max, SquareRoot: Math.sqrt,
+    ModuloInteger: (a, b) => a % b,
   };
   const context = vm.createContext(state);
+  installPathing(state, context);
   for (const file of ['Jobs/ANCIENT_EXPANSION.eai', 'Jobs/ANCIENT_EXPANSION_CHECK.eai']) {
     const source = read(file);
     for (const [, name] of source.matchAll(/^function (\w+) takes/gm)) vm.runInContext(compile(source, name), context);
@@ -96,14 +102,24 @@ export function ancientGame() {
     'ExpansionAttemptStalled', 'IsExpansionRebuildCoolingDown', 'TrackedStructureDone',
     'GetLengthOfLoc', 'GetLengthOfLoc_d', 'GetSubtractionLoc', 'GetSubtractionLoc_dk', 'GetSubtractionLoc_kd', 'GetSubtractionLoc_dd',
     'DistanceBetweenPoints', 'DistanceBetweenPoints_dk', 'GetLocationInDistanceFromLoc',
-    'GetBuildLocationInDistanceFromLoc_d', 'AncientExpaAttack',
+    'GetBuildLocationAtPoint', 'GetBuildLocationInDistanceFromLoc_d', 'AncientExpaAttack',
   ]) vm.runInContext(compile(common, name), context);
   vm.runInContext(compile(read('Jobs/DETECT_DEFEAT.eai'), 'SaveYourself'), context);
 
   return {
     state, wisp, mine, creep, orders, jobs, scans, locations,
     check() { jobs.length = 0; state.AncientExpansionJob(); },
-    checkSite: () => state.AncientExpansionCheck(), attack: () => state.AncientExpaAttack(),
+    checkSite() { jobs.length = 0; state.AncientExpansionCheck(); },
+    finishPlacement() {
+      while (state.ancient_exp_check_pending) {
+        state.ProcessPathingChecks();
+        state.Sleep(0.2);
+        state.ProcessPathingChecks();
+        jobs.length = 0;
+        state.AncientExpansionCheck();
+      }
+    },
+    attack: () => state.AncientExpaAttack(),
     advance(seconds) { state.now += seconds; state.ai_time = state.now / 5; },
     startTree({ completed = true } = {}) {
       wisp.alive = false;

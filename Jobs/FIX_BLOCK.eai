@@ -11,7 +11,8 @@ integer ancient_move_attempts = 0
 location ancient_root_location = Location(0, 0)
 
 // Units involved in fixing blocks
-unit blocking_path_unit = null
+integer blocking_path_request = 0
+boolean blocking_tree_check = false
 unit blocking_ancient = null 
 unit blocked_unit = null
 #ELSE
@@ -97,7 +98,7 @@ function TryFixBlockStructure takes location l, real range returns nothing
     local integer i = 0
     call GroupEnumUnitsInRangeOfLoc(g, l, range, null)
     call GroupRemoveUnit(g, expansion_peon)
-    call GroupRemoveUnit(g, blocking_path_unit)
+    call GroupRemoveUnit(g, pathing_check_probe)
     loop
         set u = FirstOfGroup(g)
         exitwhen u == null or blocking_ancient != null or (not race_ancient_expansion_available and utemp != null)
@@ -131,7 +132,7 @@ function TryFixBlockRemoveTree takes location l, real range, boolean action retu
     local integer i = 0
     call GroupEnumUnitsInRangeOfLoc(g, l, range, null)
     call GroupRemoveUnit(g, expansion_peon)
-    call GroupRemoveUnit(g, blocking_path_unit)
+    call GroupRemoveUnit(g, pathing_check_probe)
     if action then
         // attack tree
         loop
@@ -169,7 +170,7 @@ function TryFixBlockMove takes location l, real range, boolean action returns no
     local boolean array allyhero
     call GroupEnumUnitsInRangeOfLoc(g, l, range, null)
     call GroupRemoveUnit(g, expansion_peon)
-    call GroupRemoveUnit(g, blocking_path_unit)
+    call GroupRemoveUnit(g, pathing_check_probe)
     if action then
         loop
             set u = FirstOfGroup(g)
@@ -205,20 +206,21 @@ function TryFixBlockMove takes location l, real range, boolean action returns no
     set p = null
 endfunction
 
-function RemoveBlockPathUnit takes nothing returns nothing
-    if blocking_path_unit != null then
-        call RemoveUnit(blocking_path_unit)
-    endif
-    set blocking_path_unit = null
+function RemoveBlockPathCheck takes nothing returns nothing
+    call ReleasePathingCheck(blocking_path_request)
+    set blocking_path_request = 0
+    set blocking_tree_check = false
 endfunction
 
-function FindTree takes real x, real y returns nothing
-    call RemoveBlockPathUnit()
+function FindTree takes real x, real y returns boolean
+    local location origin = Location(x, y)
+    call RemoveBlockPathCheck()
     call TryFixBlockMove(home_location, 1000, false)
-    set blocking_path_unit = CreatePathingUnitFull(blocking_path_unit, ai_player, 'ewsp', x, y)
-    call UnitApplyTimedLife(blocking_path_unit, 'BTLF', 18)
-    call SetUnitMoveSpeed(blocking_path_unit, 300)
-    call IssueImmediateOrder(blocking_path_unit, "autoharvestlumber")
+    set blocking_path_request = RequestPathingProbe(origin, origin, 'ewsp', OrderId("autoharvestlumber"), 300, 1)
+    call RemoveLocation(origin)
+    set origin = null
+    set blocking_tree_check = true
+    return blocking_path_request != 0
 endfunction
 
 function ShouldSkipBlockCheck takes nothing returns boolean
@@ -229,7 +231,7 @@ function CleanupBlockFix takes nothing returns nothing
     if blocking_ancient != null and UnitAlive(blocking_ancient) then
         call RootAncient()
     endif
-    call RemoveBlockPathUnit()
+    call RemoveBlockPathCheck()
     set blocked_unit = null
 endfunction
 
@@ -237,6 +239,7 @@ function FixBlockJob takes nothing returns nothing
     local location l = null
     local unit u = null
     local integer i = 0
+    local integer result = PATHING_CHECK_UNUSED
     
     if ShouldSkipBlockCheck() then
         call CleanupBlockFix()
@@ -255,31 +258,38 @@ function FixBlockJob takes nothing returns nothing
     endif
     if blocked_unit != null and DistanceBetweenPoints_kd(home_location, GetUnitLoc(blocked_unit)) < front_base_distance then
         call CreateDebugTag("fix block : hero block at here", 10, blocked_unit, 3.00, 1.50)
-        call FindTree(GetUnitX(blocked_unit), GetUnitY(blocked_unit))
-        set blocked_unit = null
+        if FindTree(GetUnitX(blocked_unit), GetUnitY(blocked_unit)) then
+            set blocked_unit = null
+        endif
         call TQAddJob(1, FIX_BLOCK, 0)  // tree must close
         return
-    elseif blocking_path_unit != null and DistanceBetweenPoints_kd(home_location, GetUnitLoc(blocking_path_unit)) < front_base_distance then
-        if GetUnitTypeId(blocking_path_unit) == 'ewsp' then
-            set l = GetUnitLoc(blocking_path_unit)
-            if GetUnitCurrentOrder(blocking_path_unit) == OrderId("harvest") then
-                // Found tree
-                call TryFixBlockRemoveTree(l, 1200, race_no_wood_harvest or GetPlayerRace(ai_player) == RACE_NIGHTELF)
+    elseif blocking_path_request != 0 then
+        set result = GetPathingCheckResult(blocking_path_request)
+        if result == PATHING_CHECK_PENDING then
+            call TQAddJob(2, FIX_BLOCK, 0)
+            return
+        endif
+        set l = GetPathingProbeLocation(blocking_path_request)
+        if l != null and DistanceBetweenPoints(home_location, l) < front_base_distance then
+            if blocking_tree_check then
+                if result == PATHING_CHECK_REACHABLE and GetPathingProbeOrder(blocking_path_request) == OrderId("harvest") then
+                    call TryFixBlockRemoveTree(l, 1200, race_no_wood_harvest or GetPlayerRace(ai_player) == RACE_NIGHTELF)
+                else
+                    call TryFixBlockStructure(l, 550)
+                endif
+                call RemoveBlockPathCheck()
             else
-                // Didn't find tree
-                call TryFixBlockStructure(l, 550)
+                call FindTree(GetLocationX(l), GetLocationY(l))
             endif
-            call RemoveBlockPathUnit()
             call RemoveLocation(l)
             set l = null
-        else
-            call CreateDebugTag("fix block : unit block at here", 10, blocking_path_unit, 3.00, 1.50)
-            call FindTree(GetUnitX(blocking_path_unit), GetUnitY(blocking_path_unit))
+            call TQAddJob(2, FIX_BLOCK, 0)
+            return
         endif
-        call TQAddJob(2, FIX_BLOCK, 0)
-        return
+        call RemoveLocation(l)
+        set l = null
     endif    
-    call RemoveBlockPathUnit()
+    call RemoveBlockPathCheck()
     set blocking_ancient = null
     set blocked_unit = null
     set ancient_move_attempts = 0
@@ -306,11 +316,14 @@ function FixBlockJob takes nothing returns nothing
           endif
         endif
         if l != null then
-          set blocking_path_unit = CreatePathingUnitFull(blocking_path_unit, ai_player, 'hbew', GetLocationX(home_location), GetLocationY(home_location))  // must big unit and can not revive
-          call UnitApplyTimedLife(blocking_path_unit, 'BTLF', 18)  // Prevent player defeat unit not remove or home too close then unit block pther palyer
-          call IssuePointOrderLoc(blocking_path_unit, "move", l)
+          // Keep the large collision size; ordinary worker reachability is not enough.
+          set blocking_path_request = RequestPathingProbe(home_location, l, 'hbew', OrderId("move"), 522, 10)
           call RemoveLocation(l)
           set l = null
+          if blocking_path_request == 0 then
+              call TQAddJob(2, FIX_BLOCK, 0)
+              return
+          endif
         endif
     elseif blockstate == BLOCK_CHECK_HERO_MOVEMENT then
         // Handling hero movement

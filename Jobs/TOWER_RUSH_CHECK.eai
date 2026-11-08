@@ -22,6 +22,12 @@
     player rushedplayer = null
     group tower_rush_power = null
     location toweringplayerloc = null
+    boolean tower_pathing_pending = false
+    integer tower_pathing_request = 0
+    real tower_pathing_distance = 0
+    real tower_pathing_x = 0
+    real tower_pathing_y = 0
+    player tower_pathing_player = null
     location towerrushsubloc = null
 	location towerrecoveryloc = null
 #ELSE
@@ -43,13 +49,68 @@ function StartTowerRush takes integer delay returns nothing
 	call TQAddJob(RMax(delay,5), TOWER_RUSH, 0)
 endfunction
 
+function ResetTowerRushCheck takes nothing returns nothing
+	call RemoveLocation(toweringplayerloc)
+	set toweringplayerloc = null
+	if console_tr_command then
+		call DisplayToAllies(chat_no_orc)
+	endif
+	set enemy_point_x = 0
+	set enemy_point_y = 0
+	set rushedplayer = null
+	set builder[10] = null
+	set race_tower_alliancetarget = false
+endfunction
+
+function PollTowerRushPathing takes nothing returns nothing
+	// A different target or an already started rush invalidates this request.
+	if towerrush or player_defeated or toweringplayerloc == null or rushedplayer != tower_pathing_player or GetLocationX(toweringplayerloc) != tower_pathing_x or GetLocationY(toweringplayerloc) != tower_pathing_y then
+		call ReleasePathingCheck(tower_pathing_request)
+		set tower_pathing_request = 0
+		set tower_pathing_pending = false
+		set tower_pathing_player = null
+		return
+	endif
+	if tower_pathing_request == 0 then
+		set tower_pathing_request = RequestPathingPoint(toweringplayerloc, home_location, tower_pathing_distance)
+	endif
+	if tower_pathing_request == 0 or GetPathingCheckResult(tower_pathing_request) == PATHING_CHECK_PENDING then
+		call TQAddJob(0.5, TOWER_RUSH_CHECK, 0)
+		return
+	endif
+	call RemoveLocation(tower_target_loc)
+	set tower_target_loc = GetPathingCheckLocation(tower_pathing_request)
+	call ReleasePathingCheck(tower_pathing_request)
+	set tower_pathing_request = 0
+	set tower_pathing_pending = false
+	set tower_pathing_player = null
+	if tower_target_loc != null then
+		set racial_rushcreep = 0
+		set enemy_point_x = GetLocationX(toweringplayerloc)
+		set enemy_point_y = GetLocationY(toweringplayerloc)
+		call RemoveLocation(towerrushsubloc)
+		set towerrushsubloc = GetSubtractionLoc(tower_target_loc, toweringplayerloc)
+		call StartTowerRush(1)
+		call Trace("Tower rush starting")
+		return
+	endif
+	call Trace("TowerRushCheck: could not determine a valid tower target location")
+	call ResetTowerRushCheck()
+endfunction
+
 function TowerRushCheck takes nothing returns nothing
-	local integer i = GetRandomInt(1,100)
+	local integer i = 0
 	local unit u = null
 	local player p = null
-	local real distance = GetNearestEnemyDistance()
+	local real distance = 0
 	local boolean mapinappropriate = game_is_ffa or (c_ally_total > 0) // Cannot use in FFA or team games due to attack override bug
 	call DisplayToAllJobDebug("TOWER_RUSH_CHECK JOB START")
+	if tower_pathing_pending then
+		call PollTowerRushPathing()
+		return
+	endif
+	set distance = GetNearestEnemyDistance()
+	set i = GetRandomInt(1,100)
 	//if rushedplayer == null or (not IsLocationFoggedToPlayer(home_location, rushedplayer) and not console_tr_command) or distance > 14000 or distance < front_base_distance * 2 or builder[10] == null or (mapinappropriate and not console_tr_command) or (race_tower_item_must and racial_shop == 0 and not IsPointBlighted(GetUnitX(builder[10]), GetUnitY(builder[10])) and IsPointBlighted(GetLocationX(home_location), GetLocationY(home_location))) then  //Distance to too far or player too many or ffa , ROC not shop
 	//	call Trace("the map unsuited tower rush")
 	//	if console_tr_command then
@@ -156,31 +217,18 @@ function TowerRushCheck takes nothing returns nothing
 	endif
 	if toweringplayerloc != null then
 		if GetPlayerRace(rushedplayer) == RACE_NIGHTELF and GetPlayerStructureCount(rushedplayer, true) < 6 then
-			set tower_target_loc = GetLocationInDistanceFromLoc(toweringplayerloc, 780, true)  // ELF can be closer
+			set tower_pathing_distance = 780  // ELF can be closer
 		else
-			set tower_target_loc = GetLocationInDistanceFromLoc(toweringplayerloc, front_base_distance, true)  //DistanceBetweenPoints the toweringplayerloc and first_tower_point , front_base_distance now is change , so need set new
+			set tower_pathing_distance = front_base_distance
 		endif
-		if tower_target_loc != null then
-			set racial_rushcreep = 0  // TowerRush BR , waste time
-			set enemy_point_x = GetLocationX(toweringplayerloc)
-			set enemy_point_y = GetLocationY(toweringplayerloc)
-			set towerrushsubloc = GetSubtractionLoc(tower_target_loc, toweringplayerloc)
-			call StartTowerRush(1)
-			call Trace("Tower rush starting")
-			return
-		endif
-		call Trace("TowerRushCheck: could not determine a valid tower target location; clearing toweringplayerloc")
-		call RemoveLocation(toweringplayerloc)
-		set toweringplayerloc = null
+		set tower_pathing_x = GetLocationX(toweringplayerloc)
+		set tower_pathing_y = GetLocationY(toweringplayerloc)
+		set tower_pathing_player = rushedplayer
+		set tower_pathing_pending = true
+		call PollTowerRushPathing()
+		return
 	endif
-	if console_tr_command then
-		call DisplayToAllies(chat_no_orc)
-	endif
-	set enemy_point_x = 0
-	set enemy_point_y = 0
-	set rushedplayer = null
-	set builder[10] = null
-	set race_tower_alliancetarget = false
+	call ResetTowerRushCheck()
 	call Trace("TowerRushCheck ended: conditions not met or reset; reschedule if needed")
 	//call TQAddJob(90, TOWER_RUSH_CHECK, 0)  // Reschedule check
 endfunction

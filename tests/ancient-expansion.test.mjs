@@ -141,6 +141,23 @@ describe('Ancient expansion progress', () => {
 });
 
 describe('Ancient expansion placement and cleanup', () => {
+  it('Given self-rescue during background placement, when the defeat check runs, then it waits without queuing a second placement job', () => {
+    const game = ancientGame();
+    game.state.ancient_expanding = false;
+
+    game.checkSite();
+    assert.equal(game.state.ancient_exp_check_pending, true);
+    assert.equal(game.state.SaveYourself(), true);
+    assert.equal(game.jobs.length, 1);
+    assert.equal(game.state.now, 0);
+    game.finishPlacement();
+
+    assert.equal(game.state.ancient_exp_check_pending, false);
+    assert.equal(game.state.ancient_expanding, true);
+    assert.equal(game.state.ancient_pathing_request, 0);
+    assert.equal(game.jobs[0].job, game.state.ANCIENT_EXPANSION);
+  });
+
   it('Given a pathing probe stuck with move active, when checking placement, then the probe is removed and no expansion starts', () => {
     const game = ancientGame();
     game.state.ancient_expanding = false;
@@ -149,6 +166,10 @@ describe('Ancient expansion placement and cleanup', () => {
     game.state.pathMoves = false;
 
     game.checkSite();
+    assert.equal(game.state.now, 0);
+    assert.equal(game.state.pathProbe, null);
+    assert.equal(game.state.ancient_exp_check_pending, true);
+    game.finishPlacement();
 
     assert.ok(game.state.now <= 11);
     assert.equal(game.state.pathProbe.removed, true);
@@ -164,6 +185,7 @@ describe('Ancient expansion placement and cleanup', () => {
     game.state.onSleep = () => { game.state.current_expansion = null; };
 
     game.checkSite();
+    game.finishPlacement();
 
     assert.equal(game.state.ancient_expanding, false);
     assert.equal(game.state.current_expansion, null);
@@ -178,6 +200,7 @@ describe('Ancient expansion placement and cleanup', () => {
     game.state.onSleep = () => { game.state.pathProbe.x -= 5; };
 
     game.checkSite();
+    game.finishPlacement();
 
     assert.ok(game.state.now > 20);
     assert.equal(game.state.ancient_expanding, true);
@@ -191,6 +214,7 @@ describe('Ancient expansion placement and cleanup', () => {
     game.state.CheckExpansionTaken = () => game.state.now > 0;
 
     game.checkSite();
+    game.finishPlacement();
 
     assert.equal(game.state.ancient_expanding, false);
     assert.equal(game.jobs.length, 0);
@@ -256,6 +280,7 @@ describe('Ancient expansion placement and cleanup', () => {
     game.state.RemoveLocation(game.state.ancient_exp_loc);
     game.state.ancient_exp_loc = null;
     game.checkSite();
+    game.finishPlacement();
     const probe = game.state.pathProbe;
 
     game.checkSite();
@@ -352,6 +377,7 @@ describe('Ancient expansion completes normally', () => {
     game.state.ancient_exp_state = 0;
 
     game.checkSite();
+    game.finishPlacement();
     game.check();
     game.check();
     assert.equal(game.state.ancient_exp_state, 2);

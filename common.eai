@@ -531,6 +531,7 @@ globals
     integer racial_lumber = 0
     integer racial_rushcreep = 0
     boolean br_rush_built = false
+    boolean br_pathing_retry = false
     boolean br_rush_attacked = false
     unit rushcreep_target = null
     integer neutral_shredder = 0
@@ -1110,6 +1111,15 @@ globals
     real array pathing_check_to_x
     real array pathing_check_to_y
     real array pathing_check_distance
+    real array pathing_check_point_distance
+    real array pathing_check_result_x
+    real array pathing_check_result_y
+    integer array pathing_check_order
+    integer array pathing_check_result_order
+    real array pathing_check_speed
+    real array pathing_check_duration
+    real array pathing_check_target_range
+    boolean array pathing_check_has_location
     integer pathing_check_active = 0
     integer pathing_check_next = 1
     unit pathing_check_probe = null
@@ -4952,6 +4962,13 @@ function RequestPathingCheck takes location from, location target, pathingtype p
       set pathing_check_to_x[i] = GetLocationX(target)
       set pathing_check_to_y[i] = GetLocationY(target)
       set pathing_check_distance[i] = 0
+      set pathing_check_point_distance[i] = -1
+      set pathing_check_order[i] = OrderId("move")
+      set pathing_check_result_order[i] = 0
+      set pathing_check_speed[i] = 522
+      set pathing_check_duration[i] = 120
+      set pathing_check_target_range[i] = buy_distance
+      set pathing_check_has_location[i] = false
       set pathing_check_state[i] = PATHING_CHECK_PENDING
       return i
     endif
@@ -4960,11 +4977,68 @@ function RequestPathingCheck takes location from, location target, pathingtype p
   return 0
 endfunction
 
+// Specialized movement or timed lumber searches. Results retain the final
+// position and order; the thread owns the probe, including its cleanup.
+function RequestPathingProbe takes location from, location target, integer id, integer order, real speed, real duration returns integer
+  local integer ticket = 0
+  if id == 0 or speed <= 0 or duration <= 0 or (order != OrderId("move") and order != OrderId("autoharvestlumber")) then
+    return 0
+  endif
+  set ticket = RequestPathingCheck(from, target, PATHING_TYPE_WALKABILITY)
+  if ticket != 0 then
+    set pathing_check_unit_id[ticket] = id
+    set pathing_check_order[ticket] = order
+    set pathing_check_speed[ticket] = speed
+    set pathing_check_duration[ticket] = duration
+  endif
+  return ticket
+endfunction
+
+// Find the first point at least distance from the origin along a walking route.
+function RequestPathingPoint takes location from, location target, real distance returns integer
+  local integer ticket = 0
+  if distance < 0 then
+    return 0
+  endif
+  set ticket = RequestPathingCheck(from, target, PATHING_TYPE_WALKABILITY)
+  if ticket != 0 then
+    set pathing_check_point_distance[ticket] = distance
+  endif
+  return ticket
+endfunction
+
 function GetPathingCheckResult takes integer ticket returns integer
   if ticket < 1 or ticket > PATHING_CHECK_LIMIT then
     return PATHING_CHECK_UNUSED
   endif
   return pathing_check_state[ticket]
+endfunction
+
+// Diagnostic probes also need the position where an unsuccessful move stopped.
+function GetPathingProbeLocation takes integer ticket returns location
+  local integer result = GetPathingCheckResult(ticket)
+  if result != PATHING_CHECK_REACHABLE and result != PATHING_CHECK_UNREACHABLE then
+    return null
+  endif
+  if not pathing_check_has_location[ticket] then
+    return null
+  endif
+  return Location(pathing_check_result_x[ticket], pathing_check_result_y[ticket])
+endfunction
+
+function GetPathingProbeOrder takes integer ticket returns integer
+  if ticket < 1 or ticket > PATHING_CHECK_LIMIT then
+    return 0
+  endif
+  return pathing_check_result_order[ticket]
+endfunction
+
+// Returns a new location owned by the caller, before releasing the ticket.
+function GetPathingCheckLocation takes integer ticket returns location
+  if GetPathingCheckResult(ticket) != PATHING_CHECK_REACHABLE then
+    return null
+  endif
+  return Location(pathing_check_result_x[ticket], pathing_check_result_y[ticket])
 endfunction
 
 // Sampled travel distance, useful for rating a reachable destination.
@@ -5015,7 +5089,14 @@ function ProcessPathingChecks takes nothing returns nothing
     endif
     set pathing_check_active = ticket
     set pathing_check_probe = CreatePathingUnitFull(null, ai_player, pathing_check_unit_id[ticket], pathing_check_from_x[ticket], pathing_check_from_y[ticket])
-    call IssuePointOrder(pathing_check_probe, "move", pathing_check_to_x[ticket], pathing_check_to_y[ticket])
+    call SetUnitMoveSpeed(pathing_check_probe, pathing_check_speed[ticket])
+    // Leave time for a slow poll to consume timed search results before expiry.
+    call UnitApplyTimedLife(pathing_check_probe, 'BTLF', pathing_check_duration[ticket] + 3 * sleep_multiplier + 2)
+    if pathing_check_order[ticket] == OrderId("move") then
+      call IssuePointOrder(pathing_check_probe, "move", pathing_check_to_x[ticket], pathing_check_to_y[ticket])
+    else
+      call IssueImmediateOrderById(pathing_check_probe, pathing_check_order[ticket])
+    endif
     set pathing_check_started = now
     set pathing_check_progress = now
     set pathing_check_x = GetUnitX(pathing_check_probe)
@@ -5034,17 +5115,38 @@ function ProcessPathingChecks takes nothing returns nothing
       set pathing_check_y = y
       set pathing_check_progress = now
     endif
-    set dx = x - pathing_check_to_x[ticket]
-    set dy = y - pathing_check_to_y[ticket]
-    if dx * dx + dy * dy <= buy_distance * buy_distance then
-      set pathing_check_state[ticket] = PATHING_CHECK_REACHABLE
-    elseif now - pathing_check_started >= 120 or now - pathing_check_progress >= 10 then
-      set pathing_check_state[ticket] = PATHING_CHECK_UNREACHABLE
-    elseif GetUnitCurrentOrder(pathing_check_probe) != OrderId("move") then
-      call IssuePointOrder(pathing_check_probe, "move", pathing_check_to_x[ticket], pathing_check_to_y[ticket])
+    if pathing_check_order[ticket] == OrderId("autoharvestlumber") then
+      if now - pathing_check_started >= pathing_check_duration[ticket] then
+        set pathing_check_state[ticket] = PATHING_CHECK_REACHABLE
+      endif
+    elseif pathing_check_point_distance[ticket] >= 0 then
+      set dx = x - pathing_check_from_x[ticket]
+      set dy = y - pathing_check_from_y[ticket]
+      if dx * dx + dy * dy >= pathing_check_point_distance[ticket] * pathing_check_point_distance[ticket] then
+        set pathing_check_state[ticket] = PATHING_CHECK_REACHABLE
+      endif
+    else
+      set dx = x - pathing_check_to_x[ticket]
+      set dy = y - pathing_check_to_y[ticket]
+      if dx * dx + dy * dy <= pathing_check_target_range[ticket] * pathing_check_target_range[ticket] then
+        set pathing_check_state[ticket] = PATHING_CHECK_REACHABLE
+      endif
+    endif
+    if pathing_check_state[ticket] == PATHING_CHECK_PENDING then
+      if now - pathing_check_started >= pathing_check_duration[ticket] or (pathing_check_order[ticket] == OrderId("move") and now - pathing_check_progress >= 10) then
+        set pathing_check_state[ticket] = PATHING_CHECK_UNREACHABLE
+      elseif pathing_check_order[ticket] == OrderId("move") and GetUnitCurrentOrder(pathing_check_probe) != OrderId("move") then
+        call IssuePointOrder(pathing_check_probe, "move", pathing_check_to_x[ticket], pathing_check_to_y[ticket])
+      endif
     endif
   endif
   if pathing_check_state[ticket] != PATHING_CHECK_PENDING then
+    if pathing_check_probe != null and GetUnitTypeId(pathing_check_probe) != 0 then
+      set pathing_check_has_location[ticket] = true
+      set pathing_check_result_x[ticket] = GetUnitX(pathing_check_probe)
+      set pathing_check_result_y[ticket] = GetUnitY(pathing_check_probe)
+      set pathing_check_result_order[ticket] = GetUnitCurrentOrder(pathing_check_probe)
+    endif
     call RemoveUnit(pathing_check_probe)
     set pathing_check_probe = null
     set pathing_check_active = 0
@@ -6545,96 +6647,47 @@ endfunction
 // OLD PATHING FUNCTIONS REMOVED
 
 //============================================================================
+// Compatibility for synchronous callers; jobs should submit RequestPathingPoint
+// and poll later, as AncientExpansionCheck and TowerRushCheck do.
 function GetLocationInDistanceFromLoc takes location loc, real dist, boolean injob returns location
-  local real distance = 0
-  local real last_distance = 0
-  local real progress_time = TimerGetElapsed(tq_timer)
-  local real x = 0
-  local real y = 0
-  local unit u = null
-  //local real checktime = 0
-  local boolean exitloop = false
-  if loc == null then
+  local integer ticket = RequestPathingPoint(loc, home_location, dist)
+  local location result = null
+  if ticket == 0 then
     return null
   endif
-  set u = CreatePathingUnitFull(u,Player(PLAYER_NEUTRAL_PASSIVE), groundid, GetLocationX(loc),GetLocationY(loc))
-  call IssuePointOrder(u, "move", GetLocationX(home_location), GetLocationY(home_location))
-  //set checktime = GetTimeToReachLoc(u, home_location)
   loop
-    exitwhen (exitloop == true)
-    set x = GetUnitX(u)
-    set y = GetUnitY(u)
-    set distance = DistanceBetweenPoints_dk(Location(x,y), loc)
-    if distance >= dist then
-      //call DisplayToAll("loc found")
-      call RemoveUnit(u)
-      set u = null
-      return Location(x,y)
-    elseif GetUnitState(u, UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u) == OrderId("stop") or GetUnitCurrentOrder(u) != OrderId("move") then
-      set exitloop = true
-      //return null
-    elseif distance > last_distance + 32 then
-      set last_distance = distance
-      set progress_time = TimerGetElapsed(tq_timer)
-    elseif TimerGetElapsed(tq_timer) - progress_time >= 10 then
-      set exitloop = true
-    endif
-    if injob then
-      call Sleep(0.2)
-    else  
-      call Sleep(0.2)
-    endif  
+    exitwhen GetPathingCheckResult(ticket) != PATHING_CHECK_PENDING
+    call Sleep(0.2)
   endloop
-  call RemoveUnit(u)
-  set u = null
-  return null
+  set result = GetPathingCheckLocation(ticket)
+  call ReleasePathingCheck(ticket)
+  return result
 endfunction
 
 
 //============================================================================
 function GetLocationInDistanceFromBaseToLoc takes location loc, real d returns location
-  local real distance = 0
-  local real x = 0
-  local real y = 0
-  local unit u = null
-  //local real checktime = 0
-
-// call DisplayToAll("Checking")
-// call PingMinimap(GetLocationX(start_loc), GetLocationY(start_loc), 20)
-  set u = CreatePathingUnit(u)
-  call IssuePointOrderLoc(u, "move", loc)
-  //set checktime = GetTimeToReachLoc(u, loc)
+  local integer ticket = RequestPathingPoint(home_location, loc, d)
+  local location result = null
+  if ticket == 0 then
+    return null
+  endif
   loop
-    set x = GetUnitX(u)
-    set y = GetUnitY(u)
-    set distance = DistanceBetweenPoints_dk(Location(x,y), home_location)
-    if distance >= d then
-//        call DisplayToAll("loc found")
-//        call PingMinimap(GetLocationX(l), GetLocationY(l), 20)
-      call RemoveUnit(u)
-      set u = null
-      return Location(x,y)
-    elseif GetUnitState(u, UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(u) == OrderId("stop") or GetUnitCurrentOrder(u) != OrderId("move") then
-        call RemoveUnit(u)
-        set u = null
-//        call DisplayToAll("loc not found")
-      return null
-    endif
+    exitwhen GetPathingCheckResult(ticket) != PATHING_CHECK_PENDING
     call Sleep(0.2)
   endloop
-  call RemoveUnit(u)
-  set u = null
-  return null
+  set result = GetPathingCheckLocation(ticket)
+  call ReleasePathingCheck(ticket)
+  return result
 endfunction
 
 //============================================================================
-function GetBuildLocationInDistanceFromLoc_d takes integer id, location loc, real distance, boolean injob returns location
-  local location buildloc = GetLocationInDistanceFromLoc(loc, distance, injob)
+// Consumes the supplied point and snaps it to a position for this building type.
+function GetBuildLocationAtPoint takes integer id, location buildloc returns location
   local unit u = null
   local real x = 0
   local real y = 0
 
-  call RemoveLocation(loc)
   if buildloc != null then
     set u = CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE), id, GetLocationX(buildloc), GetLocationY(buildloc), 270.0)
     call RemoveLocation(buildloc)
@@ -6646,6 +6699,12 @@ function GetBuildLocationInDistanceFromLoc_d takes integer id, location loc, rea
     return Location(x,y)
   endif
   return null
+endfunction
+
+function GetBuildLocationInDistanceFromLoc_d takes integer id, location loc, real distance, boolean injob returns location
+  local location buildloc = GetLocationInDistanceFromLoc(loc, distance, injob)
+  call RemoveLocation(loc)
+  return GetBuildLocationAtPoint(id, buildloc)
 endfunction
 
 //============================================================================
@@ -6671,22 +6730,23 @@ endfunction
 
 function GetLumberLocationAtBase takes nothing returns location
   local integer ground_id = old_id[racial_peon]	//human peasant
-  local real distance = 0
-  local real x = 0
-  local real y = 0
-  local unit u = null
+  local integer ticket = 0
+  local location result = null
   local location base = GetBaseBuildLocation()
   if race_has_ghouls then
     set ground_id = old_id[racial_ghoul]
   endif
-  set u = CreatePathingUnitFull(u, Player(PLAYER_NEUTRAL_PASSIVE), ground_id, GetLocationX(base), GetLocationY(base))
-  call IssueImmediateOrder(u, "autoharvestlumber")
-  call Sleep(5.00)
-  set x = GetUnitX(u)
-  set y = GetUnitY(u)
-  call RemoveUnit(u)
-  set u = null
-  return Location(x,y)
+  set ticket = RequestPathingProbe(base, base, ground_id, OrderId("autoharvestlumber"), 522, 5)
+  if ticket == 0 then
+    return null
+  endif
+  loop
+    exitwhen GetPathingCheckResult(ticket) != PATHING_CHECK_PENDING
+    call Sleep(2 * sleep_multiplier)
+  endloop
+  set result = GetPathingCheckLocation(ticket)
+  call ReleasePathingCheck(ticket)
+  return result
 endfunction
 
 function BuildLumberMillAtBase takes nothing returns boolean
@@ -6727,11 +6787,11 @@ function BuildBRAtCreep takes nothing returns boolean
   local group g = null
   local unit u = null
   local group gtest = null
-  local unit array ua
-  local unit array ub
+  local integer array requests
   local unit array uc
   local location loc = null
   local boolean success = false
+  set br_pathing_retry = false
   call Trace("Build Ancient Barracks for creeping")
   set g = CreateGroup()
   call GroupEnumUnitsInRange(g,GetLocationX(home_location), GetLocationY(home_location),distance,null)
@@ -6742,12 +6802,25 @@ function BuildBRAtCreep takes nothing returns boolean
     set u = FirstOfGroup(g)
     exitwhen u == null or i >= 7  //7 shoul have 2 creepcamp
     if GetCreepCampStrength(u) < 10 and GetUnitLevel(u) < 5 then
-      set ua[i] = CreatePathingUnit(ua[i])
-      call IssuePointOrder(ua[i], "move", GetUnitX(u), GetUnitY(u))
-      set ub[i] = CreatePathingUnitFull(ub[i],ai_player,groundid,GetUnitX(u), GetUnitY(u))
-      call IssueTargetOrder(ub[i], "smart", ua[i])  //go in opposite directions , save time
-      set uc[i] = u
-      set i = i + 1
+      // Reject mine camps before spending a pathing request on them.
+      set gtest = CreateGroup()
+      call GroupEnumUnitsInRange(gtest, GetUnitX(u), GetUnitY(u), ver_creeps_attack_buildings_dist, null)
+      set gtest = SelectById(gtest, old_id[uGOLD_MINE], true)
+      if FirstOfGroup(gtest) == null then
+        set loc = GetUnitLoc(u)
+        set requests[i] = RequestPathingCheck(home_location, loc, PATHING_TYPE_WALKABILITY)
+        call RemoveLocation(loc)
+        set loc = null
+        if requests[i] != 0 then
+          set pathing_check_target_range[requests[i]] = 600
+          set uc[i] = u
+          set i = i + 1
+        else
+          set br_pathing_retry = true
+        endif
+      endif
+      call DestroyGroup(gtest)
+      set gtest = null
     endif
     call GroupRemoveUnit(g,u)
   endloop
@@ -6759,40 +6832,32 @@ function BuildBRAtCreep takes nothing returns boolean
   endif
   set ru = i
   loop
-    if i == ru then
-      set i = 0
-    endif
-    exitwhen loc != null or s == ru
-    if (DistanceBetweenUnits(ua[i], ub[i]) < 200 or DistanceBetweenUnits(ua[i], uc[i]) < 600) and GetUnitState(uc[i], UNIT_STATE_LIFE) > 0 then
-      // Do not target creeps that are close to gold mines (they have larger sight / are often too strong)
-      set gtest = CreateGroup()
-      call GroupEnumUnitsInRange(gtest, GetUnitX(uc[i]), GetUnitY(uc[i]), ver_creeps_attack_buildings_dist, null)
-      set gtest = SelectById(gtest, old_id[uGOLD_MINE], true)
-      if FirstOfGroup(gtest) == null then
-        set loc = GetUnitLoc(uc[i])
-        set rushcreep_target = uc[i]
-      else
-        set s = s + 1  
+    set i = 0
+    loop
+      exitwhen i >= ru or loc != null
+      if requests[i] != 0 then
+        if not UnitAlive(uc[i]) then
+          call ReleasePathingCheck(requests[i])
+          set requests[i] = 0
+          set s = s + 1
+        elseif GetPathingCheckResult(requests[i]) == PATHING_CHECK_REACHABLE then
+          set loc = GetUnitLoc(uc[i])
+          set rushcreep_target = uc[i]
+        elseif GetPathingCheckResult(requests[i]) != PATHING_CHECK_PENDING then
+          call ReleasePathingCheck(requests[i])
+          set requests[i] = 0
+          set s = s + 1
+        endif
       endif
-      call DestroyGroup(gtest)
-      set gtest = null
-    elseif GetUnitState(ua[i], UNIT_STATE_LIFE) <= 0 or GetUnitCurrentOrder(ua[i]) == OrderId("stop") or GetUnitCurrentOrder(ua[i]) != OrderId("move") or DistanceBetweenPoints_kd(home_location,GetUnitLoc(ua[i])) > 3200 then
-      set s = s + 1
-    elseif GetUnitState(ub[i], UNIT_STATE_LIFE) <= 0 or DistanceBetweenPoints_kd(home_location,GetUnitLoc(ub[i])) > 3200 then
-      set s = s + 1
-    elseif GetUnitState(uc[i], UNIT_STATE_LIFE) <= 0 then
-      set s = s + 1
-    endif
-    set i = i + 1
-    call Sleep(0.05)
+      set i = i + 1
+    endloop
+    exitwhen loc != null or s == ru
+    call Sleep(2 * sleep_multiplier)
   endloop
   set i = 0
   loop
     exitwhen i == ru
-    call RemoveUnit(ua[i])
-    set ua[i] = null
-    call RemoveUnit(ub[i])
-    set ub[i] = null
+    call ReleasePathingCheck(requests[i])
     set uc[i] = null
     set i = i + 1
   endloop
@@ -7258,6 +7323,24 @@ function CheckWaterExpansionPaths takes nothing returns nothing
       return
     endif
     set water_pathing_cursor = water_pathing_cursor + 1
+  endloop
+endfunction
+
+// Only waypoint requests need frequent samples. Reachability checks and idle
+// periods use the full staggered wait between the thread's neutral checks.
+function PathingSleep takes real base, real spread returns nothing
+  local real until = TimerGetElapsed(tq_timer) + RMax(0.05, base + GetRandomReal(0, spread))
+  local real remaining = 0
+  call CheckWaterExpansionPaths()
+  loop
+    call ProcessPathingChecks()
+    set remaining = until - TimerGetElapsed(tq_timer)
+    exitwhen remaining <= 0
+    if pathing_check_active != 0 and pathing_check_point_distance[pathing_check_active] >= 0 then
+      call Sleep(RMin(0.2, remaining))
+    else
+      call Sleep(remaining)
+    endif
   endloop
 endfunction
 
@@ -9318,9 +9401,7 @@ function PathingThread takes nothing returns nothing
   set pathing_done = true
   set water_pathing_next_time = TimerGetElapsed(tq_timer) + 60
   loop
-    call StaggerSleep(2 * sleep_multiplier, sleep_multiplier)
-    call CheckWaterExpansionPaths()
-    call ProcessPathingChecks()
+    call PathingSleep(2 * sleep_multiplier, sleep_multiplier)
     if t == 5 then
       loop
         exitwhen i >= NEUTRAL_COUNT
@@ -12864,6 +12945,8 @@ function StartUnitAM takes integer ask_qty, integer unitid, integer town, intege
      if CreepsOnMap() and not towerrush then
        if BuildBRAtCreep() then
           return BUILT_SOME // Success
+       elseif br_pathing_retry then
+          return CANNOT_BUILD // Queue capacity is temporary; keep the early creep attempt available.
        endif
      endif
      set br_rush_built = true //just run once

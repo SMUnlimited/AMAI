@@ -8,7 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Added
 
 - Water mines are rechecked during play and become land expansion options when a route opens, allowing the AI to use them without a Zeppelin.
-- (internal) AI logic can request pathing checks during play and read their results through the existing pathing thread, without starting extra threads or pausing other checks.
+- Ancient expansion placement and tower rush positioning now wait for background pathing results without holding up other AI jobs.
+- Blockage diagnosis, lumber placement and early Ancient creep checks now use the shared pathing thread, preserving large-unit collision checks and tree searches while avoiding separate moving probes in their callers.
+- (internal) AI logic can request pathing checks during play and read their results through the existing pathing thread, without starting extra threads or pausing other checks. Only waypoint placement uses rapid polling; reachability checks use slower, staggered waits.
 
 ### Fixed
 

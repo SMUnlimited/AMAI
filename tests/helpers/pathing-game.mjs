@@ -8,16 +8,29 @@ import { groupNatives } from './warcraft-natives.mjs';
 
 const source = readFileSync(new URL('../../common.eai', import.meta.url), 'utf8');
 
+export function installPathing(state, context) {
+  Object.assign(state, {
+    zeros,
+    pathing_check_active: 0, pathing_check_next: 1, pathing_check_probe: null,
+    pathing_check_started: 0, pathing_check_progress: 0, pathing_check_x: 0, pathing_check_y: 0,
+    PATHING_TYPE_WALKABILITY: 'walk', PATHING_TYPE_FLOATABILITY: 'float',
+    PATHING_TYPE_AMPHIBIOUSPATHING: 'amphibious', PATHING_TYPE_FLYABILITY: 'fly',
+  });
+  for (const [, name, value] of source.matchAll(/constant integer (PATHING_CHECK_\w+) = (-?\d+)/g)) state[name] = Number(value);
+  for (const [, name] of source.matchAll(/(?:integer|real|boolean) array (pathing_check_\w+)/g)) state[name] = zeros();
+  for (const name of ['RequestPathingCheck', 'RequestPathingProbe', 'RequestPathingPoint', 'GetPathingCheckResult',
+    'GetPathingCheckLocation', 'GetPathingProbeLocation', 'GetPathingProbeOrder', 'GetPathingCheckDistance',
+    'ReleasePathingCheck', 'ProcessPathingChecks']) {
+    vm.runInContext(compile(source, name), context);
+  }
+}
+
 export function pathingGame() {
-  const probes = [], locations = new Set(), groups = new Set(), neutralChecks = [];
+  const probes = [], locations = new Set(), groups = new Set(), neutralChecks = [], sleeps = [];
   const location = (x, y) => { const l = { x, y }; locations.add(l); return l; };
   const validLocation = l => { assert.ok(locations.has(l), 'Used a released location'); return l; };
   const state = {
     now: 0, tq_timer: null, ai_player: 0, groundid: 1234, buy_distance: 200,
-    PATHING_TYPE_WALKABILITY: 'walk', PATHING_TYPE_FLOATABILITY: 'float',
-    PATHING_TYPE_AMPHIBIOUSPATHING: 'amphibious', PATHING_TYPE_FLYABILITY: 'fly',
-    pathing_check_active: 0, pathing_check_next: 1, pathing_check_probe: null,
-    pathing_check_started: 0, pathing_check_progress: 0, pathing_check_x: 0, pathing_check_y: 0,
     water_pathing_request: 0, water_pathing_cursor: 0, water_pathing_mine: null, water_pathing_next_time: 60,
     expansion_list: [], expansion_list_length: 0, expansion_dist: [], expansion_creeps: new Map(),
     water_expansion_list: [], water_expansion_list_length: 0, water_expansion_dist: [], water_expansion_creeps: new Map(),
@@ -33,10 +46,12 @@ export function pathingGame() {
     NEUTRAL_HEALING_FOUNTAIN: 0, NEUTRAL_MANA_FOUNTAIN: 1, NEUTRAL_POWER_FOUNTAIN: 2, NEUTRAL_HEAL_WARD: 3,
     nearest_neutral: [{}, null, null, null],
     TimerGetElapsed: () => state.now, ModuloInteger: (a, b) => a % b, SquareRoot: Math.sqrt,
+    Location: location, RMin: Math.min, RMax: Math.max, GetRandomReal: min => min,
     GetLocationX: l => validLocation(l).x, GetLocationY: l => validLocation(l).y,
     GetUnitX: u => u?.x ?? 0, GetUnitY: u => u?.y ?? 0,
+    GetUnitTypeId: u => u?.removed ? 0 : u?.id ?? 0,
     GetUnitLoc: u => location(u.x, u.y),
-    RemoveLocation(l) { assert.ok(locations.delete(l), 'Released a location twice'); },
+    RemoveLocation(l) { if (l !== null) assert.ok(locations.delete(l), 'Released a location twice'); },
     UnitAlive: u => Boolean(u?.alive && !u.removed), GetResourceAmount: u => u.gold,
     CreatePathingUnitFull(_, owner, id, x, y) {
       const probe = { owner, id, x, y, alive: true, routeOpen: state.routeOpen ?? false };
@@ -44,6 +59,13 @@ export function pathingGame() {
       return probe;
     },
     IssuePointOrder(u, order, x, y) { u.order = order; u.target = { x, y }; },
+    IssueImmediateOrderById(u, order) {
+      u.issuedOrder = order;
+      u.order = state.treeFound ? 'harvest' : 'stop';
+      if (state.harvestPoint) Object.assign(u, state.harvestPoint);
+    },
+    SetUnitMoveSpeed: (u, speed) => { u.speed = speed; },
+    UnitApplyTimedLife: (u, _, seconds) => { u.expires = state.now + seconds; },
     GetUnitCurrentOrder: u => u.order, OrderId: order => order,
     RemoveUnit(u) { assert.ok(u && !u.removed, 'Removed a probe twice'); u.removed = true; },
     ...groupNatives(groups), BlzGroupGetSize: g => g.size,
@@ -58,21 +80,21 @@ export function pathingGame() {
     NeutralGuardedJob: i => neutralChecks.push({ kind: 'guards', i }),
     NeutralEnemyCheckJob: i => neutralChecks.push({ kind: 'enemies', i }),
   };
-  for (const [, name, value] of source.matchAll(/constant integer (PATHING_CHECK_\w+) = (-?\d+)/g)) state[name] = Number(value);
-  for (const [, name] of source.matchAll(/(?:integer|real) array (pathing_check_\w+)/g)) state[name] = zeros();
   const context = vm.createContext(state);
-  for (const name of ['RequestPathingCheck', 'GetPathingCheckResult', 'GetPathingCheckDistance',
-    'ReleasePathingCheck', 'ProcessPathingChecks', 'AddExpansion', 'AddWaterExpansion',
-    'CheckWaterExpansionPaths', 'add_exp', 'ChooseExpansion', 'IsWaterExpansion', 'PathingThread']) {
+  installPathing(state, context);
+  for (const name of ['AddExpansion', 'AddWaterExpansion', 'CheckWaterExpansionPaths',
+    'add_exp', 'ChooseExpansion', 'IsWaterExpansion', 'PathingThread', 'PathingSleep',
+    'GetLocationInDistanceFromLoc', 'GetLocationInDistanceFromBaseToLoc']) {
     vm.runInContext(compile(source, name), context);
   }
 
   function advance(seconds) {
     state.now += seconds;
     for (const u of probes.filter(u => state.UnitAlive(u))) {
+      if (state.now >= u.expires) { u.alive = false; continue; }
       if (u.routeOpen && u.target) {
         const dx = u.target.x - u.x, dy = u.target.y - u.y, distance = Math.hypot(dx, dy);
-        const fraction = distance === 0 ? 0 : Math.min(1, 522 * seconds / distance);
+        const fraction = distance === 0 ? 0 : Math.min(1, u.speed * seconds / distance);
         u.x += dx * fraction;
         u.y += dy * fraction;
       }
@@ -80,7 +102,7 @@ export function pathingGame() {
     state.onAdvance?.();
   }
   const game = {
-    state, probes, locations, groups, neutralChecks, location, advance,
+    state, probes, locations, groups, neutralChecks, sleeps, location, advance,
     request(from = state.home_location, target = location(2000, 0), path = state.PATHING_TYPE_WALKABILITY) {
       return state.RequestPathingCheck(from, target, path);
     },
@@ -92,7 +114,11 @@ export function pathingGame() {
     runFor(seconds) { const end = state.now + seconds; while (state.now < end) game.tick(Math.min(2, end - state.now)); },
     runThread(seconds) {
       const end = state.now + seconds, stopped = {};
-      state.StaggerSleep = seconds => { advance(seconds); if (state.now > end) throw stopped; };
+      state.Sleep = state.StaggerSleep = seconds => {
+        sleeps.push({ time: state.now, seconds, active: state.pathing_check_active });
+        advance(seconds);
+        if (state.now > end) throw stopped;
+      };
       try { state.PathingThread(); } catch (error) { if (error !== stopped) throw error; }
     },
     addWaterMine({ x = 2000, y = 0, gold = 10000, alive = true, creeps = [] } = {}) {
@@ -102,5 +128,44 @@ export function pathingGame() {
     },
     chooseMine() { state.ChooseExpansion(); return state.current_expansion; },
   };
+  state.Sleep = seconds => { advance(seconds); state.ProcessPathingChecks(); };
   return game;
+}
+
+export function towerGame() {
+  const game = pathingGame(), jobs = [], distanceChecks = [];
+  const state = game.state;
+  Object.assign(state, {
+    towerrush: false, player_defeated: false, tower_pathing_pending: false, tower_pathing_request: 0,
+    tower_pathing_distance: 0, tower_pathing_x: 0, tower_pathing_y: 0, tower_pathing_player: null,
+    tower_target_loc: null, toweringplayerloc: game.location(8000, 0), rushedplayer: 1,
+    towerrushsubloc: null, tower_rush_power: null, builder: [],
+    front_base_distance: 2000, racial_rushcreep: 7, enemy_point_x: 0, enemy_point_y: 0,
+    console_tr_command: false, game_is_ffa: false, race_towerrush_probability: 100,
+    race_tower_alliancetarget: false, RACE_NIGHTELF: 'elf', enemyRace: 'human',
+    TOWER_RUSH_CHECK: 1, TOWER_RUSH: 2, chat_towerrush: '', chat_no_orc: '', mapSize: 2,
+    GetNearestEnemyDistance() { distanceChecks.push(state.now); return 8000; },
+    GetPlayerRace: () => state.enemyRace, GetPlayerStructureCount: () => 4,
+    GetRandomInt: () => 1, TQAddJob: (delay, job, par) => jobs.push({ delay, job, par }),
+    DisplayToAllJobDebug() {}, UpdateRepairControl() {}, DisplayToAllies() {}, DisplayToObserversImportant() {},
+  });
+  const context = vm.createContext(state);
+  vm.runInContext(compile(source, 'GetSubtractionLoc'), context);
+  const towers = readFileSync(new URL('../../Jobs/TOWER_RUSH_CHECK.eai', import.meta.url), 'utf8');
+  for (const name of ['StartTowerRush', 'ResetTowerRushCheck', 'PollTowerRushPathing', 'TowerRushCheck']) {
+    vm.runInContext(compile(towers, name), context);
+  }
+  return {
+    ...game, jobs, distanceChecks,
+    checkRush() { jobs.length = 0; state.TowerRushCheck(); },
+    finishPositioning() {
+      while (state.tower_pathing_pending) {
+        game.advance(0.2);
+        game.poll();
+        jobs.length = 0;
+        state.TowerRushCheck();
+        assert.ok(state.now < 1000, 'Tower positioning did not finish');
+      }
+    },
+  };
 }
