@@ -24,6 +24,8 @@ export function strengthGame(version) {
   const units = [], assaults = [], assaultRequests = [], merges = [], messages = [], groups = new Set();
   const state = {
     ...groupNatives(groups), ai_player: 0, ai_time: 100, tier: 1,
+    isfleeing: false, retreat_controlled: false, town_threatened: false, town_threat_break: false,
+    CaptainRetreating: () => false,
     attacktable: new Map(), attack_length: 0, attack_units: [], old_id: zeros(),
     PLAYER_NEUTRAL_AGGRESSIVE: 12, unit_healing: new Set(),
     ver_hero_base_value: 2,
@@ -83,7 +85,7 @@ export function strengthGame(version) {
   const names = ['GetHeroAbilityStrength', 'GetHeroStrength', 'GetPlayerHeroStrengthMod',
     'GetUnitStrengthEx', 'IsUnitTower', 'GetPlayerStrengthHandicap', 'GetUnitStrength',
     'GetPlayerStrength', 'GetOwnStrength', 'AttackGroupAddUnknown', 'ConversionsAM',
-    'InitAssaultAM', 'AddAssaultAM', 'GroupRecycleHarrassPositionInstant',
+    'IsRetreatingAM', 'RequestAssaultAM', 'InitAssaultAM', 'AddAssaultAM', 'GroupRecycleHarrassPositionInstant', 'SetAssaultGroupAM',
     'DesperationAssault', 'FormGroupAM', 'FromGroupAndGhoulsAM', 'AttackMoveKillAAM',
     ...categories.map(c => 'GetPlayer' + c + 'Strength')];
   vm.runInContext([...new Set(names)].map(name => compile(source, name)).join('\n'), vm.createContext(state));

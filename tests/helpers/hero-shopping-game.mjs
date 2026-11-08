@@ -28,6 +28,7 @@ export function heroGame(reservation, assigned = true) {
     hero_built: [false, true, false, false], hero_unit: [null, hero],
     buy_type: [1, 0, 1], BT_RACIAL_ITEM: 1, BUY_ITEM: 20, old_id: ['item', 'shop', 'potion'], racial_shop: 1,
     town_threatened: false, attack_running: true, isfleeing: false,
+    retreat_controlled: false, town_threat_break: false, CaptainRetreating: () => false,
     NEUTRAL_MERCHANT: 0, neutral_guarded: [false], neutral_night_buy: [false], nearest_neutral: [null],
     UndeadMineRecoveryNeeded: () => false,
     distance: 4000, now: 10, items: 0, ai_time: 10, regenerate_time: [20], available_time: [],
@@ -121,6 +122,7 @@ export function heroGame(reservation, assigned = true) {
   vm.runInContext(compile(carriedHealing, 'GetCarriedHeroHealingItem'), context);
   vm.runInContext(compile(common, 'GetUnitUsableAbilityLevel'), context);
   for (const [file, name] of [
+    ['common.eai', 'IsRetreatingAM'], ['common.eai', 'RequestAssaultAM'],
     ['common.eai', 'IsStandardUnit'], ['common.eai', 'IsUnitBuying'], ['common.eai', 'GetHeroToBuyItem'],
     ['common.eai', 'RequestWardRecovery'],
     ['Jobs/BUY_ITEM.eai', 'EndBuyItemJob'], ['Jobs/BUY_ITEM.eai', 'BuyItemJob'],

@@ -3,6 +3,77 @@ import { describe, it } from 'node:test';
 import { strengthGame } from './helpers/strength-game.mjs';
 
 for (const version of ['ROC', 'TFT', 'REFORGED']) {
+  describe(`${version} retreat blocks assault recruitment`, () => {
+    it('Given an existing assault retreating, when a formation refresh runs, then its roster and request history stay intact', () => {
+      const game = strengthGame(version);
+      game.addUnit('FOOTMAN');
+      game.formArmy('FOOTMAN', 1);
+      game.state.isfleeing = true;
+
+      game.state.FormGroupAM(0);
+      game.state.InitAssaultAM();
+
+      assert.deepEqual(game.assaultRequests, [{ count: 1, id: game.state.oFOOTMAN }]);
+      assert.equal(game.state.LoadInteger(game.state.attacktable, game.state.CUSTOM_ATTACK, game.state.oFOOTMAN), 1);
+    });
+
+    it('Given native captain retreat before AMAI adopts it, when reinforcements and returning troops request assault, then no troops are added', () => {
+      const game = strengthGame(version);
+      const troop = game.addUnit('FOOTMAN');
+      game.state.CaptainRetreating = () => true;
+
+      game.state.AddAssaultAM(60, troop.id);
+      game.returnFromHarassment(troop);
+
+      assert.deepEqual(game.assaultRequests, []);
+      assert.equal(game.state.LoadInteger(game.state.attacktable, game.state.CUSTOM_ATTACK, troop.id), 0);
+      assert.equal(game.state.unit_harassing.has(troop), false);
+      assert.equal(game.groups.size, 0);
+    });
+
+    it('Given a pending town recall, when ghoul reinforcement runs, then no formation, conversion or ghoul attack assignment starts', () => {
+      const game = strengthGame(version);
+      game.state.retreat_controlled = true;
+      game.state.town_threatened = true;
+      game.state.town_threat_break = true;
+      game.state.race_has_ghouls = true;
+      game.state.race_ghouls_attack = true;
+      game.state.ghouls_in_attack = false;
+
+      game.state.FromGroupAndGhoulsAM(0);
+      game.formArmy('HIPPO_RIDER', 6);
+      game.state.SetAssaultGroupAM(0, 6, game.state.uHIPPO_RIDER);
+
+      assert.deepEqual(game.assaultRequests, []);
+      assert.deepEqual(game.merges, []);
+      assert.equal(game.state.ghouls_in_attack, false);
+    });
+
+    it('Given a retreating army, when desperation and custom troop scans run, then neither recruits assault troops', () => {
+      const game = strengthGame(version);
+      game.addUnit('x001');
+      game.state.isfleeing = true;
+
+      game.reinforce();
+      game.attack();
+
+      assert.deepEqual(game.assaultRequests, []);
+      assert.equal(game.groups.size, 0);
+    });
+
+    it('Given recruitment blocked during retreat, when retreat ends, then the same bulk request can succeed', () => {
+      const game = strengthGame(version);
+      const troop = game.addUnit('FOOTMAN');
+      game.state.isfleeing = true;
+      game.state.AddAssaultAM(60, troop.id);
+      game.state.isfleeing = false;
+
+      game.state.AddAssaultAM(60, troop.id);
+
+      assert.deepEqual(game.assaultRequests, [{ count: 60, id: troop.id }]);
+    });
+  });
+
   describe(`${version} desperation assault registrations`, () => {
     it('Given a troop returning from harassment, desperation still requests 60 and repeated scans add nothing', () => {
       const game = strengthGame(version);

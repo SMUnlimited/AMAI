@@ -3,6 +3,19 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { heroGame } from './helpers/hero-shopping-game.mjs';
 
+describe('Shopping completion during army retreat', () => {
+  it('Given a healthy hero finishing shopping while the army retreats, when shopping releases it, then no assault request recruits the hero', () => {
+    const game = heroGame();
+    game.state.isfleeing = true;
+
+    game.state.EndBuyItemJob(true);
+
+    assert.deepEqual(game.effects, ['recycle']);
+    assert.equal(game.state.unit_buying_item.has(game.hero), false);
+    assert.equal(game.state.shop_sent, null);
+  });
+});
+
 describe('Hero recovery uses carried healing items', () => {
   it('Given a hero carrying a potion but preferring salve, when recovering far from home, then it uses the potion', () => {
     const game = heroGame('unit_healing');
@@ -231,13 +244,13 @@ describe('Healthy shoppers return to normal control', () => {
     assert.equal(game.state.shop_sent, game.hero);
   });
 
-  it('Given the army is fleeing, when an attack cancels shopping, then the original assault request is preserved', () => {
+  it('Given the army is fleeing, when an attack cancels shopping, then the hero returns to guard control without an assault request', () => {
     const game = heroGame();
     game.state.isfleeing = true;
 
     game.buyItem();
 
-    assert.deepEqual(game.effects, ['recycle', 'assault']);
+    assert.deepEqual(game.effects, ['recycle']);
   });
 });
 

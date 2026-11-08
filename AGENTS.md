@@ -2,7 +2,7 @@
 
 ## High level summary
 
-- All files ending with `.eai` are AMAI AI source code in its JASS language.
+- Files ending with `.eai` contain JASS AI source code. `common_original.eai` is standard Warcraft 3 AI code, not AMAI code.
 - AI code is compiled to the `Scripts` folder (look there to see generated output used by maps).
 - `Common.j` and `Natives.j` are standard Warcraft 3 AI/runtime functions.
 - `Blizzard.j` contains standard map functions; `Blizzard.eai` is the AMAI "commander" logic for maps.
@@ -15,6 +15,7 @@
 - Do not use `R2S` or `I2S` in AI code. Use AMAI's `Real2Str` and `Int2Str` helpers instead; they work around native string-conversion issues in the AI runtime.
 - Do not edit generated artifacts in `Scripts/` directly — change source `.eai` files and re-run the project build to regenerate compiled output.
 - `Common.j`, `Natives.j` and `Blizzard.j` are built-in war3 code do not make changes to them, they are for reference to hardcoded functions and building.
+- Do not modify `common_original.eai`. It contains standard Warcraft 3 AI code, not AMAI logic; make AMAI changes in `common.eai`, `races.eai` or the relevant job source instead.
 - Some natives behave differently in AI code so cannot be used e.g anything that spawns threads as AI only allowed a fixed number.
 - Update the CHANGELOG.md when changes are made but should be understandable to my users. Distinguish between internal, dev tools, installer and AI improvements for each change. And keep changes to AMAI code higher up the lists
 

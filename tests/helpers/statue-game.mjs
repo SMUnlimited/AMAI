@@ -24,7 +24,8 @@ export function undeadGame() {
     unit_buying_item: new Set(), unit_buying_merc: new Set(), unit_buying_tavern: new Set(),
     unit_healing: new Set(), battle_radius: 1500, normal_battle_radius: 1500, creep_battle_radius: 750,
     statue_distance: 300, retreat_controlled: true, attack_running: true, isfleeing: false,
-    canflee: false, retreat_group_refreshed: false, town_threatened: false, town_threat_break: false,
+    canflee: false, retreat_assisted: false, town_threatened: false, town_threat_break: false,
+    teleporting: false, captain_home: null,
     player_defeated: false, ancient_expanding: false, ancient_attack_running: false,
     br_rush_attacked: false, desperation_assault: false, sleep_multiplier: 1, RETREAT_CONTROL: 1,
     ally_loc: { x: 0, y: 0 }, last_ally_loc: { x: 0, y: 0 },
@@ -65,7 +66,9 @@ export function undeadGame() {
   for (const name of ['IsStandardUnit', 'IsUnitBuying', 'GetSubtractionLoc', 'GetSubtractionLoc_kd', 'GetLengthOfLoc', 'GetDivisionLoc', 'GetNormalisedLoc', 'GetMultipleLoc_d', 'GetSumLoc_kd', 'GetProjectedLoc']) {
     vm.runInContext(compile(readFileSync(new URL('common.eai', root), 'utf8'), name), context);
   }
-  vm.runInContext(compile(readFileSync(new URL('Jobs/RETREAT_CONTROL.eai', root), 'utf8'), 'RetreatControlJob'), context);
+  for (const name of ['AssistCaptainRetreat', 'RetreatControlJob']) {
+    vm.runInContext(compile(readFileSync(new URL('Jobs/RETREAT_CONTROL.eai', root), 'utf8'), name), context);
+  }
   vm.runInContext(compile(readFileSync(new URL('Jobs/MICRO_UNITS.eai', root), 'utf8'), 'StatueControl'), context);
   return {
     state, statue, hero, enemy, units, orders, locations,

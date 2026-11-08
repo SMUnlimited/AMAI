@@ -15,6 +15,8 @@ export function performanceGame({ capacity = 8192 } = {}) {
   const natives = groupNatives(groups);
   const state = {
     ai_player: 0, player_defeated: false, desperation_assault: false, attacktable: new Map(), CUSTOM_ATTACK: 1,
+    isfleeing: false, retreat_controlled: false, town_threatened: false, town_threat_break: false,
+    CaptainRetreating: () => false,
     attack_length: 0, attack_units: [], old_id: [],
     UNIT_TYPE_PEON: 'worker', UNIT_TYPE_STRUCTURE: 'structure', UNIT_TYPE_SUMMONED: 'summoned',
     UNIT_TYPE_ANCIENT: 'ancient', UNIT_TYPE_ATTACKS_FLYING: 'air', UNIT_TYPE_ATTACKS_GROUND: 'ground',
@@ -68,7 +70,7 @@ export function performanceGame({ capacity = 8192 } = {}) {
   const types = new Map([['tq_length', 'integer'], ['tq_jid', 'integer'], ['tq_par', 'integer']]);
   for (const name of [
     'SelectUnittype', 'SelectByHidden', 'SelectByAlive', 'SelectById',
-    'AddAssaultAM', 'AttackGroupAddUnknown', 'DesperationAssault', 'LookupCT', 'GetChar', 'CompareReal', 'CheckChatCondition',
+    'IsRetreatingAM', 'RequestAssaultAM', 'AddAssaultAM', 'AttackGroupAddUnknown', 'DesperationAssault', 'LookupCT', 'GetChar', 'CompareReal', 'CheckChatCondition',
     'TQCopy', 'TQExchange', 'TQUpHeap', 'TQFillPos', 'TQRemoveRoot', 'TQAddJobEx',
   ]) vm.runInContext(compile(source, name, types), context);
 

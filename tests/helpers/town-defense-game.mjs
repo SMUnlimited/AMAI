@@ -34,7 +34,7 @@ export function townDefenseGame(version) {
     army_future: [location(5000, 0)], army_group: [new Set()], army_count: [10],
     army_strength: new Proxy([100], { get(array, key) { assert.notEqual(key, '-1', 'Negative army index'); return array[key]; } }),
     attack_running: true, break_attack: false, teleporting: false,
-    retreat_controlled: true, isfleeing: false, canflee: false, retreat_group_refreshed: false,
+    retreat_controlled: true, isfleeing: false, canflee: false, retreat_assisted: false,
     town_threat_break: true, player_defeated: false, desperation_assault: false,
     ancient_expanding: false, ancient_attack_running: false, br_rush_attacked: false,
     battle_radius: 1500, creep_battle_radius: 750, sleep_multiplier: 1, RETREAT_CONTROL: 1,
@@ -47,6 +47,7 @@ export function townDefenseGame(version) {
     UnitAlive: u => Boolean(u?.alive), IsUnitVisible: u => u.visible,
     IsUnitInvisibleAM: u => Boolean(u.invisible), GetUnitCurrentOrder: u => u.order,
     OrderId: name => name, IsStandardUnit: () => true, IsUnitBuying: () => false,
+    BlzGroupAddGroupFast: (from, to) => { for (const u of from) to.add(u); },
     IsPlayerAlly: (a, b) => a === b || (alliances.has(a) && alliances.has(b)),
     IsPlayerEnemy: (a, b) => a !== b && !(alliances.has(a) && alliances.has(b)),
     Location: location, GetLocationX: l => point(l).x, GetLocationY: l => point(l).y,
@@ -82,7 +83,7 @@ export function townDefenseGame(version) {
     'SetCaptainHomeLoc', 'SetDefenseCaptainHome', 'GetLocationTowerStrength', 'LinearInterpolation',
     'GetLengthOfLoc', 'GetLengthOfLoc_d', 'l_smult_kk', 'GetAngleBetweenLocs',
     'IsArmyUnit', 'TrackArmy', 'GetSubtractionLoc_kd', 'GetSubtractionLoc',
-    'GetMultipleLoc', 'GetMultipleLoc_d', 'GetSumLoc_kd', 'GetProjectedLoc', 'GetNormalisedLoc', 'GetDivisionLoc', 'RetreatControlJob'];
+    'GetMultipleLoc', 'GetMultipleLoc_d', 'GetSumLoc_kd', 'GetProjectedLoc', 'GetNormalisedLoc', 'GetDivisionLoc', 'CopyGroup', 'AssistCaptainRetreat', 'RetreatControlJob'];
   vm.runInContext(names.map(name => compile(source, name)).join('\n'), vm.createContext(state));
   function addTown({ x = 0, y = 0, owner = 0 } = {}) {
     const num = state.town_num++;
