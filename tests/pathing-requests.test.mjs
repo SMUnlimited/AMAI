@@ -133,6 +133,31 @@ describe('Mid-game pathing requests', () => {
 });
 
 describe('Pathing polling cadence', () => {
+  it('Given fractional staggered waits ten minutes into a game, when sleeps round down to frames, then idle pathing continues advancing time', () => {
+    const game = pathingGame();
+    game.advance(600);
+    game.state.GetRandomReal = (min, max) => min + (max - min) * 0.12345;
+
+    game.runThread(20, { sleepResolution: 1 / 32 });
+
+    assert.ok(game.state.now > 620);
+    assert.ok(game.neutralChecks.some(check => check.kind === 'enemies'));
+  });
+
+  it('Given a waypoint and fractional staggered waits, when sleeps round down to frames, then rapid polling finishes and neutral checks resume', () => {
+    const game = pathingGame();
+    game.advance(600);
+    game.state.GetRandomReal = (min, max) => min + (max - min) * 0.12345;
+    game.state.routeOpen = true;
+    const ticket = game.state.RequestPathingPoint(game.location(8000, 0), game.state.home_location, 6000);
+
+    game.runThread(20, { sleepResolution: 1 / 32 });
+
+    assert.equal(game.result(ticket), game.state.PATHING_CHECK_REACHABLE);
+    assert.ok(game.state.now > 620);
+    assert.ok(game.neutralChecks.some(check => check.kind === 'enemies'));
+  });
+
   it('Given a timed tree search and long staggered waits, when the thread polls its result, then it retains the harvest order without rapid sampling or early expiry', () => {
     const game = pathingGame();
     game.state.sleep_multiplier = 2;

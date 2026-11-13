@@ -112,11 +112,14 @@ export function pathingGame() {
     checkMines: () => state.CheckWaterExpansionPaths(),
     tick(seconds = 2) { advance(seconds); game.checkMines(); game.poll(); },
     runFor(seconds) { const end = state.now + seconds; while (state.now < end) game.tick(Math.min(2, end - state.now)); },
-    runThread(seconds) {
+    runThread(seconds, { sleepResolution = 0 } = {}) {
       const end = state.now + seconds, stopped = {};
       state.Sleep = state.StaggerSleep = seconds => {
         sleeps.push({ time: state.now, seconds, active: state.pathing_check_active });
-        advance(seconds);
+        // Exercise early wake-ups; this is a boundary model, not an engine clock implementation.
+        const elapsed = sleepResolution ? Math.floor(seconds / sleepResolution) * sleepResolution : seconds;
+        assert.ok(elapsed > 0, 'Pathing wait rounded down to zero without advancing game time');
+        advance(elapsed);
         if (state.now > end) throw stopped;
       };
       try { state.PathingThread(); } catch (error) { if (error !== stopped) throw error; }
