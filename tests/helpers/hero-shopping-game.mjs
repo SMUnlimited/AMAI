@@ -68,7 +68,7 @@ export function heroGame(reservation, assigned = true) {
     hero_dir: [], hero_loc: [], hero_hp_loss: [], hero_hp: [0, 0.2],
     hero_enemy_density: [], hero_enemy_loc: [], hero_ally_density: [], hero_ally_loc: [],
     hero_radius: 1000, enemy_density: 0, ally_density: 0, enemy_density_loc: {}, ally_density_loc: {},
-    town_loc: [{}], most_threatened_town: 0, tp_item: 3,
+    town_loc: [{}], town_num: 1, most_threatened_town: 0, tp_item: 3,
     GetArmyOfUnit: () => -1, GetDensities() {}, MoveLocation() {}, RMax: Math.max,
     UnitAlive: u => Boolean(u?.alive && !u.removed), GetUnitTypeId: u => u?.type,
     IsUnitType: (u, type) => u.type === type, GetSlotsFreeOnUnit: u => u.slots,

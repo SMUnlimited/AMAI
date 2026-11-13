@@ -11,9 +11,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Ancient expansion placement and tower rush positioning now wait for background pathing results without holding up other AI jobs.
 - Blockage diagnosis, lumber placement and early Ancient creep checks now use the shared pathing thread, preserving large-unit collision checks and tree searches while avoiding separate moving probes in their callers.
 - (internal) AI logic can request pathing checks during play and read their results through the existing pathing thread, without starting extra threads or pausing other checks. Only waypoint placement uses rapid polling; reachability checks use slower, staggered waits.
+- (devtools) Contributor instructions now document minimum polling pauses, rounded-wait tests and JASS runtime precautions to help prevent game freezes, stopped AI scripts and multiplayer desyncs.
 
 ### Fixed
 
+- Hero recovery checks now skip missing town targets while keeping hero checks running, avoiding invalid town-array access after towns are lost.
+- Debug observer access is now granted consistently on every client, avoiding multiplayer desyncs caused by local alliance changes.
 - Retreating main-army units still attacking or idle away from home receive one move-home order, then remain under native captain control so they can fight back and defend. Army formation, reinforcements and units returning from separate jobs cannot add assault troops during AMAI retreats, native captain retreats or pending town recalls. Harvesting, movement, spell casts and units on separate jobs are left alone.
 - When no usable expansion mine is found, the AI waits 30 seconds before evaluating expansions again and clears its old request to creep the unavailable site. First expansions and recovery after losing mines remain available.
 - Desperation attacks now form their full roster after resetting the assault group and avoid duplicate troop requests across formation and captured/custom troop scans. Units returning from shopping, harassment or combat can rejoin repeatedly without changing those bulk requests.
