@@ -9,7 +9,6 @@
     real ally_strength_sum = 0
     boolean canflee = false
     boolean isfleeing = false
-    boolean retreat_assisted = false
     unit attack_intrusion = null // Nearby enemy temporarily interrupting offensive travel.
     integer added_target_aggression = 0  // The current bonus aggression added to current attack specified in the profiles
     integer added_racial_aggression = 0  // The current bonus added to current attack based on which race amai is attacking
@@ -24,22 +23,23 @@
 // Retreat Control Job //Updated by Strategy Master 26/07/05
 //============================================================================
 //
-// One nudge per retreat; the captain keeps control afterwards, including fighting back.
+// Keep available troops near home while the captain retains control of local defense.
 function AssistCaptainRetreat takes nothing returns nothing
   local group g = null
   local unit u = null
   local integer order = 0
-  if teleporting or main_army < 0 or captain_home == null then
+  if teleporting or captain_home == null then
     return
   endif
-  set g = CopyGroup(army_group[main_army])
+  set g = CreateGroup()
+  call GroupEnumUnitsOfPlayer(g, ai_player, null)
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
     if UnitAlive(u) and GetOwningPlayer(u) == ai_player and IsStandardUnit(u) and not IsUnitBuying(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitHidden(u) and not IsUnitLoaded(u) then
       set order = GetUnitCurrentOrder(u)
-      // Leave movement, harvesting and spells alone; home troops can defend normally.
-      if (order == OrderId("attack") or order == 0) and DistanceBetweenPoints_dk(GetUnitLoc(u), captain_home) > 1200 then
+      // Redirect travel as well as attacks; harvesting and spell orders are left alone.
+      if (order == 0 or order == OrderId("attack") or order == OrderId("attackground") or order == OrderId("move") or order == OrderId("smart") or order == OrderId("patrol") or order == OrderId("stop") or order == OrderId("holdposition")) and DistanceBetweenPoints_dk(GetUnitLoc(u), captain_home) > 1200 then
         call IssuePointOrder(u, "move", GetLocationX(captain_home), GetLocationY(captain_home))
       endif
     endif
@@ -153,6 +153,10 @@ if not isfleeing and canflee and (CaptainRetreating() or CaptainIsHome()) then
   set isfleeing = true
 endif
 
+if isfleeing or (town_threatened and town_threat_break) then
+  call AssistCaptainRetreat()
+endif
+
 if ((not attack_running and not isfleeing) or isfleeing or (town_threatened and town_threat_break) or player_defeated) then
     set break_attack = attack_running
     call Trace("RETREAT: Pending End fleeing:" + B2S(isfleeing))
@@ -161,7 +165,6 @@ if ((not attack_running and not isfleeing) or isfleeing or (town_threatened and 
       set retreat_controlled = false
       set canflee = false
       set isfleeing = false     // home so no need to be retreating. Also prevents bug in the captainretreating condition
-      set retreat_assisted = false
       call SetGroupsFlee(false)
       return
     else
@@ -170,11 +173,6 @@ if ((not attack_running and not isfleeing) or isfleeing or (town_threatened and 
 endif
 
 if isfleeing or (town_threatened and town_threat_break) then
-    if not retreat_assisted then
-      call Trace("RETREAT_CONTROL: Assist captain retreat")
-      call AssistCaptainRetreat()
-      set retreat_assisted = true
-    endif
     if not CaptainIsHome() and not CaptainRetreating() then
       call Trace("RETREAT_CONTROL: Retry captain home")
       call CaptainGoHome()
@@ -289,11 +287,7 @@ if attack_running then
   if (CaptainInCombat(true) or transit_threat) and not desperation_assault and (enemy_strength_sum > ApplyFleeStrengthModifier(ally_strength_sum, true) or (transit_threat and enemy_strength_sum >= ally_strength_sum) or (town_threatened and town_threat_break and attack_running) or ally_strength_sum == 0) then
     call Trace("RETREAT_CONTROL: Flee!!!!")
     set break_attack = attack_running
-    if not retreat_assisted then
-      call Trace("RETREAT_CONTROL: Assist captain retreat")
-      call AssistCaptainRetreat()
-      set retreat_assisted = true
-    endif
+    call AssistCaptainRetreat()
     call CaptainGoHome()
     set isfleeing = true
   elseif CaptainInCombat(true) and not desperation_assault and (enemy_strength_sum > ApplyFleeStrengthModifier(ally_strength_sum, false) or (battle_radius == creep_battle_radius and enemy_strength_sum > ally_strength_sum )) then

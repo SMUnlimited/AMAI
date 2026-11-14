@@ -34,7 +34,7 @@ export function townDefenseGame(version) {
     army_future: [location(5000, 0)], army_group: [new Set()], army_count: [10],
     army_strength: new Proxy([100], { get(array, key) { assert.notEqual(key, '-1', 'Negative army index'); return array[key]; } }),
     attack_running: true, break_attack: false, teleporting: false,
-    retreat_controlled: true, isfleeing: false, canflee: false, retreat_assisted: false,
+    retreat_controlled: true, isfleeing: false, canflee: false,
     town_threat_break: true, player_defeated: false, desperation_assault: false,
     ancient_expanding: false, ancient_attack_running: false, br_rush_attacked: false,
     battle_radius: 1500, creep_battle_radius: 750, sleep_multiplier: 1, RETREAT_CONTROL: 1,

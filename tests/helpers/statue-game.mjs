@@ -24,7 +24,7 @@ export function undeadGame() {
     unit_buying_item: new Set(), unit_buying_merc: new Set(), unit_buying_tavern: new Set(),
     unit_healing: new Set(), battle_radius: 1500, normal_battle_radius: 1500, creep_battle_radius: 750,
     statue_distance: 300, retreat_controlled: true, attack_running: true, isfleeing: false,
-    canflee: false, retreat_assisted: false, town_threatened: false, town_threat_break: false,
+    canflee: false, town_threatened: false, town_threat_break: false,
     teleporting: false, captain_home: null,
     player_defeated: false, ancient_expanding: false, ancient_attack_running: false,
     br_rush_attacked: false, desperation_assault: false, sleep_multiplier: 1, RETREAT_CONTROL: 1,

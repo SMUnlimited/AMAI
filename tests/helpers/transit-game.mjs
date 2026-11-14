@@ -10,14 +10,21 @@ export function transitGame(options) {
   const unitOrders = [];
   const enumerate = state.GroupEnumUnitsInRange;
   Object.assign(state, {
-    attack_running: true, retreat_controlled: true, retreat_assisted: false,
+    attack_running: true, retreat_controlled: true,
     canflee: false, player_defeated: false, ancient_expanding: false,
     teleporting: false, captain_home: state.home_location,
     unit_rescueing: new Set(), unit_harassing: new Set(), unit_zepplin_move: new Set(),
     unit_buying_item: new Set(), unit_buying_merc: new Set(), unit_buying_tavern: new Set(),
     IsUnitLoaded: u => Boolean(u.loaded), GetUnitCurrentOrder: u => u.order ?? 'attack',
     BlzGroupAddGroupFast: (from, to) => { for (const u of from) to.add(u); },
-    IssuePointOrder: (unit, order, x, y) => unitOrders.push({ unit, order, x, y }),
+    GroupEnumUnitsOfPlayer(g, player) {
+      g.clear();
+      units.filter(u => u.owner === player).forEach(u => g.add(u));
+    },
+    IssuePointOrder(unit, order, x, y) {
+      unit.order = order;
+      unitOrders.push({ unit, order, x, y });
+    },
     ancient_attack_running: false, br_rush_attacked: false,
     battle_radius: 1500, creep_battle_radius: 750, RETREAT_CONTROL: 1,
     PLAYER_NEUTRAL_AGGRESSIVE: 12, UNIT_TYPE_MELEE_ATTACKER: 'melee', UNIT_TYPE_RANGED_ATTACKER: 'ranged',
@@ -52,7 +59,7 @@ export function transitGame(options) {
   const common = readFileSync(new URL('../../common.eai', import.meta.url), 'utf8');
   const context = vm.createContext(state);
   for (const name of ['CopyGroup', 'DistanceBetweenPoints_dk', 'IsStandardUnit', 'IsUnitBuying', 'LinearInterpolation', 'ApplyFleeStrengthModifier', 'AttackTransitIntrusion',
-    'CommonSleepUntilTargetDeadAM', 'SleepUntilAtGoalAM', 'QueueAttackMoveXY']) {
+    'CommonSleepUntilTargetDeadAM', 'SleepUntilAtGoalAM', 'SleepUntilTownDefended', 'QueueAttackMoveXY']) {
     vm.runInContext(compile(common, name), context);
   }
   for (const name of ['AssistCaptainRetreat', 'RetreatControlJob']) {
@@ -66,6 +73,14 @@ export function transitGame(options) {
       return enemy;
     },
     checkBattle: () => state.RetreatControlJob(),
+    defendTown(onWait) {
+      Object.assign(state, {
+        own_strength: 20, attack_reform_length: 10,
+        TownThreatened: () => false,
+        StaggerSleep: onWait,
+      });
+      state.SleepUntilTownDefended(20);
+    },
     attack: () => state.CommonSleepUntilTargetDeadAM(target, false, false, false),
     intercept: () => state.AttackTransitIntrusion(),
   };
