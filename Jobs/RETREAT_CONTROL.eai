@@ -8,6 +8,7 @@
     real enemy_strength_sum = 0
     real ally_strength_sum = 0
     boolean canflee = false
+    hashtable retreat_moves = InitHashtable() // Per unit: distance, last progress time, home X/Y.
     boolean isfleeing = false
     unit attack_intrusion = null // Nearby enemy temporarily interrupting offensive travel.
     integer added_target_aggression = 0  // The current bonus aggression added to current attack specified in the profiles
@@ -28,6 +29,8 @@ function AssistCaptainRetreat takes nothing returns nothing
   local group g = null
   local unit u = null
   local integer order = 0
+  local integer key = 0
+  local real distance = 0
   if teleporting or captain_home == null then
     return
   endif
@@ -36,12 +39,31 @@ function AssistCaptainRetreat takes nothing returns nothing
   loop
     set u = FirstOfGroup(g)
     exitwhen u == null
+    set key = GetHandleId(u)
     if UnitAlive(u) and GetOwningPlayer(u) == ai_player and IsStandardUnit(u) and not IsUnitBuying(u) and not IsUnitType(u, UNIT_TYPE_PEON) and not IsUnitType(u, UNIT_TYPE_STRUCTURE) and not IsUnitHidden(u) and not IsUnitLoaded(u) then
       set order = GetUnitCurrentOrder(u)
+      set distance = DistanceBetweenPoints_dk(GetUnitLoc(u), captain_home)
       // Redirect travel as well as attacks; harvesting and spell orders are left alone.
-      if (order == 0 or order == OrderId("attack") or order == OrderId("attackground") or order == OrderId("move") or order == OrderId("smart") or order == OrderId("patrol") or order == OrderId("stop") or order == OrderId("holdposition")) and DistanceBetweenPoints_dk(GetUnitLoc(u), captain_home) > 1200 then
-        call IssuePointOrder(u, "move", GetLocationX(captain_home), GetLocationY(captain_home))
+      if (order == 0 or order == OrderId("attack") or order == OrderId("attackground") or order == OrderId("move") or order == OrderId("smart") or order == OrderId("patrol") or order == OrderId("stop") or order == OrderId("holdposition")) and distance > 1200 then
+        // Reissuing move restarts movement. Keep a progressing homeward move intact,
+        // allowing short pathing detours before retrying a stalled or diverted move.
+        if HaveSavedReal(retreat_moves, key, 0) and distance < LoadReal(retreat_moves, key, 0) - 32 then
+          call SaveReal(retreat_moves, key, 0, distance)
+          call SaveReal(retreat_moves, key, 1, ai_time)
+        endif
+        if order != OrderId("move") or not HaveSavedReal(retreat_moves, key, 0) or LoadReal(retreat_moves, key, 2) != GetLocationX(captain_home) or LoadReal(retreat_moves, key, 3) != GetLocationY(captain_home) or ai_time - LoadReal(retreat_moves, key, 1) >= 8 then
+          if IssuePointOrder(u, "move", GetLocationX(captain_home), GetLocationY(captain_home)) then
+            call SaveReal(retreat_moves, key, 0, distance)
+            call SaveReal(retreat_moves, key, 1, ai_time)
+            call SaveReal(retreat_moves, key, 2, GetLocationX(captain_home))
+            call SaveReal(retreat_moves, key, 3, GetLocationY(captain_home))
+          endif
+        endif
+      else
+        call FlushChildHashtable(retreat_moves, key)
       endif
+    else
+      call FlushChildHashtable(retreat_moves, key)
     endif
     call GroupRemoveUnit(g, u)
   endloop
@@ -162,6 +184,7 @@ if ((not attack_running and not isfleeing) or isfleeing or (town_threatened and 
     call Trace("RETREAT: Pending End fleeing:" + B2S(isfleeing))
     if CaptainIsHome() or (not attack_running and not isfleeing) or player_defeated then
       call Trace("===Retreat control ended===")
+      call FlushParentHashtable(retreat_moves)
       set retreat_controlled = false
       set canflee = false
       set isfleeing = false     // home so no need to be retreating. Also prevents bug in the captainretreating condition

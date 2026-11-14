@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import { hashtableNatives } from './warcraft-natives.mjs';
 import { compiledCommon, strengthGame } from './strength-game.mjs';
 import { compile, zeros } from './jass.mjs';
 
@@ -17,6 +18,7 @@ export function townDefenseGame(version) {
     return u;
   };
   Object.assign(state, {
+    ...hashtableNatives(), retreat_moves: new Map(), ai_time: 0,
     now: 0, tq_timer: null, town_num: 0, town_radius: 2500, home_town: -1,
     home_location: location(0, 0), captain_home: null, defense_captain_home: null,
     town_threatened: false, town_threat_count: 0, captain_tp: true,

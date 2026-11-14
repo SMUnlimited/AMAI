@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { compile } from './jass.mjs';
-import { groupNatives } from './warcraft-natives.mjs';
+import { groupNatives, hashtableNatives } from './warcraft-natives.mjs';
 
 const root = new URL('../../', import.meta.url);
 
@@ -15,6 +15,7 @@ export function undeadGame() {
   const orders = [];
   const locations = new Set();
   const state = {
+    ...hashtableNatives(), retreat_moves: new Map(), ai_time: 0,
     major_hero: hero, main_army: 0, army_loc: [{ x: 4000, y: 4000 }], army_strength: [11],
     ai_player: 0, PLAYER_NEUTRAL_AGGRESSIVE: 12, UNIT_TYPE_STRUCTURE: 'structure',
     UNIT_TYPE_MELEE_ATTACKER: 'melee', UNIT_TYPE_RANGED_ATTACKER: 'ranged',

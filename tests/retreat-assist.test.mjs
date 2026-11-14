@@ -15,7 +15,7 @@ describe('Captain retreat assistance', () => {
     assert.equal(game.work.formations, 0);
   });
 
-  it('Given attackers and idle troops away from home, when stronger enemies force retreat, then each retreat check recalls them while preserving the captain roster', () => {
+  it('Given attackers and idle troops away from home, when stronger enemies force retreat, then one move starts their return and later checks preserve it', () => {
     const game = transitGame();
     game.units[1].order = 0;
     game.addEnemy({ strength: 60 });
@@ -26,7 +26,7 @@ describe('Captain retreat assistance', () => {
 
     assert.equal(game.state.isfleeing, true);
     assert.equal(game.work.formations, 0, 'Retreat must not recruit reinforcements');
-    assert.deepEqual(game.unitOrders, Array.from({ length: 3 }, () => game.units.slice(0, 2).map(unit => ({ unit, order: 'move', x: 0, y: 0 }))).flat());
+    assert.deepEqual(game.unitOrders, game.units.slice(0, 2).map(unit => ({ unit, order: 'move', x: 0, y: 0 })));
     assert.ok(game.orders.every(order => order.order === 'home'));
     assert.equal(game.state.army_group[0].size, 2, 'Assisting must preserve the tracked army');
   });
@@ -40,7 +40,8 @@ describe('Captain retreat assistance', () => {
 
     game.checkBattle();
 
-    assert.equal(game.unitOrders.length, 2);
+    assert.equal(game.unitOrders.length, 1);
+    assert.equal(game.unitOrders[0].unit, game.units[0]);
     assert.equal(game.state.retreat_controlled, true);
   });
 
@@ -186,6 +187,77 @@ describe('Recalling troops during town defense', () => {
     game.checkBattle();
 
     game.state.teleporting = false;
+    game.checkBattle();
+
+    assert.equal(game.unitOrders.length, 2);
+  });
+});
+
+describe('Uninterrupted retreat movement', () => {
+  it('Given troops moving toward home, when repeated checks run over twenty seconds, then their move is never restarted', () => {
+    const game = transitGame();
+    game.state.isfleeing = true;
+    game.checkBattle();
+    game.unitOrders.length = 0;
+
+    for (let time = 2; time <= 20; time += 2) {
+      game.state.ai_time = time;
+      for (const unit of game.units) { unit.x -= 150; unit.y -= 150; }
+      game.checkBattle();
+    }
+
+    assert.deepEqual(game.unitOrders, []);
+  });
+
+  it('Given troops taking a short detour, when checks see no homeward progress for less than eight seconds, then movement continues', () => {
+    const game = transitGame();
+    game.state.isfleeing = true;
+    game.checkBattle();
+    game.unitOrders.length = 0;
+
+    game.units[0].x += 100;
+    game.state.ai_time = 6;
+    game.checkBattle();
+
+    assert.deepEqual(game.unitOrders, []);
+  });
+
+  it('Given a stalled or diverted move, when eight seconds pass without progress, then the homeward order is retried once', () => {
+    const game = transitGame();
+    game.state.isfleeing = true;
+    game.checkBattle();
+    game.unitOrders.length = 0;
+    game.units[0].x += 500;
+
+    game.state.ai_time = 8;
+    game.checkBattle();
+    game.checkBattle();
+
+    assert.equal(game.unitOrders.length, 2);
+    assert.ok(game.unitOrders.every(order => order.order === 'move'));
+  });
+
+  it('Given troops already returning, when another town becomes home, then they immediately receive the new destination', () => {
+    const game = transitGame();
+    game.state.isfleeing = true;
+    game.checkBattle();
+    game.unitOrders.length = 0;
+
+    game.state.captain_home = game.state.Location(2000, 1000);
+    game.checkBattle();
+
+    assert.equal(game.unitOrders.length, 2);
+    assert.ok(game.unitOrders.every(order => order.x === 2000 && order.y === 1000));
+  });
+
+  it('Given a rejected move order, when the next check runs, then the unit is retried immediately', () => {
+    const game = transitGame();
+    game.state.isfleeing = true;
+    const issueOrder = game.state.IssuePointOrder;
+    game.state.IssuePointOrder = () => false;
+    game.checkBattle();
+
+    game.state.IssuePointOrder = issueOrder;
     game.checkBattle();
 
     assert.equal(game.unitOrders.length, 2);

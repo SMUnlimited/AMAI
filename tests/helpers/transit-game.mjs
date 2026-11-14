@@ -1,6 +1,7 @@
 // Run travel and retreat source together; native mocks record captain destinations.
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { hashtableNatives } from './warcraft-natives.mjs';
 import { armyGame } from './army-game.mjs';
 import { compile } from './jass.mjs';
 
@@ -10,6 +11,7 @@ export function transitGame(options) {
   const unitOrders = [];
   const enumerate = state.GroupEnumUnitsInRange;
   Object.assign(state, {
+    ...hashtableNatives(), retreat_moves: new Map(), ai_time: 0,
     attack_running: true, retreat_controlled: true,
     canflee: false, player_defeated: false, ancient_expanding: false,
     teleporting: false, captain_home: state.home_location,
@@ -24,6 +26,7 @@ export function transitGame(options) {
     IssuePointOrder(unit, order, x, y) {
       unit.order = order;
       unitOrders.push({ unit, order, x, y });
+      return true;
     },
     ancient_attack_running: false, br_rush_attacked: false,
     battle_radius: 1500, creep_battle_radius: 750, RETREAT_CONTROL: 1,
