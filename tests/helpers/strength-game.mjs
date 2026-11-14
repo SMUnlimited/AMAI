@@ -27,7 +27,7 @@ export function strengthGame(version) {
     isfleeing: false, retreat_controlled: false, town_threatened: false, town_threat_break: false,
     CaptainRetreating: () => false,
     attacktable: new Map(), attack_length: 0, attack_units: [], old_id: zeros(),
-    PLAYER_NEUTRAL_AGGRESSIVE: 12, unit_healing: new Set(),
+    PLAYER_NEUTRAL_AGGRESSIVE: 12, unit_retreating: new Set(), unit_healing: new Set(),
     ver_hero_base_value: 2,
     racial_ghoul: 0, racial_rushcreep: 0, harvesting_ghouls: 0,
     br_rush_attacked: false, ancient_expanding: false,

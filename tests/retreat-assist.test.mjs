@@ -127,7 +127,7 @@ describe('Captain retreat assistance', () => {
     assert.ok(game.unitOrders.every(order => order.x === 2000 && order.y === 1000));
   });
 
-  it('Given an army already home, when retreat ends, then stragglers receive a final recall before retreat control ends', () => {
+  it('Given a captain already home, when stragglers are still returning, then retreat waits for their guard restoration', () => {
     const game = transitGame();
     game.state.isfleeing = true;
     game.state.CaptainIsHome = () => true;
@@ -135,7 +135,7 @@ describe('Captain retreat assistance', () => {
     game.checkBattle();
 
     assert.equal(game.unitOrders.length, 2);
-    assert.equal(game.state.retreat_controlled, false);
+    assert.equal(game.state.retreat_controlled, true);
   });
 
   it('Given a later attack after returning home, when it also retreats, then its troops are recalled again', () => {
@@ -143,7 +143,9 @@ describe('Captain retreat assistance', () => {
     game.state.isfleeing = true;
     game.checkBattle();
     game.state.CaptainIsHome = () => true;
+    for (const unit of game.units) { unit.x = 0; unit.y = 0; }
     game.checkBattle();
+    for (const unit of game.units) { unit.x = 4000; unit.y = 4000; }
     game.unitOrders.length = 0;
     game.state.CaptainIsHome = () => false;
     game.state.retreat_controlled = true;
@@ -261,5 +263,217 @@ describe('Uninterrupted retreat movement', () => {
     game.checkBattle();
 
     assert.equal(game.unitOrders.length, 2);
+  });
+});
+
+describe('Guard ownership during retreat', () => {
+  it('Given available field troops, when retreat begins, then guard control is removed before their move and reserved until arrival', () => {
+    const game = transitGame();
+    game.state.isfleeing = true;
+    const issueOrder = game.state.IssuePointOrder;
+    game.state.IssuePointOrder = (unit, ...args) => {
+      assert.equal(unit.guardRemoved, true, 'Native captain must release the unit before its move');
+      return issueOrder(unit, ...args);
+    };
+
+    game.checkBattle();
+    game.checkBattle();
+
+    assert.equal(game.guardChanges.length, 2, 'Remove guard once per returning unit');
+    assert.equal(game.returnJobs.length, 2, 'Keep one queued return check per unit');
+    for (const unit of game.units) {
+      assert.equal(game.state.unit_retreating.has(unit), true);
+      assert.equal(game.state.IsStandardUnit(unit), false, 'Other jobs must leave returning troops alone');
+    }
+  });
+
+  it('Given detached troops, when each reaches the home radius, then its guard is restored exactly once and retreat can finish', () => {
+    const game = transitGame();
+    game.state.isfleeing = true;
+    game.checkBattle();
+    game.state.CaptainIsHome = () => true;
+    game.units[0].x = 1200;
+    game.units[0].y = 0;
+
+    game.checkBattle();
+    assert.equal(game.units[0].guardRemoved, false);
+    assert.equal(game.units[1].guardRemoved, true);
+    assert.equal(game.state.retreat_controlled, true);
+    game.units[1].x = 0;
+    game.units[1].y = 0;
+    game.checkBattle();
+    game.checkReturns();
+
+    assert.equal(game.state.unit_retreating.size, 0);
+    assert.equal(game.state.retreat_moves.size, 0);
+    assert.equal(game.returnJobs.length, 0);
+    assert.equal(game.guardChanges.filter(change => change.action === 'restore').length, 2);
+    assert.equal(game.state.retreat_controlled, false);
+  });
+
+  it('Given town defense ending before troops arrive, when their queued return checks run later, then guard control is still restored at home', () => {
+    const game = transitGame();
+    game.state.town_threatened = true;
+    game.defendTown(() => { game.state.town_threatened = false; });
+    game.state.retreat_controlled = false;
+
+    for (const unit of game.units) { unit.x = 100; unit.y = 0; }
+    game.checkReturns();
+
+    assert.equal(game.state.unit_retreating.size, 0);
+    assert.ok(game.units.every(unit => unit.guardRemoved === false));
+    assert.equal(game.returnJobs.length, 0);
+  });
+
+  it('Given detached troops, when one is removed and another starts healing, then cleanup never restores guard over the healing job', () => {
+    const game = transitGame();
+    game.state.isfleeing = true;
+    game.checkBattle();
+
+    game.units[0].removed = true;
+    game.units[0].alive = false;
+    game.state.unit_healing.add(game.units[1]);
+    game.checkReturns();
+
+    assert.equal(game.state.unit_retreating.size, 0);
+    assert.equal(game.state.retreat_moves.size, 0);
+    assert.equal(game.returnJobs.length, 0);
+    assert.ok(game.guardChanges.every(change => change.action === 'remove'));
+  });
+
+  it('Given a full job queue, when retreat is requested, then guard control is retained instead of orphaning the unit', () => {
+    const game = transitGame();
+    game.state.isfleeing = true;
+    game.state.TQAddUnitJob = () => false;
+
+    game.checkBattle();
+
+    assert.deepEqual(game.guardChanges, []);
+    assert.deepEqual(game.unitOrders, []);
+    assert.equal(game.state.unit_retreating.size, 0);
+  });
+
+  it('Given detached troops, when the return queue fills, then native guard control is restored instead of leaving them reserved forever', () => {
+    const game = transitGame();
+    game.state.isfleeing = true;
+    game.checkBattle();
+
+    game.state.TQAddUnitJob = () => false;
+    game.checkReturns();
+
+    assert.equal(game.state.unit_retreating.size, 0);
+    assert.equal(game.state.retreat_moves.size, 0);
+    assert.ok(game.units.every(unit => unit.guardRemoved === false));
+  });
+});
+
+describe('Retreat reservation cleanup', () => {
+  it('Given a unit that cannot make homeward progress, when two minutes pass, then its reservation ends and native guard control is restored', () => {
+    const game = transitGame();
+    game.state.isfleeing = true;
+    game.checkBattle();
+
+    for (let time = 8; time <= 120; time += 8) {
+      game.state.ai_time = time;
+      game.checkReturns();
+    }
+
+    assert.equal(game.state.unit_retreating.size, 0);
+    assert.equal(game.returnJobs.length, 0);
+    assert.ok(game.units.every(unit => unit.guardRemoved === false));
+  });
+
+  it('Given returning ghouls that start harvesting, when their queued checks run, then the return reservation ends without a new move', () => {
+    const game = transitGame();
+    game.state.isfleeing = true;
+    game.checkBattle();
+    game.unitOrders.length = 0;
+
+    game.units[0].order = 'harvest';
+    game.units[1].order = 'resumeharvesting';
+    game.checkReturns();
+
+    assert.equal(game.state.unit_retreating.size, 0);
+    assert.deepEqual(game.unitOrders, []);
+    assert.ok(game.units.every(unit => unit.guardRemoved === false));
+  });
+});
+
+describe('Engaging attackers on arrival for town defense', () => {
+  it('Given troops recalled to a threatened town, when they enter the home radius, then they regain guard control and attack-move toward home once', () => {
+    const game = transitGame();
+    game.state.town_threatened = true;
+    game.state.town_threat_break = true;
+    game.state.captain_home = game.state.Location(2000, 1000);
+    game.checkBattle();
+    assert.ok(game.unitOrders.every(order => order.order === 'move'), 'Travel from the field uses move');
+    game.unitOrders.length = 0;
+
+    Object.assign(game.units[0], { x: 3200, y: 1000 });
+    game.checkReturns();
+    game.checkReturns();
+
+    assert.deepEqual(game.unitOrders, [{ unit: game.units[0], order: 'attack', x: 2000, y: 1000 }]);
+    assert.equal(game.units[0].guardRemoved, false);
+    assert.equal(game.state.unit_retreating.has(game.units[0]), false);
+    assert.equal(game.units[1].guardRemoved, true, 'Distant troops keep returning under direct control');
+  });
+
+  it('Given only a native town threat, when returning troops arrive, then they attack-move to defend', () => {
+    const game = transitGame();
+    game.state.isfleeing = true;
+    game.checkBattle();
+    game.state.TownThreatened = () => true;
+    game.unitOrders.length = 0;
+
+    Object.assign(game.units[0], { x: 100, y: 0 });
+    game.checkReturns();
+
+    assert.equal(game.unitOrders[0].order, 'attack');
+    assert.equal(game.units[0].guardRemoved, false);
+  });
+
+  it('Given a normal retreat without a town threat, when troops arrive, then guard control returns without an attack-move', () => {
+    const game = transitGame();
+    game.state.isfleeing = true;
+    game.checkBattle();
+    game.unitOrders.length = 0;
+
+    for (const unit of game.units) Object.assign(unit, { x: 100, y: 0 });
+    game.checkReturns();
+
+    assert.deepEqual(game.unitOrders, []);
+    assert.ok(game.units.every(unit => unit.guardRemoved === false));
+  });
+
+  it('Given defenders casting or already fighting near home, when return checks run, then their current orders are preserved', () => {
+    const game = transitGame();
+    game.state.town_threatened = true;
+    game.state.town_threat_break = true;
+    game.checkBattle();
+    game.unitOrders.length = 0;
+
+    Object.assign(game.units[0], { x: 100, y: 0, order: 'channel' });
+    Object.assign(game.units[1], { x: 200, y: 0, order: 'attack' });
+    game.checkReturns();
+
+    assert.deepEqual(game.unitOrders, []);
+    assert.equal(game.units[0].order, 'channel');
+    assert.equal(game.units[1].order, 'attack');
+    assert.equal(game.state.unit_retreating.size, 0);
+  });
+
+  it('Given a portal active when defenders reach home, when return checks run, then no attack-move interrupts it', () => {
+    const game = transitGame();
+    game.state.town_threatened = true;
+    game.state.town_threat_break = true;
+    game.checkBattle();
+    game.unitOrders.length = 0;
+
+    game.state.teleporting = true;
+    for (const unit of game.units) Object.assign(unit, { x: 100, y: 0 });
+    game.checkReturns();
+
+    assert.deepEqual(game.unitOrders, []);
   });
 });

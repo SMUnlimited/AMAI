@@ -17,7 +17,7 @@ export function harassGame() {
     ai_player: 0, ai_time: 100, max_harass_groups: 10,
     harass_size: zeros(), harass_time: zeros(), harass_groups: new Map(), additional_info: new Map(),
     old_id: Array.from({ length: 100 }, (_, i) => i),
-    unit_harassing: new Set(), unit_healing: new Set(), unit_rescueing: new Set(),
+    unit_harassing: new Set(), unit_retreating: new Set(), unit_healing: new Set(), unit_rescueing: new Set(),
     unit_zepplin_move: new Set(), unit_buying_item: new Set(),
     unit_buying_merc: new Set(), unit_buying_tavern: new Set(),
     hero_unit: [], town_threatened: false, home_location: { x: 0, y: 0 },

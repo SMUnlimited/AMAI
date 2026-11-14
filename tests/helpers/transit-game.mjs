@@ -8,7 +8,11 @@ import { compile } from './jass.mjs';
 export function transitGame(options) {
   const game = armyGame(options), { state, units, target } = game;
   const orders = [], work = { scans: 0, formations: 0 };
-  const unitOrders = [];
+  const unitOrders = [], guardChanges = [], returnJobs = [];
+  const checkReturns = () => {
+    const pending = returnJobs.splice(0);
+    for (const unit of pending) state.RetreatHomeJob(unit);
+  };
   const enumerate = state.GroupEnumUnitsInRange;
   Object.assign(state, {
     ...hashtableNatives(), retreat_moves: new Map(), ai_time: 0,
@@ -17,6 +21,11 @@ export function transitGame(options) {
     teleporting: false, captain_home: state.home_location,
     unit_rescueing: new Set(), unit_harassing: new Set(), unit_zepplin_move: new Set(),
     unit_buying_item: new Set(), unit_buying_merc: new Set(), unit_buying_tavern: new Set(),
+    RETREAT_HOME: 2,
+    GetUnitTypeId: u => u?.removed ? 0 : 1,
+    RemoveGuardPosition(unit) { unit.guardRemoved = true; guardChanges.push({ unit, action: 'remove' }); },
+    RecycleGuardPosition(unit) { unit.guardRemoved = false; guardChanges.push({ unit, action: 'restore' }); },
+    TQAddUnitJob(delay, job, param, unit) { returnJobs.push(unit); return true; },
     IsUnitLoaded: u => Boolean(u.loaded), GetUnitCurrentOrder: u => u.order ?? 'attack',
     BlzGroupAddGroupFast: (from, to) => { for (const u of from) to.add(u); },
     GroupEnumUnitsOfPlayer(g, player) {
@@ -31,7 +40,7 @@ export function transitGame(options) {
     ancient_attack_running: false, br_rush_attacked: false,
     battle_radius: 1500, creep_battle_radius: 750, RETREAT_CONTROL: 1,
     PLAYER_NEUTRAL_AGGRESSIVE: 12, UNIT_TYPE_MELEE_ATTACKER: 'melee', UNIT_TYPE_RANGED_ATTACKER: 'ranged',
-    UNIT_TYPE_ANCIENT: 'ancient', unit_healing: new Set(),
+    UNIT_TYPE_ANCIENT: 'ancient', unit_retreating: new Set(), unit_healing: new Set(),
     last_major_hero_loc: state.Location(4000, 4000),
     enemy_loc: state.Location(0, 0), last_enemy_loc: state.Location(0, 0),
     last_ally_loc: state.Location(0, 0),
@@ -43,6 +52,7 @@ export function transitGame(options) {
     IsUnitVisible: u => u.visible !== false,
     IsUnitInvisibleAM: u => Boolean(u.invisible), IsUnitHidden: u => Boolean(u.hidden),
     UnitIsSleeping: u => Boolean(u.sleeping), IsUnitTower: u => Boolean(u.tower),
+    TownThreatened: () => false,
     CaptainRetreating: () => false, GetMajorHeroReplacement_k: () => state.major_hero,
     CaptainGoHome: () => orders.push({ order: 'home' }),
     CaptainAttack: (x, y) => orders.push({ order: 'intercept', x, y }),
@@ -65,17 +75,18 @@ export function transitGame(options) {
     'CommonSleepUntilTargetDeadAM', 'SleepUntilAtGoalAM', 'SleepUntilTownDefended', 'QueueAttackMoveXY']) {
     vm.runInContext(compile(common, name), context);
   }
-  for (const name of ['AssistCaptainRetreat', 'RetreatControlJob']) {
+  for (const name of ['MoveRetreatUnitHome', 'AssistCaptainRetreat', 'RetreatControlJob']) {
     vm.runInContext(compile(readFileSync(new URL('../../Jobs/RETREAT_CONTROL.eai', import.meta.url), 'utf8'), name), context);
   }
+  vm.runInContext(compile(readFileSync(new URL('../../Jobs/RETREAT_HOME.eai', import.meta.url), 'utf8'), 'RetreatHomeJob'), context);
   return {
-    ...game, orders, unitOrders, work,
+    ...game, orders, unitOrders, guardChanges, returnJobs, checkReturns, work,
     addEnemy: (changes = {}) => {
       const enemy = { x: 4500, y: 4000, owner: 1, alive: true, strength: 5, melee: true, ...changes };
       units.push(enemy);
       return enemy;
     },
-    checkBattle: () => state.RetreatControlJob(),
+    checkBattle() { checkReturns(); state.RetreatControlJob(); },
     defendTown(onWait) {
       Object.assign(state, {
         own_strength: 20, attack_reform_length: 10,

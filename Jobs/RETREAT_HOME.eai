@@ -1,0 +1,47 @@
+#IFDEF GLOBAL
+#ELSE
+// Complete detached retreats even after the native captain or town defense finishes.
+function RetreatHomeJob takes unit u returns nothing
+  local integer order = 0
+  if not IsUnitInGroup(u, unit_retreating) then
+    return
+  endif
+  call GroupRemoveUnit(unit_retreating, u)
+  if GetUnitTypeId(u) == 0 or not UnitAlive(u) or GetOwningPlayer(u) != ai_player then
+    call FlushChildHashtable(retreat_moves, GetHandleId(u))
+    return
+  endif
+  // A healing, shopping or transport job may have taken ownership in the meantime.
+  if not IsStandardUnit(u) or IsUnitBuying(u) then
+    call FlushChildHashtable(retreat_moves, GetHandleId(u))
+    return
+  endif
+  set order = GetUnitCurrentOrder(u)
+  // Do not retain harvesters or keep an unreachable return reserved forever.
+  if player_defeated or captain_home == null or order == OrderId("harvest") or order == OrderId("resumeharvesting") or (not teleporting and ai_time - LoadReal(retreat_moves, GetHandleId(u), 4) >= 120) then
+    call RecycleGuardPosition(u)
+    call FlushChildHashtable(retreat_moves, GetHandleId(u))
+    return
+  endif
+  if DistanceBetweenPoints_dk(GetUnitLoc(u), captain_home) <= 1200 then
+    call RecycleGuardPosition(u)
+    // Defenders engage on arrival instead of walking past attackers to the town center.
+    // Leave ongoing combat, spell casts and town portals alone.
+    if (town_threatened or TownThreatened()) and not teleporting and not IsUnitHidden(u) and not IsUnitLoaded(u) and (order == 0 or order == OrderId("move") or order == OrderId("smart") or order == OrderId("patrol") or order == OrderId("stop") or order == OrderId("holdposition")) then
+      call IssuePointOrder(u, "attack", GetLocationX(captain_home), GetLocationY(captain_home))
+    endif
+    call FlushChildHashtable(retreat_moves, GetHandleId(u))
+    return
+  endif
+  // Queue failure releases our reservation rather than leaving native control removed.
+  if not TQAddUnitJob(2, RETREAT_HOME, 0, u) then
+    call RecycleGuardPosition(u)
+    call FlushChildHashtable(retreat_moves, GetHandleId(u))
+    return
+  endif
+  call GroupAddUnit(unit_retreating, u)
+  if not teleporting and not IsUnitHidden(u) and not IsUnitLoaded(u) then
+    call MoveRetreatUnitHome(u)
+  endif
+endfunction
+#ENDIF

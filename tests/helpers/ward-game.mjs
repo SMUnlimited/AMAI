@@ -23,7 +23,7 @@ export function orcGame(version = 'REFORGED') {
     healer_upg_id: [1], healer_upg_level: [Number(row[6])], upgrades: 2,
     HEALER_TYPE_WARD: 3, HEALER_TYPE_NO_TARGET: 0, HEALER_TYPE_HERO: 4, healer_type: [3], healer_group: new Set([doctor]),
     ward_recovery_healer: null, ward_recovery_patients: new Set(),
-    unit_healing: new Set(), unit_rescueing: new Set(), unit_harassing: new Set(), unit_zepplin_move: new Set(),
+    unit_retreating: new Set(), unit_healing: new Set(), unit_rescueing: new Set(), unit_harassing: new Set(), unit_zepplin_move: new Set(),
     unit_buying_item: new Set(), unit_buying_merc: new Set(), unit_buying_tavern: new Set(),
     UNIT_STATE_LIFE: 'life', UNIT_STATE_MAX_LIFE: 'maxLife', UNIT_STATE_MANA: 'mana',
     UNIT_TYPE_PEON: 'peon', UNIT_TYPE_STRUCTURE: 'structure', UNIT_TYPE_MECHANICAL: 'mechanical', UNIT_TYPE_SUMMONED: 'summoned',

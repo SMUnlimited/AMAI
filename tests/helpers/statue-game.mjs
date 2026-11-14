@@ -23,7 +23,7 @@ export function undeadGame() {
     UNIT_STATE_LIFE: 'life', UNIT_STATE_MAX_LIFE: 'maxLife', UNIT_STATE_MANA: 'mana', UNIT_STATE_MAX_MANA: 'maxMana',
     unit_rescueing: new Set(), unit_harassing: new Set(), unit_zepplin_move: new Set(),
     unit_buying_item: new Set(), unit_buying_merc: new Set(), unit_buying_tavern: new Set(),
-    unit_healing: new Set(), battle_radius: 1500, normal_battle_radius: 1500, creep_battle_radius: 750,
+    unit_retreating: new Set(), unit_healing: new Set(), battle_radius: 1500, normal_battle_radius: 1500, creep_battle_radius: 750,
     statue_distance: 300, retreat_controlled: true, attack_running: true, isfleeing: false,
     canflee: false, town_threatened: false, town_threat_break: false,
     teleporting: false, captain_home: null,
@@ -38,6 +38,7 @@ export function undeadGame() {
     UnitAlive: u => Boolean(u) && !u.removed && (u.life ?? 100) > 0, IsUnitHidden: u => Boolean(u.hidden), IsUnitInvisibleAM: u => Boolean(u.invisible),
     IsUnitVisible: u => u.visible !== false, UnitIsSleeping: u => Boolean(u.sleeping), IsUnitType: (u, type) => Boolean(u[type]),
     GetUnitState: (u, property) => u[property] ?? (property === 'life' || property === 'maxLife' ? 100 : 0),
+    GetUnitTypeId: u => u?.removed ? 0 : 1,
     GetUnitCurrentOrder: u => u.order ?? 0, OrderId: order => order,
     DistanceBetweenUnits: (a, b) => Math.hypot(a.x - b.x, a.y - b.y),
     GetUnitStrength: u => u.strength,
@@ -67,7 +68,7 @@ export function undeadGame() {
   for (const name of ['IsStandardUnit', 'IsUnitBuying', 'GetSubtractionLoc', 'GetSubtractionLoc_kd', 'GetLengthOfLoc', 'GetDivisionLoc', 'GetNormalisedLoc', 'GetMultipleLoc_d', 'GetSumLoc_kd', 'GetProjectedLoc']) {
     vm.runInContext(compile(readFileSync(new URL('common.eai', root), 'utf8'), name), context);
   }
-  for (const name of ['AssistCaptainRetreat', 'RetreatControlJob']) {
+  for (const name of ['MoveRetreatUnitHome', 'AssistCaptainRetreat', 'RetreatControlJob']) {
     vm.runInContext(compile(readFileSync(new URL('Jobs/RETREAT_CONTROL.eai', root), 'utf8'), name), context);
   }
   vm.runInContext(compile(readFileSync(new URL('Jobs/MICRO_UNITS.eai', root), 'utf8'), 'StatueControl'), context);

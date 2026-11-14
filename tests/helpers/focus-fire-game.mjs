@@ -94,7 +94,7 @@ export function focusFireGame() {
     },
     IssueImmediateOrder: (unit, order) => record({ unit, order }),
   };
-  for (const name of ['unit_healing', 'unit_rescueing', 'unit_harassing', 'unit_zepplin_move',
+  for (const name of ['unit_retreating', 'unit_healing', 'unit_rescueing', 'unit_harassing', 'unit_zepplin_move',
     'unit_buying_item', 'unit_buying_merc', 'unit_buying_tavern',
     'focus_fire_group', 'micro_ranged_group', 'micro_enemymelee_group', 'windwalk_group']) state[name] = natives.CreateGroup();
   const persistentGroups = groups.size;

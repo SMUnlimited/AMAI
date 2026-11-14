@@ -36,6 +36,7 @@ export function armyGame({ expansion = false } = {}) {
     RemoveLocation(l) { if (l !== null) { valid(l); locations.delete(l); } },
     GetUnitX: u => { assert.ok(u); return u.x; }, GetUnitY: u => { assert.ok(u); return u.y; },
     GetUnitLoc: u => { assert.ok(u); return location(u.x, u.y); },
+    GetUnitAbilityLevel: (u, ability) => u.abilities?.[ability] ?? 0,
     UnitAlive: u => Boolean(u?.alive), IsUnitType: (u, kind) => Boolean(u[kind]),
     GetOwningPlayer: u => u.owner, Player: p => p, IsPlayerAlly: (a, b) => a === b,
     IsUnitInvisibleAM: () => false, IsStandardUnit: () => true, IsUnitBuying: () => false,

@@ -23,7 +23,7 @@ export function zeppelinGame() {
     ai_player: 0, old_id: [0], neutral_zeppelin: 0, ZEPPELIN_FOLLOW: 'follow',
     max_follow_dist: 1000, sleep_multiplier: 1,
     order_cancel: 'cancel',
-    unit_healing: new Set(), unit_harassing: new Set(),
+    unit_retreating: new Set(), unit_healing: new Set(), unit_harassing: new Set(),
     unit_buying_item: new Set(), unit_buying_merc: new Set(), unit_buying_tavern: new Set(),
     ZTARGET_HOME: 0, ZTARGET_FOUNTAIN: 1, ZTARGET_MOONWELLS: 2,
     ZEPPELIN_MOVE: 'transport', SEND_HOME: 'home', RESET_GUARD_POSITION: 'reset',

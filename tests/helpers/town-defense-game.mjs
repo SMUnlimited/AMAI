@@ -85,7 +85,7 @@ export function townDefenseGame(version) {
     'SetCaptainHomeLoc', 'SetDefenseCaptainHome', 'GetLocationTowerStrength', 'LinearInterpolation',
     'GetLengthOfLoc', 'GetLengthOfLoc_d', 'l_smult_kk', 'GetAngleBetweenLocs',
     'IsArmyUnit', 'TrackArmy', 'GetSubtractionLoc_kd', 'GetSubtractionLoc',
-    'GetMultipleLoc', 'GetMultipleLoc_d', 'GetSumLoc_kd', 'GetProjectedLoc', 'GetNormalisedLoc', 'GetDivisionLoc', 'CopyGroup', 'AssistCaptainRetreat', 'RetreatControlJob'];
+    'GetMultipleLoc', 'GetMultipleLoc_d', 'GetSumLoc_kd', 'GetProjectedLoc', 'GetNormalisedLoc', 'GetDivisionLoc', 'CopyGroup', 'MoveRetreatUnitHome', 'AssistCaptainRetreat', 'RetreatControlJob'];
   vm.runInContext(names.map(name => compile(source, name)).join('\n'), vm.createContext(state));
   function addTown({ x = 0, y = 0, owner = 0 } = {}) {
     const num = state.town_num++;
