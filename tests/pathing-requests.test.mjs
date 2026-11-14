@@ -3,6 +3,38 @@ import { describe, it } from 'node:test';
 import { pathingGame, towerGame } from './helpers/pathing-game.mjs';
 
 describe('Mid-game pathing requests', () => {
+  it('Given active and queued probes, when defeated during a pathing wait, then the thread exits and fails outstanding requests', () => {
+    const game = pathingGame();
+    const active = game.request(), queued = game.request();
+    game.poll();
+    game.state.onAdvance = () => { if (game.state.now >= 3) game.state.player_defeated = true; };
+
+    game.runThread(30);
+
+    assert.ok(game.state.now < 30);
+    assert.equal(game.probes.length, 1);
+    assert.equal(game.probes[0].removed, true);
+    assert.equal(game.state.pathing_check_probe, null);
+    assert.equal(game.state.pathing_check_active, 0);
+    assert.equal(game.result(active), game.state.PATHING_CHECK_UNREACHABLE);
+    assert.equal(game.result(queued), game.state.PATHING_CHECK_UNREACHABLE);
+    assert.equal(game.request(), 0);
+    assert.deepEqual(game.neutralChecks, []);
+  });
+
+  it('Given defeat before startup finishes, when the pathing thread wakes, then it creates no probes or neutral checks', () => {
+    const game = pathingGame();
+    const ticket = game.request();
+    game.state.onAdvance = () => { game.state.player_defeated = true; };
+
+    game.runThread(30);
+
+    assert.equal(game.state.now, 1);
+    assert.equal(game.result(ticket), game.state.PATHING_CHECK_UNREACHABLE);
+    assert.equal(game.probes.length, 0);
+    assert.deepEqual(game.neutralChecks, []);
+  });
+
   it('Given caller-owned locations, when a request is queued, then it keeps copied coordinates after the locations are freed', () => {
     const game = pathingGame();
     const from = game.location(100, 0), target = game.location(2000, 0);

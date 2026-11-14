@@ -3,6 +3,22 @@ import { describe, it } from 'node:test';
 import { townDefenseGame } from './helpers/town-defense-game.mjs';
 
 for (const version of ['ROC', 'TFT', 'REFORGED']) describe(version + ' credible town defense', () => {
+  it('Given visible invulnerable pathing probes, when they linger near town, then defenders ignore them and army tracking rejects them', () => {
+    const game = townDefenseGame(version);
+    const worker = game.addWorker();
+    const soldier = game.addSoldier();
+    worker.abilities[0x4176756c] = 1;
+    soldier.abilities[0x4176756c] = 1;
+
+    game.checkTown(0);
+    game.checkTown(5);
+
+    assert.equal(game.state.town_intruder[0], null);
+    assert.equal(game.state.town_threatened, false);
+    assert.equal(game.state.IsArmyUnit(soldier, 1), false);
+    assert.deepEqual(game.captains.get(2), { x: 0, y: 0 });
+  });
+
   it('Given a passing worker, when it leaves before confirmation, then the main attack continues and defenders stay home', () => {
     const game = townDefenseGame(version);
     const scout = game.addWorker();

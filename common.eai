@@ -4955,7 +4955,7 @@ endfunction
 function RequestPathingCheck takes location from, location target, pathingtype path returns integer
   local integer i = 1
   local integer id = 0
-  if from == null or target == null then
+  if player_defeated or from == null or target == null then
     return 0
   endif
   if path == PATHING_TYPE_WALKABILITY then
@@ -5091,6 +5091,22 @@ function ProcessPathingChecks takes nothing returns nothing
   local real y = 0
   local real dx = 0
   local real dy = 0
+  if player_defeated then
+    if pathing_check_probe != null then
+      call RemoveUnit(pathing_check_probe)
+      set pathing_check_probe = null
+    endif
+    set pathing_check_active = 0
+    set i = 1
+    loop
+      exitwhen i > PATHING_CHECK_LIMIT
+      if pathing_check_state[i] == PATHING_CHECK_PENDING then
+        set pathing_check_state[i] = PATHING_CHECK_UNREACHABLE
+      endif
+      set i = i + 1
+    endloop
+    return
+  endif
   if ticket == 0 then
     loop
       exitwhen i >= PATHING_CHECK_LIMIT
@@ -7348,11 +7364,13 @@ endfunction
 function PathingSleep takes real base, real spread returns nothing
   local real until = TimerGetElapsed(tq_timer) + RMax(0.05, base + GetRandomReal(0, spread))
   local real remaining = 0
-  call CheckWaterExpansionPaths()
+  if not player_defeated then
+    call CheckWaterExpansionPaths()
+  endif
   loop
     call ProcessPathingChecks()
     set remaining = until - TimerGetElapsed(tq_timer)
-    exitwhen remaining <= 0
+    exitwhen player_defeated or remaining <= 0
     // A fractional deadline remainder must still yield past the next clock tick.
     if pathing_check_active != 0 and pathing_check_point_distance[pathing_check_active] >= 0 then
       call Sleep(RMax(0.05, RMin(0.2, remaining)))
@@ -9402,6 +9420,10 @@ function PathingThread takes nothing returns nothing
   local integer i = 0
   local integer t = 0
   call StaggerSleep(1,5)
+  if player_defeated then
+    call ProcessPathingChecks()
+    return
+  endif
   call SetAIArray()
   //  set command_wait = 0.5
   //  set command_wait = 3
@@ -9418,7 +9440,9 @@ function PathingThread takes nothing returns nothing
   set pathing_done = true
   set water_pathing_next_time = TimerGetElapsed(tq_timer) + 60
   loop
+    exitwhen player_defeated
     call PathingSleep(2 * sleep_multiplier, sleep_multiplier)
+    exitwhen player_defeated
     if t == 5 then
       loop
         exitwhen i >= NEUTRAL_COUNT
@@ -9444,7 +9468,9 @@ function PathingThread takes nothing returns nothing
     endif
     set t = t + 1
   endloop
-
+  call ProcessPathingChecks() // Remove the active probe and finish pending requests on defeat.
+  set water_pathing_request = 0
+  set water_pathing_mine = null
 endfunction
 
 //============================================================================

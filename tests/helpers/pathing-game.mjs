@@ -11,6 +11,7 @@ const source = readFileSync(new URL('../../common.eai', import.meta.url), 'utf8'
 export function installPathing(state, context) {
   Object.assign(state, {
     zeros,
+    player_defeated: false,
     pathing_check_active: 0, pathing_check_next: 1, pathing_check_probe: null,
     pathing_check_started: 0, pathing_check_progress: 0, pathing_check_x: 0, pathing_check_y: 0,
     PATHING_TYPE_WALKABILITY: 'walk', PATHING_TYPE_FLOATABILITY: 'float',

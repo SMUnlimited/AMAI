@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Pathing stops when the AI is defeated and removes its active probe. Invulnerable pathing probes no longer trigger town intrusion responses or count as enemy armies, including when visible in debug mode.
 - Focus-fire kiting no longer detaches troops from native captain control or queues guard resets, avoiding temporary loss of the assault roster while units move away from melee enemies.
 - Battle focus fire uses fewer temporary groups, checks attackers in a single pass and issues individual orders in short batches. It preserves channeling and recovering units, stops overriding retreats, and keeps the caller's scan group intact when defending a town. Kiting now checks the pursuer's facing correctly.
 - (internal) Battle scans return before attack orders are issued, and jobs dispatch directly from their queue handler, reducing script call depth during unit control.
