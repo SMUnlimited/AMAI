@@ -24,6 +24,7 @@
 
 These rules apply to AI `.eai` code unless stated otherwise. A runtime error can silently stop one AI thread while the game continues; distinguish this from a whole-game freeze, process crash or multiplayer desync when diagnosing failures.
 
+- The stack size is only 2 MB. Excessive recursion can overflow the stack and crash the game; prefer iterative code or strictly bound recursion depth.
 - Initialize scalar locals before reading them, including handles (`null`). Reading an uninitialized scalar or dividing by zero can terminate the executing thread. Guard variable divisors, including maximum life/mana, counts and distances; choose a meaningful fallback rather than blindly replacing every zero with one.
 - Check array indices against the active count and the target runtime's `JASS_MAX_ARRAY_SIZE`; do not hard-code an assumed engine limit. Handle `-1`/missing indices and neutral player IDs before indexing player-only tables. Inventory slots are 0 through 5. Queue capacity checks must include sentinel/scratch slots and occur after acquiring the queue lock; see `TQAddJobEx`.
 - Revalidate units, shops, mines and targets after every sleep or deferred job before using their coordinates or issuing orders. A non-null handle does not prove the object still exists. Use `GetUnitTypeId(u) != 0` to check unit existence and `UnitAlive(u)` when a living unit is required; check hero handles before hero-only natives. Do not assume every native safely accepts null or removed objects.
