@@ -15,6 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- Focus-fire kiting no longer detaches troops from native captain control or queues guard resets, avoiding temporary loss of the assault roster while units move away from melee enemies.
+- Battle focus fire uses fewer temporary groups, checks attackers in a single pass and issues individual orders in short batches. It preserves channeling and recovering units, stops overriding retreats, and keeps the caller's scan group intact when defending a town. Kiting now checks the pursuer's facing correctly.
+- (internal) Battle scans return before attack orders are issued, and jobs dispatch directly from their queue handler, reducing script call depth during unit control.
 - Hero recovery checks now skip missing town targets while keeping hero checks running, avoiding invalid town-array access after towns are lost.
 - Debug observer access is now granted consistently on every client, avoiding multiplayer desyncs caused by local alliance changes.
 - Retreating main-army units still attacking or idle away from home receive one move-home order, then remain under native captain control so they can fight back and defend. Army formation, reinforcements and units returning from separate jobs cannot add assault troops during AMAI retreats, native captain retreats or pending town recalls. Harvesting, movement, spell casts and units on separate jobs are left alone.

@@ -6601,17 +6601,17 @@ function TQRemoveRoot takes nothing returns nothing
 endfunction
 
 //============================================================================
-function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, group group_par, unit unit_par_2 returns nothing
+function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, group group_par, unit unit_par_2 returns boolean
   call GetTQLock()
   // Index 0 is the heap sentinel; tq_length + 1 is the exchange scratch slot.
   if tq_length >= JASS_MAX_ARRAY_SIZE - 2 then
     call ReleaseTQLock()
-    return
+    return false
   endif
   if jid == BUILD_EXPANSION then
     if unit_par == null or unit_par_2 == null or LoadBoolean(expansion_job_pending, GetHandleId(unit_par), GetHandleId(unit_par_2)) then
       call ReleaseTQLock()
-      return
+      return false
     endif
     call SaveBoolean(expansion_job_pending, GetHandleId(unit_par), GetHandleId(unit_par_2), true)
   endif
@@ -6629,6 +6629,7 @@ function TQAddJobEx takes real time, integer jid, integer par, unit unit_par, gr
   set tq_unit_par2[tq_length] = unit_par_2
   call TQUpHeap(tq_length, 1)
   call ReleaseTQLock()
+  return true
 endfunction
 
 //============================================================================
@@ -6637,8 +6638,8 @@ function TQAddJob takes real time, integer jid, integer par returns nothing
 endfunction
 
 //============================================================================
-function TQAddUnitJob takes real time, integer jid, integer par, unit unit_par returns nothing
-  call TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, unit_par, null, null)
+function TQAddUnitJob takes real time, integer jid, integer par, unit unit_par returns boolean
+  return TQAddJobEx(TimerGetElapsed(tq_timer) + time, jid, par, unit_par, null, null)
 endfunction
 
 function TQAddUnit2Job takes real time, integer jid, integer par, unit unit_par, unit unit_par2 returns nothing
@@ -9079,11 +9080,6 @@ endfunction
 #ENDINCLUDE
 
 //============================================================================
-function TQDoJob takes integer jid, integer par, unit unit_par, group group_par, unit unit_par2 returns nothing
-  #SEARCHCODE Jobs jid
-endfunction
-
-//============================================================================
 function TQHandleOnce takes nothing returns boolean
   local integer jid = tq_jid[1]
   local integer par = tq_par[1]
@@ -9103,7 +9099,8 @@ function TQHandleOnce takes nothing returns boolean
     if debugging > 0 then
       call UpdateDebugTextTag(debugjobtag, Int2Str(jid), 24, GetLocationX(home_location) + 300, GetLocationY(home_location) + 300)
     endif
-    call TQDoJob(jid, par, unit_par, group_par, unit_par2)
+    // Dispatch here so unit orders do not retain an extra dispatcher frame.
+    #SEARCHCODE Jobs jid
     set jobtimings = TimerGetElapsed(tq_timer) - jobtimings
     if jobtimings >= 1 then
       call TraceAll("WARN: Job " + Int2Str(jid) + " took a long time " + Real2Str(jobtimings) + "s")

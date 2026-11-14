@@ -114,7 +114,7 @@ describe('Job queue capacity', () => {
     const game = performanceGame({ capacity: 8 });
     for (let i = 0; i < 6; i++) game.enqueue(100 - i);
 
-    game.enqueue(1);
+    assert.equal(game.enqueue(1), false);
 
     assert.equal(game.state.tq_length, 6);
     const times = [];
@@ -130,11 +130,58 @@ describe('Job queue capacity', () => {
     const game = performanceGame({ capacity: 8 });
     game.state.onLock = () => { game.state.tq_length = 6; };
 
-    game.enqueue(1, game.state.BUILD_EXPANSION, { id: 1 }, { id: 2 });
+    assert.equal(game.enqueue(1, game.state.BUILD_EXPANSION, { id: 1 }, { id: 2 }), false);
 
     assert.equal(game.state.tq_length, 6);
     assert.equal(game.state.expansion_job_pending.size, 0);
     assert.equal(game.state.tq_lock, true);
+  });
+});
+
+describe('Job execution after removing the queue root', () => {
+  it('Given a future battle-control job, when polling the queue, then it remains queued until due', () => {
+    const game = performanceGame();
+    game.state.FocusFireJob = () => assert.fail('Ran a future focus-fire job');
+    game.enqueue(10, game.state.FOCUSFIRE_CONTROL);
+
+    assert.equal(game.state.TQHandleOnce(), false);
+
+    assert.equal(game.state.tq_length, 1);
+  });
+
+  it('Given a transport job followed by a different job, when dispatching, then its original unit, group and parameter survive heap removal', () => {
+    const game = performanceGame();
+    const zeppelin = { id: 1 }, passengers = new Set();
+    const calls = [];
+    game.state.ZeppelinMoveJob = (...args) => calls.push(args);
+    game.state.TQAddJobEx(0, game.state.ZEPPELIN_MOVE, 7, zeppelin, passengers, null);
+    game.enqueue(10, game.state.FOCUSFIRE_CONTROL);
+
+    assert.equal(game.state.TQHandleOnce(), true);
+
+    assert.deepEqual(calls, [[7, zeppelin, passengers]]);
+    assert.equal(game.state.tq_length, 1);
+    assert.equal(game.state.tq_jid[1], game.state.FOCUSFIRE_CONTROL);
+  });
+
+  it('Given an expansion check, when it schedules its successor, then pending state is cleared first and the successor waits for the next dispatch', () => {
+    const game = performanceGame();
+    const worker = { id: 1 }, mine = { id: 2 };
+    let calls = 0;
+    game.state.BuildExpansionJob = (queuedWorker, queuedMine) => {
+      calls++;
+      assert.equal(queuedWorker, worker);
+      assert.equal(queuedMine, mine);
+      assert.equal(game.state.expansion_job_pending.has('1:2'), false);
+      game.enqueue(1, game.state.BUILD_EXPANSION, worker, mine);
+    };
+    assert.equal(game.enqueue(0, game.state.BUILD_EXPANSION, worker, mine), true);
+
+    assert.equal(game.state.TQHandleOnce(), true);
+
+    assert.equal(calls, 1);
+    assert.equal(game.state.tq_length, 1);
+    assert.equal(game.state.expansion_job_pending.get('1:2'), true);
   });
 });
 

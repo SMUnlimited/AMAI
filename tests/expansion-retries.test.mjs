@@ -4,16 +4,19 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { compile } from './helpers/jass.mjs';
+import { compiledCommon } from './helpers/strength-game.mjs';
 
 const root = new URL('../', import.meta.url);
 const common = readFileSync(new URL('common.eai', root), 'utf8');
+const queueSource = compiledCommon('REFORGED');
+const buildJobId = Number(queueSource.match(/constant integer BUILD_EXPANSION\s*=\s*(\d+)/)[1]);
 const doubles = readFileSync(new URL('Jobs/DETECT_DOUBLE_EXP.eai', root), 'utf8');
 const build = readFileSync(new URL('Jobs/BUILD_EXPANSION.eai', root), 'utf8');
 
 const table = () => new Map();
 const key = (parent, child) => `${parent}:${child}`;
 const env = {
-  now: 0, BUILD_EXPANSION: 46, JASS_MAX_ARRAY_SIZE: 8192, expansion_taken_radius: 1500,
+  now: 0, BUILD_EXPANSION: buildJobId, JASS_MAX_ARRAY_SIZE: 8192, expansion_taken_radius: 1500,
   UNIT_STATE_LIFE: 'life', UNIT_STATE_MAX_LIFE: 'maxLife',
   expansion_job_pending: table(), expansion_retry_state: table(), expansion_retry_cooldowns: table(),
   tq_length: 0, tq_time: [], tq_jid: [], tq_par: [], tq_unit_par: [], tq_group_par: [], tq_unit_par2: [],
@@ -35,7 +38,7 @@ const env = {
   FlushChildHashtable(t, p) { for (const k of t.keys()) if (k.startsWith(`${p}:`)) t.delete(k); },
 };
 const context = vm.createContext(env);
-for (const [source, name] of [[common, 'ExpansionAttemptStalled'], [common, 'TQAddJobEx'], [common, 'TQHandleOnce'], [common, 'ConstructExpansion'], [common, 'CheckExpansionRebuildAt'], [doubles, 'PreferExpansionClaimant'], [build, 'BuildExpansionJob']]) {
+for (const [source, name] of [[common, 'ExpansionAttemptStalled'], [common, 'TQAddJobEx'], [queueSource, 'TQHandleOnce'], [common, 'ConstructExpansion'], [common, 'CheckExpansionRebuildAt'], [doubles, 'PreferExpansionClaimant'], [build, 'BuildExpansionJob']]) {
   vm.runInContext(compile(source, name), context);
 }
 const worker = { id: 1, alive: true };
@@ -45,12 +48,16 @@ const enqueue = () => env.TQAddJobEx(env.now, env.BUILD_EXPANSION, 0, worker, nu
 for (let i = 0; i < 100; i++) enqueue();
 assert.equal(env.tq_length, 1, 'Repeated producers must not multiply pending jobs');
 env.TQRemoveRoot = () => { env.tq_length--; };
-env.TQDoJob = () => {
+const buildExpansionJob = env.BuildExpansionJob;
+env.BuildExpansionJob = (queuedWorker, queuedMine) => {
+  assert.equal(queuedWorker, worker);
+  assert.equal(queuedMine, mine);
   assert.equal(env.LoadBoolean(env.expansion_job_pending, worker.id, mine.id), false);
   enqueue(); // Running job can schedule exactly one successor.
 };
 assert.equal(env.TQHandleOnce(), true);
 assert.equal(env.tq_length, 1);
+env.BuildExpansionJob = buildExpansionJob;
 enqueue();
 assert.equal(env.tq_length, 1);
 

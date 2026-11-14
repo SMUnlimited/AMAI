@@ -1,13 +1,32 @@
 #IFDEF GLOBAL
 #ELSE
-function ResetWindWalkerGuardPosition takes unit u returns nothing
+function ResetWindWalkerGuardPosition takes unit u, integer checks returns nothing
   call DisplayToAllJobDebug("RESET_GUARD_POSITION JOB START")
-  call CreateDebugTag("RECYCLE Windwalk", 10, u, 3.00, 1.50)
-  if IsUnitVisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) and not IsUnitInGroup(u, unit_healing) and not IsUnitInGroup(u, unit_rescueing ) and not IsUnitInGroup(u, unit_harassing ) and not IsUnitInGroup(u, unit_zepplin_move ) then
-    call RecycleGuardPosition(u)
-    if attack_running and not isfleeing then
-        call RequestAssaultAM(1, GetUnitTypeId(u))
+  if u == null or not IsUnitInGroup(u, windwalk_group) then
+    return
+  endif
+  if GetUnitTypeId(u) == 0 or not UnitAlive(u) or GetOwningPlayer(u) != ai_player then
+    call GroupRemoveUnit(windwalk_group, u)
+    return
+  endif
+  if not IsStandardUnit(u) or IsUnitBuying(u) then
+    call GroupRemoveUnit(windwalk_group, u)
+    return // The recovery, shopping or transport job now owns control.
+  endif
+  if IsUnitInvisible(u, Player(PLAYER_NEUTRAL_AGGRESSIVE)) and attack_running and not IsRetreatingAM() and checks < 9 then
+    if TQAddUnitJob(1.8, RESET_WINDWALKER, checks + 1, u) then
+      return // Allow time to reach the target, but never detach indefinitely.
     endif
+  endif
+  call GroupRemoveUnit(windwalk_group, u)
+  // A rejected retry may have waited for the queue lock; revalidate its unit.
+  if GetUnitTypeId(u) == 0 or not UnitAlive(u) or GetOwningPlayer(u) != ai_player or not IsStandardUnit(u) or IsUnitBuying(u) then
+    return
+  endif
+  call CreateDebugTag("RECYCLE Windwalk", 10, u, 3.00, 1.50)
+  call RecycleGuardPosition(u)
+  if attack_running and not IsRetreatingAM() then
+    call RequestAssaultAM(1, GetUnitTypeId(u))
   endif
 endfunction
 #ENDIF

@@ -35,9 +35,12 @@ export function performanceGame({ capacity = 8192 } = {}) {
       for (const key of table.keys()) if (key.startsWith(`${parent}:`)) table.delete(key);
     },
     Trace() {},
-    tq_length: 0, tq_lock: true, JASS_MAX_ARRAY_SIZE: capacity, BUILD_EXPANSION: 46,
+    tq_length: 0, tq_lock: true, JASS_MAX_ARRAY_SIZE: capacity,
+    now: 0, tq_timer: null, debugging: 0, TimerGetElapsed: () => state.now,
+    TraceAll() {},
     expansion_job_pending: new Map(),
     GetHandleId: u => u?.id ?? 0,
+    RemoveSavedBoolean: (table, parent, child) => table.delete(`${parent}:${child}`),
     GetTQLock() { state.onLock?.(); assert.equal(state.tq_lock, true); state.tq_lock = false; },
     ReleaseTQLock() { assert.equal(state.tq_lock, false); state.tq_lock = true; },
     ModuloInteger: (a, b) => a % b, Sleep() { assert.fail('Unexpected sleep'); },
@@ -50,6 +53,9 @@ export function performanceGame({ capacity = 8192 } = {}) {
   };
   for (const [, name, value] of source.matchAll(/^\s*constant integer (o\w+)\s+= (.+)$/gm)) {
     state[name] = Number(expression(value.trim()));
+  }
+  for (const name of ['BUILD_EXPANSION', 'FOCUSFIRE_CONTROL', 'ZEPPELIN_MOVE']) {
+    state[name] = Number(source.match(new RegExp('constant integer ' + name + '\\s*=\\s*(\\d+)'))[1]);
   }
   // Strict bounds expose JASS array overflow instead of silently growing a JS array.
   for (const suffix of ['time', 'jid', 'par', 'unit_par', 'group_par', 'unit_par2']) {
@@ -71,7 +77,7 @@ export function performanceGame({ capacity = 8192 } = {}) {
   for (const name of [
     'SelectUnittype', 'SelectByHidden', 'SelectByAlive', 'SelectById',
     'IsRetreatingAM', 'RequestAssaultAM', 'AddAssaultAM', 'AttackGroupAddUnknown', 'DesperationAssault', 'LookupCT', 'GetChar', 'CompareReal', 'CheckChatCondition',
-    'TQCopy', 'TQExchange', 'TQUpHeap', 'TQFillPos', 'TQRemoveRoot', 'TQAddJobEx',
+    'TQCopy', 'TQExchange', 'TQUpHeap', 'TQFillPos', 'TQRemoveRoot', 'TQAddJobEx', 'TQHandleOnce',
   ]) vm.runInContext(compile(source, name, types), context);
 
   return {
