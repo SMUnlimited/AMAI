@@ -15470,6 +15470,39 @@ function GetPlayerAttackTarget takes player target_player returns unit
 endfunction
 
 //============================================================================
+function ChooseFinishingTarget takes nothing returns unit
+  local integer i = 0
+  local unit target = null
+  local unit best = null
+  local real strength = 0.0
+  local real best_strength = own_strength * 0.5
+  if own_strength <= 0 or own_strength < minimum_attack_strength then
+    return null
+  endif
+  loop
+    exitwhen i >= c_enemy_total
+    if GetPlayerSlotState(enemy_force[i]) == PLAYER_SLOT_STATE_PLAYING and GetUnexactPlayerStrength(enemy_force[i]) <= best_strength then
+      set target = GetPlayerAttackTarget(enemy_force[i])
+      if target != null and GetUnitTypeId(target) != 0 and UnitAlive(target) and not IsUnitHidden(target) then
+        // Require a clear advantage even after travel and defensive tower penalties.
+        set strength = GetTargetStrength(target) + GetTowerFactor(target)
+        if strength <= best_strength then
+          set best = target
+          set best_strength = strength
+        endif
+      endif
+    endif
+    set i = i + 1
+  endloop
+  set target = null
+  if best != null then
+    set added_target_aggression = 0
+    set added_racial_aggression = GetRaceAggression(best)
+  endif
+  return best
+endfunction
+
+//============================================================================
 function ChooseAnEnemyTarget takes unit u returns unit
   local player target_enemy = null
 
@@ -16003,6 +16036,20 @@ function SingleMeleeAttackAM takes boolean needs_exp, boolean has_siege, integer
           return
         endif
         set mega = null
+      endif
+
+      // Finish clearly outmatched enemies before choosing to creep, regardless of profile target rate.
+      if difficulty != EASY then
+        set hall = ChooseFinishingTarget()
+        if hall != null then
+          call Trace("AMAI Finishing weak enemy")
+          call SetAllianceTargetIfLeadAndChat(hall, C_Attack)
+          call Chat(C_Mega) // This chat is to enemies not allies
+          call AttackMoveKillAAM(hall, true)
+          call ClearAllianceTarget(hall)
+          set hall = null
+          return
+        endif
       endif
 
       if hero_unit[1] != null then

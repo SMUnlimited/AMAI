@@ -29,6 +29,7 @@ export function creepingGame() {
     GetHeroXP: hero => hero.xp ?? 0,
     GetRandomInt: (min, max) => Math.floor((min + max) / 2), FoodUsed: () => 30,
     ChooseAnEnemyTarget: () => null,
+    ChooseFinishingTarget: () => null,
     ChooseAttackTarget: () => ({ alive: true }),
     alli_target: null, C_Attack: 2,
     AttackMoveKillAAM: () => attacks.push('player attack'),

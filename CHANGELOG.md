@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- Normal and Insane AI now prioritize finishing clearly outmatched enemies over idle creeping, regardless of profile target-selection preferences, while accounting for distance and nearby towers.
 - Water mines are rechecked during play and become land expansion options when a route opens, allowing the AI to use them without a Zeppelin.
 - Ancient expansion placement and tower rush positioning now wait for background pathing results without holding up other AI jobs.
 - Blockage diagnosis, lumber placement and early Ancient creep checks now use the shared pathing thread, preserving large-unit collision checks and tree searches while avoiding separate moving probes in their callers.
