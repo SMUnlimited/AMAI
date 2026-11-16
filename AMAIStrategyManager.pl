@@ -5,6 +5,7 @@ use Tk;
 use Tk::TextUndo;
 use Tk::Table;
 use Tk::NoteBook;
+use Tk::Panedwindow;
 use Tk::Balloon; # Add for tooltips
 
 BEGIN{
@@ -563,25 +564,28 @@ sub EditStrat {
   my ($main, $version, $race, $strat) = @_;
   return unless @$strat[0];
   my $edit = $main->Toplevel(-title => 'AMAI Strategy Editor');
-  my $lframe = $edit->Frame->pack(-side => 'left');
-  my $rframe = $edit->Frame->pack(-side => 'right');
-  my $bframe = $rframe->Frame->pack(-side => 'right');
-  my $strattable = $rframe->Table(-rows => 37)->pack(-side => 'left');
-  open(TIERFILE, "$ver\\$race\\Tiers.txt") or die "File <$ver\\$race\\Tiers.txt> not found!";
+  SizeCodeEditor($edit);
+  my $bframe = $edit->Frame->pack(-side => 'bottom', -fill => 'x', -padx => 6, -pady => 6);
+  my $panes = $edit->Panedwindow(-orient => 'horizontal', -opaqueresize => 1,
+    -sashwidth => 8, -showhandle => 1)->pack(-fill => 'both', -expand => 1);
+  my $lframe = $panes->Frame;
+  my $rframe = $panes->Frame;
+  $panes->add($lframe, -minsize => 280, -width => 600, -sticky => 'nsew');
+  $panes->add($rframe, -minsize => 240, -sticky => 'nsew');
+  $rframe->Label(-text => 'Strategy options')->pack(-anchor => 'w');
+  my $strattable = $rframe->Table(-rows => 20, -scrollbars => 'se')->pack(-fill => 'both', -expand => 1);
+  open(TIERFILE, "$version\\$race\\Tiers.txt") or die "File <$version\\$race\\Tiers.txt> not found!";
   my @tiers = <TIERFILE>;
   my $tiernum = @tiers;
   close(TIERFILE);
-  my $textheight = 44 / ($tiernum + 1);
-  my @buildtexttier = ();
-  $lframe->Label(-text => 'Initalisation Code')->pack;
-  my $inittext = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
-  for(my $i=1;$i<=$tiernum;$i++) {
-    $lframe->Label(-text => "Code for Tier $i")->pack;
-    $buildtexttier[$i] = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
-  }
+  my ($inittext, @tiertexts) = CreateCodeTabs($lframe, 'Initialization', map { "Tier $_" } 1..$tiernum);
+  my @buildtexttier = (undef, @tiertexts);
   my $optarrayref = FillTable($strattable, $version, $race, @$strat[0]);
   FillTexts($inittext, \@buildtexttier, $version, $race, @$strat[0]);
   EnableJassHighlighting($_) for ($inittext, @buildtexttier[1..$tiernum]);
+  my $cancel = GuardEditorCancel($edit, sub {
+    return [AssembleTable($strattable, $optarrayref), @{ReadCodeTabValues($edit)}];
+  });
   mouse_wheel($strattable);
     $strattable->bind("<FocusIn>", sub {
     $strattable->focus;
@@ -589,12 +593,13 @@ sub EditStrat {
   $bframe->Button(
                 -text => 'OK',
                 -command => sub {SaveStrat($edit, $inittext, \@buildtexttier, $strattable, $version, $race, @$strat[0], $optarrayref)},
-                -width => 6)->pack;
+                -width => 6)->pack(-side => 'right', -padx => 4);
   $bframe->Button(
                 -text => 'Cancel',
-                -command => [$edit => 'destroy'],
-                -width => 6)->pack;
+                -command => $cancel,
+                -width => 6)->pack(-side => 'right', -padx => 4);
   $edit->focusForce;
+  return $edit;
 }
 
 sub EditProfile {
@@ -605,13 +610,14 @@ sub EditProfile {
   my $profiletable = $edit->Table(-rows => 37)->pack(-side => 'left');
   mouse_wheel($profiletable);
   my $optarrayref = FillProfileTable($profiletable, $version, @$profile[0]);
+  my $cancel = GuardEditorCancel($edit, sub { [AssembleTable($profiletable, $optarrayref)] });
   $bframe->Button(
                 -text => 'OK',
                 -command => sub {SaveProfile($edit, $profiletable, $version, @$profile[0], $optarrayref)},
                 -width => 6)->pack;
   $bframe->Button(
                 -text => 'Cancel',
-                -command => [$edit => 'destroy'],
+                -command => $cancel,
                 -width => 6)->pack;
   $edit->focusForce;
 }
@@ -873,6 +879,254 @@ sub AssembleTable {
   return join "\t", @jl;
 }
 
+sub GuardEditorCancel {
+  my ($edit, $read_values) = @_;
+  my $original = $read_values->();
+  my $cancel = sub {
+    my $current = $read_values->();
+    my $changed = @$original != @$current;
+    for (my $i = 0; !$changed && $i < @$original; $i++) {
+      $changed = $original->[$i] ne $current->[$i];
+    }
+    if ($changed) {
+      my $response = $edit->messageBox(-title => 'Discard changes?',
+        -message => 'You have unsaved changes. Are you sure you want to discard them? Your changes will be lost.',
+        -type => 'YesNo', -icon => 'warning', -default => 'no');
+      return unless lc($response) eq 'yes';
+    }
+    $edit->destroy;
+  };
+  $edit->protocol('WM_DELETE_WINDOW', $cancel);
+  return $cancel;
+}
+
+sub SizeCodeEditor {
+  my ($edit) = @_;
+  my $width = $edit->screenwidth < 1100 ? $edit->screenwidth - 60 : 1040;
+  my $height = $edit->screenheight < 800 ? $edit->screenheight - 100 : 700;
+  $edit->geometry("${width}x${height}");
+  $edit->minsize(560, 320);
+}
+
+sub CreateCodeTabs {
+  my ($parent, @labels) = @_;
+  my $notebook = $parent->NoteBook->pack(-fill => 'both', -expand => 1);
+  my $edit = $parent->toplevel;
+  my @fields;
+  for my $i (0..$#labels) {
+    my $page = $notebook->add("code$i", -label => $labels[$i]);
+    my $text = CreateCodeField($page, 24);
+    $notebook->pageconfigure("code$i", -raisecmd => sub {
+      return unless Tk::Exists($text);
+      unless (SyncAllCode($edit)) {
+        $notebook->raise('all');
+        return;
+      }
+      my $previous = $edit->{active_code_field};
+      $previous->tagRemove('search_match', '1.0', 'end') if $previous && Tk::Exists($previous);
+      $edit->{active_code_field} = $text;
+      $text->focus;
+    });
+    push @fields, $text;
+  }
+  $edit->{code_fields} = \@fields;
+  $edit->{code_labels} = \@labels;
+  my $page = $notebook->add('all', -label => 'All');
+  $page->Label(-text => 'Edit all sections here. Keep the section heading lines intact.')->pack(-anchor => 'w');
+  my $all = CreateCodeField($page, 24);
+  $edit->{all_code_field} = $all;
+  EnableJassHighlighting($all);
+  $notebook->pageconfigure('all', -raisecmd => sub {
+    return if grep { !Tk::Exists($_) } ($all, @fields);
+    my $previous = $edit->{active_code_field};
+    if (!$previous || $previous ne $all) {
+      my $source = '';
+      for my $i (0..$#fields) {
+        $source .= "// === AMAI section: $labels[$i] ===\n" . $fields[$i]->get('1.0', 'end-1c') . "\n";
+      }
+      if ($all->get('1.0', 'end-1c') ne $source) {
+        my $cursor = $all->index('insert');
+        $all->delete('1.0', 'end-1c');
+        $all->insert('1.0', $source);
+        $all->markSet('insert', $cursor);
+        $all->ResetUndo unless $edit->{all_code_initialized};
+        $edit->{all_code_initialized} = 1;
+      }
+      $previous->tagRemove('search_match', '1.0', 'end') if $previous;
+    }
+    $edit->{active_code_field} = $all;
+    $all->focus;
+  });
+  $notebook->raise('code0');
+  return @fields;
+}
+
+sub ParseAllCode {
+  my ($edit) = @_;
+  my $source = $edit->{all_code_field}->get('1.0', 'end-1c');
+  my @headers = $source =~ m{^// === AMAI section: .* ===$}mg;
+  return unless @headers == @{$edit->{code_labels}};
+  my $pattern = '\A';
+  for my $label (@{$edit->{code_labels}}) {
+    $pattern .= quotemeta("// === AMAI section: $label ===\n") . '(.*?)\n';
+  }
+  $pattern .= '\z';
+  my @values = $source =~ /$pattern/s;
+  return @values == @{$edit->{code_labels}} ? \@values : undef;
+}
+
+sub ReadCodeTabValues {
+  my ($edit) = @_;
+  if ($edit->{active_code_field} eq $edit->{all_code_field}) {
+    return ParseAllCode($edit) || [$edit->{all_code_field}->get('1.0', 'end-1c')];
+  }
+  return [map { $_->get('1.0', 'end-1c') } @{$edit->{code_fields}}];
+}
+
+sub SyncAllCode {
+  my ($edit) = @_;
+  return 1 unless Tk::Exists($edit->{all_code_field}) && $edit->{active_code_field}
+    && $edit->{active_code_field} eq $edit->{all_code_field};
+  my $values = ParseAllCode($edit);
+  unless ($values) {
+    $edit->messageBox(-title => 'Section headings changed', -icon => 'warning', -type => 'OK',
+      -message => 'Keep all AMAI section heading lines in their original order, with a newline after each section. Restore the headings or undo the change before switching tabs or saving.');
+    return 0;
+  }
+  for my $i (0..$#$values) {
+    my $field = $edit->{code_fields}[$i];
+    if ($field->get('1.0', 'end-1c') ne $values->[$i]) {
+      $field->delete('1.0', 'end-1c');
+      $field->insert('1.0', $values->[$i]);
+    }
+  }
+  return 1;
+}
+
+sub DrawCodeLineNumbers {
+  my ($text, $gutter) = @_;
+  $gutter->delete('all');
+  my ($last) = split /\./, $text->index('end-1c');
+  $gutter->configure(-width => (length($last) + 2) * $text->fontMeasure($text->cget('-font'), '0'));
+  my ($line) = split /\./, $text->index('@0,0');
+  while ($line <= $last) {
+    my @box = $text->dlineinfo("$line.0");
+    last unless @box;
+    $gutter->createText($gutter->cget('-width') - 5, $box[1],
+      -anchor => 'ne', -text => $line, -font => $text->cget('-font'), -fill => '#666666');
+    $line++;
+  }
+}
+
+sub FindCodeText {
+  my ($text, $find) = @_;
+  $text->tagRemove('search_match', '1.0', 'end');
+  return 0 unless length $find;
+  my $start = $text->index('insert');
+  my $match = $text->search('-exact', '--', $find, $start, 'end-1c');
+  $match = $text->search('-exact', '--', $find, '1.0', $start) unless defined($match) && length($match);
+  return 0 unless defined($match) && length($match);
+  $text->tagRemove('sel', '1.0', 'end');
+  $text->tagAdd('sel', $match, "$match + " . length($find) . ' chars');
+  # The normal selection is hidden when the search dialog has keyboard focus.
+  $text->tagConfigure('search_match', -background => '#FFE082', -foreground => '#000000');
+  $text->tagAdd('search_match', $match, "$match + " . length($find) . ' chars');
+  $text->tagRaise('search_match');
+  $text->tagRaise('sel');
+  $text->markSet('insert', "$match + " . length($find) . ' chars');
+  $text->see($match);
+  return 1;
+}
+
+sub ReplaceCodeText {
+  my ($text, $find, $replacement, $all) = @_;
+  $text->tagRemove('search_match', '1.0', 'end');
+  return 0 unless length $find;
+  my $count = 0;
+  if ($all) {
+    my $start = '1.0';
+    while (1) {
+      my $match = $text->search('-exact', '--', $find, $start, 'end-1c');
+      last unless defined($match) && length($match);
+      $text->delete($match, "$match + " . length($find) . ' chars');
+      $text->insert($match, $replacement);
+      $start = $text->index("$match + " . length($replacement) . ' chars');
+      $count++;
+    }
+  } else {
+    my @selection = $text->tagRanges('sel');
+    unless (@selection == 2 && $text->get(@selection) eq $find) {
+      return 0 unless FindCodeText($text, $find);
+      @selection = $text->tagRanges('sel');
+    }
+    $text->delete(@selection);
+    $text->insert($selection[0], $replacement);
+    $text->markSet('insert', "$selection[0] + " . length($replacement) . ' chars');
+    $text->tagRemove('sel', '1.0', 'end');
+    $text->tagRemove('search_match', '1.0', 'end');
+    $count = 1;
+  }
+  return $count;
+}
+
+sub ShowCodeFindReplace {
+  my ($text) = @_;
+  my $edit = $text->toplevel;
+  if (Tk::Exists($edit->{code_find_dialog})) {
+    $edit->{code_find_dialog}->deiconify;
+    $edit->{code_find_dialog}->raise;
+    return $edit->{code_find_dialog};
+  }
+  my $target = sub { $edit->{active_code_field} || $text };
+  my $dialog = $text->Toplevel(-title => 'Find / Replace');
+  $edit->{code_find_dialog} = $dialog;
+  $dialog->transient($text->toplevel);
+  my ($find, $replacement, $status) = ('', '', 'Literal, case-sensitive search in this code field.');
+  my @selection = $text->tagRanges('sel');
+  $find = $text->get(@selection) if @selection == 2;
+  $dialog->Label(-text => 'Find')->pack(-anchor => 'w');
+  my $entry = $dialog->Entry(-textvariable => \$find, -width => 40)->pack(-fill => 'x');
+  $dialog->Label(-text => 'Replace with')->pack(-anchor => 'w');
+  $dialog->Entry(-textvariable => \$replacement)->pack(-fill => 'x');
+  my $buttons = $dialog->Frame->pack(-fill => 'x');
+  my $next = sub { $status = FindCodeText($target->(), $find) ? 'Match selected.' : 'No match found.' };
+  $buttons->Button(-text => 'Find Next', -command => $next)->pack(-side => 'left');
+  for my $all (0, 1) {
+    $buttons->Button(-text => $all ? 'Replace All' : 'Replace', -command => sub {
+      my $count = ReplaceCodeText($target->(), $find, $replacement, $all);
+      $status = "$count replacement(s).";
+    })->pack(-side => 'left');
+  }
+  $buttons->Button(-text => 'Close', -command => sub { $dialog->destroy })->pack(-side => 'left');
+  $dialog->Label(-textvariable => \$status)->pack(-anchor => 'w');
+  $entry->bind('<Return>', $next);
+  $dialog->bind('<Escape>', sub { $dialog->destroy });
+  $dialog->bind('<Destroy>', sub {
+    my $current = $target->();
+    $current->tagRemove('search_match', '1.0', 'end') if Tk::Exists($current);
+    delete $edit->{code_find_dialog};
+  });
+  $entry->focus;
+  return $dialog;
+}
+
+sub CreateCodeField {
+  my ($parent, $height) = @_;
+  my $frame = $parent->Frame->pack(-fill => 'both', -expand => 1);
+  my $tools = $frame->Frame->pack(-fill => 'x');
+  my $gutter = $frame->Canvas(-width => 30, -highlightthickness => 0, -takefocus => 0,
+    -background => '#F0F0F0')->pack(-side => 'left', -fill => 'y');
+  my $text = $frame->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none',
+    -exportselection => 0, -height => $height)->pack(-side => 'left', -fill => 'both', -expand => 1);
+  $tools->Button(-text => 'Find / Replace (Ctrl+F)',
+    -command => sub { ShowCodeFindReplace($text) })->pack(-side => 'left');
+  $text->bind('<Control-f>', sub { ShowCodeFindReplace($text); Tk->break });
+  $text->bind('<Control-h>', sub { ShowCodeFindReplace($text); Tk->break });
+  # Read visible line positions so scrolling, resizing and edits stay aligned.
+  $text->repeat(150, sub { DrawCodeLineNumbers($text, $gutter) });
+  return $text;
+}
+
 sub HighlightJass {
   my ($text, $source) = @_;
   my %keywords = map { $_ => 1 } qw(
@@ -945,6 +1199,7 @@ sub FillTexts {
 
 sub SaveStrat {
   my ($edit, $inittext, $buildtexttierref, $strattable, $version, $race, $stratname, $optarrayref) = @_;
+  return unless SyncAllCode($edit);
   my @buildtexttier = @{$buildtexttierref};
   my $newstratname = $strattable->get(0,1)->get;
   open(STRATFILE, "$version\\$race\\Strategy.txt") or die "File <$version\\$race\\Strategy.txt> not found!";
@@ -1020,24 +1275,24 @@ sub SaveProfile {
 sub EditRacialBuilds {
   my ($main, $ver, $race) = @_;
   my $edit = $main->Toplevel(-title => 'AMAI Racial Builds Editor');
-  my $lframe = $edit->Frame->pack(-side => 'left');
-  my $rframe = $edit->Frame->pack(-side => 'right');
-  my $textheight = 22;
-  $lframe->Label(-text => 'Initalisation Code')->pack;
-  my $inittext = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
-  $lframe->Label(-text => "Build Code")->pack;
-  my $buildtext = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
+  SizeCodeEditor($edit);
+  my $rframe = $edit->Frame->pack(-side => 'bottom', -fill => 'x', -padx => 6, -pady => 6);
+  my ($inittext, $buildtext) = CreateCodeTabs($edit, 'Initialization', 'Build Code');
   LoadRacialBuild($inittext, $buildtext, $ver, $race);
   EnableJassHighlighting($_) for ($inittext, $buildtext);
+  my $cancel = GuardEditorCancel($edit, sub {
+    ReadCodeTabValues($edit);
+  });
   $rframe->Button(
                 -text => 'OK',
                 -command => sub {SaveRacialBuild($edit, $inittext, $buildtext, $ver, $race)},
-                -width => 6)->pack;
+                -width => 6)->pack(-side => 'right', -padx => 4);
   $rframe->Button(
                 -text => 'Cancel',
-                -command => [$edit => 'destroy'],
-                -width => 6)->pack;
+                -command => $cancel,
+                -width => 6)->pack(-side => 'right', -padx => 4);
   $edit->focusForce;
+  return $edit;
 }
 
 sub LoadRacialBuild {
@@ -1053,6 +1308,7 @@ sub LoadRacialBuild {
 
 sub SaveRacialBuild {
   my ($edit, $inittext, $buildtext, $ver, $race) = @_;
+  return unless SyncAllCode($edit);
   open(AIFILE, "$ver\\$race\\BuildSequence.ai") or die "File <$ver\\$race\\BuildSequence.ai> not found!";
   my @aifile = ();
   while (<AIFILE>) {
@@ -1085,13 +1341,16 @@ sub EditSettings {
   my $table = $lframe->Table(-rows => 37)->pack(-side => 'left');
   my $rownumber = LoadSettings($table, $file);
   mouse_wheel($table);
+  my $cancel = GuardEditorCancel($edit, sub {
+    [map { $table->get($_, 1)->get } (0..$rownumber-1)];
+  });
   $rframe->Button(
                 -text => 'OK',
                 -command => sub {SaveSettings($edit, $table, $file, $rownumber)},
                 -width => 6)->pack;
   $rframe->Button(
                 -text => 'Cancel',
-                -command => [$edit => 'destroy'],
+                -command => $cancel,
                 -width => 6)->pack;
   $edit->focusForce;
 }

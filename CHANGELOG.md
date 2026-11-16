@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - (internal) AI logic can request pathing checks during play and read their results through the existing pathing thread, without starting extra threads or pausing other checks. Only waypoint placement uses rapid polling; reachability checks use slower, staggered waits.
 - (devtools) Contributor instructions now document minimum polling pauses, rounded-wait tests and JASS runtime precautions to help prevent game freezes, stopped AI scripts and multiplayer desyncs.
 - (devtools) Strategy Manager code fields now highlight JASS keywords, comments, strings, rawcodes and numbers, with colours refreshed while editing.
+- (devtools) Strategy Manager code fields now show line numbers and offer find/replace with Ctrl+F or Ctrl+H. Cancelling or closing an editor warns before discarding changes to code, profiles or settings.
+- (devtools) Strategy editors now have initialization and tier tabs, a draggable divider between code and strategy options, and a fixed bottom button bar. Racial builds use initialization and build tabs. Code expands with the window, and find/replace follows the active tab.
+- (devtools) An All tab combines initialization and every tier in one editable view for find/replace across the whole strategy. Edits stay synchronized with individual tabs; section headings are checked before switching or saving to prevent code being assigned to the wrong tier.
 - (devtools) Strategy Manager now shows the locked strategy or profile above each list, refreshing when locks, settings, races or versions change. Lists keep their selections, locking without a selection shows a prompt, and the window allows enough width to display the status and controls.
 
 ### Fixed
