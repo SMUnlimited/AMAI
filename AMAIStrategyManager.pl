@@ -539,6 +539,7 @@ sub EditStrat {
   }
   my $optarrayref = FillTable($strattable, $version, $race, @$strat[0]);
   FillTexts($inittext, \@buildtexttier, $version, $race, @$strat[0]);
+  EnableJassHighlighting($_) for ($inittext, @buildtexttier[1..$tiernum]);
   mouse_wheel($strattable);
     $strattable->bind("<FocusIn>", sub {
     $strattable->focus;
@@ -830,6 +831,48 @@ sub AssembleTable {
   return join "\t", @jl;
 }
 
+sub HighlightJass {
+  my ($text, $source) = @_;
+  my %keywords = map { $_ => 1 } qw(
+    function endfunction takes returns nothing local set call return debug
+    if then elseif else endif loop endloop exitwhen and or not
+    true false null constant native globals endglobals type extends
+    integer real boolean string handle code array
+  );
+  $text->tagRemove($_, '1.0', 'end') for qw(jass_keyword jass_comment jass_literal jass_number);
+  my $line = 0;
+  for my $content (split /\n/, $source) {
+    $line++;
+    # Consume whole strings, rawcodes and identifiers so their contents cannot become keywords.
+    while ($content =~ m{(//.*)|("(?:\\.|[^"\\])*"?|'(?:\\.|[^'\\])*'?)|(\$[0-9a-fA-F]+\b|\b\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\.\d+(?:[eE][+-]?\d+)?)|(\b[A-Za-z_]\w*\b)}g) {
+      my ($start, $end) = ($-[0], $+[0]);
+      my $tag = defined($1) ? 'jass_comment'
+              : defined($2) ? 'jass_literal'
+              : defined($3) ? 'jass_number'
+              : $keywords{$4} ? 'jass_keyword' : undef;
+      $text->tagAdd($tag, "$line.$start", "$line.$end") if defined $tag;
+    }
+  }
+}
+
+sub EnableJassHighlighting {
+  my ($text) = @_;
+  $text->tagConfigure('jass_keyword', -foreground => '#0000CC');
+  $text->tagConfigure('jass_comment', -foreground => '#008000');
+  $text->tagConfigure('jass_literal', -foreground => '#A31515');
+  $text->tagConfigure('jass_number', -foreground => '#800080');
+  $text->tagRaise('sel');
+  my $previous = $text->get('1.0', 'end-1c');
+  HighlightJass($text, $previous);
+  # Widget-owned repeats are cancelled by Tk when the editor is destroyed.
+  $text->repeat(150, sub {
+    my $source = $text->get('1.0', 'end-1c');
+    return if $source eq $previous;
+    HighlightJass($text, $source);
+    $previous = $source;
+  });
+}
+
 sub FillTexts {
   my ($inittext, $buildtexttierref, $version, $race, $stratname, @optarray) = @_;
   my @buildtexttier = @{$buildtexttierref};
@@ -943,6 +986,7 @@ sub EditRacialBuilds {
   $lframe->Label(-text => "Build Code")->pack;
   my $buildtext = $lframe->Scrolled('TextUndo', -scrollbars => 'se', -wrap => 'none', -height => $textheight)->pack;
   LoadRacialBuild($inittext, $buildtext, $ver, $race);
+  EnableJassHighlighting($_) for ($inittext, $buildtext);
   $rframe->Button(
                 -text => 'OK',
                 -command => sub {SaveRacialBuild($edit, $inittext, $buildtext, $ver, $race)},

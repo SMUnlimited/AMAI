@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Blockage diagnosis, lumber placement and early Ancient creep checks now use the shared pathing thread, preserving large-unit collision checks and tree searches while avoiding separate moving probes in their callers.
 - (internal) AI logic can request pathing checks during play and read their results through the existing pathing thread, without starting extra threads or pausing other checks. Only waypoint placement uses rapid polling; reachability checks use slower, staggered waits.
 - (devtools) Contributor instructions now document minimum polling pauses, rounded-wait tests and JASS runtime precautions to help prevent game freezes, stopped AI scripts and multiplayer desyncs.
+- (devtools) Strategy Manager code fields now highlight JASS keywords, comments, strings, rawcodes and numbers, with colours refreshed while editing.
 
 ### Fixed
 
