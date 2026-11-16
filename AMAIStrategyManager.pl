@@ -23,8 +23,8 @@ if($] >= 5.008004) {
 my $main = MainWindow->new(-title => 'AMAI Strategy Manager');
 my $lframe = $main->Frame->pack(-side => 'left', -padx => 4);
 my ($screen_width, $screen_height) = ($main->screenwidth, $main->screenheight);
-$main->maxsize(310, 99999);
-$main->minsize(300, 480);
+$main->maxsize($screen_width, 99999);
+$main->minsize(440, 480);
 my $race;
 my $ver;
 my $strat;
@@ -33,13 +33,21 @@ my $rframe = $main->Frame->pack(-side => 'right');
 my $notebook = $rframe->NoteBook()->pack(-side => 'left');
 my $stratframe = $notebook->add("strat", -label => 'Strategies');
 my $profileframe = $notebook->add("profile", -label => 'Profiles');
+my $strategy_lock_status = 'No strategy locked';
+my $profile_lock_status = 'No profile locked';
+$stratframe->Label(-textvariable => \$strategy_lock_status,
+    -wraplength => 180, -justify => 'left')->pack(-side => 'top', -fill => 'x');
+$profileframe->Label(-textvariable => \$profile_lock_status,
+    -wraplength => 180, -justify => 'left')->pack(-side => 'top', -fill => 'x');
 my $stratlb = $stratframe->Scrolled('Listbox',
+    -exportselection => 0,
     -scrollbars => 'se',
     -height => 0,
 )->pack(-fill => 'both', -expand => 1);
 mouse_wheel($stratlb);
 tie $strat, "Tk::Listbox", $stratlb;
 my $profilelb = $profileframe->Scrolled('Listbox',
+    -exportselection => 0,
     -scrollbars => 'se',
     -height => 0,
 )->pack(-fill => 'both', -expand => 1);
@@ -135,11 +143,19 @@ create_button($bframe, 'Edit', sub {
 }, 6, 'Edit the selected strategy or profile');
 
 create_button($bframe, 'Lock', sub {
-    if ($notebook->raised eq 'strat') {
-        SetRaceOption($ver, $race, 'debug_strategy', "STRAT_$strat->[0]");
-    } else {
-        SetVerOption($ver, 'debug_profile', GetArrayIndex($profile, $profilelb->get(0, 'end')));
+    my $is_strategy = $notebook->raised eq 'strat';
+    my $selected = $is_strategy ? $strat : $profile;
+    unless ($selected && @$selected) {
+        $main->messageBox(-message => 'Select a strategy or profile from the list before locking.',
+            -title => 'Nothing selected', -type => 'OK', -icon => 'info');
+        return;
     }
+    if ($is_strategy) {
+        SetRaceOption($ver, $race, 'debug_strategy', "STRAT_$selected->[0]");
+    } else {
+        SetVerOption($ver, 'debug_profile', GetArrayIndex($selected, $profilelb->get(0, 'end')));
+    }
+    UpdateLockStatus();
 }, 6, 'Lock to make the AI always use the selected strategy or profile');
 
 create_button($bframe, 'Unlock', sub {
@@ -148,6 +164,7 @@ create_button($bframe, 'Unlock', sub {
     } else {
         SetVerOption($ver, 'debug_profile', -1);
     }
+    UpdateLockStatus();
 }, 6, 'Unlock a locked strategy or profile');
 
 create_button($bframe, 'Quit', sub {
@@ -285,6 +302,7 @@ sub UpdateStratList {
   my $race = shift;
   $stratlb->delete(0, $stratlb->index('end')-1);
   $stratlb->insert('end', GetStratList($ver, $race));
+  UpdateLockStatus();
 }
 
 sub GetProfileList {
@@ -306,6 +324,30 @@ sub UpdateProfileList {
   my ($profilelb, $ver) = @_;
   $profilelb->delete(0, $profilelb->index('end')-1);
   $profilelb->insert('end', GetProfileList($ver));
+  UpdateLockStatus();
+}
+
+sub GetLockStatus {
+  my ($file, $option, $kind, @names) = @_;
+  open my $settings, '<', $file or die "File <$file> not found!";
+  my $value = '-1';
+  while (<$settings>) {
+    $value = $1 if /^\Q$option\E\t([^\t\r\n]+)/;
+  }
+  close $settings;
+  return "No $kind locked" if $value eq '-1';
+  $value =~ s/^STRAT_// if $kind eq 'strategy';
+  $value = $names[$value] if $value =~ /^\d+$/ && $value < @names;
+  return "Locked $kind: $value";
+}
+
+sub UpdateLockStatus {
+  $strategy_lock_status = ($ver && $race)
+    ? GetLockStatus("$ver\\$race\\Settings.txt", 'debug_strategy', 'strategy', GetStratList($ver, $race))
+    : 'No strategy locked';
+  $profile_lock_status = $ver
+    ? GetLockStatus("$ver\\GlobalSettings.txt", 'debug_profile', 'profile', GetProfileList($ver))
+    : 'No profile locked';
 }
 
 sub RemoveStrat {
@@ -1087,4 +1129,5 @@ sub SaveSettings {
   }
   close(SETTINGS);
   $edit->destroy;
+  UpdateLockStatus();
 }
