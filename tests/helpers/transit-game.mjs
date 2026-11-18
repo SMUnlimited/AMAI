@@ -69,16 +69,19 @@ export function transitGame(options) {
     FromGroupAndGhoulsAM() {}, DoAttackJobs() {}, SleepInCombatAM() {}, QueueGetNextCommand() {},
     B2S: String, Real2Str: String,
   });
-  const common = readFileSync(new URL('../../common.eai', import.meta.url), 'utf8');
+  const common = readFileSync(new URL('../../common.eai', import.meta.url), 'utf8')
+    .replace(/#INCLUDETABLE[^\n]+StandardUnits.txt[^\n]*\n[\s\S]*?#ENDINCLUDE/g, '');
   const context = vm.createContext(state);
   for (const name of ['CopyGroup', 'DistanceBetweenPoints_dk', 'IsStandardUnit', 'IsUnitBuying', 'LinearInterpolation', 'ApplyFleeStrengthModifier', 'AttackTransitIntrusion',
-    'CommonSleepUntilTargetDeadAM', 'SleepUntilAtGoalAM', 'SleepUntilTownDefended', 'QueueAttackMoveXY']) {
+    'CommonSleepUntilTargetDeadAM', 'SleepUntilAtGoalAM', 'SleepUntilTownDefended', 'QueueAttackMoveXY',
+    'HealArmy', 'universal_attack_sequence']) {
     vm.runInContext(compile(common, name), context);
   }
   for (const name of ['MoveRetreatUnitHome', 'AssistCaptainRetreat', 'RetreatControlJob']) {
     vm.runInContext(compile(readFileSync(new URL('../../Jobs/RETREAT_CONTROL.eai', import.meta.url), 'utf8'), name), context);
   }
   vm.runInContext(compile(readFileSync(new URL('../../Jobs/RETREAT_HOME.eai', import.meta.url), 'utf8'), 'RetreatHomeJob'), context);
+  vm.runInContext(compile(readFileSync(new URL('../../Jobs/MICRO_HERO.eai', import.meta.url), 'utf8'), 'GoHomeIfMainHero'), context);
   return {
     ...game, orders, unitOrders, guardChanges, returnJobs, checkReturns, work,
     addEnemy: (changes = {}) => {
@@ -97,5 +100,28 @@ export function transitGame(options) {
     },
     attack: () => state.CommonSleepUntilTargetDeadAM(target, false, false, false),
     intercept: () => state.AttackTransitIntrusion(),
+    healArmy(onWait) {
+      Object.assign(state, {
+        urgent_healing_count: 4, medium_healing_count: 0,
+        ver_heroes: true,
+        RMin: Math.min,
+        GetArmyHealthState: () => 0.5,
+        GetMassHealingItem: () => 0, GetMerchantMassHealingItem: () => 0,
+        GetGlobalHealingItem: () => 0, GetHealingItem: () => 0,
+        Sleep: onWait,
+      });
+      state.HealArmy();
+    },
+    stopAttack() {
+      Object.assign(state, {
+        hero_unit: [null, units[0]], current_expansion: null, take_exp: false,
+        ver_heroes: false, air_strength: 0,
+        difficulty: 2, EASY: 0, attack_reform_length: 10,
+        SetTargetHeroes() {}, GetOwnStrength: () => 20,
+        GetMajorHero: () => units[0],
+        SingleMeleeAttackAM() {}, go_home: true,
+      });
+      state.universal_attack_sequence();
+    },
   };
 }

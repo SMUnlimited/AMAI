@@ -127,7 +127,7 @@ describe('Captain retreat assistance', () => {
     assert.ok(game.unitOrders.every(order => order.x === 2000 && order.y === 1000));
   });
 
-  it('Given a captain already home, when stragglers are still returning, then retreat waits for their guard restoration', () => {
+  it('Given a captain already home, when stragglers are still returning, then retreat control finishes while queued returns continue', () => {
     const game = transitGame();
     game.state.isfleeing = true;
     game.state.CaptainIsHome = () => true;
@@ -135,7 +135,8 @@ describe('Captain retreat assistance', () => {
     game.checkBattle();
 
     assert.equal(game.unitOrders.length, 2);
-    assert.equal(game.state.retreat_controlled, true);
+    assert.equal(game.state.retreat_controlled, false);
+    assert.equal(game.returnJobs.length, 2);
   });
 
   it('Given a later attack after returning home, when it also retreats, then its troops are recalled again', () => {
@@ -158,6 +159,31 @@ describe('Captain retreat assistance', () => {
 });
 
 describe('Recalling troops during town defense', () => {
+  it('Given a threat already cleared before defense starts, when the loop exits immediately, then troops are assisted before native recall', () => {
+    const game = transitGame();
+    game.state.CaptainGoHome = () => {
+      assert.ok(game.units.every(unit => unit.guardRemoved), 'Assistance must precede native recall');
+    };
+
+    game.defendTown(() => assert.fail('Cleared defense should not sleep'));
+
+    assert.equal(game.returnJobs.length, 2);
+    assert.equal(game.unitOrders.length, 2);
+  });
+
+  it('Given troops arriving as defense ends, when the loop exits, then the final recall also reserves the new troops', () => {
+    const game = transitGame();
+    game.state.town_threatened = true;
+    const reinforcement = { ...game.units[0] };
+
+    game.defendTown(() => {
+      game.units.push(reinforcement);
+      game.state.town_threatened = false;
+    });
+
+    assert.equal(game.state.unit_retreating.has(reinforcement), true);
+  });
+
   it('Given a captain already home, when new troops arrive and a defender wanders away, then both are recalled throughout defense', () => {
     const game = transitGame();
     game.state.CaptainIsHome = () => true;
@@ -192,6 +218,78 @@ describe('Recalling troops during town defense', () => {
     game.checkBattle();
 
     assert.equal(game.unitOrders.length, 2);
+  });
+});
+
+describe('Assisted healing and commander recalls', () => {
+  it('Given injured field troops and no retreat controller, when army healing starts, then return jobs bring them home', () => {
+    const game = transitGame();
+    game.state.retreat_controlled = false;
+
+    game.healArmy(() => { game.state.town_threatened = true; });
+
+    assert.equal(game.returnJobs.length, 2);
+    assert.ok(game.units.every(unit => unit.guardRemoved));
+    for (const unit of game.units) Object.assign(unit, { x: 0, y: 0 });
+    game.checkReturns();
+    assert.ok(game.units.every(unit => !unit.guardRemoved));
+  });
+
+  it('Given a finished retreat controller, when a commander stops the attack, then recall reserves field troops before native orders', () => {
+    const game = transitGame();
+    game.state.retreat_controlled = false;
+    game.state.CaptainGoHome = () => assert.ok(game.units.every(unit => unit.guardRemoved));
+
+    game.stopAttack();
+
+    assert.equal(game.returnJobs.length, 2);
+    assert.equal(game.unitOrders.length, 2);
+    assert.equal(game.state.go_home, false);
+  });
+});
+
+describe('Hero teleport retreat handoff', () => {
+  it('Given no retreat controller, when the main hero escapes, then assistance precedes native recall and queued returns survive the portal', () => {
+    const game = transitGame();
+    game.state.retreat_controlled = false;
+    game.state.TQAddJob = () => assert.fail('Hero escape must not start retreat control');
+    game.state.CaptainGoHome = () => assert.ok(game.units.every(unit => unit.guardRemoved));
+    game.state.TeleportCaptain = () => {};
+
+    game.state.GoHomeIfMainHero(game.units[0], 0, 0);
+    game.state.GoHomeIfMainHero(game.units[0], 0, 0);
+
+    assert.equal(game.returnJobs.length, 2);
+    assert.equal(game.unitOrders.length, 2);
+    assert.equal(game.state.retreat_controlled, false);
+    assert.equal(game.state.isfleeing, true);
+    game.unitOrders.length = 0;
+    game.state.teleporting = true;
+    game.state.CaptainIsHome = () => true;
+    game.checkBattle();
+    assert.equal(game.returnJobs.length, 2);
+    assert.equal(game.unitOrders.length, 0, 'Do not interrupt the portal');
+
+    game.state.teleporting = false;
+    game.checkBattle();
+
+    assert.equal(game.returnJobs.length, 2);
+    assert.equal(game.state.retreat_controlled, false);
+    for (const unit of game.units) Object.assign(unit, { x: 0, y: 0 });
+    game.checkBattle();
+    assert.equal(game.state.retreat_controlled, false);
+    assert.ok(game.units.every(unit => !unit.guardRemoved));
+  });
+
+  it('Given an active attack, when the main hero initiates escape, then assistance preserves the request to break the attack', () => {
+    const game = transitGame();
+    game.state.retreat_controlled = false;
+    game.state.TeleportCaptain = () => {};
+
+    game.state.GoHomeIfMainHero(game.units[0], 0, 0);
+
+    assert.equal(game.state.break_attack, true);
+    assert.equal(game.state.attack_running, false);
   });
 });
 
@@ -298,7 +396,7 @@ describe('Guard ownership during retreat', () => {
     game.checkBattle();
     assert.equal(game.units[0].guardRemoved, false);
     assert.equal(game.units[1].guardRemoved, true);
-    assert.equal(game.state.retreat_controlled, true);
+    assert.equal(game.state.retreat_controlled, false);
     game.units[1].x = 0;
     game.units[1].y = 0;
     game.checkBattle();

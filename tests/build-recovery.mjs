@@ -211,6 +211,7 @@ test('Healing preserves effect duration without AI throttling and responds to at
         sleep_multiplier: 10, urgent_healing_count: 4, medium_healing_count: 0,
         ver_heroes: true, town_threatened: false,
         GetArmyHealthState: () => 0.5, CaptainIsHome: () => true,
+        AssistCaptainRetreat() {},
         GetMassHealingItem: () => global ? 0 : 1,
         GetMerchantMassHealingItem: () => 0, GetGlobalHealingItem: () => 1,
         GetItemOfType: () => ({}), GetItemHero: () => ({}),
